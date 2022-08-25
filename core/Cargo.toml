@@ -1,0 +1,33 @@
+[package]
+name = "extism-runtime"
+version = "0.0.1"
+edition = "2021"
+authors = ["The Extism Authors", "oss@extism.org"]
+
+[lib]
+name = "extism"
+crate-type   = ["cdylib"]
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[dependencies]
+wasmtime = "0.39.1"
+wasmtime-wasi = "0.39.1"
+anyhow = "1"
+serde = {version = "1", features=["derive"]}
+toml = "0.5"
+serde_json = "1"
+sha2 = "0.10"
+ureq = {version = "2.5", optional=true}
+extism-manifest = {path = "../manifest"}
+pretty-hex = {version = "0.3", optional = true}
+
+[features]
+default = ["http", "register-http", "register-filesystem"]
+register-http = ["ureq"] # enables wasm to be downloaded using http
+register-filesystem = [] # enables wasm to be loaded from disk
+http = ["ureq"]          # enables extism_http_request
+debug = ["pretty-hex"]
+
+[build-dependencies]
+cbindgen = "0.24"

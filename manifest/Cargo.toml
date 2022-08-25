@@ -1,0 +1,9 @@
+[package]
+name = "extism-manifest"
+version = "0.0.1"
+edition = "2021"
+authors = ["The Extism Authors", "oss@extism.org"]
+
+[dependencies]
+serde = {version = "1", features=["derive"]}
+base64 = "0.20.0-alpha"

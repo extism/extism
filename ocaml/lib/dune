@@ -1,0 +1,4 @@
+(library
+ (name extism)
+ (libraries ctypes.foreign bigstringaf)
+ (preprocess (pps ppx_yojson_conv)))
