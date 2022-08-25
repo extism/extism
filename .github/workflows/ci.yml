@@ -1,0 +1,105 @@
+on: [ push, pull_request ]
+
+name: CI
+
+env:
+  RUNTIME_MANIFEST: runtime/Cargo.toml
+
+jobs:
+  build_and_test:
+    name: Build & Test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
+    steps:
+    - name: Checkout sources
+      uses: actions/checkout@v2
+      
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
+      with:
+        toolchain: ${{ matrix.rust }}
+        override: true
+
+    - name: Cache Rust environment
+      uses: Swatinem/rust-cache@v1
+      
+    - name: Format
+      run: cargo fmt --check --manifest-path ${{ env.RUNTIME_MANIFEST }}
+    
+    - name: Build
+      run:  cargo build --release --manifest-path ${{ env.RUNTIME_MANIFEST }} 
+    
+    - name: Lint
+      run: cargo clippy --release --no-deps --manifest-path ${{ env.RUNTIME_MANIFEST }}
+      
+    - name: Test
+      run: cargo test --release --manifest-path ${{ env.RUNTIME_MANIFEST }}
+
+    - name: Install extism shared library
+      shell: bash
+      run: sudo make install
+  
+    - name: Setup Go env
+      uses: actions/setup-go@v3
+    
+    - name: Test Go Host SDK
+      run: |
+        go version
+        cd go && LD_LIBRARY_PATH=/usr/local/lib go run main.go
+      
+    - name: Load cached Poetry installation
+      uses: actions/cache@v2
+      with:
+        path: ~/.local 
+        key: poetry-0  
+      
+    - name: Setup Python env
+      uses: snok/install-poetry@v1
+      
+    - name: Test Python Host SDK
+      run: |
+        cd python
+        poetry install
+        poetry run python example.py
+        
+        
+    - name: Setup Ruby env
+      uses: ruby/setup-ruby@v1
+      with:
+        ruby-version: '3.0'
+        
+    - name: Test Ruby Host SDK
+      run: |
+        cd ruby
+        bundle install
+        ruby example.rb
+
+    
+    - name: Setup Node env
+      uses: actions/setup-node@v3
+      with:
+        node-version: 16
+      
+    - name: Test Node Host SDK
+      run: |
+        cd node
+        npm i
+        LD_LIBRARY_PATH=/usr/local/lib node example.js
+        
+    - name: Test Rust Host SDK
+      run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release --manifest-path rust/Cargo.toml
+
+    # - name: Setup OCaml env
+    #   uses: ocaml/setup-ocaml@v2
+
+    # - name: Test OCaml Host SDK
+    #   run: |
+    #     cd ocaml
+    #     opam install -y .
+    #     opam exec -- dune exec extism
+        
+    

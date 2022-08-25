@@ -1,0 +1,217 @@
+on:
+  release:
+    types: [created]
+
+name: Release
+
+env:
+  RUNTIME_MANIFEST: runtime/Cargo.toml
+  RUSTFLAGS: -C target-feature=-crt-static
+  ARTIFACT_DIR: release-artifacts
+
+jobs:
+  release-linux:
+    name: linux
+    runs-on: ubuntu-latest
+    strategy: 
+      matrix:
+        target: [ 
+          aarch64-unknown-linux-gnu, 
+          aarch64-unknown-linux-musl, 
+          i686-unknown-linux-gnu, 
+          x86_64-unknown-linux-gnu ]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Build Target (${{ matrix.target }})
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }} --manifest-path ${{ env.RUNTIME_MANIFEST }}
+  
+      - name: Prepare Artifact
+        run: |
+          EXT=so
+          SRC_DIR=runtime/target/${{ matrix.target }}/release
+          DEST_DIR=${{ env.ARTIFACT_DIR }}
+          RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
+          ARCHIVE=${RELEASE_NAME}.tar.gz
+          CHECKSUM=${RELEASE_NAME}.checksum.txt
+          
+          # compress the shared library & create checksum
+          cp runtime/extism.h ${SRC_DIR}
+          cp LICENSE ${SRC_DIR}
+          tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
+          ls -ll ${ARCHIVE}
+          shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
+        
+          # copy archive and checksum into release artifact directory
+          mkdir -p ${DEST_DIR}
+          cp ${ARCHIVE} ${DEST_DIR}
+          cp ${CHECKSUM} ${DEST_DIR}
+  
+          ls ${DEST_DIR}
+      
+      - name: Upload Artifact to Summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_DIR }}
+          path: |
+            *.tar.gz
+            *.txt
+
+      - name: Upload Artifact to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.tar.gz
+            *.txt
+  
+  release-macos:
+    name: macos
+    runs-on: macos-latest
+    strategy: 
+      matrix:
+        target: [ 
+          x86_64-apple-darwin,
+          aarch64-apple-darwin ]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Build Target (${{ matrix.target }})
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: true
+          command: build
+          args: --release --target ${{ matrix.target }} --manifest-path ${{ env.RUNTIME_MANIFEST }}
+
+      - name: Prepare Artifact
+        run: |
+          EXT=dylib
+          SRC_DIR=runtime/target/${{ matrix.target }}/release
+          DEST_DIR=${{ env.ARTIFACT_DIR }}
+          RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
+          ARCHIVE=${RELEASE_NAME}.tar.gz
+          CHECKSUM=${RELEASE_NAME}.checksum.txt
+          
+          # compress the shared library & create checksum
+          cp runtime/extism.h ${SRC_DIR}
+          cp LICENSE ${SRC_DIR}
+          tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
+          ls -ll ${ARCHIVE}
+          shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
+        
+          # copy archive and checksum into release artifact directory
+          mkdir -p ${DEST_DIR}
+          cp ${ARCHIVE} ${DEST_DIR}
+          cp ${CHECKSUM} ${DEST_DIR}
+  
+          ls ${DEST_DIR}
+      
+      - name: Upload Artifact to Summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_DIR }}
+          path: |
+            *.tar.gz
+            *.txt
+
+      - name: Upload Artifact to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.tar.gz
+            *.txt
+
+  release-windows:
+    name: windows
+    runs-on: windows-latest
+    strategy: 
+      matrix:
+        target: [ 
+          i686-pc-windows-gnu,
+          i686-pc-windows-msvc,
+          x86_64-pc-windows-gnu,
+          x86_64-pc-windows-msvc,
+          aarch64-pc-windows-msvc 
+          ]
+    if: always()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v1
+      
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Build Target (${{ matrix.target }})
+        uses: actions-rs/cargo@v1
+        with:
+          use-cross: false
+          command: build
+          args: --release --target ${{ matrix.target }} --manifest-path ${{ env.RUNTIME_MANIFEST }}
+
+      - name: Prepare Artifact
+        shell: bash
+        run: |
+          EXT=dll
+          SRC_DIR=runtime/target/${{ matrix.target }}/release
+          DEST_DIR=${{ env.ARTIFACT_DIR }}
+          RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
+          ARCHIVE=${RELEASE_NAME}.tar.gz
+          CHECKSUM=${RELEASE_NAME}.checksum.txt
+        
+          # compress the shared library & create checksum
+          cp runtime/extism.h ${SRC_DIR}
+          cp LICENSE ${SRC_DIR}
+          tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
+          ls -ll ${ARCHIVE}
+        
+          certutil -hashfile ${ARCHIVE} SHA256 >${CHECKSUM}
+        
+          # copy archive and checksum into release artifact directory
+          mkdir -p ${DEST_DIR}
+          cp ${ARCHIVE} ${DEST_DIR}
+          cp ${CHECKSUM} ${DEST_DIR}
+  
+          ls ${DEST_DIR}
+      
+      - name: Upload Artifact to Summary
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ env.ARTIFACT_DIR }}
+          path: |
+            *.tar.gz
+            *.txt
+
+      - name: Upload Artifact to Release
+        uses: softprops/action-gh-release@v1
+        with:
+          files: |
+            *.tar.gz
+            *.txt
