@@ -9,7 +9,7 @@ module C
   attach_function :extism_call, [:int32, :string, :pointer, :uint64], :int32
   attach_function :extism_output_length, [:int32], :uint64
   attach_function :extism_output_get, [:int32, :pointer, :uint64], :void
-  attack_function :extism_log_file, [:string, :pointer], :void
+  attach_function :extism_log_file, [:string, :pointer], :void
 end
 
 class Error < StandardError

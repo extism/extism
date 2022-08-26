@@ -29,7 +29,7 @@ pub unsafe extern "C" fn extism_plugin_register(
     plugins.push(plugin);
     let id = (plugins.len() - 1) as PluginIndex;
     info!("New plugin added: {id}");
-    return id;
+    id
 }
 
 #[no_mangle]
