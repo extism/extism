@@ -98,8 +98,8 @@ jobs:
 
     # - name: Test OCaml Host SDK
     #   run: |
-    #     cd ocaml
     #     opam install -y .
+    #     cd ocaml
     #     opam exec -- dune exec extism
         
     
