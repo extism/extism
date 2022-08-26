@@ -1,0 +1,6 @@
+[workspace]
+members = [
+  "manifest",
+  "runtime",
+  "wasm/rust-pdk",
+]
