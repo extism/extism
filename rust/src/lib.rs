@@ -173,7 +173,7 @@ mod tests {
             //     .collect::<Vec<_>>()
             //     .len();
 
-            let mut native_vowel_count2 = 0;
+            let mut _native_vowel_count = 0;
             let input: &[u8] = input.as_ref();
             for i in 0..input.len() {
                 if input[i] == b'A'
@@ -187,7 +187,7 @@ mod tests {
                     || input[i] == b'o'
                     || input[i] == b'u'
                 {
-                    native_vowel_count2 += 1;
+                    _native_vowel_count += 1;
                 }
             }
             native_start.elapsed()
