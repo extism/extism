@@ -15,3 +15,5 @@ pub use plugin_ref::PluginRef;
 
 pub type Size = u64;
 pub type PluginIndex = i32;
+
+pub(crate) use log::{debug, error, info};

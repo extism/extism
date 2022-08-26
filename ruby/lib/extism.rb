@@ -9,26 +9,40 @@ module C
   attach_function :extism_call, [:int32, :string, :pointer, :uint64], :int32
   attach_function :extism_output_length, [:int32], :uint64
   attach_function :extism_output_get, [:int32, :pointer, :uint64], :void
+  attack_function :extism_log_file, [:string, :pointer], :void
 end
 
 class Error < StandardError
 end
 
+def set_log_file(name, level=FFI::NIL)
+  if level != FFI::NIL then
+    level = FFI::MemoryPointer::from_string(level)
+  end
+  C.extism_log_file(name, level)
+end
+
 
 class Plugin
-  def initialize(wasm, wasi=false)
+  def initialize(wasm, wasi=false, config=nil)
     if wasm.class == Hash then
       wasm = JSON.generate(wasm)
     end
     code = FFI::MemoryPointer.new(:char, wasm.bytesize)
-    code.put_bytes(0, wasm) 
+    code.put_bytes(0, wasm)
     @plugin = C.extism_plugin_register(code, wasm.bytesize, wasi)
+
+    if config != nil and @plugin >= 0 then
+      s = JSON.generate(config)
+      ptr = FFI::MemoryPointer::from_string(s)
+      C.extism_plugin_config(@plugin, ptr, s.bytesize)
+    end
   end
-  
+
   def call(name, data)
     input = FFI::MemoryPointer::from_string(data)
     rc = C.extism_call(@plugin, name, input, data.bytesize)
-    if rc != 0 then 
+    if rc != 0 then
       err = C.extism_error(@plugin)
       if err.empty? then
         raise Error.new "extism_call failed"

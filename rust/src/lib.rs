@@ -55,6 +55,34 @@ impl Plugin {
         Ok(())
     }
 
+    pub fn with_config(self, config: &BTreeMap<String, String>) -> Result<Self, Error> {
+        self.set_config(config)?;
+        Ok(self)
+    }
+
+    pub fn set_log_file(
+        &self,
+        filename: impl AsRef<std::path::Path>,
+        log_level: Option<log::LevelFilter>,
+    ) {
+        let log_level = log_level.map(|x| x.as_str());
+        unsafe {
+            bindings::extism_log_file(
+                filename.as_ref().as_os_str().to_string_lossy().as_ptr() as *const _,
+                log_level.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()) as *const _,
+            );
+        }
+    }
+
+    pub fn with_log_file(
+        self,
+        filename: impl AsRef<std::path::Path>,
+        log_level: Option<log::LevelFilter>,
+    ) -> Self {
+        self.set_log_file(filename, log_level);
+        self
+    }
+
     pub fn has_function(&self, name: impl AsRef<str>) -> bool {
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
         unsafe { bindings::extism_function_exists(self.0 as i32, name.as_ptr() as *const _) }
@@ -100,7 +128,9 @@ mod tests {
     fn it_works() {
         let wasm = include_bytes!("../../wasm/code.wasm");
         let wasm_start = Instant::now();
-        let plugin = Plugin::new(wasm, false).unwrap();
+        let plugin = Plugin::new(wasm, false)
+            .unwrap()
+            .with_log_file("test.log", Some(log::LevelFilter::Info));
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -143,7 +173,7 @@ mod tests {
             //     .collect::<Vec<_>>()
             //     .len();
 
-            let mut _native_vowel_count = 0;
+            let mut native_vowel_count2 = 0;
             let input: &[u8] = input.as_ref();
             for i in 0..input.len() {
                 if input[i] == b'A'
@@ -157,7 +187,7 @@ mod tests {
                     || input[i] == b'o'
                     || input[i] == b'u'
                 {
-                    _native_vowel_count += 1;
+                    native_vowel_count2 += 1;
                 }
             }
             native_start.elapsed()

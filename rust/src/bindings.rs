@@ -42,3 +42,9 @@ extern "C" {
 extern "C" {
     pub fn extism_output_get(plugin: ExtismPlugin, buf: *mut u8, len: ExtismSize);
 }
+extern "C" {
+    pub fn extism_log_file(
+        filename: *const ::std::os::raw::c_char,
+        log_level: *const ::std::os::raw::c_char,
+    ) -> bool;
+}

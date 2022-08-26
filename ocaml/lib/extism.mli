@@ -42,6 +42,7 @@ module Manifest : sig
   val json: t -> string
 end
 
+val set_log_file: ?level:string -> string -> bool
 val register: ?wasi:bool -> string -> t
 val register_manifest: ?wasi:bool -> Manifest.t -> t
 val call_bigstring: t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result

@@ -261,14 +261,6 @@ pub(crate) fn var_set(
     Ok(())
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
-struct HttpRequest {
-    url: String,
-    #[serde(default)]
-    header: std::collections::BTreeMap<String, String>,
-    method: Option<String>,
-}
-
 pub(crate) fn http_request(
     #[allow(unused_mut)] mut caller: Caller<Internal>,
     input: &[Val],
@@ -277,7 +269,10 @@ pub(crate) fn http_request(
     #[cfg(not(feature = "http"))]
     {
         let _ = (caller, input, output);
-        panic!("HTTP requests have been disabled");
+
+        output[0] = Val::I64(0 as i64);
+        error!("http_request is not enabled");
+        return Ok(());
     }
 
     #[cfg(feature = "http")]
@@ -288,11 +283,13 @@ pub(crate) fn http_request(
 
         let length = match memory!(data).block_length(offset) {
             Some(x) => x,
-            None => return Err(Trap::new("Invalid offset in call to config_get")),
+            None => return Err(Trap::new("Invalid offset in call to http_request")),
         };
         let buf = memory!(data).get((offset, length));
-        let req: HttpRequest =
+        let req: extism_manifest::HttpRequest =
             serde_json::from_slice(buf).map_err(|_| Trap::new("Invalid http request"))?;
+
+        let body_offset = input[1].unwrap_i64() as usize;
 
         let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
 
@@ -300,13 +297,23 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
-        let mut r = r
-            .call()
-            .map_err(|e| Trap::new(format!("{:?}", e)))?
-            .into_reader();
+        let mut res = if body_offset > 0 {
+            let length = match memory!(data).block_length(body_offset) {
+                Some(x) => x,
+                None => return Err(Trap::new("Invalid offset in call to http_request")),
+            };
+            let buf = memory!(data).get((offset, length));
+            r.send_bytes(buf)
+                .map_err(|e| Trap::new(&format!("Request error: {e:?}")))?
+                .into_reader()
+        } else {
+            r.call()
+                .map_err(|e| Trap::new(format!("{:?}", e)))?
+                .into_reader()
+        };
 
         let mut buf = Vec::new();
-        r.read_to_end(&mut buf)
+        res.read_to_end(&mut buf)
             .map_err(|e| Trap::new(format!("{:?}", e)))?;
 
         let mem = memory!(mut data).alloc_bytes(buf)?;

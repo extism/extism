@@ -103,6 +103,24 @@ impl Host {
         unsafe { std::str::from_utf8_unchecked(self.input.as_slice()) }
     }
 
+    pub fn http_request(
+        &self,
+        req: &extism_manifest::HttpRequest,
+        body: Option<&[u8]>,
+    ) -> Result<Vec<u8>, serde_json::Error> {
+        let enc = serde_json::to_vec(req)?;
+        let req = self.alloc_bytes(&enc);
+        let body = match body {
+            Some(b) => self.alloc_bytes(b).offset,
+            None => 0,
+        };
+        let res = unsafe { extism_http_request(req.offset, body) };
+        let len = unsafe { extism_length(res) };
+        let mut dest = vec![0; len as usize];
+        unsafe { bindings::extism_load(res, &mut dest) };
+        Ok(dest)
+    }
+
     pub fn output(&self, data: impl AsRef<[u8]>) {
         let len = data.as_ref().len();
         unsafe {

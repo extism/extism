@@ -1,6 +1,7 @@
 #![allow(clippy::missing_safety_doc)]
 
 use std::os::raw::c_char;
+use std::str::FromStr;
 
 use crate::*;
 
@@ -14,18 +15,21 @@ pub unsafe extern "C" fn extism_plugin_register(
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
         Err(e) => {
-            eprintln!("Error creating Plugin: {:?}", e);
+            error!("Error creating Plugin: {:?}", e);
             return -1;
         }
     };
 
-    // Acquire lock and add plugin to registry
-    if let Ok(mut plugins) = PLUGINS.lock() {
-        plugins.push(plugin);
-        return (plugins.len() - 1) as PluginIndex;
-    }
+    let mut plugins = match PLUGINS.lock() {
+        Ok(p) => p,
+        Err(e) => e.into_inner(),
+    };
 
-    -1
+    // Acquire lock and add plugin to registry
+    plugins.push(plugin);
+    let id = (plugins.len() - 1) as PluginIndex;
+    info!("New plugin added: {id}");
+    return id;
 }
 
 #[no_mangle]
@@ -64,26 +68,37 @@ pub unsafe extern "C" fn extism_function_exists(
     let mut plugin = PluginRef::new(plugin);
 
     let name = std::ffi::CStr::from_ptr(func_name);
-    let name = name.to_str().expect("Invalid function name");
+    let name = match name.to_str() {
+        Ok(x) => x,
+        Err(_) => return false,
+    };
+
     plugin.as_mut().get_func(name).is_some()
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_call(
-    plugin: PluginIndex,
+    plugin_id: PluginIndex,
     func_name: *const c_char,
     data: *const u8,
     data_len: Size,
 ) -> i32 {
-    let mut plugin = PluginRef::new(plugin).init();
+    let mut plugin = PluginRef::new(plugin_id).init();
     let plugin = plugin.as_mut();
 
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
-    let name = name.to_str().expect("Invalid function name");
-    let func = plugin
-        .get_func(name)
-        .unwrap_or_else(|| panic!("Function not found {name}"));
+    let name = match name.to_str() {
+        Ok(name) => name,
+        Err(e) => return plugin.error(e, -1),
+    };
+
+    debug!("Calling function: {name} in plugin {plugin_id}");
+
+    let func = match plugin.get_func(name) {
+        Some(x) => x,
+        None => return plugin.error(format!("Function not found: {name}"), -1),
+    };
 
     // Write input to memory
     let data = std::slice::from_raw_parts(data, data_len as usize);
@@ -99,14 +114,14 @@ pub unsafe extern "C" fn extism_call(
     plugin.set_input(handle);
 
     // Call function with offset+length pointing to input data.
-    // TODO: In the future this could be a JSON or Protobuf payload.
     let mut results = vec![Val::I32(0)];
     match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
         Ok(r) => r,
         Err(e) => {
             #[cfg(feature = "debug")]
             plugin.dump_memory();
-            return plugin.error(e.context("Invalid write"), -1);
+            error!("Call: {e:?}");
+            return plugin.error(e.context("Call failed"), -1);
         }
     };
 
@@ -147,4 +162,67 @@ pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex, buf: *mut u8, le
             slice,
         )
         .expect("Out of bounds read in extism_output_get");
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_log_file(
+    filename: *const c_char,
+    log_level: *const c_char,
+) -> bool {
+    use log::LevelFilter;
+    use log4rs::append::file::FileAppender;
+    use log4rs::config::{Appender, Config, Root};
+    use log4rs::encode::pattern::PatternEncoder;
+
+    let file = std::ffi::CStr::from_ptr(filename);
+    let file = match file.to_str() {
+        Ok(x) => x,
+        Err(_) => {
+            return false;
+        }
+    };
+
+    let level = if log_level.is_null() {
+        "error"
+    } else {
+        let level = std::ffi::CStr::from_ptr(log_level);
+        match level.to_str() {
+            Ok(x) => x,
+            Err(_) => {
+                return false;
+            }
+        }
+    };
+
+    let level = match LevelFilter::from_str(level) {
+        Ok(x) => x,
+        Err(_) => {
+            return false;
+        }
+    };
+
+    let logfile = match FileAppender::builder()
+        .encoder(Box::new(PatternEncoder::new("{d}: {l} - {m}\n")))
+        .build(file)
+    {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Unable to set up log encoder: {e:?}");
+            return false;
+        }
+    };
+
+    let config = match Config::builder()
+        .appender(Appender::builder().build("logfile", Box::new(logfile)))
+        .build(Root::builder().appender("logfile").build(level))
+    {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Unable to configure log file: {e:?}");
+            return false;
+        }
+    };
+
+    log4rs::init_config(config).expect("Log initialization failed");
+    true
 }

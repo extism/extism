@@ -48,6 +48,15 @@ type Manifest struct {
 	Config map[string]string `json:"config,omitempty"`
 }
 
+func SetLogFile(filename string, level string) bool {
+	name := C.CString(filename)
+	l := C.CString(level)
+	r := C.extism_log_file(name, l)
+	C.free(unsafe.Pointer(name))
+	C.free(unsafe.Pointer(l))
+	return bool(r)
+}
+
 func register(data []byte, wasi bool) (Plugin, error) {
 	plugin := C.extism_plugin_register(
 		(*C.uchar)(unsafe.Pointer(&data[0])),
@@ -80,13 +89,25 @@ func LoadPlugin(module io.Reader, wasi bool) (Plugin, error) {
 	return register(wasm, wasi)
 }
 
+func (plugin Plugin) SetConfig(data map[string][]byte) error {
+	s, err := json.Marshal(data)
+	if err != nil {
+		return err
+	}
+	C.extism_plugin_config(C.int(plugin.id), (*C.uchar)(unsafe.Pointer(&s[0])), C.uint64_t(len(s)))
+	return nil
+}
+
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
+	name := C.CString(functionName)
 	rc := C.extism_call(
 		C.int32_t(plugin.id),
-		C.CString(functionName),
+		name,
 		(*C.uchar)(unsafe.Pointer(&input[0])),
 		C.uint64_t(len(input)),
 	)
+	C.free(unsafe.Pointer(name))
+
 	if rc != 0 {
 		error := C.extism_error(C.int32_t(plugin.id))
 		if error != nil {

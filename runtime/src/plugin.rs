@@ -91,12 +91,12 @@ impl Plugin {
         // Add builtins
         for (_name, module) in modules.iter() {
             for import in module.imports() {
-                let m = import.module();
-                let n = import.name();
+                let module_name = import.module();
+                let name = import.name();
                 use ValType::*;
 
-                if m == EXPORT_MODULE_NAME {
-                    define_funcs!(n,  {
+                if module_name == EXPORT_MODULE_NAME {
+                    define_funcs!(name,  {
                         alloc(I64) -> I64;
                         free(I64);
                         load_u8(I64) -> I32;
@@ -111,23 +111,15 @@ impl Plugin {
                         config_get(I64) -> I64;
                         var_get(I64) -> I64;
                         var_set(I64, I64);
-                        http_request(I64) -> I64;
+                        http_request(I64, I64) -> I64;
                         length(I64) -> I64;
                     });
                 }
 
                 // Define memory or check to ensure the symbol is exported by another module
                 // since it doesn't match one of our known exports
-                match import.ty() {
-                    ExternType::Memory(t) => {
-                        linker.define(m, n, Extern::Memory(Memory::new(&mut memory.store, t)?))?;
-                    }
-                    ExternType::Func(_f) => {
-                        if !m.starts_with("wasi") && !exports.contains_key(n) {
-                            panic!("Invalid export: {m}::{n}")
-                        }
-                    }
-                    _ => (),
+                if !module_name.starts_with("wasi") && !exports.contains_key(name) {
+                    return Err(anyhow::format_err!("Invalid export: {module_name}::{name}"));
                 }
             }
         }

@@ -11,12 +11,18 @@ var lib = ffi.Library(
     extism_error: ['char*', ['int32']],
     extism_call: ['int32', ['int32', 'string', 'string', 'uint64']],
     extism_output_length: ['uint64', ['int32']],
-    extism_output_get: ['void', ['int32', 'char*', 'uint64']]
+    extism_output_get: ['void', ['int32', 'char*', 'uint64']],
+    extism_log_file: ['bool', ['string', 'char*']],
+    extism_plugin_config: ['void', ['int32', 'char*', 'uint64']],
   }
 )
 
+export function set_log_file(filename, level = null) {
+  lib.extism_log_file(filename, level)
+}
+
 export class Plugin {
-  constructor(data, wasi = false) {
+  constructor(data, wasi = false, config = null) {
     if (typeof data === "object" && data.wasm) {
       data = JSON.stringify(data);
     }
@@ -25,6 +31,11 @@ export class Plugin {
       throw "Unable to load plugin";
     }
     this.id = plugin;
+
+    if (config != null) {
+      let s = JSON.stringify(config);
+      lib.extism_plugin_config(this.id, s, s.length);
+    }
   }
 
   call(name, input) {

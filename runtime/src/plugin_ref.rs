@@ -18,12 +18,14 @@ impl<'a> PluginRef<'a> {
     ///
     /// This function is used to access the static `PLUGINS` registry
     pub unsafe fn new(plugin: PluginIndex) -> Self {
-        let mut plugins = PLUGINS
-            .lock()
-            .expect("Unable to acquire lock on plugin registry");
+        let mut plugins = match PLUGINS.lock() {
+            Ok(p) => p,
+            Err(e) => e.into_inner(),
+        };
 
         if plugin < 0 || plugin as usize >= plugins.len() {
-            panic!("Invalid PluginIndex {plugin}")
+            drop(plugins);
+            panic!("Invalid PluginIndex {plugin}");
         }
 
         let plugin = plugins.get_unchecked_mut(plugin as usize) as *mut _;

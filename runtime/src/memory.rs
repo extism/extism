@@ -128,16 +128,24 @@ impl PluginMemory {
 
     /// Reserve `n` bytes of memory
     pub fn alloc(&mut self, n: usize) -> Result<MemoryBlock, Error> {
+        debug!("Allocating {n} bytes");
+
         for (i, block) in self.free.iter_mut().enumerate() {
             if block.length == n {
                 let block = self.free.swap_remove(i);
                 self.live_blocks.insert(block.offset, block.length);
+                debug!("Found block with exact size at offset {}", block.offset);
                 return Ok(block);
             } else if block.length - n >= BLOCK_SIZE_THRESHOLD {
                 let handle = MemoryBlock {
                     offset: block.offset,
                     length: n,
                 };
+                debug!(
+                    "Using block with size {} at offset {}",
+                    block.length, block.offset
+                );
+
                 block.offset += n;
                 block.length -= n;
                 self.live_blocks.insert(handle.offset, handle.length);
@@ -147,6 +155,8 @@ impl PluginMemory {
 
         // If there aren't enough bytes, try to grow the memory size
         if self.position + n >= self.size() {
+            debug!("Need more memory");
+
             let bytes_needed = (self.position as f64 + n as f64
                 - self.memory.data_size(&self.store) as f64)
                 / PAGE_SIZE as f64;
@@ -155,6 +165,7 @@ impl PluginMemory {
                 pages_needed = 1
             }
 
+            info!("Requesting {pages_needed} more pages");
             // This will fail if we've already allocated the maximum amount of memory allowed
             self.memory.grow(&mut self.store, pages_needed)?;
         }
@@ -178,6 +189,7 @@ impl PluginMemory {
 
     /// Free the block allocated at `offset`
     pub fn free(&mut self, offset: usize) {
+        info!("Freeing block at {offset}");
         if let Some(length) = self.live_blocks.remove(&offset) {
             self.free.push(MemoryBlock { offset, length });
         } else {

@@ -59,6 +59,9 @@ module Bindings = struct
 
   let extism_output_get =
     fn "extism_output_get" (int32_t @-> ptr char @-> uint64_t @-> returning void)
+  
+  let extism_log_file =
+    fn "extism_log_file" (string @-> string_opt @-> returning bool)
 end
 
 type error = [ `Msg of string ]
@@ -124,6 +127,9 @@ module Manifest = struct
 end
 
 exception Failed_to_load_plugin
+
+let set_log_file ?level filename =
+  Bindings.extism_log_file filename level
 
 let register ?(wasi = false) wasm =
   let id =

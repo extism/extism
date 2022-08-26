@@ -8,6 +8,7 @@ homepage = "https://extism.org"
 repository = "https://github.com/extism/extism"
 description = "Extism Plug-in Development Kit (PDK) for Rust"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+extism-manifest = {path = "../../manifest"}
+serde_json = "1"

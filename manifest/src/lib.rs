@@ -1,11 +1,22 @@
 use std::collections::BTreeMap;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 pub struct ManifestMemory {
     pub max: Option<u32>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
+pub struct HttpRequest {
+    pub url: String,
+    #[serde(default)]
+    pub header: std::collections::BTreeMap<String, String>,
+    pub method: Option<String>,
+}
+
+#[derive(serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 pub enum ManifestWasm {
     File {
@@ -15,23 +26,31 @@ pub enum ManifestWasm {
     },
     Data {
         #[serde(with = "base64")]
+        #[cfg_attr(feature = "json_schema", schemars(schema_with = "base64_schema"))]
         data: Vec<u8>,
         name: Option<String>,
         hash: Option<String>,
     },
     Url {
-        url: String,
-        #[serde(default)]
-        header: BTreeMap<String, String>,
+        #[serde(flatten)]
+        req: HttpRequest,
         name: Option<String>,
-        method: Option<String>,
         hash: Option<String>,
     },
 }
 
+#[cfg(feature = "json_schema")]
+fn base64_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+    use schemars::{schema::SchemaObject, JsonSchema};
+    let mut schema: SchemaObject = <String>::json_schema(gen).into();
+    schema.format = Some("string".to_owned());
+    schema.into()
+}
+
 #[derive(Default, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 pub struct Manifest {
-    #[serde(default = "Vec::new")]
+    #[serde(default)]
     pub wasm: Vec<ManifestWasm>,
     #[serde(default)]
     pub memory: ManifestMemory,

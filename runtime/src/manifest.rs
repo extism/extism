@@ -100,9 +100,12 @@ fn to_module(
         #[allow(unused)]
         extism_manifest::ManifestWasm::Url {
             name,
-            url,
-            header,
-            method,
+            req:
+                extism_manifest::HttpRequest {
+                    url,
+                    header,
+                    method,
+                },
             hash,
         } => {
             let file_name = url.split('/').last().unwrap();

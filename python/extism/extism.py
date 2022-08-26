@@ -86,9 +86,18 @@ class Base64Encoder(json.JSONEncoder):
         return json.JSONEncoder.default(self, o)
 
 
+def set_log_file(file, level=ffi.NULL):
+    if isinstance(level, str):
+        level = level.encode()
+    lib.extism_log_file(file.encode(), level)
+
+
 class Plugin:
 
-    def __init__(self, plugin: Union[str, bytes, dict], wasi=False):
+    def __init__(self,
+                 plugin: Union[str, bytes, dict],
+                 wasi=False,
+                 config=None):
         if isinstance(plugin, str) and os.path.exists(plugin):
             with open(plugin, 'rb') as f:
                 wasm = f.read()
@@ -101,6 +110,10 @@ class Plugin:
 
         # Register plugin
         self.plugin = lib.extism_plugin_register(wasm, len(wasm), wasi)
+
+        if config is not None:
+            s = json.dumps(config).encode()
+            lib.extism_plugin_config(s, len(s))
 
     def _check_error(self, rc):
         if rc != 0:
