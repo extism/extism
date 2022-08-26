@@ -118,15 +118,16 @@ impl Plugin {
 
                 // Define memory or check to ensure the symbol is exported by another module
                 // since it doesn't match one of our known exports
-                match (m, n) {
-                    ("env", "memory") => {
-                        linker.define(m, n, Extern::Memory(memory.memory))?;
+                match import.ty() {
+                    ExternType::Memory(t) => {
+                        linker.define(m, n, Extern::Memory(Memory::new(&mut memory.store, t)?))?;
                     }
-                    (module_name, name) => {
-                        if !module_name.starts_with("wasi") && !exports.contains_key(name) {
+                    ExternType::Func(_f) => {
+                        if !m.starts_with("wasi") && !exports.contains_key(n) {
                             panic!("Invalid export: {m}::{n}")
                         }
                     }
+                    _ => (),
                 }
             }
         }
