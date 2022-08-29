@@ -27,3 +27,5 @@ rust/target
 ocaml/duniverse
 ocaml/_build
 wasm/rust-pdk/target
+dist-newstyle
+.stack-work
