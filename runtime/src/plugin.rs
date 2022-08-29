@@ -153,6 +153,11 @@ impl Plugin {
     /// Set `last_error` field
     pub fn set_error(&mut self, e: impl std::fmt::Debug) {
         let x = format!("{:?}", e).into_bytes();
+        let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
+            x[1..x.len() - 1].to_vec()
+        } else {
+            x
+        };
         let e = unsafe { std::ffi::CString::from_vec_unchecked(x) };
         self.last_error = Some(e);
     }
