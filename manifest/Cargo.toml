@@ -11,3 +11,15 @@ description = "Extism plug-in manifest crate"
 [dependencies]
 serde = {version = "1", features=["derive"]}
 base64 = "0.20.0-alpha"
+schemars = {version = "0.8", optional=true}
+
+[features]
+json_schema = ["schemars"]
+
+[dev-dependencies]
+serde_json = "1"
+
+[[example]]
+name = "json_schema"
+required-features = ["json_schema"]
+

@@ -2,6 +2,5 @@
 members = [
   "manifest",
   "runtime",
-  "wasm/rust-pdk",
   "rust",
 ]
