@@ -59,7 +59,7 @@ module Bindings = struct
 
   let extism_output_get =
     fn "extism_output_get" (int32_t @-> ptr char @-> uint64_t @-> returning void)
-  
+
   let extism_log_file =
     fn "extism_log_file" (string @-> string_opt @-> returning bool)
 end
@@ -77,8 +77,13 @@ module Manifest = struct
   }
   [@@deriving yojson]
 
+  type base64 = string
+
+  let yojson_of_base64 x = `String (Base64.encode_exn x)
+  let base64_of_yojson j = Yojson.Safe.Util.to_string j
+
   type wasm_data = {
-    data : string;
+    data : base64;
     name : string option; [@yojson.option]
     hash : string option; [@yojson.option]
   }
@@ -128,8 +133,7 @@ end
 
 exception Failed_to_load_plugin
 
-let set_log_file ?level filename =
-  Bindings.extism_log_file filename level
+let set_log_file ?level filename = Bindings.extism_log_file filename level
 
 let register ?(wasi = false) wasm =
   let id =

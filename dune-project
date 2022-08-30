@@ -19,7 +19,7 @@
  (name extism)
  (synopsis "A short synopsis")
  (description "A longer description")
- (depends ocaml dune ctypes-foreign bigstringaf ppx_yojson_conv)
+ (depends ocaml dune ctypes-foreign bigstringaf ppx_yojson_conv base64)
  (tags
   (topics "to describe" your project)))
 
