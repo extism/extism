@@ -50,14 +50,20 @@ jobs:
       run: |
         go version
         cd go && LD_LIBRARY_PATH=/usr/local/lib go run main.go
-      
+    
+    - name: Setup Python env
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.9'
+        check-latest: true
+
     - name: Load cached Poetry installation
       uses: actions/cache@v2
       with:
         path: ~/.local 
         key: poetry-0  
       
-    - name: Setup Python env
+    - name: Install Poetry
       uses: snok/install-poetry@v1
       
     - name: Test Python Host SDK
