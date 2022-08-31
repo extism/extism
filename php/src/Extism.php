@@ -74,14 +74,15 @@ class Plugin
             $data = json_encode($data);
         }
 
-        $str = FFI::new("const uint8_t *");
         $length = strlen($data);
+        $ty = FFI::arrayType(FFI::type("uint8_t"), [$length]);
+        $str = FFI::new($ty);
         FFI::memcpy($str, $data, $length);
 
         global $lib;
         $id = $lib->extism_plugin_register($str, $length, $wasi);
         if ($id < 0) {
-            throw("Extism: unable to load plugin");
+            throw new Exception("Extism: unable to load plugin");
         }
         $this->id = $id;
 
