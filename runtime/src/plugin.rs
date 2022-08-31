@@ -181,7 +181,6 @@ impl Plugin {
         internal.plugin = ptr;
     }
 
-    #[cfg(feature = "debug")]
     pub fn dump_memory(&self) {
         self.memory.dump();
     }

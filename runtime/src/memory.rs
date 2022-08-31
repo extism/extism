@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-#[cfg(feature = "debug")]
 use pretty_hex::PrettyHex;
 
 /// Handles memory for plugins
@@ -222,11 +221,10 @@ impl PluginMemory {
         }
     }
 
-    #[cfg(feature = "debug")]
     pub fn dump(&self) {
         let data = self.memory.data(&self.store);
 
-        println!("{:?}", data[..self.position].hex_dump());
+        trace!("{:?}", data[..self.position].hex_dump());
     }
 
     /// Reset memory

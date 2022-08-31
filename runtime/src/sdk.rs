@@ -107,7 +107,6 @@ pub unsafe extern "C" fn extism_call(
         Err(e) => return plugin.error(e.context("Unable to allocate bytes"), -1),
     };
 
-    #[cfg(feature = "debug")]
     plugin.dump_memory();
 
     // Always needs to be called before `func.call()`
@@ -118,14 +117,12 @@ pub unsafe extern "C" fn extism_call(
     match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
         Ok(r) => r,
         Err(e) => {
-            #[cfg(feature = "debug")]
             plugin.dump_memory();
             error!("Call: {e:?}");
             return plugin.error(e.context("Call failed"), -1);
         }
     };
 
-    #[cfg(feature = "debug")]
     plugin.dump_memory();
 
     // Return result to caller
@@ -170,16 +167,21 @@ pub unsafe extern "C" fn extism_log_file(
     log_level: *const c_char,
 ) -> bool {
     use log::LevelFilter;
+    use log4rs::append::console::ConsoleAppender;
     use log4rs::append::file::FileAppender;
-    use log4rs::config::{Appender, Config, Root};
+    use log4rs::config::{Appender, Config, Logger, Root};
     use log4rs::encode::pattern::PatternEncoder;
 
-    let file = std::ffi::CStr::from_ptr(filename);
-    let file = match file.to_str() {
-        Ok(x) => x,
-        Err(_) => {
-            return false;
+    let file = if !filename.is_null() {
+        let file = std::ffi::CStr::from_ptr(filename);
+        match file.to_str() {
+            Ok(x) => x,
+            Err(_) => {
+                return false;
+            }
         }
+    } else {
+        "-"
     };
 
     let level = if log_level.is_null() {
@@ -201,28 +203,34 @@ pub unsafe extern "C" fn extism_log_file(
         }
     };
 
-    let logfile = match FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{d}: {l} - {m}\n")))
-        .build(file)
-    {
-        Ok(x) => x,
-        Err(e) => {
-            error!("Unable to set up log encoder: {e:?}");
-            return false;
+    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} (({f}:{L})) - {m}\n"));
+
+    let logfile: Box<dyn log4rs::append::Append> = if file == "-" {
+        let console = ConsoleAppender::builder().encoder(encoder);
+        Box::new(console.build())
+    } else {
+        match FileAppender::builder().encoder(encoder).build(file) {
+            Ok(x) => Box::new(x),
+            Err(e) => {
+                error!("Unable to set up log encoder: {e:?}");
+                return false;
+            }
         }
     };
 
     let config = match Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(logfile)))
-        .build(Root::builder().appender("logfile").build(level))
+        .appender(Appender::builder().build("logfile", logfile))
+        .logger(Logger::builder().appender("logfile").build("extism", level))
+        .build(Root::builder().appender("logfile").build(LevelFilter::Off))
     {
         Ok(x) => x,
-        Err(e) => {
-            error!("Unable to configure log file: {e:?}");
+        Err(_) => {
             return false;
         }
     };
 
-    log4rs::init_config(config).expect("Log initialization failed");
+    if log4rs::init_config(config).is_err() {
+        return false;
+    }
     true
 }
