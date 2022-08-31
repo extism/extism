@@ -57,11 +57,11 @@ jobs:
         python-version: '3.9'
         check-latest: true
 
-    - name: Load cached Poetry installation
-      uses: actions/cache@v2
-      with:
-        path: ~/.local 
-        key: poetry-0  
+    # - name: Load cached Poetry installation
+    #   uses: actions/cache@v2
+    #   with:
+    #     path: ~/.local 
+    #     key: poetry-0  
       
     - name: Install Poetry
       uses: snok/install-poetry@v1
@@ -107,5 +107,11 @@ jobs:
     #     opam install -y .
     #     cd ocaml
     #     opam exec -- dune exec extism
-        
-    
+     
+    - name: Setup Haskell env   
+      uses: haskell/actions/setup@v2
+      
+    - name: Test Haskell SDK
+      run: |
+        cd haskell
+        LD_LIBRARY_PATH=/usr/local/lib cabal test
