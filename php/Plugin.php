@@ -2,34 +2,8 @@
 declare(strict_types=1);
 
 require_once "vendor/autoload.php";
+require_once "generate.php";
 require_once "Extism.php";
-
-// $code = "
-// typedef int32_t ExtismPlugin;
-
-// typedef uint64_t ExtismSize;
-
-// ExtismPlugin extism_plugin_register(const uint8_t *wasm, ExtismSize wasm_size, bool with_wasi);
-
-// bool extism_plugin_config(ExtismPlugin plugin, const uint8_t *json, ExtismSize json_size);
-
-// bool extism_function_exists(ExtismPlugin plugin, const char *func_name);
-
-// int32_t extism_call(ExtismPlugin plugin_id,
-//                     const char *func_name,
-//                     const uint8_t *data,
-//                     ExtismSize data_len);
-
-// const char *extism_error(ExtismPlugin plugin);
-
-// ExtismSize extism_output_length(ExtismPlugin plugin);
-
-// void extism_output_get(ExtismPlugin plugin, uint8_t *buf, ExtismSize len);
-
-// bool extism_log_file(const char *filename, const char *log_level);
-// ";
-
-
 
 // class Plugin
 // {
@@ -83,8 +57,17 @@ require_once "Extism.php";
 //     }
 // }
 
+function string_to_bytes($string) {
+    $bytes = [];
+    for ($i = 0; $i < strlen($string); $i++) {
+        $bytes[$i] = ord($string[$i]);
+    }
+
+    return $bytes;
+}
+
 $ext = new Extism(Extism::SOFILE); // should `locate` shared lib again to pass here
-$wasm = unpack('C*', file_get_contents("/Users/stevemanuel/Projects/extism/extism/wasm/code.wasm"));
+$wasm = string_to_bytes(file_get_contents("/Users/stevemanuel/Projects/extism/extism/wasm/code.wasm"));
 $id = $ext->extism_plugin_register($wasm, count($wasm), 0);
 echo "plugin id => ".$id."\n";
 $input = unpack('C*', "this is a test");
