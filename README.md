@@ -4,7 +4,7 @@ The universal plug-in system. Run WebAssembly extensions inside your app. Use id
 [Ruby](https://extism.org/docs/integrate-into-your-codebase/ruby-host-sdk), [Python](https://extism.org/docs/integrate-into-your-codebase/python-host-sdk), 
 [Node](https://extism.org/docs/integrate-into-your-codebase/node-host-sdk), [Rust](https://extism.org/docs/integrate-into-your-codebase/rust-host-sdk), 
 [C](https://extism.org/docs/integrate-into-your-codebase/c-host-sdk), [C++](https://extism.org/docs/integrate-into-your-codebase/cpp-host-sdk), 
-[OCaml](https://extism.org/docs/integrate-into-your-codebase/ocaml-host-sdk), [Haskell](https://extism.org/docs/integrate-into-your-codebase/haskell-host-sdk) &amp; more (others coming soon). 
+[OCaml](https://extism.org/docs/integrate-into-your-codebase/ocaml-host-sdk), [Haskell](https://extism.org/docs/integrate-into-your-codebase/haskell-host-sdk), [PHP](https://extism.org/docs/integrate-into-your-codebase/php-host-sdk) &amp; more (others coming soon). 
 
 Plug-in development kits (PDK) for plug-in authors supported in Rust, AssemblyScript, Go, C/C++.
 
