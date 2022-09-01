@@ -6,8 +6,9 @@ $search_path = array(__DIR__, "/usr/local/lib", "/usr/lib", getenv("HOME")."/.lo
 function generate($paths) {
     for ($i = 0; $i < count($paths); $i++) {
         try {
-            (new FFIMe\FFIMe("libextism.".soext()))
+            $ffi = (new FFIMe\FFIMe("libextism.".soext()))
                 ->include("extism.h")
+                ->showWarnings(false)
                 ->codeGen('Extism', 'Extism.php');
         } catch (Exception $e) {
             continue;
@@ -29,5 +30,7 @@ function soext() {
     }
 }
 
-generate($search_path);
+if (!file_exists("Extism.php")) {
+    generate($search_path);
+}
     
