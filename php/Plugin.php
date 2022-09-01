@@ -5,7 +5,7 @@ require_once "vendor/autoload.php";
 require_once "generate.php";
 require_once "Extism.php";
 
-$lib = new Extism(Extism::SOFILE); // should `locate` shared lib again to pass here
+$lib = new Extism(Extism::SOFILE);
 
 class Plugin
 {
