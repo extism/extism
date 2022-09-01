@@ -27,5 +27,6 @@ rust/target
 ocaml/duniverse
 ocaml/_build
 wasm/rust-pdk/target
+php/Extism.php
 dist-newstyle
 .stack-work

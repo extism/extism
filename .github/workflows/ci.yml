@@ -56,12 +56,6 @@ jobs:
       with:
         python-version: '3.9'
         check-latest: true
-
-    # - name: Load cached Poetry installation
-    #   uses: actions/cache@v2
-    #   with:
-    #     path: ~/.local 
-    #     key: poetry-0  
       
     - name: Install Poetry
       uses: snok/install-poetry@v1
@@ -115,3 +109,18 @@ jobs:
       run: |
         cd haskell
         LD_LIBRARY_PATH=/usr/local/lib cabal test
+
+    - name: Setup PHP env
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.1'
+        extensions: ffi
+        tools: composer
+      env:
+        fail-fast: true
+
+    - name: Test PHP SDK
+      run: |
+        cd php
+        composer install
+        php Example.php
