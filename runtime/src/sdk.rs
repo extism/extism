@@ -11,6 +11,10 @@ pub unsafe extern "C" fn extism_plugin_register(
     wasm_size: Size,
     with_wasi: bool,
 ) -> PluginIndex {
+    trace!(
+        "Call to extism_plugin_register with wasm pointer {:?}",
+        wasm
+    );
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
@@ -40,6 +44,12 @@ pub unsafe extern "C" fn extism_plugin_config(
 ) -> bool {
     let mut plugin = PluginRef::new(plugin);
 
+    trace!(
+        "Call to extism_plugin_config for {} with json pointer {:?}",
+        plugin.id,
+        json
+    );
+
     let data = std::slice::from_raw_parts(json, json_size as usize);
     let json: std::collections::BTreeMap<String, String> = match serde_json::from_slice(data) {
         Ok(x) => x,
@@ -53,6 +63,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     let wasi = &mut plugin.memory.store.data_mut().wasi;
     let config = &mut plugin.manifest.as_mut().config;
     for (k, v) in json.into_iter() {
+        trace!("Config, adding {k}");
         let _ = wasi.push_env(&k, &v);
         config.insert(k, v);
     }
@@ -107,7 +118,6 @@ pub unsafe extern "C" fn extism_call(
         Err(e) => return plugin.error(e.context("Unable to allocate bytes"), -1),
     };
 
-    #[cfg(feature = "debug")]
     plugin.dump_memory();
 
     // Always needs to be called before `func.call()`
@@ -118,14 +128,12 @@ pub unsafe extern "C" fn extism_call(
     match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
         Ok(r) => r,
         Err(e) => {
-            #[cfg(feature = "debug")]
             plugin.dump_memory();
             error!("Call: {e:?}");
             return plugin.error(e.context("Call failed"), -1);
         }
     };
 
-    #[cfg(feature = "debug")]
     plugin.dump_memory();
 
     // Return result to caller
@@ -134,22 +142,31 @@ pub unsafe extern "C" fn extism_call(
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_error(plugin: PluginIndex) -> *const c_char {
+    trace!("Call to extism_error for plugin {plugin}");
     let plugin = PluginRef::new(plugin);
     match &plugin.as_ref().last_error {
         Some(e) => e.as_ptr() as *const _,
-        None => std::ptr::null(),
+        None => {
+            trace!("Error is NULL");
+            std::ptr::null()
+        }
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_output_length(plugin: PluginIndex) -> Size {
+    trace!("Call to extism_output_length for plugin {plugin}");
     let plugin = PluginRef::new(plugin);
 
-    plugin.as_ref().memory.store.data().output_length as Size
+    let len = plugin.as_ref().memory.store.data().output_length as Size;
+    trace!("Output length: {len}");
+    len
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex, buf: *mut u8, len: Size) {
+    trace!("Call to extism_output_get for plugin {plugin}, length {len}");
+
     let plugin = PluginRef::new(plugin);
     let data = plugin.as_ref().memory.store.data();
 
@@ -170,16 +187,21 @@ pub unsafe extern "C" fn extism_log_file(
     log_level: *const c_char,
 ) -> bool {
     use log::LevelFilter;
+    use log4rs::append::console::ConsoleAppender;
     use log4rs::append::file::FileAppender;
-    use log4rs::config::{Appender, Config, Root};
+    use log4rs::config::{Appender, Config, Logger, Root};
     use log4rs::encode::pattern::PatternEncoder;
 
-    let file = std::ffi::CStr::from_ptr(filename);
-    let file = match file.to_str() {
-        Ok(x) => x,
-        Err(_) => {
-            return false;
+    let file = if !filename.is_null() {
+        let file = std::ffi::CStr::from_ptr(filename);
+        match file.to_str() {
+            Ok(x) => x,
+            Err(_) => {
+                return false;
+            }
         }
+    } else {
+        "-"
     };
 
     let level = if log_level.is_null() {
@@ -201,28 +223,34 @@ pub unsafe extern "C" fn extism_log_file(
         }
     };
 
-    let logfile = match FileAppender::builder()
-        .encoder(Box::new(PatternEncoder::new("{d}: {l} - {m}\n")))
-        .build(file)
-    {
-        Ok(x) => x,
-        Err(e) => {
-            error!("Unable to set up log encoder: {e:?}");
-            return false;
+    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} (({f}:{L})) - {m}\n"));
+
+    let logfile: Box<dyn log4rs::append::Append> = if file == "-" {
+        let console = ConsoleAppender::builder().encoder(encoder);
+        Box::new(console.build())
+    } else {
+        match FileAppender::builder().encoder(encoder).build(file) {
+            Ok(x) => Box::new(x),
+            Err(e) => {
+                error!("Unable to set up log encoder: {e:?}");
+                return false;
+            }
         }
     };
 
     let config = match Config::builder()
-        .appender(Appender::builder().build("logfile", Box::new(logfile)))
-        .build(Root::builder().appender("logfile").build(level))
+        .appender(Appender::builder().build("logfile", logfile))
+        .logger(Logger::builder().appender("logfile").build("extism", level))
+        .build(Root::builder().build(LevelFilter::Off))
     {
         Ok(x) => x,
-        Err(e) => {
-            error!("Unable to configure log file: {e:?}");
+        Err(_) => {
             return false;
         }
     };
 
-    log4rs::init_config(config).expect("Log initialization failed");
+    if log4rs::init_config(config).is_err() {
+        return false;
+    }
     true
 }

@@ -7,20 +7,18 @@
 (source
  (github extism/extism))
 
-(authors "Author Name")
+(authors "Extism Authors <oss@extism.org>")
 
-(maintainers "Maintainer Name")
+(maintainers "Extism Authors <oss@extism.org>")
 
-(license LICENSE)
+(license BSD-3)
 
-(documentation https://url/to/documentation)
+(documentation https://github.com/extism/extism)
 
 (package
  (name extism)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Extism bindings")
+ (description "Bindings to Extism, the universal plugin system")
  (depends ocaml dune ctypes-foreign bigstringaf ppx_yojson_conv base64)
  (tags
-  (topics "to describe" your project)))
-
-; See the complete stanza docs at https://dune.readthedocs.io/en/stable/dune-files.html#dune-project
+  (topics wasm plugin)))

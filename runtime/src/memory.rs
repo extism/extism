@@ -2,7 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-#[cfg(feature = "debug")]
 use pretty_hex::PrettyHex;
 
 /// Handles memory for plugins
@@ -32,6 +31,7 @@ impl PluginMemory {
     }
 
     pub(crate) fn store_u8(&mut self, offs: usize, data: u8) -> Result<(), MemoryAccessError> {
+        trace!("store_u8: {data:x} at offset {offs}");
         if offs >= self.size() {
             // This should raise MemoryAccessError
             let buf = &mut [0];
@@ -44,6 +44,7 @@ impl PluginMemory {
 
     /// Read from memory
     pub(crate) fn load_u8(&self, offs: usize) -> Result<u8, MemoryAccessError> {
+        trace!("load_u8: offset {offs}");
         if offs >= self.size() {
             // This should raise MemoryAccessError
             let buf = &mut [0];
@@ -54,6 +55,7 @@ impl PluginMemory {
     }
 
     pub(crate) fn store_u32(&mut self, offs: usize, data: u32) -> Result<(), MemoryAccessError> {
+        trace!("store_u32: {data:x} at offset {offs}");
         let handle = MemoryBlock {
             offset: offs,
             length: 4,
@@ -64,6 +66,7 @@ impl PluginMemory {
 
     /// Read from memory
     pub(crate) fn load_u32(&self, offs: usize) -> Result<u32, MemoryAccessError> {
+        trace!("load_u32: offset {offs}");
         let mut buf = [0; 4];
 
         let handle = MemoryBlock {
@@ -75,6 +78,7 @@ impl PluginMemory {
     }
 
     pub(crate) fn store_u64(&mut self, offs: usize, data: u64) -> Result<(), MemoryAccessError> {
+        trace!("store_u64: {data:x} at offset {offs}");
         let handle = MemoryBlock {
             offset: offs,
             length: 8,
@@ -84,6 +88,7 @@ impl PluginMemory {
     }
 
     pub(crate) fn load_u64(&self, offs: usize) -> Result<u64, MemoryAccessError> {
+        trace!("load_u64: offset {offs}");
         let mut buf = [0; 8];
         let handle = MemoryBlock {
             offset: offs,
@@ -222,11 +227,10 @@ impl PluginMemory {
         }
     }
 
-    #[cfg(feature = "debug")]
     pub fn dump(&self) {
         let data = self.memory.data(&self.store);
 
-        println!("{:?}", data[..self.position].hex_dump());
+        trace!("{:?}", data[..self.position].hex_dump());
     }
 
     /// Reset memory
