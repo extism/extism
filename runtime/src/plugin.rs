@@ -152,6 +152,7 @@ impl Plugin {
 
     /// Set `last_error` field
     pub fn set_error(&mut self, e: impl std::fmt::Debug) {
+        debug!("Set error: {:?}", e);
         let x = format!("{:?}", e).into_bytes();
         let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
             x[1..x.len() - 1].to_vec()

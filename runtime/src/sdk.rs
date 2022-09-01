@@ -11,6 +11,10 @@ pub unsafe extern "C" fn extism_plugin_register(
     wasm_size: Size,
     with_wasi: bool,
 ) -> PluginIndex {
+    trace!(
+        "Call to extism_plugin_register with wasm pointer {:?}",
+        wasm
+    );
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
@@ -40,6 +44,12 @@ pub unsafe extern "C" fn extism_plugin_config(
 ) -> bool {
     let mut plugin = PluginRef::new(plugin);
 
+    trace!(
+        "Call to extism_plugin_config for {} with json pointer {:?}",
+        plugin.id,
+        json
+    );
+
     let data = std::slice::from_raw_parts(json, json_size as usize);
     let json: std::collections::BTreeMap<String, String> = match serde_json::from_slice(data) {
         Ok(x) => x,
@@ -53,6 +63,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     let wasi = &mut plugin.memory.store.data_mut().wasi;
     let config = &mut plugin.manifest.as_mut().config;
     for (k, v) in json.into_iter() {
+        trace!("Config, adding {k}");
         let _ = wasi.push_env(&k, &v);
         config.insert(k, v);
     }
@@ -131,22 +142,31 @@ pub unsafe extern "C" fn extism_call(
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_error(plugin: PluginIndex) -> *const c_char {
+    trace!("Call to extism_error for plugin {plugin}");
     let plugin = PluginRef::new(plugin);
     match &plugin.as_ref().last_error {
         Some(e) => e.as_ptr() as *const _,
-        None => std::ptr::null(),
+        None => {
+            trace!("Error is NULL");
+            std::ptr::null()
+        }
     }
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_output_length(plugin: PluginIndex) -> Size {
+    trace!("Call to extism_output_length for plugin {plugin}");
     let plugin = PluginRef::new(plugin);
 
-    plugin.as_ref().memory.store.data().output_length as Size
+    let len = plugin.as_ref().memory.store.data().output_length as Size;
+    trace!("Output length: {len}");
+    len
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex, buf: *mut u8, len: Size) {
+    trace!("Call to extism_output_get for plugin {plugin}, length {len}");
+
     let plugin = PluginRef::new(plugin);
     let data = plugin.as_ref().memory.store.data();
 
@@ -221,7 +241,7 @@ pub unsafe extern "C" fn extism_log_file(
     let config = match Config::builder()
         .appender(Appender::builder().build("logfile", logfile))
         .logger(Logger::builder().appender("logfile").build("extism", level))
-        .build(Root::builder().appender("logfile").build(LevelFilter::Off))
+        .build(Root::builder().build(LevelFilter::Off))
     {
         Ok(x) => x,
         Err(_) => {
