@@ -14,6 +14,11 @@
             "name": "The Extism Authors",
             "email": "oss@extism.org",
             "homepage": "https://extism.org"
+        },
+        {
+            "name": "Dylibso, Inc.",
+            "email": "oss@dylib.so",
+            "homepage": "https://dylib.so"
         }
     ],
     "require": {
@@ -25,7 +30,7 @@
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "Extism\\SDK\\": "src/"
+            "Extism\\Plugin": "php/src/"
         }
     },
     "autoload-dev": {
