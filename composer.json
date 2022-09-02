@@ -30,7 +30,7 @@
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "Extism\\Plugin": "php/src/"
+            "Extism\\Plugin\\": "php/src/"
         }
     },
     "autoload-dev": {
