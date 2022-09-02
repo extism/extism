@@ -2,16 +2,15 @@
     "name": "extism/example",
     "description": "Example running the Extism PHP Host SDK",
     "license": "BSD-3-Clause",
-    "autoload": {
-        "psr-4": {
-            "Extism\\Example\\": "src/"
-        }
-    },
+    "type": "project",
     "authors": [
         {
             "name": "The Extism Authors",
             "email": "oss@extism.org"
         }
     ],
-    "require": {}
+    "require": {
+        "extism/extism": "dev-pre-release"
+    },
+    "minimum-stability": "dev"
 }

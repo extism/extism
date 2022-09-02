@@ -1,0 +1,215 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "09e1d63dd98909eb15b01510f7b80a80",
+    "packages": [
+        {
+            "name": "extism/extism",
+            "version": "dev-pre-release",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/extism/extism.git",
+                "reference": "bddfc825137de3571d172d0cfc51262e36b418be"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/extism/extism/zipball/bddfc825137de3571d172d0cfc51262e36b418be",
+                "reference": "bddfc825137de3571d172d0cfc51262e36b418be",
+                "shasum": ""
+            },
+            "require": {
+                "ircmaxell/ffime": "dev-master",
+                "php": "^7.4 || ^8"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "Extism\\": "php/src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "BSD-3-Clause"
+            ],
+            "authors": [
+                {
+                    "name": "The Extism Authors",
+                    "email": "oss@extism.org",
+                    "homepage": "https://extism.org"
+                },
+                {
+                    "name": "Dylibso, Inc.",
+                    "email": "oss@dylib.so",
+                    "homepage": "https://dylib.so"
+                }
+            ],
+            "description": "Make your software programmable. Run WebAssembly extensions in your app using the first off-the-shelf, universal plug-in system.",
+            "keywords": [
+                "plug-in",
+                "plugin-system",
+                "runtime",
+                "webassembly"
+            ],
+            "support": {
+                "issues": "https://github.com/extism/extism/issues",
+                "source": "https://github.com/extism/extism/tree/pre-release"
+            },
+            "time": "2022-09-02T04:11:11+00:00"
+        },
+        {
+            "name": "ircmaxell/ffime",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ircmaxell/FFIMe.git",
+                "reference": "5f648f95ecf23262a2e58f4e4c9001bd1b5f9c98"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/5f648f95ecf23262a2e58f4e4c9001bd1b5f9c98",
+                "reference": "5f648f95ecf23262a2e58f4e4c9001bd1b5f9c98",
+                "shasum": ""
+            },
+            "require": {
+                "ircmaxell/php-c-parser": "dev-master",
+                "ircmaxell/php-object-symbolresolver": "dev-master",
+                "php": ">=8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^8.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "FFIMe\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Anthony Ferrara",
+                    "email": "ircmaxell@gmail.com"
+                }
+            ],
+            "description": "Make life easy when working with 7.4's FFI",
+            "support": {
+                "issues": "https://github.com/ircmaxell/FFIMe/issues",
+                "source": "https://github.com/ircmaxell/FFIMe/tree/master"
+            },
+            "time": "2022-09-01T18:56:19+00:00"
+        },
+        {
+            "name": "ircmaxell/php-c-parser",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ircmaxell/php-c-parser.git",
+                "reference": "55e0a4fdf88d6e955d928860e1e107a68492c1cf"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/55e0a4fdf88d6e955d928860e1e107a68492c1cf",
+                "reference": "55e0a4fdf88d6e955d928860e1e107a68492c1cf",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
+            },
+            "require-dev": {
+                "ircmaxell/php-yacc": "dev-master",
+                "phpunit/phpunit": "^8.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPCParser\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Anthony Ferrara",
+                    "email": "ircmaxell@gmail.com"
+                },
+                {
+                    "name": "Bob Weinand",
+                    "email": "bobwei9@hotmail.com"
+                }
+            ],
+            "description": "Parse C when using PHP",
+            "support": {
+                "issues": "https://github.com/ircmaxell/php-c-parser/issues",
+                "source": "https://github.com/ircmaxell/php-c-parser/tree/master"
+            },
+            "time": "2022-08-27T17:37:14+00:00"
+        },
+        {
+            "name": "ircmaxell/php-object-symbolresolver",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ircmaxell/php-object-symbolresolver.git",
+                "reference": "3734df2b22d7c8273ee6f6f2155fddde6056d057"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/3734df2b22d7c8273ee6f6f2155fddde6056d057",
+                "reference": "3734df2b22d7c8273ee6f6f2155fddde6056d057",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPObjectSymbolResolver\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Anthony Ferrara",
+                    "email": "ircmaxell@gmail.com"
+                },
+                {
+                    "name": "Bob Weinand",
+                    "email": "bobwei9@hotmail.com"
+                }
+            ],
+            "description": "An object file (ELF, Mach-O) parser",
+            "support": {
+                "issues": "https://github.com/ircmaxell/php-object-symbolresolver/issues",
+                "source": "https://github.com/ircmaxell/php-object-symbolresolver/tree/master"
+            },
+            "time": "2022-08-14T19:30:20+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "extism/extism": 20
+    },
+    "prefer-stable": false,
+    "prefer-lowest": false,
+    "platform": [],
+    "platform-dev": [],
+    "plugin-api-version": "2.3.0"
+}

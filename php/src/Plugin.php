@@ -1,11 +1,15 @@
 <?php
 declare(strict_types=1);
+namespace Extism;
 
 require_once "vendor/autoload.php";
 require_once "generate.php";
-require_once "Extism.php";
+require_once "ExtismLib.php";
 
-$lib = new Extism(Extism::SOFILE);
+$lib = new \ExtismLib(\ExtismLib::SOFILE);
+if ($lib == null) {
+    throw new Exception("Extism: failed to create new runtime instance");
+}
 
 class Plugin
 {
@@ -86,10 +90,3 @@ function string_to_bytes($string) {
 
     return $bytes;
 }
-
-// $wasm = file_get_contents("/Users/stevemanuel/Projects/extism/extism/wasm/code.wasm");
-
-// $plugin = new Plugin($wasm);
-// $output = $plugin->call("count_vowels", "this is a test");
-// $json = json_decode(pack('C*', ...$output));
-// echo "Vowels counted = " . $json->{'count'} . PHP_EOL;

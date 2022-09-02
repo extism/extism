@@ -9,7 +9,7 @@ function generate($paths) {
             $ffi = (new FFIMe\FFIMe("libextism.".soext()))
                 ->include("extism.h")
                 ->showWarnings(false)
-                ->codeGen('Extism', 'Extism.php');
+                ->codeGen('ExtismLib', __DIR__.'/ExtismLib.php');
         } catch (Exception $e) {
             continue;
         }
@@ -30,7 +30,7 @@ function soext() {
     }
 }
 
-if (!file_exists("Extism.php")) {
+if (!file_exists(__DIR__."/ExtismLib.php")) {
     generate($search_path);
 }
     

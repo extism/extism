@@ -19,7 +19,7 @@ jobs:
         target: [ 
           aarch64-unknown-linux-gnu, 
           aarch64-unknown-linux-musl, 
-          i686-unknown-linux-gnu, 
+          # i686-unknown-linux-gnu, 
           x86_64-unknown-linux-gnu ]
     if: always()
     steps:

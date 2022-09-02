@@ -2,7 +2,7 @@
     "name": "extism/extism",
     "description": "Make your software programmable. Run WebAssembly extensions in your app using the first off-the-shelf, universal plug-in system.",
     "license": "BSD-3-Clause",
-    "type": "project",
+    "type": "library",
     "keywords": [
         "WebAssembly",
         "plugin-system",
@@ -30,7 +30,7 @@
     "prefer-stable": true,
     "autoload": {
         "psr-4": {
-            "Extism\\Plugin\\": "php/src/"
+            "Extism\\": "php/src/"
         }
     },
     "autoload-dev": {
