@@ -24,9 +24,9 @@ ruby/tmp/
 ruby/Gemfile.lock
 cpp/example
 rust/target
+rust/test.log
 ocaml/duniverse
 ocaml/_build
-wasm/rust-pdk/target
 php/Extism.php
 dist-newstyle
 .stack-work

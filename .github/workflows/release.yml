@@ -6,6 +6,7 @@ name: Release
 
 env:
   RUNTIME_MANIFEST: runtime/Cargo.toml
+  RUNTIME_CRATE: extism-runtime
   RUSTFLAGS: -C target-feature=-crt-static
   ARTIFACT_DIR: release-artifacts
 
@@ -38,12 +39,12 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --release --target ${{ matrix.target }} --manifest-path ${{ env.RUNTIME_MANIFEST }}
+          args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
   
       - name: Prepare Artifact
         run: |
           EXT=so
-          SRC_DIR=runtime/target/${{ matrix.target }}/release
+          SRC_DIR=target/${{ matrix.target }}/release
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
@@ -104,12 +105,12 @@ jobs:
         with:
           use-cross: true
           command: build
-          args: --release --target ${{ matrix.target }} --manifest-path ${{ env.RUNTIME_MANIFEST }}
+          args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
       - name: Prepare Artifact
         run: |
           EXT=dylib
-          SRC_DIR=runtime/target/${{ matrix.target }}/release
+          SRC_DIR=target/${{ matrix.target }}/release
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
@@ -174,13 +175,13 @@ jobs:
         with:
           use-cross: false
           command: build
-          args: --release --target ${{ matrix.target }} --manifest-path ${{ env.RUNTIME_MANIFEST }}
+          args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
       - name: Prepare Artifact
         shell: bash
         run: |
           EXT=dll
-          SRC_DIR=runtime/target/${{ matrix.target }}/release
+          SRC_DIR=target/${{ matrix.target }}/release
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz

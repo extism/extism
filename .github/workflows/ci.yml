@@ -4,6 +4,8 @@ name: CI
 
 env:
   RUNTIME_MANIFEST: runtime/Cargo.toml
+  RUNTIME_CRATE: extism-runtime
+  RUST_SDK_CRATE: extism
 
 jobs:
   build_and_test:
@@ -28,16 +30,16 @@ jobs:
       uses: Swatinem/rust-cache@v1
       
     - name: Format
-      run: cargo fmt --check --manifest-path ${{ env.RUNTIME_MANIFEST }}
+      run: cargo fmt --check -p ${{ env.RUNTIME_CRATE }}
     
     - name: Build
-      run:  cargo build --release --manifest-path ${{ env.RUNTIME_MANIFEST }} 
+      run:  cargo build --release -p ${{ env.RUNTIME_CRATE }} 
     
     - name: Lint
-      run: cargo clippy --release --no-deps --manifest-path ${{ env.RUNTIME_MANIFEST }}
+      run: cargo clippy --release --no-deps -p ${{ env.RUNTIME_CRATE }}
       
     - name: Test
-      run: cargo test --release --manifest-path ${{ env.RUNTIME_MANIFEST }}
+      run: cargo test --release -p ${{ env.RUNTIME_CRATE }}
 
     - name: Install extism shared library
       shell: bash
@@ -91,7 +93,7 @@ jobs:
         LD_LIBRARY_PATH=/usr/local/lib node example.js
         
     - name: Test Rust Host SDK
-      run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release --manifest-path rust/Cargo.toml
+      run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
 
     # - name: Setup OCaml env
     #   uses: ocaml/setup-ocaml@v2
@@ -119,8 +121,8 @@ jobs:
       env:
         fail-fast: true
 
-    - name: Test PHP SDK
-      run: |
-        cd php
-        composer install
-        php Example.php
+    # - name: Test PHP SDK
+    #   run: |
+    #     cd php/example
+    #     composer install
+    #     php Example.php
