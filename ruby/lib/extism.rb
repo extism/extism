@@ -44,7 +44,7 @@ class Plugin
     rc = C.extism_call(@plugin, name, input, data.bytesize)
     if rc != 0 then
       err = C.extism_error(@plugin)
-      if err.empty? then
+      if err&.empty? then
         raise Error.new "extism_call failed"
       else raise Error.new err
       end
