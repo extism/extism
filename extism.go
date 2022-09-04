@@ -48,6 +48,14 @@ type Manifest struct {
 	Config map[string]string `json:"config,omitempty"`
 }
 
+func makePointer(data []byte) unsafe.Pointer {
+	var ptr unsafe.Pointer = nil
+	if len(data) > 0 {
+		ptr = unsafe.Pointer(&data[0])
+	}
+	return ptr
+}
+
 func SetLogFile(filename string, level string) bool {
 	name := C.CString(filename)
 	l := C.CString(level)
@@ -58,8 +66,9 @@ func SetLogFile(filename string, level string) bool {
 }
 
 func register(data []byte, wasi bool) (Plugin, error) {
+	ptr := makePointer(data)
 	plugin := C.extism_plugin_register(
-		(*C.uchar)(unsafe.Pointer(&data[0])),
+		(*C.uchar)(ptr),
 		C.uint64_t(len(data)),
 		C._Bool(wasi),
 	)
@@ -94,16 +103,18 @@ func (plugin Plugin) SetConfig(data map[string][]byte) error {
 	if err != nil {
 		return err
 	}
-	C.extism_plugin_config(C.int(plugin.id), (*C.uchar)(unsafe.Pointer(&s[0])), C.uint64_t(len(s)))
+	ptr := makePointer(s)
+	C.extism_plugin_config(C.int(plugin.id), (*C.uchar)(ptr), C.uint64_t(len(s)))
 	return nil
 }
 
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
+	ptr := makePointer(input)
 	name := C.CString(functionName)
 	rc := C.extism_call(
 		C.int32_t(plugin.id),
 		name,
-		(*C.uchar)(unsafe.Pointer(&input[0])),
+		(*C.uchar)(ptr),
 		C.uint64_t(len(input)),
 	)
 	C.free(unsafe.Pointer(name))
@@ -119,7 +130,10 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 
 	length := C.extism_output_length(C.int32_t(plugin.id))
 	buf := make([]byte, length)
-	C.extism_output_get(C.int32_t(plugin.id), (*C.uchar)(unsafe.Pointer(&buf[0])), length)
+
+	if length > 0 {
+		C.extism_output_get(C.int32_t(plugin.id), (*C.uchar)(unsafe.Pointer(&buf[0])), length)
+	}
 
 	return buf, nil
 }
