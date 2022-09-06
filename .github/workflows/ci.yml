@@ -106,11 +106,14 @@ jobs:
      
     - name: Setup Haskell env   
       uses: haskell/actions/setup@v2
+      with:
+        enable-stack: true
+        stack-version: 'latest'
       
     - name: Test Haskell SDK
       run: |
         cd haskell
-        LD_LIBRARY_PATH=/usr/local/lib cabal test
+        LD_LIBRARY_PATH=/usr/local/lib stack test
 
     - name: Setup PHP env
       uses: shivammathur/setup-php@v2
