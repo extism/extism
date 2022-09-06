@@ -120,9 +120,16 @@ class Plugin:
             s = json.dumps(config).encode()
             lib.extism_plugin_config(s, len(s))
 
-    def update(self, plugin: Union[str, bytes, dict], wasi=False):
+    def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
         wasm = _wasm(plugin)
-        return lib.extism_plugin_update(wasm, len(wasm), wasi)
+        ok = lib.extism_plugin_update(self.plugin, wasm, len(wasm), wasi)
+        if not ok:
+            return False
+
+        if config is not None:
+            s = json.dumps(config).encode()
+            lib.extism_plugin_config(s, len(s))
+        return True
 
     def _check_error(self, rc):
         if rc != 0:

@@ -41,13 +41,21 @@ module Extism
       end
     end
 
-    def update(wasm, wasi)
+    def update(wasm, wasi=false, config=nil)
       if wasm.class == Hash then
         wasm = JSON.generate(wasm)
       end
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
       code.put_bytes(0, wasm)
-      return C.extism_plugin_update(@plugin, code, wasm.bytesize, wasi)
+      ok = C.extism_plugin_update(@plugin, code, wasm.bytesize, wasi)
+      if ok then
+        if config != nil then
+          s = JSON.generate(config)
+          ptr = FFI::MemoryPointer::from_string(s)
+          C.extism_plugin_config(@plugin, ptr, s.bytesize)
+        end
+      end
+      return ok
     end
 
     def call(name, data)

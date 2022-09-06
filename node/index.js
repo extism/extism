@@ -60,11 +60,21 @@ export class Plugin {
     }
   }
 
-  update(data, wasi = false) {
+  update(data, wasi = false, config = null) {
     if (typeof data === "object" && data.wasm) {
       data = JSON.stringify(data);
     }
-    return lib.extism_plugin_update(this.id, data, data.length, wasi);
+    const ok = lib.extism_plugin_update(this.id, data, data.length, wasi);
+    if (!ok) {
+      return false;
+    }
+
+    if (config != null) {
+      let s = JSON.stringify(config);
+      lib.extism_plugin_config(this.id, s, s.length);
+    }
+
+    return true;
   }
 
   call(name, input) {
