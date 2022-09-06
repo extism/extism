@@ -1,2 +1,2 @@
 bindings:
-	bindgen ../core/extism.h --allowlist-function extism.* > src/bindings.rs
+	bindgen ../runtime/extism.h --allowlist-function extism.* > src/bindings.rs

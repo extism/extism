@@ -44,6 +44,10 @@ module Bindings = struct
     fn "extism_plugin_register"
       (string @-> uint64_t @-> bool @-> returning int32_t)
 
+  let extism_plugin_update =
+    fn "extism_plugin_update"
+      (int32_t @-> string @-> uint64_t @-> bool @-> returning bool)
+
   let extism_call =
     fn "extism_call"
       (int32_t @-> string @-> ptr char @-> uint64_t @-> returning int32_t)
@@ -146,6 +150,15 @@ let register ?(wasi = false) wasm =
 let register_manifest ?wasi manifest =
   let data = Manifest.json manifest in
   register ?wasi data
+
+let update { id } ?(wasi = false) wasm =
+  Bindings.extism_plugin_update id wasm
+    (Unsigned.UInt64.of_int (String.length wasm))
+    wasi
+
+let update_manifest plugin ?wasi manifest =
+  let data = Manifest.json manifest in
+  update plugin ?wasi data
 
 let call' f { id } ~name input len =
   let rc = f id name input len in
