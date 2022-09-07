@@ -229,33 +229,33 @@ pub(crate) fn var_set(
         size += v.len();
     }
 
-    let offset1 = input[1].unwrap_i64() as usize;
+    let voffset = input[1].unwrap_i64() as usize;
 
     // If the store is larger than 100MB then stop adding things
-    if size > 1024 * 1024 * 100 && offset1 != 0 {
+    if size > 1024 * 1024 * 100 && voffset != 0 {
         return Err(Trap::new("Variable store is full"));
     }
 
-    let offset = input[0].unwrap_i64() as usize;
-    let length = match memory!(data).block_length(offset) {
+    let koffset = input[0].unwrap_i64() as usize;
+    let klength = match memory!(data).block_length(koffset) {
         Some(x) => x,
-        None => return Err(Trap::new("Invalid offset in call to var_set")),
+        None => return Err(Trap::new("Invalid offset for key in call to var_set")),
     };
 
-    let kbuf = memory!(data).get((offset, length));
+    let kbuf = memory!(data).get((koffset, klength));
     let kstr = unsafe { std::str::from_utf8_unchecked(kbuf) };
 
-    let length1 = match memory!(data).block_length(offset) {
-        Some(x) => x,
-        None => return Err(Trap::new("Invalid offset in call to var_set")),
-    };
-
-    if offset1 == 0 {
+    if voffset == 0 {
         data.vars.remove(kstr);
         return Ok(());
     }
 
-    let vbuf = memory!(data).get((offset1, length1));
+    let vlength = match memory!(data).block_length(voffset) {
+        Some(x) => x,
+        None => return Err(Trap::new("Invalid offset for value in call to var_set")),
+    };
+
+    let vbuf = memory!(data).get((voffset, vlength));
 
     data.vars.insert(kstr.to_string(), vbuf.to_vec());
     Ok(())
