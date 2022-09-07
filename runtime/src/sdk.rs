@@ -43,7 +43,7 @@ pub unsafe extern "C" fn extism_plugin_update(
     with_wasi: bool,
 ) -> bool {
     let index = index as usize;
-    trace!("Call to extism_plugin_replace with wasm pointer {:?}", wasm);
+    trace!("Call to extism_plugin_update with wasm pointer {:?}", wasm);
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
@@ -62,7 +62,7 @@ pub unsafe extern "C" fn extism_plugin_update(
         plugins[index] = plugin;
     }
 
-    info!("Plugin replaced: {index}");
+    info!("Plugin updated: {index}");
     true
 }
 
