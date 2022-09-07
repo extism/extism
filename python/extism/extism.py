@@ -119,7 +119,7 @@ class Plugin:
         if rc != 0:
             error = lib.extism_error(self.plugin)
             if error != ffi.NULL:
-                raise Error(ffi.string(error))
+                raise Error(ffi.string(error).decode())
             raise Error(f"Error code: {rc}")
 
     def call(self, name: str, data: Union[str, bytes]) -> bytes:
