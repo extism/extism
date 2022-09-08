@@ -13,6 +13,8 @@ if ($lib == null) {
 
 class Plugin
 {
+    private $lib;
+
     private $wasi;
     private $config;
 
@@ -20,6 +22,13 @@ class Plugin
 
     public function __construct($data, $wasi = false, $config = null) 
     {
+        global $lib;
+
+        if ($lib == null) {
+            $lib = new \ExtismLib(\ExtismLib::SOFILE);
+        }
+        $this->lib = $lib;
+
         $this->wasi = $wasi;
         $this->config = $config;
 
@@ -31,8 +40,7 @@ class Plugin
             $data = string_to_bytes($data);
         }
 
-        global $lib;
-        $id = $lib->extism_plugin_register($data, count($data), (int)$wasi);
+        $id = $this->lib->extism_plugin_register($data, count($data), (int)$wasi);
         if ($id < 0) {
             throw new Exception("Extism: unable to load plugin");
         }
@@ -40,37 +48,35 @@ class Plugin
 
         if ($config != null) {
             $cfg = string_to_bytes(json_encode(config));
-            $lib->extism_plugin_config($this->id, $cfg, count($cfg));
+            $this->lib->extism_plugin_config($this->id, $cfg, count($cfg));
         }
     }
 
-    public function id() {
+    public function getId() {
         return $this->id;
     }
 
     public function call($name, $input = null)
     {        
-        global $lib;
-
         if (gettype($input) == "string") {
             $input = string_to_bytes($input);
         }
 
-        $rc = $lib->extism_call($this->id, $name, $input, count($input));
+        $rc = $this->lib->extism_call($this->id, $name, $input, count($input));
         if ($rc != 0) {
             $msg = "code = " . $rc;
-            $err = $lib->extism_error($this->id);
+            $err = $this->lib->extism_error($this->id);
             if ($err) {
                 $msg = $msg . ", error = " . $err;
             }
             throw new Execption("Extism: call to '".$name."' failed with " . $msg);
         }
 
-        $length = $lib->extism_output_length($this->id);
-        $ty = FFI::arrayType(FFI::type("uint8_t"), [$length]);
-        $buf = new uint8_t_ptr(FFI::new($ty));
+        $length = $this->lib->extism_output_length($this->id);
+        $ty = \FFI::arrayType(\FFI::type("uint8_t"), [$length]);
+        $buf = new \uint8_t_ptr(\FFI::new($ty));
 
-        $result = $lib->extism_output_get($this->id, $buf, $length);
+        $result = $this->lib->extism_output_get($this->id, $buf, $length);
 
         $ouput = [];
         $data = $buf->getData();
@@ -79,6 +85,28 @@ class Plugin
         }
 
         return $output;
+    }
+
+    public function update($data, $wasi = false, $config = null) {
+        if (gettype($data) == "object" and $data->wasm != null) {
+            $data = json_encode($data);
+        }
+
+        if (gettype($data) == "string") {
+            $data = string_to_bytes($data);
+        }
+
+        $ok = $this->lib->extism_plugin_update($this->id, $data, count($data), (int)$wasi);
+        if (!$ok) {
+            return false;
+        }
+
+        if ($config != null) {
+            $config = json_encode($config);
+            $this->lib->extism_plugin_config($this->id, $config, strlen($config));
+        }
+
+        return true;
     }
 }
 

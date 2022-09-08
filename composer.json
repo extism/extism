@@ -31,7 +31,12 @@
     "autoload": {
         "psr-4": {
             "Extism\\": "php/src/"
-        }
+        },
+        "files": [
+            "php/src/Plugin.php",
+            "php/src/generate.php",
+            "php/src/extism.h"
+        ]
     },
     "autoload-dev": {
         "psr-4": {}

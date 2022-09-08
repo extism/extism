@@ -11,6 +11,11 @@ typedef uint64_t ExtismSize;
 
 ExtismPlugin extism_plugin_register(const uint8_t *wasm, ExtismSize wasm_size, bool with_wasi);
 
+bool extism_plugin_update(ExtismPlugin index,
+                          const uint8_t *wasm,
+                          ExtismSize wasm_size,
+                          bool with_wasi);
+
 bool extism_plugin_config(ExtismPlugin plugin, const uint8_t *json, ExtismSize json_size);
 
 bool extism_function_exists(ExtismPlugin plugin, const char *func_name);

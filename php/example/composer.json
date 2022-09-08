@@ -10,7 +10,13 @@
         }
     ],
     "require": {
-        "extism/extism": "dev-pre-release"
+        "extism/extism": "*"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "../../"
+        }
+    ],
     "minimum-stability": "dev"
 }
