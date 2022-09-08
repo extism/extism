@@ -1,4 +1,4 @@
-on: [ push, pull_request ]
+on: [push, pull_request]
 
 name: CI
 
@@ -17,112 +17,113 @@ jobs:
         rust:
           - stable
     steps:
-    - name: Checkout sources
-      uses: actions/checkout@v2
-      
-    - name: Install Rust
-      uses: actions-rs/toolchain@v1
-      with:
-        toolchain: ${{ matrix.rust }}
-        override: true
+      - name: Checkout sources
+        uses: actions/checkout@v2
 
-    - name: Cache Rust environment
-      uses: Swatinem/rust-cache@v1
-      
-    - name: Format
-      run: cargo fmt --check -p ${{ env.RUNTIME_CRATE }}
-    
-    - name: Build
-      run:  cargo build --release -p ${{ env.RUNTIME_CRATE }} 
-    
-    - name: Lint
-      run: cargo clippy --release --no-deps -p ${{ env.RUNTIME_CRATE }}
-      
-    - name: Test
-      run: cargo test --release -p ${{ env.RUNTIME_CRATE }}
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+          override: true
 
-    - name: Install extism shared library
-      shell: bash
-      run: sudo make install
-  
-    - name: Setup Go env
-      uses: actions/setup-go@v3
-    
-    - name: Test Go Host SDK
-      run: |
-        go version
-        cd go && LD_LIBRARY_PATH=/usr/local/lib go run main.go
-    
-    - name: Setup Python env
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.9'
-        check-latest: true
-      
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      
-    - name: Test Python Host SDK
-      run: |
-        cd python
-        poetry install
-        poetry run python example.py
-        
-        
-    - name: Setup Ruby env
-      uses: ruby/setup-ruby@v1
-      with:
-        ruby-version: '3.0'
-        
-    - name: Test Ruby Host SDK
-      run: |
-        cd ruby
-        bundle install
-        ruby example.rb
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
 
-    
-    - name: Setup Node env
-      uses: actions/setup-node@v3
-      with:
-        node-version: 16
-      
-    - name: Test Node Host SDK
-      run: |
-        cd node
-        npm i
-        LD_LIBRARY_PATH=/usr/local/lib node example.js
-        
-    - name: Test Rust Host SDK
-      run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
+      - name: Format
+        run: cargo fmt --check -p ${{ env.RUNTIME_CRATE }}
 
-    # - name: Setup OCaml env
-    #   uses: ocaml/setup-ocaml@v2
+      - name: Build
+        run: cargo build --release -p ${{ env.RUNTIME_CRATE }}
 
-    # - name: Test OCaml Host SDK
-    #   run: |
-    #     opam install -y .
-    #     cd ocaml
-    #     opam exec -- dune exec extism
-     
-    - name: Setup Haskell env   
-      uses: haskell/actions/setup@v2
-      
-    - name: Test Haskell SDK
-      run: |
-        cd haskell
-        LD_LIBRARY_PATH=/usr/local/lib cabal test
+      - name: Lint
+        run: cargo clippy --release --no-deps -p ${{ env.RUNTIME_CRATE }}
 
-    - name: Setup PHP env
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.1'
-        extensions: ffi
-        tools: composer
-      env:
-        fail-fast: true
+      - name: Test
+        run: cargo test --release -p ${{ env.RUNTIME_CRATE }}
 
-    # - name: Test PHP SDK
-    #   run: |
-    #     cd php/example
-    #     composer install
-    #     php Example.php
+      - name: Install extism shared library
+        shell: bash
+        run: sudo make install
+
+      - name: Setup Go env
+        uses: actions/setup-go@v3
+
+      - name: Test Go Host SDK
+        run: |
+          go version
+          cd go && LD_LIBRARY_PATH=/usr/local/lib go run main.go
+
+      - name: Setup Python env
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          check-latest: true
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
+      - name: Test Python Host SDK
+        run: |
+          cd python
+          poetry install
+          poetry run python example.py
+
+      - name: Setup Ruby env
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.0"
+
+      - name: Test Ruby Host SDK
+        run: |
+          cd ruby
+          bundle install
+          ruby example.rb
+
+      - name: Setup Node env
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Test Node Host SDK
+        run: |
+          cd node
+          npm i
+          LD_LIBRARY_PATH=/usr/local/lib node example.js
+
+      - name: Test Rust Host SDK
+        run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
+
+      # - name: Setup OCaml env
+      #   uses: ocaml/setup-ocaml@v2
+
+      # - name: Test OCaml Host SDK
+      #   run: |
+      #     opam install -y .
+      #     cd ocaml
+      #     opam exec -- dune exec extism
+
+      - name: Setup Haskell env
+        uses: haskell/actions/setup@v2
+        with:
+          enable-stack: true
+          stack-version: "latest"
+
+      - name: Test Haskell SDK
+        run: |
+          cd haskell
+          LD_LIBRARY_PATH=/usr/local/lib stack test
+
+      - name: Setup PHP env
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.1"
+          extensions: ffi
+          tools: composer
+        env:
+          fail-fast: true
+
+      - name: Test PHP SDK
+        run: |
+          cd php/example
+          composer install
+          php index.php

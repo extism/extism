@@ -1,4 +1,5 @@
 target
+runtime/ast.json
 runtime/target
 Cargo.lock
 .DS_Store
@@ -30,3 +31,4 @@ ocaml/_build
 php/Extism.php
 dist-newstyle
 .stack-work
+vendor

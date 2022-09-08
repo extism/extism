@@ -13,6 +13,14 @@ extern "C" {
     ) -> ExtismPlugin;
 }
 extern "C" {
+    pub fn extism_plugin_update(
+        index: ExtismPlugin,
+        wasm: *const u8,
+        wasm_size: ExtismSize,
+        with_wasi: bool,
+    ) -> bool;
+}
+extern "C" {
     pub fn extism_plugin_config(
         plugin: ExtismPlugin,
         json: *const u8,
@@ -27,7 +35,7 @@ extern "C" {
 }
 extern "C" {
     pub fn extism_call(
-        plugin: ExtismPlugin,
+        plugin_id: ExtismPlugin,
         func_name: *const ::std::os::raw::c_char,
         data: *const u8,
         data_len: ExtismSize,

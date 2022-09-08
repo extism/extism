@@ -92,21 +92,26 @@ def set_log_file(file, level=ffi.NULL):
     lib.extism_log_file(file.encode(), level)
 
 
+def _wasm(plugin):
+    if isinstance(plugin, str) and os.path.exists(plugin):
+        with open(plugin, 'rb') as f:
+            wasm = f.read()
+    elif isinstance(plugin, str):
+        wasm = plugin.encode()
+    elif isinstance(plugin, dict):
+        wasm = json.dumps(plugin, cls=Base64Encoder).encode()
+    else:
+        wasm = plugin
+    return wasm
+
+
 class Plugin:
 
     def __init__(self,
                  plugin: Union[str, bytes, dict],
                  wasi=False,
                  config=None):
-        if isinstance(plugin, str) and os.path.exists(plugin):
-            with open(plugin, 'rb') as f:
-                wasm = f.read()
-        elif isinstance(plugin, str):
-            wasm = plugin.encode()
-        elif isinstance(plugin, dict):
-            wasm = json.dumps(plugin, cls=Base64Encoder).encode()
-        else:
-            wasm = plugin
+        wasm = _wasm(plugin)
 
         # Register plugin
         self.plugin = lib.extism_plugin_register(wasm, len(wasm), wasi)
@@ -114,6 +119,17 @@ class Plugin:
         if config is not None:
             s = json.dumps(config).encode()
             lib.extism_plugin_config(s, len(s))
+
+    def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
+        wasm = _wasm(plugin)
+        ok = lib.extism_plugin_update(self.plugin, wasm, len(wasm), wasi)
+        if not ok:
+            return False
+
+        if config is not None:
+            s = json.dumps(config).encode()
+            lib.extism_plugin_config(s, len(s))
+        return True
 
     def _check_error(self, rc):
         if rc != 0:

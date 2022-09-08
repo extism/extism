@@ -23,7 +23,7 @@ impl From<serde_json::Error> for Error {
 
 impl Plugin {
     pub fn new_with_manifest(manifest: &Manifest, wasi: bool) -> Result<Plugin, Error> {
-        let data = serde_json::to_vec(&manifest)?;
+        let data = serde_json::to_vec(manifest)?;
         Self::new(data, wasi)
     }
 
@@ -41,6 +41,22 @@ impl Plugin {
         }
 
         Ok(Plugin(plugin as isize))
+    }
+
+    pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> bool {
+        unsafe {
+            bindings::extism_plugin_update(
+                self.0 as i32,
+                data.as_ref().as_ptr(),
+                data.as_ref().len() as u64,
+                wasi,
+            )
+        }
+    }
+
+    pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<bool, Error> {
+        let data = serde_json::to_vec(manifest)?;
+        Ok(self.update(data, wasi))
     }
 
     pub fn set_config(&self, config: &BTreeMap<String, String>) -> Result<(), Error> {

@@ -43,7 +43,9 @@ module Manifest : sig
 end
 
 val set_log_file: ?level:string -> string -> bool
-val register: ?wasi:bool -> string -> t
-val register_manifest: ?wasi:bool -> Manifest.t -> t
+val register: ?config:(string * string) list -> ?wasi:bool -> string -> t
+val register_manifest: ?config:(string * string) list -> ?wasi:bool -> Manifest.t -> t
+val update: t -> ?config:(string * string) list -> ?wasi:bool -> string -> bool
+val update_manifest: t -> ?config:(string * string) list -> ?wasi:bool -> Manifest.t -> bool
 val call_bigstring: t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result
 val call: t -> name:string -> string -> (string, error) result

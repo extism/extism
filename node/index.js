@@ -6,6 +6,7 @@ const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 
 let _functions = {
   extism_plugin_register: ['int32', ['string', 'uint64', 'bool']],
+  extism_plugin_update: ['bool', ['int32', 'string', 'uint64', 'bool']],
   extism_error: ['char*', ['int32']],
   extism_call: ['int32', ['int32', 'string', 'string', 'uint64']],
   extism_output_length: ['uint64', ['int32']],
@@ -57,6 +58,23 @@ export class Plugin {
       let s = JSON.stringify(config);
       lib.extism_plugin_config(this.id, s, s.length);
     }
+  }
+
+  update(data, wasi = false, config = null) {
+    if (typeof data === "object" && data.wasm) {
+      data = JSON.stringify(data);
+    }
+    const ok = lib.extism_plugin_update(this.id, data, data.length, wasi);
+    if (!ok) {
+      return false;
+    }
+
+    if (config != null) {
+      let s = JSON.stringify(config);
+      lib.extism_plugin_config(this.id, s, s.length);
+    }
+
+    return true;
   }
 
   call(name, input) {

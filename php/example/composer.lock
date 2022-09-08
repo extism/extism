@@ -4,34 +4,29 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "09e1d63dd98909eb15b01510f7b80a80",
+    "content-hash": "7b4928a982b49b8d70f36ada933cab71",
     "packages": [
         {
             "name": "extism/extism",
-            "version": "dev-pre-release",
-            "source": {
-                "type": "git",
-                "url": "https://github.com/extism/extism.git",
-                "reference": "bddfc825137de3571d172d0cfc51262e36b418be"
-            },
+            "version": "dev-feat-reuse-plugins",
             "dist": {
-                "type": "zip",
-                "url": "https://api.github.com/repos/extism/extism/zipball/bddfc825137de3571d172d0cfc51262e36b418be",
-                "reference": "bddfc825137de3571d172d0cfc51262e36b418be",
-                "shasum": ""
+                "type": "path",
+                "url": "../..",
+                "reference": "9e5f576acff0aa9c8720fdf6d1103b7c1996bf14"
             },
             "require": {
                 "ircmaxell/ffime": "dev-master",
                 "php": "^7.4 || ^8"
             },
-            "default-branch": true,
             "type": "library",
             "autoload": {
                 "psr-4": {
                     "Extism\\": "php/src/"
                 }
             },
-            "notification-url": "https://packagist.org/downloads/",
+            "autoload-dev": {
+                "psr-4": []
+            },
             "license": [
                 "BSD-3-Clause"
             ],
@@ -49,16 +44,14 @@
             ],
             "description": "Make your software programmable. Run WebAssembly extensions in your app using the first off-the-shelf, universal plug-in system.",
             "keywords": [
+                "WebAssembly",
                 "plug-in",
                 "plugin-system",
-                "runtime",
-                "webassembly"
+                "runtime"
             ],
-            "support": {
-                "issues": "https://github.com/extism/extism/issues",
-                "source": "https://github.com/extism/extism/tree/pre-release"
-            },
-            "time": "2022-09-02T04:11:11+00:00"
+            "transport-options": {
+                "relative": true
+            }
         },
         {
             "name": "ircmaxell/ffime",
@@ -66,12 +59,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/FFIMe.git",
-                "reference": "5f648f95ecf23262a2e58f4e4c9001bd1b5f9c98"
+                "reference": "7b9e0bf23adceddd5fde3130d30275a45cfc1867"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/5f648f95ecf23262a2e58f4e4c9001bd1b5f9c98",
-                "reference": "5f648f95ecf23262a2e58f4e4c9001bd1b5f9c98",
+                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/7b9e0bf23adceddd5fde3130d30275a45cfc1867",
+                "reference": "7b9e0bf23adceddd5fde3130d30275a45cfc1867",
                 "shasum": ""
             },
             "require": {
@@ -104,7 +97,7 @@
                 "issues": "https://github.com/ircmaxell/FFIMe/issues",
                 "source": "https://github.com/ircmaxell/FFIMe/tree/master"
             },
-            "time": "2022-09-01T18:56:19+00:00"
+            "time": "2022-09-07T19:50:56+00:00"
         },
         {
             "name": "ircmaxell/php-c-parser",
@@ -161,12 +154,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/php-object-symbolresolver.git",
-                "reference": "3734df2b22d7c8273ee6f6f2155fddde6056d057"
+                "reference": "88c918a0f4621ef59dc4a4c21ead7f39bd720337"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/3734df2b22d7c8273ee6f6f2155fddde6056d057",
-                "reference": "3734df2b22d7c8273ee6f6f2155fddde6056d057",
+                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/88c918a0f4621ef59dc4a4c21ead7f39bd720337",
+                "reference": "88c918a0f4621ef59dc4a4c21ead7f39bd720337",
                 "shasum": ""
             },
             "require": {
@@ -198,15 +191,13 @@
                 "issues": "https://github.com/ircmaxell/php-object-symbolresolver/issues",
                 "source": "https://github.com/ircmaxell/php-object-symbolresolver/tree/master"
             },
-            "time": "2022-08-14T19:30:20+00:00"
+            "time": "2022-09-07T19:47:04+00:00"
         }
     ],
     "packages-dev": [],
     "aliases": [],
     "minimum-stability": "dev",
-    "stability-flags": {
-        "extism/extism": 20
-    },
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": [],

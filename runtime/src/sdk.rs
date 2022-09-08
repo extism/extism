@@ -29,11 +29,41 @@ pub unsafe extern "C" fn extism_plugin_register(
         Err(e) => e.into_inner(),
     };
 
-    // Acquire lock and add plugin to registry
     plugins.push(plugin);
     let id = (plugins.len() - 1) as PluginIndex;
     info!("New plugin added: {id}");
     id
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_update(
+    index: PluginIndex,
+    wasm: *const u8,
+    wasm_size: Size,
+    with_wasi: bool,
+) -> bool {
+    let index = index as usize;
+    trace!("Call to extism_plugin_update with wasm pointer {:?}", wasm);
+    let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
+    let plugin = match Plugin::new(data, with_wasi) {
+        Ok(x) => x,
+        Err(e) => {
+            error!("Error creating Plugin: {:?}", e);
+            return false;
+        }
+    };
+
+    let mut plugins = match PLUGINS.lock() {
+        Ok(p) => p,
+        Err(e) => e.into_inner(),
+    };
+
+    if index < plugins.len() {
+        plugins[index] = plugin;
+    }
+
+    info!("Plugin updated: {index}");
+    true
 }
 
 #[no_mangle]

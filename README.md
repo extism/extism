@@ -1,3 +1,6 @@
+### _Welcome!_
+**Please note:** this project still under active development. It's usable, but expect some rough edges while work is underway. If you're interested in working on or building with Extism, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know - we are happy to help get you started.
+
 # [Extism](https://extism.org)
 
 The universal plug-in system. Run WebAssembly extensions inside your app. Use idiomatic Host SDKs for [Go](https://extism.org/docs/integrate-into-your-codebase/go-host-sdk), 
@@ -45,7 +48,7 @@ The easiest way to start would be to join the [Discord](https://discord.gg/cx3us
 Extism is an open-source product from the team at:
 
 <p align="left">
-  <a href="https://dylib.so" _target="blanks"><img width="200px" src="https://dylib.so/assets/dylibso-logo.svg"/></a>
+  <a href="https://dylib.so" _target="blanks"><img width="200px" src="https://user-images.githubusercontent.com/7517515/189285820-e6e83ddf-ed60-4f76-a610-814b81a5a289.svg"/></a>
 </p>
 
 _Reach out and tell us what you're building! We'd love to help._

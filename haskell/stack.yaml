@@ -31,8 +31,6 @@ resolver:
 #   - wai
 packages:
 - .
-- dist-newstyle/tmp/src-3036517/semialign-1.2.0.1
-- dist-newstyle/tmp/src-3036516/witherable-0.4.2
 # Dependency packages to be pulled from upstream that are not in the resolver.
 # These entries can reference officially published versions as well as
 # forks / in-progress versions pinned to a git hash. For example:
