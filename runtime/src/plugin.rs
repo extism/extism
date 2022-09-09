@@ -115,12 +115,6 @@ impl Plugin {
                         length(I64) -> I64;
                     });
                 }
-
-                // Define memory or check to ensure the symbol is exported by another module
-                // since it doesn't match one of our known exports
-                if !module_name.starts_with("wasi") && !exports.contains_key(name) {
-                    return Err(anyhow::format_err!("Invalid export: {module_name}::{name}"));
-                }
             }
         }
 
