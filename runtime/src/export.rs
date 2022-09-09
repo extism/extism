@@ -183,7 +183,10 @@ pub(crate) fn config_get(
     let val = plugin!(data).manifest.as_ref().config.get(str);
     let mem = match val {
         Some(f) => memory!(mut data).alloc_bytes(f.as_bytes())?,
-        None => return Err(Trap::new("Invalid config key")),
+        None => {
+            output[0] = Val::I64(0);
+            return Ok(());
+        }
     };
 
     output[0] = Val::I64(mem.offset as i64);
@@ -330,6 +333,10 @@ pub(crate) fn length(
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
     let offset = input[0].unwrap_i64() as usize;
+    if offset == 0 {
+        output[0] = Val::I64(0);
+        return Ok(());
+    }
     let length = match memory!(data).block_length(offset) {
         Some(x) => x,
         None => return Err(Trap::new("Unable to find length for offset")),
