@@ -64,14 +64,6 @@ impl Plugin {
             (entry.0.as_str(), entry.1)
         });
 
-        // Collect exports
-        let mut exports = BTreeMap::new();
-        for (_name, module) in modules.iter() {
-            for export in module.exports() {
-                exports.insert(export.name(), export);
-            }
-        }
-
         macro_rules! define_funcs {
             ($m:expr, { $($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?}) => {
                 match $m {
