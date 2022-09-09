@@ -15,6 +15,26 @@ pub struct HttpRequest {
     pub method: Option<String>,
 }
 
+impl HttpRequest {
+    pub fn new(url: impl Into<String>) -> HttpRequest {
+        HttpRequest {
+            url: url.into(),
+            header: Default::default(),
+            method: None,
+        }
+    }
+
+    pub fn with_method(mut self, method: impl Into<String>) -> HttpRequest {
+        self.method = Some(method.into());
+        self
+    }
+
+    pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> HttpRequest {
+        self.header.insert(key.into(), value.into());
+        self
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
