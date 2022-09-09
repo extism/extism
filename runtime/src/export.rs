@@ -183,7 +183,7 @@ pub(crate) fn config_get(
     let val = plugin!(data).manifest.as_ref().config.get(str);
     let mem = match val {
         Some(f) => memory!(mut data).alloc_bytes(f.as_bytes())?,
-        None => return Err(Trap::new("Invalid config key")),
+        None => memory!(mut data).alloc_bytes(&[])?,
     };
 
     output[0] = Val::I64(mem.offset as i64);
