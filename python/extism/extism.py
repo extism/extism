@@ -118,7 +118,7 @@ class Plugin:
 
         if config is not None:
             s = json.dumps(config).encode()
-            lib.extism_plugin_config(s, len(s))
+            lib.extism_plugin_config(self.plugin, s, len(s))
 
     def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
         wasm = _wasm(plugin)
@@ -128,7 +128,7 @@ class Plugin:
 
         if config is not None:
             s = json.dumps(config).encode()
-            lib.extism_plugin_config(s, len(s))
+            lib.extism_plugin_config(self.plugin, s, len(s))
         return True
 
     def _check_error(self, rc):
