@@ -9,7 +9,7 @@ import Foreign.C.String
 import Control.Monad (void)
 import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
-import Data.ByteString.Unsafe (unsafeUseAsCString, unsafePackAddressLen)
+import Data.ByteString.Unsafe (unsafeUseAsCString)
 import Text.JSON (JSON, toJSObject, encode)
 import Extism.Manifest (Manifest, toString)
 
@@ -53,7 +53,7 @@ update (Plugin id) wasm useWasi =
   do
     b <- unsafeUseAsCString wasm (\s ->
       extism_plugin_update id (castPtr s) length wasi)
-    return (if b > 0 then True else False)
+    return (b > 0)
 
 updateManifest :: Plugin -> Manifest -> Bool -> IO Bool
 updateManifest plugin manifest useWasi =
