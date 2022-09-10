@@ -107,6 +107,10 @@ impl Plugin {
                         var_set(I64, I64);
                         http_request(I64, I64) -> I64;
                         length(I64) -> I64;
+                        log_warn(I64);
+                        log_info(I64);
+                        log_debug(I64);
+                        log_error(I64);
                     });
                 }
             }

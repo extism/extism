@@ -373,3 +373,57 @@ pub(crate) fn length(
     output[0] = Val::I64(length as i64);
     Ok(())
 }
+
+pub(crate) fn log(
+    level: log::Level,
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &Internal = caller.data();
+    let offset = input[0].unwrap_i64() as usize;
+
+    let length = match memory!(data).block_length(offset) {
+        Some(x) => x,
+        None => return Err(Trap::new("Invalid offset in call to http_request")),
+    };
+    let buf = memory!(data).get((offset, length));
+
+    match std::str::from_utf8(buf) {
+        Ok(buf) => log::log!(level, "{}", buf),
+        Err(_) => log::log!(level, "{:?}", buf),
+    }
+    Ok(())
+}
+
+pub(crate) fn log_warn(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Warn, caller, input, _output)
+}
+
+pub(crate) fn log_info(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Info, caller, input, _output)
+}
+
+pub(crate) fn log_debug(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Debug, caller, input, _output)
+}
+
+pub(crate) fn log_error(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Error, caller, input, _output)
+}
