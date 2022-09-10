@@ -240,7 +240,7 @@ pub unsafe extern "C" fn extism_log_file(
         }
     };
 
-    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} (({f}:{L})) - {m}\n"));
+    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} - {m}\n"));
 
     let logfile: Box<dyn log4rs::append::Append> = if file == "-" {
         let console = ConsoleAppender::builder().encoder(encoder);
