@@ -36,6 +36,9 @@ pub(crate) fn input_load_u8(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
+    if data.input.is_null() {
+        return Ok(());
+    }
     output[0] = unsafe { Val::I32(*data.input.add(input[0].unwrap_i64() as usize) as i32) };
     Ok(())
 }
@@ -46,6 +49,9 @@ pub(crate) fn input_load_u64(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
+    if data.input.is_null() {
+        return Ok(());
+    }
     let offs = input[0].unwrap_i64() as usize;
     let slice = unsafe { std::slice::from_raw_parts(data.input.add(offs), 8) };
     let byte = u64::from_ne_bytes(slice.try_into().unwrap());

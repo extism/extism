@@ -162,7 +162,10 @@ impl Plugin {
     }
 
     /// Store input in memory and initialize `Internal` pointer
-    pub fn set_input(&mut self, input: *const u8, len: usize) {
+    pub fn set_input(&mut self, input: *const u8, mut len: usize) {
+        if input.is_null() {
+            len = 0;
+        }
         let ptr = self as *mut _;
         let internal = self.memory.store.data_mut();
         internal.input = input;
