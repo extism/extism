@@ -141,17 +141,8 @@ pub unsafe extern "C" fn extism_call(
         None => return plugin.error(format!("Function not found: {name}"), -1),
     };
 
-    // Write input to memory
-    let data = std::slice::from_raw_parts(data, data_len as usize);
-    let handle = match plugin.memory.alloc_bytes(data) {
-        Ok(x) => x,
-        Err(e) => return plugin.error(e.context("Unable to allocate bytes"), -1),
-    };
-
-    plugin.dump_memory();
-
     // Always needs to be called before `func.call()`
-    plugin.set_input(handle);
+    plugin.set_input(data, data_len as usize);
 
     // Call function with offset+length pointing to input data.
     let mut results = vec![Val::I32(0)];

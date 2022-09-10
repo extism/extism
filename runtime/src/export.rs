@@ -20,13 +20,36 @@ macro_rules! memory {
     };
 }
 
-pub(crate) fn input_offset(
+pub(crate) fn input_length(
     caller: Caller<Internal>,
     _input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
-    output[0] = Val::I64(data.input_offset as i64);
+    output[0] = Val::I64(data.input_length as i64);
+    return Ok(());
+}
+
+pub(crate) fn input_load_u8(
+    caller: Caller<Internal>,
+    input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &Internal = caller.data();
+    output[0] = unsafe { Val::I32(*data.input.add(input[0].unwrap_i64() as usize) as i32) };
+    Ok(())
+}
+
+pub(crate) fn input_load_u64(
+    caller: Caller<Internal>,
+    input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &Internal = caller.data();
+    let offs = input[0].unwrap_i64() as usize;
+    let slice = unsafe { std::slice::from_raw_parts(data.input.add(offs), 8) };
+    let byte = u64::from_ne_bytes(slice.try_into().unwrap());
+    output[0] = Val::I64(byte as i64);
     Ok(())
 }
 
