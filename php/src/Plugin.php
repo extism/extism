@@ -73,10 +73,8 @@ class Plugin
         }
 
         $length = $this->lib->extism_output_length($this->id);
-        $ty = \FFI::arrayType(\FFI::type("uint8_t"), [$length]);
-        $buf = new \uint8_t_ptr(\FFI::new($ty));
 
-        $result = $this->lib->extism_output_get($this->id, $buf, $length);
+        $buf = $this->lib->extism_output_get($this->id);
 
         $ouput = [];
         $data = $buf->getData();

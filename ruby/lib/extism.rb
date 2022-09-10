@@ -10,7 +10,7 @@ module Extism
     attach_function :extism_error, [:int32], :string
     attach_function :extism_call, [:int32, :string, :pointer, :uint64], :int32
     attach_function :extism_output_length, [:int32], :uint64
-    attach_function :extism_output_get, [:int32, :pointer, :uint64], :void
+    attach_function :extism_output_get, [:int32], :pointer
     attach_function :extism_log_file, [:string, :pointer], :void
   end
 
@@ -69,9 +69,8 @@ module Extism
         end
       end
       out_len = C.extism_output_length(@plugin)
-      buf = FFI::MemoryPointer.new(:char, out_len)
-      C.extism_output_get(@plugin, buf, out_len)
-      return buf.read_string()
+      buf = C.extism_output_get(@plugin)
+      return buf.read_string(out_len)
     end
   end
 end

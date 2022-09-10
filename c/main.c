@@ -47,8 +47,7 @@ int main(int argc, char *argv[]) {
   assert(extism_call(plugin, "count_vowels", (uint8_t *)argv[1],
                      strlen(argv[1])) == 0);
   ExtismSize out_len = extism_output_length(plugin);
-  char output[out_len];
-  extism_output_get(plugin, (uint8_t *)output, out_len);
+  const uint8_t *output = extism_output_get(plugin);
   write(STDOUT_FILENO, output, out_len);
   write(STDOUT_FILENO, "\n", 1);
 

@@ -48,8 +48,8 @@ public:
     }
 
     ExtismSize length = extism_output_length(this->plugin);
-    std::vector<uint8_t> out = std::vector<uint8_t>(length);
-    extism_output_get(this->plugin, out.data(), length);
+    const uint8_t *ptr = extism_output_get(this->plugin);
+    std::vector<uint8_t> out = std::vector<uint8_t>(ptr, ptr + length);
     return out;
   }
 };

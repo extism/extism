@@ -48,7 +48,7 @@ extern "C" {
     pub fn extism_output_length(plugin: ExtismPlugin) -> ExtismSize;
 }
 extern "C" {
-    pub fn extism_output_get(plugin: ExtismPlugin, buf: *mut u8, len: ExtismSize);
+    pub fn extism_output_get(plugin: ExtismPlugin) -> *const u8;
 }
 extern "C" {
     pub fn extism_log_file(

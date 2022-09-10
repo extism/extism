@@ -157,11 +157,13 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	}
 
 	length := C.extism_output_length(C.int32_t(plugin.id))
-	buf := make([]byte, length)
 
 	if length > 0 {
-		C.extism_output_get(C.int32_t(plugin.id), (*C.uchar)(unsafe.Pointer(&buf[0])), length)
+		x := C.extism_output_get(C.int32_t(plugin.id))
+		y := (*[]byte)(unsafe.Pointer(&x))
+		return []byte((*y)[0:length]), nil
+
 	}
 
-	return buf, nil
+	return []byte{}, nil
 }

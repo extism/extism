@@ -144,6 +144,5 @@ class Plugin:
         self._check_error(
             lib.extism_call(self.plugin, name.encode(), data, len(data)))
         out_len = lib.extism_output_length(self.plugin)
-        out_buf = ffi.new("uint8_t[]", out_len)
-        lib.extism_output_get(self.plugin, out_buf, out_len)
-        return ffi.string(out_buf)
+        out_buf = lib.extism_output_get(self.plugin)
+        return ffi.string(out_buf, out_len)

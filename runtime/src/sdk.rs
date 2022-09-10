@@ -194,21 +194,17 @@ pub unsafe extern "C" fn extism_output_length(plugin: PluginIndex) -> Size {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex, buf: *mut u8, len: Size) {
-    trace!("Call to extism_output_get for plugin {plugin}, length {len}");
+pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex) -> *const u8 {
+    trace!("Call to extism_output_get for plugin {plugin}");
 
     let plugin = PluginRef::new(plugin);
     let data = plugin.as_ref().memory.store.data();
 
-    let slice = std::slice::from_raw_parts_mut(buf, len as usize);
     plugin
         .as_ref()
         .memory
-        .read(
-            MemoryBlock::new(data.output_offset, data.output_length),
-            slice,
-        )
-        .expect("Out of bounds read in extism_output_get");
+        .get(MemoryBlock::new(data.output_offset, data.output_length))
+        .as_ptr()
 }
 
 #[no_mangle]

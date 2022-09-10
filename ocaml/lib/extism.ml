@@ -66,7 +66,7 @@ module Bindings = struct
     fn "extism_output_length" (int32_t @-> returning uint64_t)
 
   let extism_output_get =
-    fn "extism_output_get" (int32_t @-> ptr char @-> uint64_t @-> returning void)
+    fn "extism_output_get" (int32_t @-> returning (ptr char))
 
   let extism_log_file =
     fn "extism_log_file" (string @-> string_opt @-> returning bool)
@@ -191,9 +191,12 @@ let call' f { id } ~name input len =
     | Some msg -> Error (`Msg msg)
   else
     let out_len = Bindings.extism_output_length id in
-    let buf = Bigstringaf.create (Unsigned.UInt64.to_int out_len) in
-    let ptr = Ctypes.bigarray_start Ctypes.array1 buf in
-    let () = Bindings.extism_output_get id ptr out_len in
+    let ptr = Bindings.extism_output_get id in
+    let buf =
+      Ctypes.bigarray_of_ptr Ctypes.array1
+        (Unsigned.UInt64.to_int out_len)
+        Char ptr
+    in
     Ok buf
 
 let call_bigstring t ~name input =
