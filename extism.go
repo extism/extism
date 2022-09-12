@@ -148,12 +148,15 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	C.free(unsafe.Pointer(name))
 
 	if rc != 0 {
-		error := C.extism_error(C.int32_t(plugin.id))
-		if error != nil {
-			return nil, errors.New(
-				fmt.Sprintf("ERROR (extism plugin code: %d): %s", rc, C.GoString(error)),
-			)
+		err := C.extism_error(C.int32_t(plugin.id))
+		msg := "<unset by plugin>"
+		if err != nil {
+			msg = C.GoString(err)
 		}
+
+		return nil, errors.New(
+			fmt.Sprintf("Plugin error: %s, code: %d", msg, rc),
+		)
 	}
 
 	length := C.extism_output_length(C.int32_t(plugin.id))
