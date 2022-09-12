@@ -188,7 +188,7 @@ jobs:
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
           cp LICENSE ${SRC_DIR}
-          tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
+          tar -C ${SRC_DIR} -czvf ${ARCHIVE} extism.${EXT} extism.h
           ls -ll ${ARCHIVE}
 
           certutil -hashfile ${ARCHIVE} SHA256 >${CHECKSUM}
