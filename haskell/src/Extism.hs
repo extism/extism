@@ -19,7 +19,7 @@ foreign import ccall unsafe "extism.h extism_call" extism_call :: Int32 -> CStri
 foreign import ccall unsafe "extism.h extism_function_exists" extism_function_exists :: Int32 -> CString -> IO CBool
 foreign import ccall unsafe "extism.h extism_error" extism_error :: Int32 -> IO CString
 foreign import ccall unsafe "extism.h extism_output_length" extism_output_length :: Int32 -> IO Word64
-foreign import ccall unsafe "extism.h extism_output_get" extism_output_get :: Int32 -> Ptr Word8 -> Word64 -> IO ()
+foreign import ccall unsafe "extism.h extism_output_get" extism_output_get :: Int32 -> IO (Ptr Word8)
 foreign import ccall unsafe "extism.h extism_log_file" extism_log_file :: CString -> CString -> IO CBool
 foreign import ccall unsafe "extism.h extism_plugin_config" extism_plugin_config :: Int32 -> Ptr Word8 -> Int64 -> IO CBool
 
@@ -53,7 +53,7 @@ update (Plugin id) wasm useWasi =
   do
     b <- unsafeUseAsCString wasm (\s ->
       extism_plugin_update id (castPtr s) length wasi)
-    return (if b > 0 then True else False)
+    return (b > 0)
 
 updateManifest :: Plugin -> Manifest -> Bool -> IO Bool
 updateManifest plugin manifest useWasi =
@@ -99,8 +99,7 @@ call (Plugin plugin) name input =
     else if rc == 0
       then do
         length <- extism_output_length plugin
-        let output = B.replicate (fromIntegral length) 0
-        () <- unsafeUseAsCString output (\a ->
-          extism_output_get plugin (castPtr a) length)
-        return $ Left output
+        ptr <- extism_output_get plugin
+        buf <- packCStringLen (castPtr ptr, fromIntegral length)
+        return $ Left buf
     else return $ Right (Error "Call failed")

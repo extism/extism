@@ -29,6 +29,6 @@ const char *extism_error(ExtismPlugin plugin);
 
 ExtismSize extism_output_length(ExtismPlugin plugin);
 
-void extism_output_get(ExtismPlugin plugin, uint8_t *buf, ExtismSize len);
+const uint8_t *extism_output_get(ExtismPlugin plugin);
 
 bool extism_log_file(const char *filename, const char *log_level);

@@ -10,7 +10,7 @@ let _functions = {
   extism_error: ['char*', ['int32']],
   extism_call: ['int32', ['int32', 'string', 'string', 'uint64']],
   extism_output_length: ['uint64', ['int32']],
-  extism_output_get: ['void', ['int32', 'char*', 'uint64']],
+  extism_output_get: ['uint8*', ['int32']],
   extism_log_file: ['bool', ['string', 'char*']],
   extism_plugin_config: ['void', ['int32', 'char*', 'uint64']],
 };
@@ -88,8 +88,7 @@ export class Plugin {
     }
 
     var out_len = lib.extism_output_length(this.id);
-    var buf = new Buffer.alloc(out_len);
-    lib.extism_output_get(this.id, buf, out_len);
+    var buf = Buffer.from(lib.extism_output_get(this.id).buffer, 0, out_len);
     return buf;
   }
 }

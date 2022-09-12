@@ -20,13 +20,42 @@ macro_rules! memory {
     };
 }
 
-pub(crate) fn input_offset(
+pub(crate) fn input_length(
     caller: Caller<Internal>,
     _input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
-    output[0] = Val::I64(data.input_offset as i64);
+    output[0] = Val::I64(data.input_length as i64);
+    return Ok(());
+}
+
+pub(crate) fn input_load_u8(
+    caller: Caller<Internal>,
+    input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &Internal = caller.data();
+    if data.input.is_null() {
+        return Ok(());
+    }
+    output[0] = unsafe { Val::I32(*data.input.add(input[0].unwrap_i64() as usize) as i32) };
+    Ok(())
+}
+
+pub(crate) fn input_load_u64(
+    caller: Caller<Internal>,
+    input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &Internal = caller.data();
+    if data.input.is_null() {
+        return Ok(());
+    }
+    let offs = input[0].unwrap_i64() as usize;
+    let slice = unsafe { std::slice::from_raw_parts(data.input.add(offs), 8) };
+    let byte = u64::from_ne_bytes(slice.try_into().unwrap());
+    output[0] = Val::I64(byte as i64);
     Ok(())
 }
 
@@ -343,4 +372,58 @@ pub(crate) fn length(
     };
     output[0] = Val::I64(length as i64);
     Ok(())
+}
+
+pub(crate) fn log(
+    level: log::Level,
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &Internal = caller.data();
+    let offset = input[0].unwrap_i64() as usize;
+
+    let length = match memory!(data).block_length(offset) {
+        Some(x) => x,
+        None => return Err(Trap::new("Invalid offset in call to http_request")),
+    };
+    let buf = memory!(data).get((offset, length));
+
+    match std::str::from_utf8(buf) {
+        Ok(buf) => log::log!(level, "{}", buf),
+        Err(_) => log::log!(level, "{:?}", buf),
+    }
+    Ok(())
+}
+
+pub(crate) fn log_warn(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Warn, caller, input, _output)
+}
+
+pub(crate) fn log_info(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Info, caller, input, _output)
+}
+
+pub(crate) fn log_debug(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Debug, caller, input, _output)
+}
+
+pub(crate) fn log_error(
+    caller: Caller<Internal>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Trap> {
+    log(log::Level::Error, caller, input, _output)
 }

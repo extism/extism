@@ -141,17 +141,8 @@ pub unsafe extern "C" fn extism_call(
         None => return plugin.error(format!("Function not found: {name}"), -1),
     };
 
-    // Write input to memory
-    let data = std::slice::from_raw_parts(data, data_len as usize);
-    let handle = match plugin.memory.alloc_bytes(data) {
-        Ok(x) => x,
-        Err(e) => return plugin.error(e.context("Unable to allocate bytes"), -1),
-    };
-
-    plugin.dump_memory();
-
     // Always needs to be called before `func.call()`
-    plugin.set_input(handle);
+    plugin.set_input(data, data_len as usize);
 
     // Call function with offset+length pointing to input data.
     let mut results = vec![Val::I32(0)];
@@ -194,21 +185,17 @@ pub unsafe extern "C" fn extism_output_length(plugin: PluginIndex) -> Size {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex, buf: *mut u8, len: Size) {
-    trace!("Call to extism_output_get for plugin {plugin}, length {len}");
+pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex) -> *const u8 {
+    trace!("Call to extism_output_get for plugin {plugin}");
 
     let plugin = PluginRef::new(plugin);
     let data = plugin.as_ref().memory.store.data();
 
-    let slice = std::slice::from_raw_parts_mut(buf, len as usize);
     plugin
         .as_ref()
         .memory
-        .read(
-            MemoryBlock::new(data.output_offset, data.output_length),
-            slice,
-        )
-        .expect("Out of bounds read in extism_output_get");
+        .get(MemoryBlock::new(data.output_offset, data.output_length))
+        .as_ptr()
 }
 
 #[no_mangle]
@@ -253,7 +240,7 @@ pub unsafe extern "C" fn extism_log_file(
         }
     };
 
-    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} (({f}:{L})) - {m}\n"));
+    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} - {m}\n"));
 
     let logfile: Box<dyn log4rs::append::Append> = if file == "-" {
         let console = ConsoleAppender::builder().encoder(encoder);

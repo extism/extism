@@ -16,6 +16,9 @@ impl<'a> PluginRef<'a> {
         // Initialize
         self.as_mut().clear_error();
         self.as_mut().memory.reset();
+        let internal = self.as_mut().memory.store.data_mut();
+        internal.input = std::ptr::null();
+        internal.input_length = 0;
         self
     }
 
