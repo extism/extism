@@ -14,18 +14,20 @@ jobs:
   release-linux:
     name: linux
     runs-on: ubuntu-latest
-    strategy: 
+    strategy:
       matrix:
-        target: [ 
-          aarch64-unknown-linux-gnu, 
-          aarch64-unknown-linux-musl, 
-          # i686-unknown-linux-gnu, 
-          x86_64-unknown-linux-gnu ]
+        target:
+          [
+            aarch64-unknown-linux-gnu,
+            aarch64-unknown-linux-musl,
+            x86_64-unknown-linux-gnu,
+          ]
+          # i686-unknown-linux-gnu,
     if: always()
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-      
+        uses: actions/checkout@v3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -40,7 +42,7 @@ jobs:
           use-cross: true
           command: build
           args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
-  
+
       - name: Prepare Artifact
         run: |
           EXT=so
@@ -49,21 +51,21 @@ jobs:
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
           CHECKSUM=${RELEASE_NAME}.checksum.txt
-          
+
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
           cp LICENSE ${SRC_DIR}
           tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
           ls -ll ${ARCHIVE}
           shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
-        
+
           # copy archive and checksum into release artifact directory
           mkdir -p ${DEST_DIR}
           cp ${ARCHIVE} ${DEST_DIR}
           cp ${CHECKSUM} ${DEST_DIR}
-  
+
           ls ${DEST_DIR}
-      
+
       - name: Upload Artifact to Summary
         uses: actions/upload-artifact@v3
         with:
@@ -78,20 +80,18 @@ jobs:
           files: |
             *.tar.gz
             *.txt
-  
+
   release-macos:
     name: macos
     runs-on: macos-latest
-    strategy: 
+    strategy:
       matrix:
-        target: [ 
-          x86_64-apple-darwin,
-          aarch64-apple-darwin ]
+        target: [x86_64-apple-darwin, aarch64-apple-darwin]
     if: always()
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-      
+        uses: actions/checkout@v3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -115,21 +115,21 @@ jobs:
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
           CHECKSUM=${RELEASE_NAME}.checksum.txt
-          
+
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
           cp LICENSE ${SRC_DIR}
           tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
           ls -ll ${ARCHIVE}
           shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
-        
+
           # copy archive and checksum into release artifact directory
           mkdir -p ${DEST_DIR}
           cp ${ARCHIVE} ${DEST_DIR}
           cp ${CHECKSUM} ${DEST_DIR}
-  
+
           ls ${DEST_DIR}
-      
+
       - name: Upload Artifact to Summary
         uses: actions/upload-artifact@v3
         with:
@@ -148,20 +148,18 @@ jobs:
   release-windows:
     name: windows
     runs-on: windows-latest
-    strategy: 
+    strategy:
       matrix:
-        target: [ 
+        target:
+          [x86_64-pc-windows-gnu, x86_64-pc-windows-msvc]
           # i686-pc-windows-gnu,
           # i686-pc-windows-msvc,
-          x86_64-pc-windows-gnu,
-          x86_64-pc-windows-msvc,
-          # aarch64-pc-windows-msvc 
-          ]
+          # aarch64-pc-windows-msvc
     if: always()
     steps:
       - name: Checkout
-        uses: actions/checkout@v1
-      
+        uses: actions/checkout@v3
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -173,7 +171,7 @@ jobs:
       - name: Build Target (${{ matrix.target }})
         uses: actions-rs/cargo@v1
         with:
-          use-cross: false
+          use-cross: true
           command: build
           args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
@@ -186,22 +184,22 @@ jobs:
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
           CHECKSUM=${RELEASE_NAME}.checksum.txt
-        
+
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
           cp LICENSE ${SRC_DIR}
           tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
           ls -ll ${ARCHIVE}
-        
+
           certutil -hashfile ${ARCHIVE} SHA256 >${CHECKSUM}
-        
+
           # copy archive and checksum into release artifact directory
           mkdir -p ${DEST_DIR}
           cp ${ARCHIVE} ${DEST_DIR}
           cp ${CHECKSUM} ${DEST_DIR}
-  
+
           ls ${DEST_DIR}
-      
+
       - name: Upload Artifact to Summary
         uses: actions/upload-artifact@v3
         with:
@@ -216,3 +214,61 @@ jobs:
           files: |
             *.tar.gz
             *.txt
+
+  release-sdks:
+    needs: [release-linux, release-macos] # release-windows
+    name: publish-sdks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Node env
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+
+      - name: Release Node Host SDK
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}
+          CI: true
+        run: |
+          cd node
+          npm publish
+
+      - name: Setup Rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Release Rust Host SDK
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          # order of crate publication matter: manifest, runtime, rust
+          cargo publish --manifest-path manifest/Cargo.toml
+          cargo publish --manifest-path runtime/Cargo.toml
+          cargo publish --manifest-path rust/Cargo.toml
+
+      - name: Setup Python env
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          check-latest: true
+
+      - name: Build Python Host SDK
+        run: |
+          pushd python
+          python3 -m pip install --upgrade build
+          python3 -m build
+          popd
+
+      - name: Release Python Host SDK
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          user: ${{ secrets.PYPI_API_USER }}
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: python/dist/

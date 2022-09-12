@@ -12,6 +12,7 @@ let _functions = {
   extism_output_length: ['uint64', ['int32']],
   extism_output_get: ['uint8*', ['int32']],
   extism_log_file: ['bool', ['string', 'char*']],
+  extism_function_exists: ['bool', ['int32', 'string']],
   extism_plugin_config: ['void', ['int32', 'char*', 'uint64']],
 };
 
@@ -27,7 +28,6 @@ function locate(paths) {
     }
   }
 
-
   throw "Unable to locate libextism";
 }
 
@@ -39,6 +39,7 @@ if (process.env.EXTISM_PATH) {
 }
 
 var lib = locate(searchPath);
+
 export function set_log_file(filename, level = null) {
   lib.extism_log_file(filename, level)
 }
@@ -77,14 +78,18 @@ export class Plugin {
     return true;
   }
 
+  function_exists(name) {
+    return lib.extism_function_exists(this.id, name)
+  }
+
   call(name, input) {
     var rc = lib.extism_call(this.id, name, input, input.length);
     if (rc != 0) {
       var err = lib.extism_error(this.id);
       if (err.length == 0) {
-        throw "extism_call failed";
+        throw `extism_call: "${name}" failed`;
       }
-      throw err.toString();
+      throw `Plugin error: ${err.toString()}, code: ${rc}`;
     }
 
     var out_len = lib.extism_output_length(this.id);
