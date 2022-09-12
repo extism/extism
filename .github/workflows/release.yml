@@ -230,7 +230,7 @@ jobs:
 
       - name: Release Node Host SDK
         env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_API_TOKEN }}
           CI: true
         run: |
           cd node
