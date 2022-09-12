@@ -1,15 +1,26 @@
 {
-  "name": "node",
-  "version": "1.0.0",
-  "description": "",
+  "name": "@extism/extism",
+  "version": "0.0.1-rc.2",
+  "description": "Extism Host SDK for Node",
+  "keywords": [
+    "extism",
+    "webassembly",
+    "wasm",
+    "plugins",
+    "extension"
+  ],
+  "author": "The Extism Authors <oss@extism.org>",
+  "license": "BSD-3-Clause",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "example": "node example.js",
-    "test": "echo \"Error: no test specified\" && exit 1"
+  "homepage": "https://extism.org",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/extism/extism.git"
   },
-  "author": "",
-  "license": "ISC",
+  "scripts": {
+    "example": "node example.js"
+  },
   "dependencies": {
     "ffi-napi": "^4.0.3"
   }
