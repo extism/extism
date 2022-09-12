@@ -79,7 +79,7 @@ export class Plugin {
   }
 
   function_exists(name) {
-    return lib.extism_function_exists(name)
+    return lib.extism_function_exists(this.id, name)
   }
 
   call(name, input) {
