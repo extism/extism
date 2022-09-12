@@ -12,7 +12,7 @@ let _functions = {
   extism_output_length: ['uint64', ['int32']],
   extism_output_get: ['uint8*', ['int32']],
   extism_log_file: ['bool', ['string', 'char*']],
-  extism_function_exists: ['bool', ['string']],
+  extism_function_exists: ['bool', ['int32', 'string']],
   extism_plugin_config: ['void', ['int32', 'char*', 'uint64']],
 };
 
