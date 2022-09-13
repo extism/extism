@@ -18,7 +18,7 @@ config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 plugin = Plugin(config)
 
 # Call `count_vowels`
-j = json.loads(plugin.call("count_vowels", data))
+j = json.loads(bytes(plugin.call("count_vowels", data)))
 print("Number of vowels:", j["count"])
 
 
