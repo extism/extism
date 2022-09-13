@@ -138,11 +138,14 @@ class Plugin:
                 raise Error(ffi.string(error).decode())
             raise Error(f"Error code: {rc}")
 
-    def call(self, name: str, data: Union[str, bytes]) -> bytes:
+    def call(self, name: str, data: Union[str, bytes], parse=bytes) -> bytes:
         if isinstance(data, str):
             data = data.encode()
         self._check_error(
             lib.extism_call(self.plugin, name.encode(), data, len(data)))
         out_len = lib.extism_output_length(self.plugin)
         out_buf = lib.extism_output_get(self.plugin)
-        return ffi.string(out_buf, out_len)
+        buf = ffi.buffer(out_buf, out_len)
+        if parse is None:
+            return buf
+        return parse(buf)

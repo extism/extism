@@ -141,7 +141,7 @@ impl PluginMemory {
                 self.live_blocks.insert(block.offset, block.length);
                 debug!("Found block with exact size at offset {}", block.offset);
                 return Ok(block);
-            } else if block.length - n >= BLOCK_SIZE_THRESHOLD {
+            } else if block.length.saturating_sub(n) >= BLOCK_SIZE_THRESHOLD {
                 let handle = MemoryBlock {
                     offset: block.offset,
                     length: n,
@@ -158,13 +158,13 @@ impl PluginMemory {
             }
         }
 
+        let new_offset = self.position.saturating_add(n);
+
         // If there aren't enough bytes, try to grow the memory size
-        if self.position + n >= self.size() {
+        if new_offset >= self.size() {
             debug!("Need more memory");
 
-            let bytes_needed = (self.position as f64 + n as f64
-                - self.memory.data_size(&self.store) as f64)
-                / PAGE_SIZE as f64;
+            let bytes_needed = (new_offset as f64 - self.size() as f64) / PAGE_SIZE as f64;
             let mut pages_needed = bytes_needed.ceil() as u64;
             if pages_needed == 0 {
                 pages_needed = 1
@@ -179,6 +179,11 @@ impl PluginMemory {
             offset: self.position,
             length: n,
         };
+
+        info!(
+            "Allocated new block: {} bytes at offset {}",
+            mem.length, mem.offset
+        );
 
         self.live_blocks.insert(mem.offset, mem.length);
         self.position += n;
