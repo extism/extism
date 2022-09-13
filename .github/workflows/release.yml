@@ -253,7 +253,7 @@ jobs:
         run: |
           # order of crate publication matter: manifest, runtime, rust
           cargo publish --manifest-path manifest/Cargo.toml
-          cargo publish --manifest-path runtime/Cargo.toml
+          cargo publish --manifest-path runtime/Cargo.toml --no-verify
           cargo publish --manifest-path rust/Cargo.toml
 
       - name: Setup Python env
