@@ -145,4 +145,4 @@ class Plugin:
             lib.extism_call(self.plugin, name.encode(), data, len(data)))
         out_len = lib.extism_output_length(self.plugin)
         out_buf = lib.extism_output_get(self.plugin)
-        return ffi.string(out_buf, out_len)
+        return ffi.buffer(out_buf, out_len)
