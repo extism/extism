@@ -58,7 +58,9 @@ module Extism
       return ok
     end
 
-    def call(name, data)
+    def call(name, data, &block)
+      # If no block was passed then use Pointer::read_string
+      block ||= ->(buf, len){ buf.read_string(len) }
       input = FFI::MemoryPointer::from_string(data)
       rc = C.extism_call(@plugin, name, input, data.bytesize)
       if rc != 0 then
@@ -70,7 +72,7 @@ module Extism
       end
       out_len = C.extism_output_length(@plugin)
       buf = C.extism_output_get(@plugin)
-      return buf.read_string(out_len)
+      return block.call(buf, out_len)
     end
   end
 end

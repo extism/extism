@@ -218,7 +218,7 @@ pub unsafe extern "C" fn extism_log_file(
             }
         }
     } else {
-        "-"
+        "stderr"
     };
 
     let level = if log_level.is_null() {
@@ -242,18 +242,24 @@ pub unsafe extern "C" fn extism_log_file(
 
     let encoder = Box::new(PatternEncoder::new("{t} {l} {d} - {m}\n"));
 
-    let logfile: Box<dyn log4rs::append::Append> = if file == "-" {
-        let console = ConsoleAppender::builder().encoder(encoder);
-        Box::new(console.build())
-    } else {
-        match FileAppender::builder().encoder(encoder).build(file) {
-            Ok(x) => Box::new(x),
-            Err(e) => {
-                error!("Unable to set up log encoder: {e:?}");
-                return false;
+    let logfile: Box<dyn log4rs::append::Append> =
+        if file == "-" || file == "stdout" || file == "stderr" {
+            let target = if file == "-" || file == "stdout" {
+                log4rs::append::console::Target::Stdout
+            } else {
+                log4rs::append::console::Target::Stderr
+            };
+            let console = ConsoleAppender::builder().target(target).encoder(encoder);
+            Box::new(console.build())
+        } else {
+            match FileAppender::builder().encoder(encoder).build(file) {
+                Ok(x) => Box::new(x),
+                Err(e) => {
+                    error!("Unable to set up log encoder: {e:?}");
+                    return false;
+                }
             }
-        }
-    };
+        };
 
     let config = match Config::builder()
         .appender(Appender::builder().build("logfile", logfile))
