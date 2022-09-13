@@ -11,6 +11,7 @@ import (
 /*
 #cgo pkg-config: libextism.pc
 #include <extism.h>
+#include <stdlib.h>
 */
 import "C"
 
