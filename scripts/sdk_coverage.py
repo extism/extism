@@ -3,7 +3,7 @@ import io
 import subprocess
 import os
 
-from bindings import *
+from header import *
 
 def _bold(x):
     return '\x1b[1m' + x + '\033[0m'
@@ -27,8 +27,8 @@ class Coverage:
             return False
         return True
         
-    def check(self, bindings):
-        for f in bindings:
+    def check(self, header):
+        for f in header:
             self.check_function(f)
             
     def report(self):
@@ -60,9 +60,9 @@ if __name__ == '__main__':
         Lang('rust', 'rs'),
     ]
 
-    bindings = Bindings()
+    header = Header()
     for sdk in sdks:
         coverage = Coverage(sdk.name, sdk.path, sdk.ext)
-        coverage.check(bindings)
+        coverage.check(header)
         print()
         coverage.report()

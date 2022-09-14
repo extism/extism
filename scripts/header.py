@@ -61,7 +61,7 @@ class Visitor(c_ast.NodeVisitor):
         return_type = Type(return_type_name, const=const, pointer=is_ptr)
         self.header.functions.append(Function(name, return_type, args))
         
-class Bindings:
+class Header:
     def __init__(self, filename='runtime/extism.h'):
         self.functions = []
         self.header = parse_file(filename, use_cpp=True, cpp_args='-w')
