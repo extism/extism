@@ -270,6 +270,8 @@ jobs:
         run: |
           pushd python
           python3 -m pip install --upgrade build
+          cp ../LICENSE .
+          cp ../README.md .
           python3 -m build
           popd
 
