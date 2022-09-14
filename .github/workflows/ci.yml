@@ -18,7 +18,7 @@ jobs:
           - stable
     steps:
       - name: Checkout sources
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -127,3 +127,26 @@ jobs:
           cd php/example
           composer install
           php index.php
+
+  sdk_api_coverage:
+    name: SDK API Coverage Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+
+      - name: Setup Python env
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          check-latest: true
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get install ripgrep
+          pip3 install pycparser
+
+      - name: Run coverage script
+        id: coverage
+        run: |
+          python scripts/sdk_coverage.py
