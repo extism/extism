@@ -46,21 +46,23 @@ class Lang:
         if self.path is None:
             self.path = self.name
 
-sdks = [
-    Lang('go', 'go', path='..'),
-    Lang('haskell', 'hs'),
-    Lang('node', 'js'),
-    Lang('ocaml', 'ml'),
-    Lang('php', 'php'),
-    Lang('python', 'py'),
-    Lang('ruby', 'rb'),
-    Lang('rust', 'rs'),
-]
 
-# Check for missing SDK functions
-bindings = Bindings()
-for sdk in sdks:
-    coverage = Coverage(sdk.name, sdk.path, sdk.ext)
-    coverage.check(bindings)
-    print()
-    coverage.report()
+if __name__ == '__main__':
+    # Check for missing SDK functions
+    sdks = [
+        Lang('go', 'go', path='..'),
+        Lang('haskell', 'hs'),
+        Lang('node', 'js'),
+        Lang('ocaml', 'ml'),
+        Lang('php', 'php'),
+        Lang('python', 'py'),
+        Lang('ruby', 'rb'),
+        Lang('rust', 'rs'),
+    ]
+
+    bindings = Bindings()
+    for sdk in sdks:
+        coverage = Coverage(sdk.name, sdk.path, sdk.ext)
+        coverage.check(bindings)
+        print()
+        coverage.report()
