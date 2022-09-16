@@ -19,39 +19,40 @@ let _functions = {
 function locate(paths) {
   for (var i = 0; i < paths.length; i++) {
     try {
-      return ffi.Library(
-        path.join(paths[i], 'libextism'),
-        _functions
-      )
+      return ffi.Library(path.join(paths[i], 'libextism'), _functions);
     } catch (exn) {
       continue;
     }
   }
 
-  throw "Unable to locate libextism";
+  throw 'Unable to locate libextism';
 }
 
-var searchPath =
-  [__dirname, "/usr/local/lib", "/usr/lib", path.join(process.env.HOME, ".local")]
+var searchPath = [
+  __dirname,
+  '/usr/local/lib',
+  '/usr/lib',
+  path.join(process.env.HOME, '.local'),
+];
 
 if (process.env.EXTISM_PATH) {
-  searchPath.unshift(path.join(process.env.EXTISM_PATH, "lib"));
+  searchPath.unshift(path.join(process.env.EXTISM_PATH, 'lib'));
 }
 
 var lib = locate(searchPath);
 
 export function set_log_file(filename, level = null) {
-  lib.extism_log_file(filename, level)
+  lib.extism_log_file(filename, level);
 }
 
 export class Plugin {
   constructor(data, wasi = false, config = null) {
-    if (typeof data === "object" && data.wasm) {
+    if (typeof data === 'object' && data.wasm) {
       data = JSON.stringify(data);
     }
     let plugin = lib.extism_plugin_register(data, data.length, wasi);
     if (plugin < 0) {
-      throw "Unable to load plugin";
+      throw 'Unable to load plugin';
     }
     this.id = plugin;
 
@@ -62,7 +63,7 @@ export class Plugin {
   }
 
   update(data, wasi = false, config = null) {
-    if (typeof data === "object" && data.wasm) {
+    if (typeof data === 'object' && data.wasm) {
       data = JSON.stringify(data);
     }
     const ok = lib.extism_plugin_update(this.id, data, data.length, wasi);
@@ -79,22 +80,23 @@ export class Plugin {
   }
 
   function_exists(name) {
-    return lib.extism_function_exists(this.id, name)
+    return lib.extism_function_exists(this.id, name);
   }
 
-  call(name, input) {
-    var rc = lib.extism_call(this.id, name, input, input.length);
-    if (rc != 0) {
-      var err = lib.extism_error(this.id);
-      if (err.length == 0) {
-        throw `extism_call: "${name}" failed`;
+  async call(name, input) {
+    return new Promise((resolve, reject) => {
+      var rc = lib.extism_call(this.id, name, input, input.length);
+      if (rc != 0) {
+        var err = lib.extism_error(this.id);
+        if (err.length == 0) {
+          reject(`extism_call: "${name}" failed`);
+        }
+        reject(`Plugin error: ${err.toString()}, code: ${rc}`);
       }
-      throw `Plugin error: ${err.toString()}, code: ${rc}`;
-    }
 
-    var out_len = lib.extism_output_length(this.id);
-    var buf = Buffer.from(lib.extism_output_get(this.id).buffer, 0, out_len);
-    return buf;
+      var out_len = lib.extism_output_length(this.id);
+      var buf = Buffer.from(lib.extism_output_get(this.id).buffer, 0, out_len);
+      resolve(buf);
+    });
   }
 }
-
