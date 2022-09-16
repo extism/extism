@@ -98,25 +98,5 @@ export class Plugin {
       var buf = Buffer.from(lib.extism_output_get(this.id).buffer, 0, out_len);
       resolve(buf);
     });
-
-    // buf.then((val) => {
-    //   return 'stringval'
-    // }).then((stringVal) => {
-
-    // }).catch((err) => {
-
-    // })
-
-    /*
-    if (rc != 0) {
-      var err = lib.extism_error(this.id);
-      if (err.length == 0) {
-        throw `extism_call: "${name}" failed`;
-      }
-      throw `Plugin error: ${err.toString()}, code: ${rc}`;
-    }
-
-    return buf;
-    */
   }
 }
