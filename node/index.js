@@ -32,7 +32,7 @@ var searchPath = [
   __dirname,
   '/usr/local/lib',
   '/usr/lib',
-  path.join(process.env.HOME, '.local'),
+  path.join(process.env.HOME, '.local', 'lib'),
 ];
 
 if (process.env.EXTISM_PATH) {
