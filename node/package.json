@@ -2,13 +2,7 @@
   "name": "@extism/extism",
   "version": "0.0.1-rc.3",
   "description": "Extism Host SDK for Node",
-  "keywords": [
-    "extism",
-    "webassembly",
-    "wasm",
-    "plugins",
-    "extension"
-  ],
+  "keywords": ["extism", "webassembly", "wasm", "plugins", "extension"],
   "author": "The Extism Authors <oss@extism.org>",
   "license": "BSD-3-Clause",
   "private": false,
