@@ -1,5 +1,8 @@
 ### _Welcome!_
+
 **Please note:** this project still under active development. It's usable, but expect some rough edges while work is underway. If you're interested in working on or building with Extism, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know - we are happy to help get you started.
+
+[![Discord](https://img.shields.io/discord/1011124058408112148?color=%23404eed&label=Community%20Chat&logo=Discord&logoColor=%23404eed)](https://discord.gg/cx3usBCWnc)
 
 # [Extism](https://extism.org)
 
