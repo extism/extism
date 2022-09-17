@@ -68,7 +68,8 @@ class Plugin
     }
     
     public function __destruct() {
-        $this->lib->extism_plugin_destroy($this->id);    
+        $this->lib->extism_plugin_destroy($this->id);
+        $this->id = -1;
     }
 
     public function getId() {

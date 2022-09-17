@@ -32,8 +32,11 @@ module Extism
     C.extism_reset()
   end
 
-  $plugins = {}
-  $destroy = proc { |id| C.extism_plugin_destroy($plugins[id]) }
+  $_plugins = {}
+  $_destroy = proc { |id|
+    C.extism_plugin_destroy($_plugins[id])
+    $_plugins.remove(id)
+  }
 
   class Plugin
     def initialize(wasm, wasi=false, config=nil)
@@ -50,8 +53,8 @@ module Extism
         else raise Error.new err
         end
       end
-      $plugins[self.object_id] = @plugin
-      ObjectSpace.define_finalizer(self,  $destroy)
+      $_plugins[self.object_id] = @plugin
+      ObjectSpace.define_finalizer(self,  $_destroy)
       if config != nil and @plugin >= 0 then
         s = JSON.generate(config)
         ptr = FFI::MemoryPointer::from_string(s)
@@ -105,6 +108,7 @@ module Extism
 
     def destroy()
       C.extism_plugin_destroy(@plugin)
+      @plugin = -1
     end
 
   end

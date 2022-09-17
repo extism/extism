@@ -47,10 +47,8 @@ export function set_log_file(filename, level = null) {
   lib.extism_log_file(filename, level);
 }
 
-
 const registry = new FinalizationRegistry((plugin_id) => {
-  console.log("AAA");
-  lib.extism_plugin_cleanup(plugin_id)
+  lib.extism_plugin_destroy(plugin_id);
 });
 
 export class Plugin {
@@ -118,6 +116,7 @@ export class Plugin {
   destroy() {
     registry.unregister(this);
     lib.extism_plugin_destroy(this.id);
+    this.id = -1;
   }
 }
 

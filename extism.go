@@ -203,6 +203,7 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 
 func (plugin *Plugin) Destroy() {
 	C.extism_plugin_destroy(C.int32_t(plugin.id))
+	plugin.id = -1
 }
 
 func Reset() {

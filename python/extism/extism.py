@@ -165,5 +165,9 @@ class Plugin:
             return buf
         return parse(buf)
 
-    def __del__(self):
+    def destroy(self):
         lib.extism_plugin_destroy(self.plugin)
+        self.plugin = -1
+
+    def __del__(self):
+        self.destroy()
