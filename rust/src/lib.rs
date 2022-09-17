@@ -52,7 +52,7 @@ impl Plugin {
         Ok(Plugin(plugin as isize))
     }
 
-    pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> Result<bool, Error> {
+    pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> Result<(), Error> {
         let b = unsafe {
             bindings::extism_plugin_update(
                 self.0 as i32,
@@ -62,7 +62,7 @@ impl Plugin {
             )
         };
         if b {
-            return Ok(true);
+            return Ok(());
         }
 
         let err = unsafe { bindings::extism_error(-1) };
@@ -74,7 +74,7 @@ impl Plugin {
         return Err(Error::Message("extism_plugin_update failed".to_string()));
     }
 
-    pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<bool, Error> {
+    pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<(), Error> {
         let data = serde_json::to_vec(manifest)?;
         self.update(data, wasi)
     }

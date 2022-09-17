@@ -28,13 +28,7 @@ pub unsafe extern "C" fn extism_plugin_register(
                 Err(x) => x.into_inner(),
             };
 
-            let x = format!("{:?}", e).into_bytes();
-            let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
-                x[1..x.len() - 1].to_vec()
-            } else {
-                x
-            };
-            *error = unsafe { Some(std::ffi::CString::from_vec_unchecked(x)) };
+            *error = Some(error_string(e));
             return -1;
         }
     };
@@ -79,14 +73,7 @@ pub unsafe extern "C" fn extism_plugin_update(
                 Ok(x) => x,
                 Err(x) => x.into_inner(),
             };
-
-            let x = format!("{:?}", e).into_bytes();
-            let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
-                x[1..x.len() - 1].to_vec()
-            } else {
-                x
-            };
-            *error = unsafe { Some(std::ffi::CString::from_vec_unchecked(x)) };
+            *error = Some(error_string(e));
             return false;
         }
     };

@@ -137,7 +137,7 @@ class Plugin:
             error = lib.extism_error(-1)
             if error != ffi.NULL:
                 raise Error(ffi.string(error).decode())
-            raise Error("Unable to register plugin")
+            raise Error("Unable to update plugin")
 
         if config is not None:
             s = json.dumps(config).encode()
