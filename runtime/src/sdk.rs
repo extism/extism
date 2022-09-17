@@ -93,6 +93,10 @@ pub unsafe extern "C" fn extism_plugin_update(
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_destroy(plugin: PluginIndex) {
+    if plugin < 0 {
+        return;
+    }
+
     let mut plugins = match PLUGINS.lock() {
         Ok(p) => p,
         Err(e) => {
