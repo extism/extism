@@ -71,7 +71,7 @@ impl Plugin {
             return Err(Error::Message(s.to_str().unwrap().to_string()));
         }
 
-        return Err(Error::Message("extism_plugin_update failed".to_string()));
+        Err(Error::Message("extism_plugin_update failed".to_string()))
     }
 
     pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<(), Error> {
