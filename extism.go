@@ -159,6 +159,13 @@ func (plugin Plugin) SetConfig(data map[string][]byte) error {
 	return nil
 }
 
+func (plugin Plugin) FunctionExists(functionName string) bool {
+	name := C.CString(functionName)
+	b := C.extism_function_exists(C.int(plugin.id), name)
+	C.free(unsafe.Pointer(name))
+	return bool(b)
+}
+
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	ptr := makePointer(input)
 	name := C.CString(functionName)

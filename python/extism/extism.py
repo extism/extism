@@ -150,7 +150,10 @@ class Plugin:
                 raise Error(ffi.string(error).decode())
             raise Error(f"Error code: {rc}")
 
-    def call(self, name: str, data: Union[str, bytes], parse=bytes) -> bytes:
+    def function_exists(self, name: str) -> bool:
+        return lib.extism_function_exists(self.plugin, name.encode())
+
+    def call(self, name: str, data: Union[str, bytes], parse=bytes):
         if isinstance(data, str):
             data = data.encode()
         self._check_error(

@@ -11,10 +11,18 @@ if ($lib == null) {
     throw new Exception("Extism: failed to create new runtime instance");
 }
 
-function reset() {
+function reset() 
+{
     global $lib;
     
     $lib->extism_reset();
+}
+
+function set_log_file($filename, $level)
+{
+    global $lib;
+    
+    $lib->extism_log_file($filename $level)
 }
 
 class Plugin
@@ -68,6 +76,12 @@ class Plugin
 
     public function getId() {
         return $this->id;
+    }
+    
+    
+    public function functionExists($name)
+    {
+        return $this->lib->extism_function_exists($this->id, $name);
     }
 
     public function call($name, $input = null)

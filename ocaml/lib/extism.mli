@@ -49,3 +49,4 @@ val call_bigstring: t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) 
 val call: t -> name:string -> string -> (string, error) result
 val destroy: t -> unit
 val reset: unit -> unit
+val function_exists: t -> string -> bool

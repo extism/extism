@@ -75,6 +75,9 @@ module Bindings = struct
     fn "extism_plugin_destroy" (int32_t @-> returning void)
 
   let extism_reset = fn "extism_reset" (void @-> returning void)
+
+  let extism_function_exists =
+    fn "extism_function_exists" (int32_t @-> string @-> returning bool)
 end
 
 type error = [ `Msg of string ]
@@ -165,10 +168,10 @@ let register ?config ?(wasi = false) wasm =
       (Unsigned.UInt64.of_int (String.length wasm))
       wasi
   in
-  if id < 0l then 
-    (match Bindings.extism_error (-1l) with
+  if id < 0l then
+    match Bindings.extism_error (-1l) with
     | None -> Error (`Msg "extism_call failed")
-    | Some msg -> Error (`Msg msg))
+    | Some msg -> Error (`Msg msg)
   else
     let () = set_config id config in
     let t = { id } in
@@ -186,9 +189,9 @@ let update { id } ?config ?(wasi = false) wasm =
       wasi
   in
   if not ok then
-    (match Bindings.extism_error (-1l) with
+    match Bindings.extism_error (-1l) with
     | None -> Error (`Msg "extism_call failed")
-    | Some msg -> Error (`Msg msg))
+    | Some msg -> Error (`Msg msg)
   else
     let () = set_config id config in
     Ok ()
@@ -224,3 +227,4 @@ let call (t : t) ~name input =
   |> Result.map Bigstringaf.to_string
 
 let reset () = Bindings.extism_reset ()
+let function_exists { id } name = Bindings.extism_function_exists id name

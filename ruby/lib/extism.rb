@@ -9,6 +9,7 @@ module Extism
     attach_function :extism_plugin_update, [:int32, :pointer, :uint64, :bool], :bool
     attach_function :extism_error, [:int32], :string
     attach_function :extism_call, [:int32, :string, :pointer, :uint64], :int32
+    attach_function :extism_function_exists, [:int32, :string], :bool
     attach_function :extism_output_length, [:int32], :uint64
     attach_function :extism_output_get, [:int32], :pointer
     attach_function :extism_log_file, [:string, :pointer], :void
@@ -73,6 +74,11 @@ module Extism
         ptr = FFI::MemoryPointer::from_string(s)
         C.extism_plugin_config(@plugin, ptr, s.bytesize)
       end
+    end
+    
+    
+    def function_exists(name)
+      return C.extism_function_exists(@plugin, name)
     end
 
     def call(name, data, &block)
