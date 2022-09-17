@@ -11,7 +11,7 @@ if ($lib == null) {
     throw new Exception("Extism: failed to create new runtime instance");
 }
 
-public function reset() {
+function reset() {
     global $lib;
     
     $lib->extism_reset();
