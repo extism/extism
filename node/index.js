@@ -54,7 +54,11 @@ export class Plugin {
     }
     let plugin = lib.extism_plugin_register(data, data.length, wasi);
     if (plugin < 0) {
-      throw 'Unable to load plugin';
+      var err = lib.extism_error(-1);
+      if (err.length == 0) {
+        throw "extism_plugin_register failed";
+      }
+      throw `Unable to load plugin: ${err.toString()}`;
     }
     this.id = plugin;
 
@@ -70,15 +74,17 @@ export class Plugin {
     }
     const ok = lib.extism_plugin_update(this.id, data, data.length, wasi);
     if (!ok) {
-      return false;
+      var err = lib.extism_error(-1);
+      if (err.length == 0) {
+        throw "extism_plugin_update failed";
+      }
+      throw `Unable to update plugin: ${err.toString()}`;
     }
 
     if (config != null) {
       let s = JSON.stringify(config);
       lib.extism_plugin_config(this.id, s, s.length);
     }
-
-    return true;
   }
 
   function_exists(name) {

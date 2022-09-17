@@ -10,7 +10,7 @@ pub struct Plugin(isize);
 
 #[derive(Debug)]
 pub enum Error {
-    UnableToLoadPlugin,
+    UnableToLoadPlugin(String),
     Message(String),
     Json(serde_json::Error),
 }
@@ -43,26 +43,40 @@ impl Plugin {
         };
 
         if plugin < 0 {
-            return Err(Error::UnableToLoadPlugin);
+            let err = unsafe { bindings::extism_error(-1) };
+            let buf = unsafe { std::ffi::CStr::from_ptr(err) };
+            let buf = buf.to_str().unwrap().to_string();
+            return Err(Error::UnableToLoadPlugin(buf));
         }
 
         Ok(Plugin(plugin as isize))
     }
 
-    pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> bool {
-        unsafe {
+    pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> Result<bool, Error> {
+        let b = unsafe {
             bindings::extism_plugin_update(
                 self.0 as i32,
                 data.as_ref().as_ptr(),
                 data.as_ref().len() as u64,
                 wasi,
             )
+        };
+        if b {
+            return Ok(true);
         }
+
+        let err = unsafe { bindings::extism_error(-1) };
+        if !err.is_null() {
+            let s = unsafe { std::ffi::CStr::from_ptr(err) };
+            return Err(Error::Message(s.to_str().unwrap().to_string()));
+        }
+
+        return Err(Error::Message("extism_plugin_update failed".to_string()));
     }
 
     pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<bool, Error> {
         let data = serde_json::to_vec(manifest)?;
-        Ok(self.update(data, wasi))
+        self.update(data, wasi)
     }
 
     pub fn set_config(&self, config: &BTreeMap<String, String>) -> Result<(), Error> {

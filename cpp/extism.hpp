@@ -24,7 +24,8 @@ public:
   Plugin(const uint8_t *wasm, size_t length, bool with_wasi = false) {
     this->plugin = extism_plugin_register(wasm, length, with_wasi);
     if (this->plugin < 0) {
-      throw Error("Unable to load plugin");
+      const char *err = extism_error(-1);
+      throw Error(err == nullptr ? "Unable to load plugin" : err);
     }
   }
 

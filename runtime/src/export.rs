@@ -27,7 +27,7 @@ pub(crate) fn input_length(
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
     output[0] = Val::I64(data.input_length as i64);
-    return Ok(());
+    Ok(())
 }
 
 pub(crate) fn input_load_u8(
@@ -238,7 +238,7 @@ pub(crate) fn var_get(
     let str = unsafe { std::str::from_utf8_unchecked(buf) };
     let val = data.vars.get(str);
     let mem = match val {
-        Some(f) => memory!(mut data).alloc_bytes(&f)?,
+        Some(f) => memory!(mut data).alloc_bytes(f)?,
         None => {
             output[0] = Val::I64(0);
             return Ok(());

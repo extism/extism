@@ -48,7 +48,11 @@ class Plugin
 
         $id = $this->lib->extism_plugin_register($data, count($data), (int)$wasi);
         if ($id < 0) {
-            throw new Exception("Extism: unable to load plugin");
+            $err = $this->lib->extism_error(-1);
+            if ($err) {
+                $msg = "error = " . $err;
+            }
+            throw new Exception("Extism: unable to load plugin: " . $msg);
         }
         $this->id = $id;
 
@@ -106,15 +110,17 @@ class Plugin
 
         $ok = $this->lib->extism_plugin_update($this->id, $data, count($data), (int)$wasi);
         if (!$ok) {
-            return false;
+            $err = $this->lib->extism_error(-1);
+            if ($err) {
+                $msg = "error = " . $err;
+            }
+            throw new Exception("Extism: unable to update plugin: " . $msg);
         }
 
         if ($config != null) {
             $config = json_encode($config);
             $this->lib->extism_plugin_config($this->id, $config, strlen($config));
         }
-
-        return true;
     }
 }
 

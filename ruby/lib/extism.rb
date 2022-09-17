@@ -39,6 +39,13 @@ module Extism
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
       code.put_bytes(0, wasm)
       @plugin = C.extism_plugin_register(code, wasm.bytesize, wasi)
+      if @plugin < 0 then
+        err = C.extism_error(-1)
+        if err&.empty? then
+          raise Error.new "extism_plugin_update failed"
+        else raise Error.new err
+        end
+      end
       if config != nil and @plugin >= 0 then
         s = JSON.generate(config)
         ptr = FFI::MemoryPointer::from_string(s)
@@ -53,14 +60,19 @@ module Extism
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
       code.put_bytes(0, wasm)
       ok = C.extism_plugin_update(@plugin, code, wasm.bytesize, wasi)
-      if ok then
-        if config != nil then
-          s = JSON.generate(config)
-          ptr = FFI::MemoryPointer::from_string(s)
-          C.extism_plugin_config(@plugin, ptr, s.bytesize)
+      if !ok then
+        err = C.extism_error(-1)
+        if err&.empty? then
+          raise Error.new "extism_plugin_update failed"
+        else raise Error.new err
         end
       end
-      return ok
+
+      if config != nil then
+        s = JSON.generate(config)
+        ptr = FFI::MemoryPointer::from_string(s)
+        C.extism_plugin_config(@plugin, ptr, s.bytesize)
+      end
     end
 
     def call(name, data, &block)

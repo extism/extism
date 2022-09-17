@@ -144,8 +144,6 @@ module Manifest = struct
   let json t = yojson_of_t t |> Yojson.Safe.to_string
 end
 
-exception Failed_to_load_plugin
-
 let set_log_file ?level filename = Bindings.extism_log_file filename level
 
 let set_config plugin config =
@@ -167,11 +165,15 @@ let register ?config ?(wasi = false) wasm =
       (Unsigned.UInt64.of_int (String.length wasm))
       wasi
   in
-  if id < 0l then raise Failed_to_load_plugin;
-  set_config id config;
-  let t = { id } in
-  Gc.finalise destroy t;
-  t
+  if id < 0l then 
+    (match Bindings.extism_error (-1l) with
+    | None -> Error (`Msg "extism_call failed")
+    | Some msg -> Error (`Msg msg))
+  else
+    let () = set_config id config in
+    let t = { id } in
+    let () = Gc.finalise destroy t in
+    Ok t
 
 let register_manifest ?config ?wasi manifest =
   let data = Manifest.json manifest in
@@ -183,10 +185,13 @@ let update { id } ?config ?(wasi = false) wasm =
       (Unsigned.UInt64.of_int (String.length wasm))
       wasi
   in
-  if ok then
+  if not ok then
+    (match Bindings.extism_error (-1l) with
+    | None -> Error (`Msg "extism_call failed")
+    | Some msg -> Error (`Msg msg))
+  else
     let () = set_config id config in
-    true
-  else false
+    Ok ()
 
 let update_manifest plugin ?config ?wasi manifest =
   let data = Manifest.json manifest in

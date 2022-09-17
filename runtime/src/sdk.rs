@@ -5,6 +5,9 @@ use std::str::FromStr;
 
 use crate::*;
 
+static mut REGISTER_ERROR: std::sync::Mutex<Option<std::ffi::CString>> =
+    std::sync::Mutex::new(None);
+
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_register(
     wasm: *const u8,
@@ -20,6 +23,18 @@ pub unsafe extern "C" fn extism_plugin_register(
         Ok(x) => x,
         Err(e) => {
             error!("Error creating Plugin: {:?}", e);
+            let mut error = match REGISTER_ERROR.lock() {
+                Ok(x) => x,
+                Err(x) => x.into_inner(),
+            };
+
+            let x = format!("{:?}", e).into_bytes();
+            let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
+                x[1..x.len() - 1].to_vec()
+            } else {
+                x
+            };
+            *error = unsafe { Some(std::ffi::CString::from_vec_unchecked(x)) };
             return -1;
         }
     };
@@ -60,6 +75,18 @@ pub unsafe extern "C" fn extism_plugin_update(
         Ok(x) => x,
         Err(e) => {
             error!("Error creating Plugin: {:?}", e);
+            let mut error = match REGISTER_ERROR.lock() {
+                Ok(x) => x,
+                Err(x) => x.into_inner(),
+            };
+
+            let x = format!("{:?}", e).into_bytes();
+            let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
+                x[1..x.len() - 1].to_vec()
+            } else {
+                x
+            };
+            *error = unsafe { Some(std::ffi::CString::from_vec_unchecked(x)) };
             return false;
         }
     };
@@ -202,6 +229,19 @@ pub unsafe extern "C" fn extism_call(
 #[no_mangle]
 pub unsafe extern "C" fn extism_error(plugin: PluginIndex) -> *const c_char {
     trace!("Call to extism_error for plugin {plugin}");
+
+    if plugin < 0 {
+        let error = match REGISTER_ERROR.lock() {
+            Ok(x) => x,
+            Err(x) => x.into_inner(),
+        };
+
+        match error.as_ref() {
+            Some(e) => return e.as_ptr() as *const _,
+            None => return std::ptr::null(),
+        }
+    }
+
     let plugin = PluginRef::new(plugin);
     match &plugin.as_ref().last_error {
         Some(e) => e.as_ptr() as *const _,

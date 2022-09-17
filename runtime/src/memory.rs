@@ -60,7 +60,7 @@ impl PluginMemory {
             offset: offs,
             length: 4,
         };
-        self.write(handle, &data.to_ne_bytes())?;
+        self.write(handle, data.to_ne_bytes())?;
         Ok(())
     }
 
@@ -83,7 +83,7 @@ impl PluginMemory {
             offset: offs,
             length: 8,
         };
-        self.write(handle, &data.to_ne_bytes())?;
+        self.write(handle, data.to_ne_bytes())?;
         Ok(())
     }
 

@@ -34,30 +34,40 @@ toByteString x = B.pack (Prelude.map c2w x)
 fromByteString :: ByteString -> String
 fromByteString bs = Prelude.map w2c $ B.unpack bs
 
-register :: B.ByteString -> Bool -> IO Plugin
+register :: B.ByteString -> Bool -> IO (Either Plugin Error)
 register wasm useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
   do
     p <- unsafeUseAsCString wasm (\s ->
       extism_plugin_register (castPtr s) length wasi)
-    return $ Plugin p
+    if p < 0 then do
+      err <- extism_error (-1)
+      e <- peekCString err
+      return $ Right (Error e)
+    else
+      return $ Left (Plugin p)
 
-registerManifest :: Manifest -> Bool -> IO Plugin
+registerManifest :: Manifest -> Bool -> IO (Either Plugin Error)
 registerManifest manifest useWasi =
   let wasm = toByteString $ toString manifest in
   register wasm useWasi
 
-update :: Plugin -> B.ByteString -> Bool -> IO Bool
+update :: Plugin -> B.ByteString -> Bool -> IO (Either () Error)
 update (Plugin id) wasm useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
   do
     b <- unsafeUseAsCString wasm (\s ->
       extism_plugin_update id (castPtr s) length wasi)
-    return (b > 0)
+    if b <= 0 then do
+      err <- extism_error (-1)
+      e <- peekCString err
+      return $ Right (Error e)
+    else
+      return (Left ())
 
-updateManifest :: Plugin -> Manifest -> Bool -> IO Bool
+updateManifest :: Plugin -> Manifest -> Bool -> IO (Either () Error)
 updateManifest plugin manifest useWasi =
   let wasm = toByteString $ toString manifest in
   update plugin wasm useWasi

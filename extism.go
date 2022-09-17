@@ -75,20 +75,42 @@ func register(data []byte, wasi bool) (Plugin, error) {
 	)
 
 	if plugin < 0 {
-		return Plugin{id: -1}, errors.New("Unable to load plugin")
+		err := C.extism_error(C.int32_t(-1))
+		msg := "Unknown"
+		if err != nil {
+			msg = C.GoString(err)
+		}
+
+		return Plugin{id: -1}, errors.New(
+			fmt.Sprintf("Unable to load plugin: %s", msg),
+		)
 	}
 
 	return Plugin{id: int32(plugin)}, nil
 }
 
-func update(plugin int32, data []byte, wasi bool) bool {
+func update(plugin int32, data []byte, wasi bool) error {
 	ptr := makePointer(data)
-	return bool(C.extism_plugin_update(
+	b := bool(C.extism_plugin_update(
 		C.int32_t(plugin),
 		(*C.uchar)(ptr),
 		C.uint64_t(len(data)),
 		C._Bool(wasi),
 	))
+
+	if b {
+		return nil
+	}
+
+	err := C.extism_error(C.int32_t(-1))
+	msg := "Unknown"
+	if err != nil {
+		msg = C.GoString(err)
+	}
+
+	return errors.New(
+		fmt.Sprintf("Unable to load plugin: %s", msg),
+	)
 }
 
 func LoadManifest(manifest Manifest, wasi bool) (Plugin, error) {
@@ -109,22 +131,22 @@ func LoadPlugin(module io.Reader, wasi bool) (Plugin, error) {
 	return register(wasm, wasi)
 }
 
-func (p *Plugin) Update(module io.Reader, wasi bool) (bool, error) {
+func (p *Plugin) Update(module io.Reader, wasi bool) error {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return update(p.id, wasm, wasi), nil
+	return update(p.id, wasm, wasi)
 }
 
-func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) (bool, error) {
+func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
 	data, err := json.Marshal(manifest)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return update(p.id, data, wasi), nil
+	return update(p.id, data, wasi)
 }
 
 func (plugin Plugin) SetConfig(data map[string][]byte) error {

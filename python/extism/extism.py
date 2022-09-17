@@ -91,6 +91,7 @@ def set_log_file(file, level=ffi.NULL):
         level = level.encode()
     lib.extism_log_file(file.encode(), level)
 
+
 def reset():
     lib.extism_reset()
 
@@ -119,6 +120,12 @@ class Plugin:
         # Register plugin
         self.plugin = lib.extism_plugin_register(wasm, len(wasm), wasi)
 
+        if self.plugin < 0:
+            error = lib.extism_error(-1)
+            if error != ffi.NULL:
+                raise Error(ffi.string(error).decode())
+            raise Error("Unable to register plugin")
+
         if config is not None:
             s = json.dumps(config).encode()
             lib.extism_plugin_config(self.plugin, s, len(s))
@@ -127,12 +134,14 @@ class Plugin:
         wasm = _wasm(plugin)
         ok = lib.extism_plugin_update(self.plugin, wasm, len(wasm), wasi)
         if not ok:
-            return False
+            error = lib.extism_error(-1)
+            if error != ffi.NULL:
+                raise Error(ffi.string(error).decode())
+            raise Error("Unable to register plugin")
 
         if config is not None:
             s = json.dumps(config).encode()
             lib.extism_plugin_config(self.plugin, s, len(s))
-        return True
 
     def _check_error(self, rc):
         if rc != 0:
