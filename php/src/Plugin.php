@@ -22,7 +22,7 @@ function set_log_file($filename, $level)
 {
     global $lib;
     
-    $lib->extism_log_file($filename, $level)
+    $lib->extism_log_file($filename, $level);
 }
 
 class Plugin
@@ -57,10 +57,7 @@ class Plugin
         $id = $this->lib->extism_plugin_register($data, count($data), (int)$wasi);
         if ($id < 0) {
             $err = $this->lib->extism_error(-1);
-            if ($err) {
-                $msg = "error = " . $err;
-            }
-            throw new Exception("Extism: unable to load plugin: " . $msg);
+            throw new Exception("Extism: unable to load plugin: " . $err);
         }
         $this->id = $id;
 
@@ -125,10 +122,7 @@ class Plugin
         $ok = $this->lib->extism_plugin_update($this->id, $data, count($data), (int)$wasi);
         if (!$ok) {
             $err = $this->lib->extism_error(-1);
-            if ($err) {
-                $msg = "error = " . $err;
-            }
-            throw new Exception("Extism: unable to update plugin: " . $msg);
+            throw new Exception("Extism: unable to update plugin: " . $err);
         }
 
         if ($config != null) {
