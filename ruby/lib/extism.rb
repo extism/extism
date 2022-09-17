@@ -35,7 +35,7 @@ module Extism
   $_plugins = {}
   $_destroy = proc { |id|
     C.extism_plugin_destroy($_plugins[id])
-    $_plugins.remove(id)
+    $_plugins.delete(id)
   }
 
   class Plugin
