@@ -47,6 +47,12 @@ export function set_log_file(filename, level = null) {
   lib.extism_log_file(filename, level);
 }
 
+
+const registry = new FinalizationRegistry((plugin_id) => {
+  console.log("AAA");
+  lib.extism_plugin_cleanup(plugin_id)
+});
+
 export class Plugin {
   constructor(data, wasi = false, config = null) {
     if (typeof data === 'object' && data.wasm) {
@@ -61,6 +67,7 @@ export class Plugin {
       throw `Unable to load plugin: ${err.toString()}`;
     }
     this.id = plugin;
+    registry.register(this, this.id, this);
 
     if (config != null) {
       let s = JSON.stringify(config);
@@ -109,10 +116,13 @@ export class Plugin {
   }
 
   destroy() {
+    registry.unregister(this);
     lib.extism_plugin_destroy(this.id);
   }
 }
 
-function reset() {
+export function reset() {
   lib.extism_reset();
 }
+
+
