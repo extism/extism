@@ -23,8 +23,7 @@ int main(int argc, char *argv[]) {
 
   auto input = std::vector<uint8_t>((uint8_t *)argv[1],
                                     (uint8_t *)argv[1] + strlen(argv[1]));
-  auto output = plugin.call("count_vowels", input);
-  std::string str(output.begin(), output.end());
-  std::cout << str << std::endl;
+  extism::Buffer output = plugin.call("count_vowels", input);
+  std::cout << (char *)output.data << std::endl;
   return 0;
 }

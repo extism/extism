@@ -17,6 +17,17 @@ public:
   const char *what() { return message.c_str(); }
 };
 
+class Buffer {
+public:
+  Buffer(const uint8_t *ptr, size_t len) : data(ptr), length(len) {}
+  const uint8_t *data;
+  size_t length;
+
+  const uint8_t *end() { return this->data + this->length; }
+
+  const uint8_t *begin() { return this->data; }
+};
+
 class Plugin {
   ExtismPlugin plugin;
 
@@ -43,8 +54,7 @@ public:
     }
   }
 
-  std::vector<uint8_t> call(const std::string &func,
-                            std::vector<uint8_t> input) {
+  Buffer call(const std::string &func, std::vector<uint8_t> input) {
 
     int32_t rc =
         extism_call(this->plugin, func.c_str(), input.data(), input.size());
@@ -59,8 +69,7 @@ public:
 
     ExtismSize length = extism_output_length(this->plugin);
     const uint8_t *ptr = extism_output_get(this->plugin);
-    std::vector<uint8_t> out = std::vector<uint8_t>(ptr, ptr + length);
-    return out;
+    return Buffer(ptr, length);
   }
 };
 } // namespace extism
