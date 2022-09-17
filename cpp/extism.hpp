@@ -35,6 +35,14 @@ public:
       : Plugin(s.data(), s.size(), with_wasi) {}
   ~Plugin() { extism_plugin_destroy(this->plugin); }
 
+  void update(const uint8_t *wasm, size_t length, bool with_wasi = false) {
+    bool b = extism_plugin_update(this->plugin, wasm, length, with_wasi);
+    if (!b) {
+      const char *err = extism_error(-1);
+      throw Error(err == nullptr ? "Unable to update plugin" : err);
+    }
+  }
+
   std::vector<uint8_t> call(const std::string &func,
                             std::vector<uint8_t> input) {
 
