@@ -105,7 +105,10 @@ pub unsafe extern "C" fn extism_plugin_destroy(plugin: PluginIndex) {
         return;
     }
 
-    plugins[plugin as usize] = None;
+    let p = &mut plugins[plugin as usize];
+    if p.is_some() {
+        *p = None
+    }
 }
 
 #[no_mangle]
