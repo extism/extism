@@ -14,6 +14,10 @@ bool extism_plugin_update(ExtismPlugin index,
                           ExtismSize wasm_size,
                           bool with_wasi);
 
+void extism_plugin_destroy(ExtismPlugin plugin);
+
+void extism_reset(void);
+
 bool extism_plugin_config(ExtismPlugin plugin, const uint8_t *json, ExtismSize json_size);
 
 bool extism_function_exists(ExtismPlugin plugin, const char *func_name);

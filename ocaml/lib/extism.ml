@@ -70,6 +70,11 @@ module Bindings = struct
 
   let extism_log_file =
     fn "extism_log_file" (string @-> string_opt @-> returning bool)
+
+  let extism_plugin_destroy =
+    fn "extism_plugin_destroy" (int32_t @-> returning void)
+
+  let extism_reset = fn "extism_reset" (void @-> returning void)
 end
 
 type error = [ `Msg of string ]
@@ -154,6 +159,8 @@ let set_config plugin config =
       ()
   | None -> ()
 
+let destroy t = Bindings.extism_plugin_destroy t.id
+
 let register ?config ?(wasi = false) wasm =
   let id =
     Bindings.extism_plugin_register wasm
@@ -162,7 +169,9 @@ let register ?config ?(wasi = false) wasm =
   in
   if id < 0l then raise Failed_to_load_plugin;
   set_config id config;
-  { id }
+  let t = { id } in
+  Gc.finalise destroy t;
+  t
 
 let register_manifest ?config ?wasi manifest =
   let data = Manifest.json manifest in
@@ -199,12 +208,14 @@ let call' f { id } ~name input len =
     in
     Ok buf
 
-let call_bigstring t ~name input =
+let call_bigstring (t : t) ~name input =
   let len = Unsigned.UInt64.of_int (Bigstringaf.length input) in
   let ptr = Ctypes.bigarray_start Ctypes.array1 input in
   call' Bindings.extism_call t ~name ptr len
 
-let call t ~name input =
+let call (t : t) ~name input =
   let len = String.length input in
   call' Bindings.extism_call_s t ~name input (Unsigned.UInt64.of_int len)
   |> Result.map Bigstringaf.to_string
+
+let reset () = Bindings.extism_reset ()

@@ -91,6 +91,9 @@ def set_log_file(file, level=ffi.NULL):
         level = level.encode()
     lib.extism_log_file(file.encode(), level)
 
+def reset():
+    lib.extism_reset()
+
 
 def _wasm(plugin):
     if isinstance(plugin, str) and os.path.exists(plugin):
@@ -149,3 +152,6 @@ class Plugin:
         if parse is None:
             return buf
         return parse(buf)
+
+    def __del__(self):
+        lib.extism_plugin_destroy(self.plugin)

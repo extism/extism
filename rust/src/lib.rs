@@ -21,6 +21,12 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+pub fn reset() {
+    unsafe {
+        bindings::extism_reset();
+    }
+}
+
 impl Plugin {
     pub fn new_with_manifest(manifest: &Manifest, wasi: bool) -> Result<Plugin, Error> {
         let data = serde_json::to_vec(manifest)?;
@@ -130,6 +136,12 @@ impl Plugin {
             let ptr = bindings::extism_output_get(self.0 as i32);
             Ok(std::slice::from_raw_parts(ptr, out_len as usize))
         }
+    }
+}
+
+impl Drop for Plugin {
+    fn drop(&mut self) {
+        unsafe { bindings::extism_plugin_destroy(self.0 as i32) }
     }
 }
 

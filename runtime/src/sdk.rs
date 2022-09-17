@@ -26,10 +26,21 @@ pub unsafe extern "C" fn extism_plugin_register(
 
     let mut plugins = match PLUGINS.lock() {
         Ok(p) => p,
-        Err(e) => e.into_inner(),
+        Err(e) => {
+            debug!("Mutex poisoned");
+            e.into_inner()
+        }
     };
 
-    plugins.push(plugin);
+    for (id, p) in plugins.iter_mut().enumerate() {
+        if p.is_none() {
+            *p = Some(plugin);
+            info!("Plugin added: {id}");
+            return id as i32;
+        }
+    }
+
+    plugins.push(Some(plugin));
     let id = (plugins.len() - 1) as PluginIndex;
     info!("New plugin added: {id}");
     id
@@ -59,11 +70,38 @@ pub unsafe extern "C" fn extism_plugin_update(
     };
 
     if index < plugins.len() {
-        plugins[index] = plugin;
+        plugins[index] = Some(plugin);
     }
 
     info!("Plugin updated: {index}");
     true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_destroy(plugin: PluginIndex) {
+    let mut plugins = match PLUGINS.lock() {
+        Ok(p) => p,
+        Err(e) => {
+            debug!("Mutex poisoned");
+            e.into_inner()
+        }
+    };
+
+    if plugins.len() <= plugin as usize {
+        return;
+    }
+
+    plugins[plugin as usize] = None;
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_reset() {
+    let mut plugins = match PLUGINS.lock() {
+        Ok(p) => p,
+        Err(e) => e.into_inner(),
+    };
+
+    plugins.clear();
 }
 
 #[no_mangle]

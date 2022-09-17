@@ -22,6 +22,8 @@ foreign import ccall unsafe "extism.h extism_output_length" extism_output_length
 foreign import ccall unsafe "extism.h extism_output_get" extism_output_get :: Int32 -> IO (Ptr Word8)
 foreign import ccall unsafe "extism.h extism_log_file" extism_log_file :: CString -> CString -> IO CBool
 foreign import ccall unsafe "extism.h extism_plugin_config" extism_plugin_config :: Int32 -> Ptr Word8 -> Int64 -> IO CBool
+foreign import ccall unsafe "extism.h extism_plugin_destroy" extism_plugin_destroy :: Int32 -> IO ()
+foreign import ccall unsafe "extism.h extism_reset" extism_reset :: IO ()
 
 newtype Plugin = Plugin Int32 deriving Show
 newtype Error = Error String deriving Show
@@ -103,3 +105,11 @@ call (Plugin plugin) name input =
         buf <- packCStringLen (castPtr ptr, fromIntegral length)
         return $ Left buf
     else return $ Right (Error "Call failed")
+    
+destroy :: Plugin -> IO ()
+destroy (Plugin plugin) =
+  extism_plugin_destroy plugin
+  
+reset :: () -> IO ()
+reset () =
+  extism_reset

@@ -183,4 +183,4 @@ impl Plugin {
 }
 
 /// A registry for plugins
-pub static mut PLUGINS: std::sync::Mutex<Vec<Plugin>> = std::sync::Mutex::new(Vec::new());
+pub static mut PLUGINS: std::sync::Mutex<Vec<Option<Plugin>>> = std::sync::Mutex::new(Vec::new());

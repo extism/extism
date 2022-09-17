@@ -14,6 +14,8 @@ let _functions = {
   extism_log_file: ['bool', ['string', 'char*']],
   extism_function_exists: ['bool', ['int32', 'string']],
   extism_plugin_config: ['void', ['int32', 'char*', 'uint64']],
+  extism_plugin_destroy: ['void', ['int32']],
+  extism_reset: ['void', []],
 };
 
 function locate(paths) {
@@ -99,4 +101,12 @@ export class Plugin {
       resolve(buf);
     });
   }
+
+  destroy() {
+    lib.extism_plugin_destroy(this.id);
+  }
+}
+
+function reset() {
+  lib.extism_reset();
 }

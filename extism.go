@@ -171,3 +171,11 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 
 	return []byte{}, nil
 }
+
+func (plugin *Plugin) Destroy() {
+	C.extism_plugin_destroy(C.int32_t(plugin.id))
+}
+
+func Reset() {
+	C.extism_reset()
+}

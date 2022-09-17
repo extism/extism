@@ -49,3 +49,5 @@ val update: t -> ?config:(string * string) list -> ?wasi:bool -> string -> bool
 val update_manifest: t -> ?config:(string * string) list -> ?wasi:bool -> Manifest.t -> bool
 val call_bigstring: t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result
 val call: t -> name:string -> string -> (string, error) result
+val destroy: t -> unit
+val reset: unit -> unit

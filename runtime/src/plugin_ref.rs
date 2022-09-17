@@ -3,7 +3,7 @@ use crate::*;
 // PluginRef is used to access a plugin from the global plugin registry
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
-    pub plugins: std::sync::MutexGuard<'a, Vec<Plugin>>,
+    pub plugins: std::sync::MutexGuard<'a, Vec<Option<Plugin>>>,
     plugin: *mut Plugin,
 }
 
@@ -38,7 +38,15 @@ impl<'a> PluginRef<'a> {
             panic!("Invalid PluginIndex {plugin_id}");
         }
 
-        let plugin = plugins.get_unchecked_mut(plugin_id as usize) as *mut _;
+        let plugin = plugins.get_unchecked_mut(plugin_id as usize);
+
+        let plugin = match plugin {
+            None => {
+                drop(plugins);
+                panic!("Plugin no longer exists: {plugin_id}");
+            }
+            Some(p) => p as *mut _,
+        };
 
         PluginRef {
             id: plugin_id,

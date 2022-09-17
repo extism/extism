@@ -11,6 +11,12 @@ if ($lib == null) {
     throw new Exception("Extism: failed to create new runtime instance");
 }
 
+public function reset() {
+    global $lib;
+    
+    $lib->extism_reset();
+}
+
 class Plugin
 {
     private $lib;
@@ -50,6 +56,10 @@ class Plugin
             $cfg = string_to_bytes(json_encode(config));
             $this->lib->extism_plugin_config($this->id, $cfg, count($cfg));
         }
+    }
+    
+    public function __destruct() {
+        $this->lib->extism_plugin_destroy($this->id);    
     }
 
     public function getId() {

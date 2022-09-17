@@ -12,6 +12,8 @@ module Extism
     attach_function :extism_output_length, [:int32], :uint64
     attach_function :extism_output_get, [:int32], :pointer
     attach_function :extism_log_file, [:string, :pointer], :void
+    attach_function :extism_plugin_destroy, [:int32], :void
+    attach_function :extism_reset, [], :void
   end
 
 
@@ -24,6 +26,10 @@ module Extism
     end
     C.extism_log_file(name, level)
   end
+  
+  def self.reset()
+    C.extism_reset()
+  end
 
   class Plugin
     def initialize(wasm, wasi=false, config=nil)
@@ -33,7 +39,6 @@ module Extism
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
       code.put_bytes(0, wasm)
       @plugin = C.extism_plugin_register(code, wasm.bytesize, wasi)
-
       if config != nil and @plugin >= 0 then
         s = JSON.generate(config)
         ptr = FFI::MemoryPointer::from_string(s)
@@ -73,6 +78,10 @@ module Extism
       out_len = C.extism_output_length(@plugin)
       buf = C.extism_output_get(@plugin)
       return block.call(buf, out_len)
+    end
+    
+    def destroy()
+      C.extism_plugin_destroy(@plugin)
     end
   end
 end

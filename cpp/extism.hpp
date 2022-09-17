@@ -4,7 +4,7 @@
 #include <vector>
 
 extern "C" {
-#include "extism.h"
+#include <extism.h>
 }
 
 namespace extism {
@@ -32,6 +32,7 @@ public:
       : Plugin((const uint8_t *)s.c_str(), s.size(), with_wasi) {}
   Plugin(const std::vector<uint8_t> &s, bool with_wasi = false)
       : Plugin(s.data(), s.size(), with_wasi) {}
+  ~Plugin() { extism_plugin_destroy(this->plugin); }
 
   std::vector<uint8_t> call(const std::string &func,
                             std::vector<uint8_t> input) {

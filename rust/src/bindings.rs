@@ -21,6 +21,12 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    pub fn extism_plugin_destroy(plugin: ExtismPlugin);
+}
+extern "C" {
+    pub fn extism_reset();
+}
+extern "C" {
     pub fn extism_plugin_config(
         plugin: ExtismPlugin,
         json: *const u8,
