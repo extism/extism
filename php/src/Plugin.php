@@ -22,7 +22,7 @@ function set_log_file($filename, $level)
 {
     global $lib;
     
-    $lib->extism_log_file($filename $level)
+    $lib->extism_log_file($filename, $level)
 }
 
 class Plugin
