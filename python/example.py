@@ -32,3 +32,4 @@ def count_vowels(data):
 
 
 assert (j["count"] == count_vowels(data))
+plugin.destroy()

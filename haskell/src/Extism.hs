@@ -34,7 +34,7 @@ toByteString x = B.pack (Prelude.map c2w x)
 fromByteString :: ByteString -> String
 fromByteString bs = Prelude.map w2c $ B.unpack bs
 
-register :: B.ByteString -> Bool -> IO (Either Plugin Error)
+register :: B.ByteString -> Bool -> IO (Either Error Plugin)
 register wasm useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
@@ -44,16 +44,16 @@ register wasm useWasi =
     if p < 0 then do
       err <- extism_error (-1)
       e <- peekCString err
-      return $ Right (Error e)
+      return $ Left (Error e)
     else
-      return $ Left (Plugin p)
+      return $ Right (Plugin p)
 
-registerManifest :: Manifest -> Bool -> IO (Either Plugin Error)
+registerManifest :: Manifest -> Bool -> IO (Either Error Plugin)
 registerManifest manifest useWasi =
   let wasm = toByteString $ toString manifest in
   register wasm useWasi
 
-update :: Plugin -> B.ByteString -> Bool -> IO (Either () Error)
+update :: Plugin -> B.ByteString -> Bool -> IO (Either Error ())
 update (Plugin id) wasm useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
@@ -63,11 +63,11 @@ update (Plugin id) wasm useWasi =
     if b <= 0 then do
       err <- extism_error (-1)
       e <- peekCString err
-      return $ Right (Error e)
+      return $ Left (Error e)
     else
-      return (Left ())
+      return (Right ())
 
-updateManifest :: Plugin -> Manifest -> Bool -> IO (Either () Error)
+updateManifest :: Plugin -> Manifest -> Bool -> IO (Either Error ())
 updateManifest plugin manifest useWasi =
   let wasm = toByteString $ toString manifest in
   update plugin wasm useWasi
@@ -97,7 +97,7 @@ functionExists (Plugin plugin) name = do
   b <- withCString name (extism_function_exists plugin)
   if b == 1 then return True else return False
 
-call :: Plugin -> String -> B.ByteString -> IO (Either B.ByteString Error)
+call :: Plugin -> String -> B.ByteString -> IO (Either Error B.ByteString)
 call (Plugin plugin) name input =
   let length = fromIntegral (B.length input) in
   do
@@ -107,14 +107,14 @@ call (Plugin plugin) name input =
     err <- extism_error plugin
     if err /= nullPtr
       then do e <- peekCString err
-              return $ Right (Error e)
+              return $ Left (Error e)
     else if rc == 0
       then do
         length <- extism_output_length plugin
         ptr <- extism_output_get plugin
         buf <- packCStringLen (castPtr ptr, fromIntegral length)
-        return $ Left buf
-    else return $ Right (Error "Call failed")
+        return $ Right buf
+    else return $ Left (Error "Call failed")
     
 destroy :: Plugin -> IO ()
 destroy (Plugin plugin) =

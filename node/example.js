@@ -11,3 +11,4 @@ if (!p.function_exists('count_vowels')) {
 
 let buf = await p.call('count_vowels', process.argv[2] || 'this is a test');
 console.log(JSON.parse(buf.toString())['count']);
+p.destroy();

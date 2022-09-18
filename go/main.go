@@ -38,4 +38,5 @@ func main() {
 	json.Unmarshal(out, &dest)
 
 	fmt.Println("Count:", dest["count"])
+	plugin.Destroy()
 }

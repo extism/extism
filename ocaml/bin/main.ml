@@ -7,4 +7,5 @@ let () =
   let manifest = Manifest.v [ Manifest.file "../wasm/code.wasm" ] in
   let plugin = Extism.register_manifest manifest |> Result.get_ok in
   let res = Extism.call plugin ~name:"count_vowels" input |> Result.get_ok in
-  print_endline res
+  print_endline res;
+  Extism.destroy plugin
