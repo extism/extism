@@ -113,6 +113,20 @@ pub unsafe extern "C" fn extism_plugin_destroy(plugin: PluginIndex) {
     if p.is_some() {
         *p = None
     }
+
+    // Attempt to cleanup if there are `None`s at the end of the vec
+    for (i, x) in plugins.iter().rev().enumerate() {
+        let i = plugins.len() - i;
+
+        // Stop at first `Some`
+        if x.is_some() {
+            if i < plugins.len() {
+                plugins.truncate(i)
+            }
+
+            break;
+        }
+    }
 }
 
 #[no_mangle]
