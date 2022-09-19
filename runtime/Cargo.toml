@@ -24,7 +24,6 @@ serde_json = "1"
 sha2 = "0.10"
 log = "0.4"
 log4rs = "1.1"
-rand = "0.8"
 ureq = {version = "2.5", optional=true}
 extism-manifest = { version = "0.0.1-rc.3", path = "../manifest" }
 pretty-hex = { version = "0.3" }

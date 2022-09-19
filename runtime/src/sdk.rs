@@ -5,8 +5,6 @@ use std::str::FromStr;
 
 use crate::*;
 
-use rand::Rng;
-
 #[no_mangle]
 pub unsafe extern "C" fn extism_context_new() -> *mut Context {
     trace!("Creating new Context");
@@ -42,10 +40,7 @@ pub unsafe extern "C" fn extism_plugin_new(
         }
     };
 
-    let mut id: i32 = rand::thread_rng().gen_range(0..i32::MAX);
-    while ctx.plugins.contains_key(&id) {
-        id = rand::thread_rng().gen_range(0..i32::MAX);
-    }
+    let id: i32 = ctx.incr_id();
     ctx.plugins.insert(id, plugin);
     info!("New plugin added: {id}");
     id
