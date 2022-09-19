@@ -116,6 +116,11 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
 pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
     let ctx = &mut *ctx;
 
+    trace!(
+        "Resetting context, plugins cleared: {:?}",
+        ctx.plugins.keys().collect::<Vec<i32>>()
+    );
+
     ctx.plugins.clear();
 }
 
@@ -175,6 +180,8 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let mut plugin = PluginRef::new(ctx, plugin, true);
 
     let name = std::ffi::CStr::from_ptr(func_name);
+    trace!("Call to extism_plugin_function_exists for: {:?}", name);
+
     let name = match name.to_str() {
         Ok(x) => x,
         Err(e) => {
@@ -286,7 +293,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(
     ctx: *mut Context,
     plugin: PluginIndex,
 ) -> *const u8 {
-    trace!("Call to extism_plugin_output_get for plugin {plugin}");
+    trace!("Call to extism_plugin_output_data for plugin {plugin}");
 
     let ctx = &mut *ctx;
     let plugin = PluginRef::new(ctx, plugin, true);
