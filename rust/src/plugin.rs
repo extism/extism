@@ -6,6 +6,7 @@ pub struct Plugin<'a> {
 }
 
 impl<'a> Plugin<'a> {
+    /// Create a new plugin from the given manifest
     pub fn new_with_manifest(
         ctx: &'a Context,
         manifest: &Manifest,
@@ -15,6 +16,7 @@ impl<'a> Plugin<'a> {
         Self::new(ctx, data, wasi)
     }
 
+    /// Create a new plugin from a WASM module
     pub fn new(ctx: &'a Context, data: impl AsRef<[u8]>, wasi: bool) -> Result<Plugin, Error> {
         let plugin = unsafe {
             bindings::extism_plugin_new(
@@ -38,6 +40,7 @@ impl<'a> Plugin<'a> {
         })
     }
 
+    /// Update a plugin with the given WASM module
     pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> Result<(), Error> {
         let b = unsafe {
             bindings::extism_plugin_update(
@@ -61,12 +64,14 @@ impl<'a> Plugin<'a> {
         Err(Error::Message("extism_plugin_update failed".to_string()))
     }
 
+    /// Update a plugin with the given manifest
     pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<(), Error> {
         let data = serde_json::to_vec(manifest)?;
         self.update(data, wasi)
     }
 
-    pub fn set_config(&self, config: &BTreeMap<String, String>) -> Result<(), Error> {
+    /// Set configuration values
+    pub fn set_config(&self, config: &BTreeMap<String, Option<String>>) -> Result<(), Error> {
         let encoded = serde_json::to_vec(config)?;
         unsafe {
             bindings::extism_plugin_config(
@@ -79,11 +84,13 @@ impl<'a> Plugin<'a> {
         Ok(())
     }
 
-    pub fn with_config(self, config: &BTreeMap<String, String>) -> Result<Self, Error> {
+    /// Set configuration values, builder-style
+    pub fn with_config(self, config: &BTreeMap<String, Option<String>>) -> Result<Self, Error> {
         self.set_config(config)?;
         Ok(self)
     }
 
+    /// Returns true if the plugin has a function matching `name`
     pub fn has_function(&self, name: impl AsRef<str>) -> bool {
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
         unsafe {
@@ -95,6 +102,7 @@ impl<'a> Plugin<'a> {
         }
     }
 
+    /// Call a function with the given input
     pub fn call(&self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
         let rc = unsafe {

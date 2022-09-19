@@ -24,6 +24,7 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+/// Set the log file and level, this is a global setting
 pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) {
     let log_level = log_level.map(|x| x.as_str());
     unsafe {

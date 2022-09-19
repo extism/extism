@@ -30,27 +30,38 @@ foreign import ccall unsafe "extism.h extism_plugin_config" extism_plugin_config
 foreign import ccall unsafe "extism.h extism_plugin_free" extism_plugin_free :: Ptr ExtismContext -> Int32 -> IO ()
 foreign import ccall unsafe "extism.h extism_context_reset" extism_context_reset :: Ptr ExtismContext -> IO ()
 
+-- Context manages plugins
 newtype Context = Context (ForeignPtr ExtismContext)
+
+-- Plugins can be used to call WASM function
 data Plugin = Plugin Context Int32
+
+-- Extism error
 newtype Error = Error String deriving Show
 
+-- Helper function to convert a string to a bytestring
 toByteString :: String -> ByteString
 toByteString x = B.pack (Prelude.map c2w x)
 
+-- Helper function to convert a bytestring to a string
 fromByteString :: ByteString -> String
 fromByteString bs = Prelude.map w2c $ B.unpack bs
 
+-- Remove all registered plugins in a Context
 reset :: Context -> IO ()
 reset (Context ctx) =
   withForeignPtr ctx (\ctx ->
     extism_context_reset ctx)
-  
+
+-- Create a new context
 newContext :: () -> IO Context
 newContext () = do
   ptr <- extism_context_new
   fptr <- newForeignPtr extism_context_free ptr
   return (Context fptr)
 
+-- Create a plugin from a WASM module, `useWasi` determines if WASI should
+-- be linked
 plugin :: Context -> B.ByteString -> Bool -> IO (Either Error Plugin)
 plugin c wasm useWasi =
   let length = fromIntegral (B.length wasm) in
@@ -67,11 +78,13 @@ plugin c wasm useWasi =
       else
         return $ Right (Plugin c p))
 
+-- Create a plugin from a Manifest
 pluginFromManifest :: Context -> Manifest -> Bool -> IO (Either Error Plugin)
 pluginFromManifest ctx manifest useWasi =
   let wasm = toByteString $ toString manifest in
   plugin ctx wasm useWasi
 
+-- Update a plugin with a new WASM module
 update :: Plugin -> B.ByteString -> Bool -> IO (Either Error ())
 update (Plugin (Context ctx) id) wasm useWasi =
   let length = fromIntegral (B.length wasm) in
@@ -87,15 +100,18 @@ update (Plugin (Context ctx) id) wasm useWasi =
       else
         return (Right ()))
 
+-- Update a plugin with a new Manifest
 updateManifest :: Plugin -> Manifest -> Bool -> IO (Either Error ())
 updateManifest plugin manifest useWasi =
   let wasm = toByteString $ toString manifest in
   update plugin wasm useWasi
 
+-- Check if a plugin is value
 isValid :: Plugin -> Bool
 isValid (Plugin _ p) = p >= 0
 
-setConfig :: Plugin -> [(String, String)] -> IO ()
+-- Set configuration values for a plugin
+setConfig :: Plugin -> [(String, Maybe String)] -> IO ()
 setConfig (Plugin (Context ctx) plugin) x =
   if plugin < 0
     then return ()
@@ -107,18 +123,21 @@ setConfig (Plugin (Context ctx) plugin) x =
       withForeignPtr ctx (\ctx ->
         void $ extism_plugin_config ctx plugin (castPtr s) length))
 
+-- Set the log file and level, this is a global configuration
 setLogFile :: String -> String -> IO ()
 setLogFile filename level =
   withCString filename (\f ->
     withCString level (\l -> do
       void $ extism_log_file f l))
 
+-- Check if a function exists in the given plugin
 functionExists :: Plugin -> String -> IO Bool
 functionExists (Plugin (Context ctx) plugin) name = do
   withForeignPtr ctx (\ctx -> do
     b <- withCString name (extism_plugin_function_exists ctx plugin)
     if b == 1 then return True else return False)
 
+--- Call a function provided by the given plugin
 call :: Plugin -> String -> B.ByteString -> IO (Either Error B.ByteString)
 call (Plugin (Context ctx) plugin) name input =
   let length = fromIntegral (B.length input) in
@@ -138,7 +157,8 @@ call (Plugin (Context ctx) plugin) name input =
           buf <- packCStringLen (castPtr ptr, fromIntegral length)
           return $ Right buf
       else return $ Left (Error "Call failed"))
-    
+
+-- Free a plugin
 free :: Plugin -> IO ()
 free (Plugin (Context ctx) plugin) =
   withForeignPtr ctx (\ctx ->

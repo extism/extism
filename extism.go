@@ -15,10 +15,12 @@ import (
 */
 import "C"
 
+// Context is used to manage Plugins
 type Context struct {
 	pointer *C.ExtismContext
 }
 
+// NewContext creates a new context, it should be freed using the `Free` method
 func NewContext() Context {
 	p := C.extism_context_new()
 	return Context{
@@ -26,11 +28,13 @@ func NewContext() Context {
 	}
 }
 
+// Free a context
 func (ctx *Context) Free() {
 	C.extism_context_free(ctx.pointer)
 	ctx.pointer = nil
 }
 
+// Plugin is used to call WASM functions
 type Plugin struct {
 	ctx *Context
 	id  int32
@@ -74,6 +78,7 @@ func makePointer(data []byte) unsafe.Pointer {
 	return ptr
 }
 
+// SetLogFile sets the log file and level, this is a global setting
 func SetLogFile(filename string, level string) bool {
 	name := C.CString(filename)
 	l := C.CString(level)
@@ -132,6 +137,7 @@ func update(ctx *Context, plugin int32, data []byte, wasi bool) error {
 	)
 }
 
+// PluginFromManifest creates a plugin from a `Manifest`
 func (ctx *Context) PluginFromManifest(manifest Manifest, wasi bool) (Plugin, error) {
 	data, err := json.Marshal(manifest)
 	if err != nil {
@@ -141,6 +147,7 @@ func (ctx *Context) PluginFromManifest(manifest Manifest, wasi bool) (Plugin, er
 	return register(ctx, data, wasi)
 }
 
+// Plugin creates a plugin from a WASM module
 func (ctx *Context) Plugin(module io.Reader, wasi bool) (Plugin, error) {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
@@ -150,6 +157,7 @@ func (ctx *Context) Plugin(module io.Reader, wasi bool) (Plugin, error) {
 	return register(ctx, wasm, wasi)
 }
 
+// Update a plugin with a new WASM module
 func (p *Plugin) Update(module io.Reader, wasi bool) error {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
@@ -159,6 +167,7 @@ func (p *Plugin) Update(module io.Reader, wasi bool) error {
 	return update(p.ctx, p.id, wasm, wasi)
 }
 
+// Update a plugin with a new Manifest
 func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
 	data, err := json.Marshal(manifest)
 	if err != nil {
@@ -168,6 +177,7 @@ func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
 	return update(p.ctx, p.id, data, wasi)
 }
 
+// Set configuration values
 func (plugin Plugin) SetConfig(data map[string][]byte) error {
 	s, err := json.Marshal(data)
 	if err != nil {
@@ -178,6 +188,7 @@ func (plugin Plugin) SetConfig(data map[string][]byte) error {
 	return nil
 }
 
+/// FunctionExists returns true when the name function is present in the plugin
 func (plugin Plugin) FunctionExists(functionName string) bool {
 	name := C.CString(functionName)
 	b := C.extism_plugin_function_exists(plugin.ctx.pointer, C.int(plugin.id), name)
@@ -185,6 +196,7 @@ func (plugin Plugin) FunctionExists(functionName string) bool {
 	return bool(b)
 }
 
+/// Call a function by name with the given input, returning the output
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	ptr := makePointer(input)
 	name := C.CString(functionName)
@@ -215,12 +227,12 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 		x := C.extism_plugin_output_data(plugin.ctx.pointer, C.int32_t(plugin.id))
 		y := (*[]byte)(unsafe.Pointer(&x))
 		return []byte((*y)[0:length]), nil
-
 	}
 
 	return []byte{}, nil
 }
 
+// Free a plugin
 func (plugin *Plugin) Free() {
 	if plugin.ctx.pointer == nil {
 		return
@@ -229,6 +241,7 @@ func (plugin *Plugin) Free() {
 	plugin.id = -1
 }
 
+// Reset removes all registered plugins in a Context
 func (ctx Context) Reset() {
 	C.extism_context_reset(ctx.pointer)
 }

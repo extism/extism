@@ -9,6 +9,7 @@ from typing import Union
 
 
 class Error(Exception):
+    '''Extism error type'''
     pass
 
 
@@ -87,6 +88,7 @@ class Base64Encoder(json.JSONEncoder):
 
 
 def set_log_file(file, level=ffi.NULL):
+    '''Sets the log file and level, this is a global configuration'''
     if isinstance(level, str):
         level = level.encode()
     lib.extism_log_file(file.encode(), level)
@@ -106,6 +108,7 @@ def _wasm(plugin):
 
 
 class Context:
+    '''Context is used to store and manage plugins'''
 
     def __init__(self):
         self.pointer = lib.extism_context_new()
@@ -115,13 +118,16 @@ class Context:
         self.pointer = ffi.NULL
 
     def reset(self):
+        '''Remove all registered plugins'''
         lib.extism_context_reset(self.pointer)
 
     def plugin(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
+        '''Register a new plugin from a WASM module or JSON encoded manifest'''
         return Plugin(self, plugin, wasi, config)
 
 
 class Plugin:
+    '''Plugin is used to call WASM functions'''
 
     def __init__(self,
                  context: Context,
@@ -147,6 +153,7 @@ class Plugin:
             lib.extism_plugin_config(self.plugin, s, len(s))
 
     def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
+        '''Update a plugin with a new WASM module or manifest'''
         wasm = _wasm(plugin)
         ok = lib.extism_plugin_update(self.ctx.pointer, self.plugin, wasm,
                                       len(wasm), wasi)
@@ -168,10 +175,18 @@ class Plugin:
             raise Error(f"Error code: {rc}")
 
     def function_exists(self, name: str) -> bool:
+        '''Returns true if the given function exists'''
         return lib.extism_plugin_function_exists(self.ctx.pointer, self.plugin,
                                                  name.encode())
 
     def call(self, name: str, data: Union[str, bytes], parse=bytes):
+        '''
+        Call a function by name with the provided input data
+
+        The `parse` argument can be used to transform the output buffer into
+        your expected type. It expects a function that takes a buffer as the
+        only argument
+        '''
         if isinstance(data, str):
             data = data.encode()
         self._check_error(
@@ -186,6 +201,7 @@ class Plugin:
         return parse(buf)
 
     def free(self):
+        '''Destroy the Plugin, this will be called automatically when the Plugin is GCed'''
         if not hasattr(self, 'ctx'):
             return
         if self.ctx.pointer == ffi.NULL:

@@ -23,6 +23,7 @@ module Extism
   class Error < StandardError
   end
 
+  # Set log file and level, this is a global configuration
   def self.set_log_file(name, level=nil)
     if level then
       level = FFI::MemoryPointer::from_string(level)
@@ -47,6 +48,7 @@ module Extism
     end
   }
   
+  # Context is used to manage plugins
   class Context
     attr_accessor :pointer
     
@@ -56,10 +58,12 @@ module Extism
       ObjectSpace.define_finalizer(self,  $FREE_CONTEXT)
     end
   
+    # Remove all registered plugins
     def reset
       C.extism_context_reset(@pointer)
     end
     
+    # Free the context, this should be called when it is no longer needed
     def free
       if @pointer.nil? then
         return
@@ -69,6 +73,7 @@ module Extism
       @pointer = nil
     end
     
+    # Create a new plugin from a WASM module or JSON encoded manifest
     def plugin(wasm, wasi=false, config=nil)
       return Plugin.new(self, wasm, wasi, config)
     end
@@ -99,6 +104,7 @@ module Extism
       end
     end
 
+    # Update a plugin with new WASM module or manifest
     def update(wasm, wasi=false, config=nil)
       if wasm.class == Hash then
         wasm = JSON.generate(wasm)
@@ -121,11 +127,12 @@ module Extism
       end
     end
 
-
+    # Check if a function exists
     def function_exists(name)
       return C.extism_function_exists(@context.pointer, @plugin, name)
     end
 
+    # Call a function by name
     def call(name, data, &block)
       # If no block was passed then use Pointer::read_string
       block ||= ->(buf, len){ buf.read_string(len) }
@@ -143,6 +150,7 @@ module Extism
       return block.call(buf, out_len)
     end
 
+    # Free a plugin, this should be called when the plugin is no longer needed
     def free
       if @context.pointer.nil? then
         return

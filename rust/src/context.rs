@@ -11,11 +11,13 @@ impl Default for Context {
 }
 
 impl Context {
+    /// Create a new context
     pub fn new() -> Context {
         let pointer = unsafe { bindings::extism_context_new() };
         Context { pointer }
     }
 
+    /// Remove all registered plugins
     pub fn reset(&mut self) {
         unsafe { bindings::extism_context_reset(self.pointer) }
     }

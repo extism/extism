@@ -45,7 +45,8 @@ if (process.env.EXTISM_PATH) {
 
 var lib = locate(searchPath);
 
-export function set_log_file(filename, level = null) {
+// Set the log file and level
+export function setLogFile(filename, level = null) {
   lib.extism_log_file(filename, level);
 }
 
@@ -58,6 +59,7 @@ const contextRegistry = new FinalizationRegistry((pointer) => {
   lib.extism_context_free(pointer);
 });
 
+// Context manages plugins
 export class Context {
   constructor() {
     this.pointer = lib.extism_context_new();
@@ -65,10 +67,13 @@ export class Context {
     contextRegistry.register(this, this.pointer, this);
   }
 
+  // Create a new plugin, optionally enabling WASI
   plugin(data, wasi = false, config = null) {
     return new Plugin(this, data, wasi, config);
   }
 
+  // Free a context, this should be called when it is
+  // no longer needed
   free() {
     contextRegistry.unregister(this);
 
@@ -76,11 +81,13 @@ export class Context {
     this.pointer = null;
   }
 
+  // Remove all registered plugins
   reset() {
     lib.extism_context_reset(this.pointer);
   }
 }
 
+// Plugin provides an interface for calling WASM functions
 export class Plugin {
   constructor(ctx, data, wasi = false, config = null) {
     if (typeof data === 'object' && data.wasm) {
@@ -104,6 +111,7 @@ export class Plugin {
     }
   }
 
+  // Update an existing plugin with new WASM or manifest
   update(data, wasi = false, config = null) {
     if (typeof data === 'object' && data.wasm) {
       data = JSON.stringify(data);
@@ -123,10 +131,12 @@ export class Plugin {
     }
   }
 
-  function_exists(name) {
+  // Check if a function exists
+  functionExists(name) {
     return lib.extism_plugin_function_exists(this.ctx.pointer, this.id, name);
   }
 
+  // Call a function by name with the given input
   async call(name, input) {
     return new Promise((resolve, reject) => {
       var rc = lib.extism_plugin_call(this.ctx.pointer, this.id, name, input, input.length);
@@ -144,6 +154,7 @@ export class Plugin {
     });
   }
 
+  // Free a plugin, this should be called when the plugin is no longer needed
   free() {
     pluginRegistry.unregister(this);
     lib.extism_plugin_free(this.ctx.pointer, this.id);
