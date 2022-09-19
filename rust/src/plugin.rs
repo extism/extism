@@ -1,7 +1,7 @@
 use crate::*;
 
 pub struct Plugin<'a> {
-    id: i32,
+    id: bindings::ExtismPlugin,
     context: &'a Context,
 }
 

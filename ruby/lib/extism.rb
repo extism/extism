@@ -30,20 +30,20 @@ module Extism
     C.extism_log_file(name, level)
   end
 
-  $_plugins = {}
-  $_free_plugin = proc { |id|
-    if $_plugins.has_value?(id) then
-      x = $_plugins[id]
+  $PLUGINS = {}
+  $FREE_PLUGIN = proc { |id|
+    if $PLUGINS.has_value?(id) then
+      x = $PLUGINS[id]
       C.extism_plugin_free(x[:context].pointer, x[:plugin])
-      $_plugins.delete(id)
+      $PLUGINS.delete(id)
     end
   }
   
-  $_contexts = {}
-  $_free_context = proc { |id|
-    if $_contexts.has_value?(id) then
-      C.extism_context_free($_contexts[id])
-      $_contexts.delete(id)
+  $CONTEXTS = {}
+  $FREE_CONTEXT = proc { |id|
+    if $CONTEXTS.has_value?(id) then
+      C.extism_context_free($CONTEXTS[id])
+      $CONTEXTS.delete(id)
     end
   }
   
@@ -52,8 +52,8 @@ module Extism
     
     def initialize
       @pointer = C.extism_context_new()
-      $_contexts[self.object_id] = @pointer
-      ObjectSpace.define_finalizer(self,  $_free_context)
+      $CONTEXTS[self.object_id] = @pointer
+      ObjectSpace.define_finalizer(self,  $FREE_CONTEXT)
     end
   
     def reset
@@ -64,7 +64,7 @@ module Extism
       if @pointer.nil? then
         return
       end
-      $_contexts.delete(self.object_id)
+      $CONTEXTS.delete(self.object_id)
       C.extism_context_free(@pointer)
       @pointer = nil
     end
@@ -90,8 +90,8 @@ module Extism
         end
       end
       @context = context
-      $_plugins[self.object_id] = {:plugin => @plugin, :context => context}
-      ObjectSpace.define_finalizer(self,  $_free_plugin)
+      $PLUGINS[self.object_id] = {:plugin => @plugin, :context => context}
+      ObjectSpace.define_finalizer(self,  $FREE_PLUGIN)
       if config != nil and @plugin >= 0 then
         s = JSON.generate(config)
         ptr = FFI::MemoryPointer::from_string(s)
@@ -148,7 +148,7 @@ module Extism
         return
       end
 
-      $_plugins.delete(self.object_id)
+      $PLUGINS.delete(self.object_id)
       C.extism_plugin_free(@context.pointer, @plugin)
       @plugin = -1
     end
