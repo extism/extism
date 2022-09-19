@@ -342,7 +342,7 @@ pub(crate) fn var_set(
 }
 
 /// Make an HTTP request
-/// Params: i64 (offset to JSON encoded HttpRequest ), i64 (offset to body or 0)
+/// Params: i64 (offset to JSON encoded HttpRequest), i64 (offset to body or 0)
 /// Returns: i64 (offset)
 pub(crate) fn http_request(
     #[allow(unused_mut)] mut caller: Caller<Internal>,
