@@ -6,7 +6,7 @@ let context = new Context();
 let wasm = readFileSync('../wasm/code.wasm');
 let p = context.plugin(wasm);
 
-if (!p.function_exists('count_vowels')) {
+if (!p.functionExists('count_vowels')) {
   console.log("no function 'count_vowels' in wasm");
   process.exit(1);
 }
