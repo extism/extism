@@ -1,6 +1,6 @@
 use crate::*;
 
-// PluginRef is used to access a plugin from the global plugin registry
+// PluginRef is used to access a plugin from a context-scoped plugin registry
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
     plugin: &'a mut Plugin,
@@ -18,10 +18,8 @@ impl<'a> PluginRef<'a> {
         self
     }
 
-    /// # Safety
-    ///
-    /// This function is used to access the static `PLUGINS` registry
-    pub unsafe fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Self {
+    /// Create a `PluginRef` from a context
+    pub fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Self {
         trace!("Loading plugin {plugin_id}");
 
         if plugin_id < 0 {
