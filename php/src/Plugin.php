@@ -6,46 +6,6 @@ require_once "vendor/autoload.php";
 require_once "generate.php";
 require_once "ExtismLib.php";
 
-$lib = new \ExtismLib(\ExtismLib::SOFILE);
-if ($lib == null) {
-    throw new Exception("Extism: failed to create new runtime instance");
-}
-
-class Context
-{
-    private $pointer;
-    
-    public function __construct()
-    {
-        global $lib;
-        
-        $this->pointer = $lib->extism_context_new();
-    }
-    
-    public function __destruct()
-    {
-        global $lib;
-        
-        $lib->extism_context_free($this->pointer);
-    }
-    
-    
-    public function reset() 
-    {
-        global $lib;
-    
-        $lib->extism_context_reset($this->pointer);
-    }
-}
-
-
-function set_log_file($filename, $level)
-{
-    global $lib;
-    
-    $lib->extism_log_file($filename, $level);
-}
-
 class Plugin
 {
     private $lib;
@@ -58,12 +18,7 @@ class Plugin
 
     public function __construct($ctx, $data, $wasi = false, $config = null) 
     {
-        global $lib;
-
-        if ($lib == null) {
-            $lib = new \ExtismLib(\ExtismLib::SOFILE);
-        }
-        $this->lib = $lib;
+        $this->lib = $ctx->lib;
 
         $this->wasi = $wasi;
         $this->config = $config;
