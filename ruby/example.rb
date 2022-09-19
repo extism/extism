@@ -4,7 +4,10 @@ require 'json'
 manifest = {
   :wasm => [{:path => "../wasm/code.wasm"}]
 }
-plugin = Extism::Plugin.new(manifest)
+
+ctx = Extism::Context.new
+plugin = ctx.plugin(manifest)
 res = JSON.parse(plugin.call("count_vowels", ARGV[0] || "this is a test"))
 puts res['count']
-plugin.destroy
+plugin.free
+ctx.free

@@ -5,147 +5,109 @@ use std::str::FromStr;
 
 use crate::*;
 
-static mut REGISTER_ERROR: std::sync::Mutex<Option<std::ffi::CString>> =
-    std::sync::Mutex::new(None);
+use rand::Rng;
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_register(
+pub unsafe extern "C" fn extism_context_new() -> *mut Context {
+    trace!("Creating new Context");
+    Box::into_raw(Box::new(Context::new()))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_context_free(ctx: *mut Context) {
+    trace!("Freeing context");
+    if ctx.is_null() {
+        return;
+    }
+    drop(Box::from_raw(ctx))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_new(
+    ctx: *mut Context,
     wasm: *const u8,
     wasm_size: Size,
     with_wasi: bool,
 ) -> PluginIndex {
-    trace!(
-        "Call to extism_plugin_register with wasm pointer {:?}",
-        wasm
-    );
+    trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
+    let ctx = &mut *ctx;
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
         Err(e) => {
             error!("Error creating Plugin: {:?}", e);
-            let mut error = match REGISTER_ERROR.lock() {
-                Ok(x) => x,
-                Err(x) => x.into_inner(),
-            };
-
-            *error = Some(error_string(e));
+            ctx.set_error(e);
             return -1;
         }
     };
 
-    let mut plugins = match PLUGINS.lock() {
-        Ok(p) => p,
-        Err(e) => {
-            debug!("Mutex poisoned");
-            e.into_inner()
-        }
-    };
-
-    for (id, p) in plugins.iter_mut().enumerate() {
-        if p.is_none() {
-            *p = Some(plugin);
-            info!("Plugin added: {id}");
-            return id as i32;
-        }
+    let mut id: i32 = rand::thread_rng().gen_range(0..i32::MAX);
+    while ctx.plugins.contains_key(&id) {
+        id = rand::thread_rng().gen_range(0..i32::MAX);
     }
-
-    plugins.push(Some(plugin));
-    let id = (plugins.len() - 1) as PluginIndex;
+    ctx.plugins.insert(id, plugin);
     info!("New plugin added: {id}");
     id
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_update(
+    ctx: *mut Context,
     index: PluginIndex,
     wasm: *const u8,
     wasm_size: Size,
     with_wasi: bool,
 ) -> bool {
-    let index = index as usize;
     trace!("Call to extism_plugin_update with wasm pointer {:?}", wasm);
+    let ctx = &mut *ctx;
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
         Err(e) => {
             error!("Error creating Plugin: {:?}", e);
-            let mut error = match REGISTER_ERROR.lock() {
-                Ok(x) => x,
-                Err(x) => x.into_inner(),
-            };
-            *error = Some(error_string(e));
+            ctx.error = Some(error_string(e));
             return false;
         }
     };
 
-    let mut plugins = match PLUGINS.lock() {
-        Ok(p) => p,
-        Err(e) => e.into_inner(),
-    };
-
-    if index < plugins.len() {
-        plugins[index] = Some(plugin);
+    if !ctx.plugins.contains_key(&index) {
+        ctx.set_error("Plugin index does not exist");
+        return false;
     }
+
+    ctx.plugins.insert(index, plugin);
 
     info!("Plugin updated: {index}");
     true
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_destroy(plugin: PluginIndex) {
-    if plugin < 0 {
+pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginIndex) {
+    if plugin < 0 || ctx.is_null() {
         return;
     }
 
-    let mut plugins = match PLUGINS.lock() {
-        Ok(p) => p,
-        Err(e) => {
-            debug!("Mutex poisoned");
-            e.into_inner()
-        }
-    };
+    trace!("Freeing plugin {plugin}");
 
-    if plugins.len() <= plugin as usize {
-        return;
-    }
-
-    let p = &mut plugins[plugin as usize];
-    if p.is_some() {
-        *p = None
-    }
-
-    // Attempt to cleanup if there are `None`s at the end of the vec
-    for (i, x) in plugins.iter().rev().enumerate() {
-        let i = plugins.len() - i;
-
-        // Stop at first `Some`
-        if x.is_some() {
-            if i < plugins.len() {
-                plugins.truncate(i)
-            }
-
-            break;
-        }
-    }
+    let ctx = &mut *ctx;
+    ctx.plugins.remove(&plugin);
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_reset() {
-    let mut plugins = match PLUGINS.lock() {
-        Ok(p) => p,
-        Err(e) => e.into_inner(),
-    };
-
-    plugins.clear();
+pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
+    let ctx = &mut *ctx;
+    ctx.plugins.clear();
 }
 
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_config(
+    ctx: *mut Context,
     plugin: PluginIndex,
     json: *const u8,
     json_size: Size,
 ) -> bool {
-    let mut plugin = PluginRef::new(plugin);
+    let ctx = &mut *ctx;
+    let mut plugin = PluginRef::new(ctx, plugin);
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -175,11 +137,13 @@ pub unsafe extern "C" fn extism_plugin_config(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_function_exists(
+pub unsafe extern "C" fn extism_plugin_function_exists(
+    ctx: *mut Context,
     plugin: PluginIndex,
     func_name: *const c_char,
 ) -> bool {
-    let mut plugin = PluginRef::new(plugin);
+    let ctx = &mut *ctx;
+    let mut plugin = PluginRef::new(ctx, plugin);
 
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
@@ -191,13 +155,15 @@ pub unsafe extern "C" fn extism_function_exists(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_call(
+pub unsafe extern "C" fn extism_plugin_call(
+    ctx: *mut Context,
     plugin_id: PluginIndex,
     func_name: *const c_char,
     data: *const u8,
     data_len: Size,
 ) -> i32 {
-    let mut plugin = PluginRef::new(plugin_id).init();
+    let ctx = &mut *ctx;
+    let mut plugin = PluginRef::new(ctx, plugin_id).init();
     let plugin = plugin.as_mut();
 
     // Find function
@@ -235,22 +201,19 @@ pub unsafe extern "C" fn extism_call(
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_error(plugin: PluginIndex) -> *const c_char {
+pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) -> *const c_char {
     trace!("Call to extism_error for plugin {plugin}");
 
-    if plugin < 0 {
-        let error = match REGISTER_ERROR.lock() {
-            Ok(x) => x,
-            Err(x) => x.into_inner(),
-        };
+    let ctx = &mut *ctx;
 
-        match error.as_ref() {
+    if plugin < 0 {
+        match ctx.error.as_ref() {
             Some(e) => return e.as_ptr() as *const _,
             None => return std::ptr::null(),
         }
     }
 
-    let plugin = PluginRef::new(plugin);
+    let plugin = PluginRef::new(ctx, plugin);
     match &plugin.as_ref().last_error {
         Some(e) => e.as_ptr() as *const _,
         None => {
@@ -261,9 +224,14 @@ pub unsafe extern "C" fn extism_error(plugin: PluginIndex) -> *const c_char {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_output_length(plugin: PluginIndex) -> Size {
-    trace!("Call to extism_output_length for plugin {plugin}");
-    let plugin = PluginRef::new(plugin);
+pub unsafe extern "C" fn extism_plugin_output_length(
+    ctx: *mut Context,
+    plugin: PluginIndex,
+) -> Size {
+    trace!("Call to extism_plugin_output_length for plugin {plugin}");
+
+    let ctx = &mut *ctx;
+    let plugin = PluginRef::new(ctx, plugin);
 
     let len = plugin.as_ref().memory.store.data().output_length as Size;
     trace!("Output length: {len}");
@@ -271,10 +239,14 @@ pub unsafe extern "C" fn extism_output_length(plugin: PluginIndex) -> Size {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_output_get(plugin: PluginIndex) -> *const u8 {
-    trace!("Call to extism_output_get for plugin {plugin}");
+pub unsafe extern "C" fn extism_plugin_output_data(
+    ctx: *mut Context,
+    plugin: PluginIndex,
+) -> *const u8 {
+    trace!("Call to extism_plugin_output_get for plugin {plugin}");
 
-    let plugin = PluginRef::new(plugin);
+    let ctx = &mut *ctx;
+    let plugin = PluginRef::new(ctx, plugin);
     let data = plugin.as_ref().memory.store.data();
 
     plugin

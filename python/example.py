@@ -4,7 +4,7 @@ import json
 import hashlib
 
 sys.path.append(".")
-from extism import Plugin
+from extism import Plugin, Context
 
 if len(sys.argv) > 1:
     data = sys.argv[1].encode()
@@ -15,7 +15,8 @@ wasm = open("../wasm/code.wasm", 'rb').read()
 hash = hashlib.sha256(wasm).hexdigest()
 config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
-plugin = Plugin(config)
+context = Context()
+plugin = context.plugin(config)
 
 # Call `count_vowels`
 j = json.loads(plugin.call("count_vowels", data))
@@ -32,4 +33,5 @@ def count_vowels(data):
 
 
 assert (j["count"] == count_vowels(data))
-plugin.destroy()
+del plugin
+del context

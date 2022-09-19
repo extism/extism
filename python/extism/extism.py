@@ -92,10 +92,6 @@ def set_log_file(file, level=ffi.NULL):
     lib.extism_log_file(file.encode(), level)
 
 
-def reset():
-    lib.extism_reset()
-
-
 def _wasm(plugin):
     if isinstance(plugin, str) and os.path.exists(plugin):
         with open(plugin, 'rb') as f:
@@ -109,16 +105,36 @@ def _wasm(plugin):
     return wasm
 
 
+class Context:
+
+    def __init__(self):
+        self.pointer = lib.extism_context_new()
+
+    def __del__(self):
+        lib.extism_context_free(self.pointer)
+        self.pointer = ffi.NULL
+
+    def reset(self):
+        lib.extism_context_reset(self.pointer)
+
+    def plugin(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
+        return Plugin(self, plugin, wasi, config)
+
+
 class Plugin:
 
     def __init__(self,
+                 context: Context,
                  plugin: Union[str, bytes, dict],
                  wasi=False,
                  config=None):
         wasm = _wasm(plugin)
 
         # Register plugin
-        self.plugin = lib.extism_plugin_register(wasm, len(wasm), wasi)
+        self.plugin = lib.extism_plugin_new(context.pointer, wasm, len(wasm),
+                                            wasi)
+
+        self.ctx = context
 
         if self.plugin < 0:
             error = lib.extism_error(-1)
@@ -132,42 +148,50 @@ class Plugin:
 
     def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
         wasm = _wasm(plugin)
-        ok = lib.extism_plugin_update(self.plugin, wasm, len(wasm), wasi)
+        ok = lib.extism_plugin_update(self.ctx.pointer, self.plugin, wasm,
+                                      len(wasm), wasi)
         if not ok:
-            error = lib.extism_error(-1)
+            error = lib.extism_error(self.ctx.pointer, -1)
             if error != ffi.NULL:
                 raise Error(ffi.string(error).decode())
             raise Error("Unable to update plugin")
 
         if config is not None:
             s = json.dumps(config).encode()
-            lib.extism_plugin_config(self.plugin, s, len(s))
+            lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
 
     def _check_error(self, rc):
         if rc != 0:
-            error = lib.extism_error(self.plugin)
+            error = lib.extism_error(self.ctx.pointer, self.plugin)
             if error != ffi.NULL:
                 raise Error(ffi.string(error).decode())
             raise Error(f"Error code: {rc}")
 
     def function_exists(self, name: str) -> bool:
-        return lib.extism_function_exists(self.plugin, name.encode())
+        return lib.extism_plugin_function_exists(self.ctx.pointer, self.plugin,
+                                                 name.encode())
 
     def call(self, name: str, data: Union[str, bytes], parse=bytes):
         if isinstance(data, str):
             data = data.encode()
         self._check_error(
-            lib.extism_call(self.plugin, name.encode(), data, len(data)))
-        out_len = lib.extism_output_length(self.plugin)
-        out_buf = lib.extism_output_get(self.plugin)
+            lib.extism_plugin_call(self.ctx.pointer, self.plugin,
+                                   name.encode(), data, len(data)))
+        out_len = lib.extism_plugin_output_length(self.ctx.pointer,
+                                                  self.plugin)
+        out_buf = lib.extism_plugin_output_data(self.ctx.pointer, self.plugin)
         buf = ffi.buffer(out_buf, out_len)
         if parse is None:
             return buf
         return parse(buf)
 
-    def destroy(self):
-        lib.extism_plugin_destroy(self.plugin)
+    def free(self):
+        if not hasattr(self, 'ctx'):
+            return
+        if self.ctx.pointer == ffi.NULL:
+            return
+        lib.extism_plugin_free(self.ctx.pointer, self.plugin)
         self.plugin = -1
 
     def __del__(self):
-        self.destroy()
+        self.free()

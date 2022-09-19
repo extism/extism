@@ -3,19 +3,21 @@ import path from 'path';
 import url from 'url';
 
 const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
-
+let context = 'void*';
 let _functions = {
-  extism_plugin_register: ['int32', ['string', 'uint64', 'bool']],
-  extism_plugin_update: ['bool', ['int32', 'string', 'uint64', 'bool']],
-  extism_error: ['char*', ['int32']],
-  extism_call: ['int32', ['int32', 'string', 'string', 'uint64']],
-  extism_output_length: ['uint64', ['int32']],
-  extism_output_get: ['uint8*', ['int32']],
+  extism_context_new: [context, []],
+  extism_context_free: ['void', [context]],
+  extism_plugin_new: ['int32', [context, 'string', 'uint64', 'bool']],
+  extism_plugin_update: ['bool', [context, 'int32', 'string', 'uint64', 'bool']],
+  extism_error: ['char*', [context, 'int32']],
+  extism_plugin_call: ['int32', [context, 'int32', 'string', 'string', 'uint64']],
+  extism_plugin_output_length: ['uint64', [context, 'int32']],
+  extism_plugin_output_data: ['uint8*', [context, 'int32']],
   extism_log_file: ['bool', ['string', 'char*']],
-  extism_function_exists: ['bool', ['int32', 'string']],
-  extism_plugin_config: ['void', ['int32', 'char*', 'uint64']],
-  extism_plugin_destroy: ['void', ['int32']],
-  extism_reset: ['void', []],
+  extism_plugin_function_exists: ['bool', [context, 'int32', 'string']],
+  extism_plugin_config: ['void', [context, 'int32', 'char*', 'uint64']],
+  extism_plugin_free: ['void', [context, 'int32']],
+  extism_context_reset: ['void', [context]],
 };
 
 function locate(paths) {
@@ -47,29 +49,58 @@ export function set_log_file(filename, level = null) {
   lib.extism_log_file(filename, level);
 }
 
-const registry = new FinalizationRegistry((plugin_id) => {
-  lib.extism_plugin_destroy(plugin_id);
+const pluginRegistry = new FinalizationRegistry(({ id, pointer }) => {
+  lib.extism_plugin_free(pointer, id);
 });
 
+
+const contextRegistry = new FinalizationRegistry((pointer) => {
+  lib.extism_context_free(pointer);
+});
+
+export class Context {
+  constructor() {
+    this.pointer = lib.extism_context_new();
+
+    contextRegistry.register(this, this.pointer, this);
+  }
+
+  plugin(data, wasi = false, config = null) {
+    return new Plugin(this, data, wasi, config);
+  }
+
+  free() {
+    contextRegistry.unregister(this);
+
+    lib.extism_context_free(this.pointer);
+    this.pointer = null;
+  }
+
+  reset() {
+    lib.extism_context_reset(this.pointer);
+  }
+}
+
 export class Plugin {
-  constructor(data, wasi = false, config = null) {
+  constructor(ctx, data, wasi = false, config = null) {
     if (typeof data === 'object' && data.wasm) {
       data = JSON.stringify(data);
     }
-    let plugin = lib.extism_plugin_register(data, data.length, wasi);
+    let plugin = lib.extism_plugin_new(ctx.pointer, data, data.length, wasi);
     if (plugin < 0) {
-      var err = lib.extism_error(-1);
+      var err = lib.extism_error(ctx.pointer, -1);
       if (err.length == 0) {
-        throw "extism_plugin_register failed";
+        throw "extism_context_plugin failed";
       }
       throw `Unable to load plugin: ${err.toString()}`;
     }
     this.id = plugin;
-    registry.register(this, this.id, this);
+    this.ctx = ctx;
+    pluginRegistry.register(this, { id: this.id, pointer: this.ctx.pointer }, this);
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(this.id, s, s.length);
+      lib.extism_plugin_config(this.ctx.pointer, this.id, s, s.length);
     }
   }
 
@@ -77,9 +108,9 @@ export class Plugin {
     if (typeof data === 'object' && data.wasm) {
       data = JSON.stringify(data);
     }
-    const ok = lib.extism_plugin_update(this.id, data, data.length, wasi);
+    const ok = lib.extism_plugin_update(this.ctx.pointer, this.id, data, data.length, wasi);
     if (!ok) {
-      var err = lib.extism_error(-1);
+      var err = lib.extism_error(this.ctx.pointer, -1);
       if (err.length == 0) {
         throw "extism_plugin_update failed";
       }
@@ -88,40 +119,36 @@ export class Plugin {
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(this.id, s, s.length);
+      lib.extism_plugin_config(this.ctx.pointer, this.id, s, s.length);
     }
   }
 
   function_exists(name) {
-    return lib.extism_function_exists(this.id, name);
+    return lib.extism_plugin_function_exists(this.ctx.pointer, this.id, name);
   }
 
   async call(name, input) {
     return new Promise((resolve, reject) => {
-      var rc = lib.extism_call(this.id, name, input, input.length);
+      var rc = lib.extism_plugin_call(this.ctx.pointer, this.id, name, input, input.length);
       if (rc != 0) {
-        var err = lib.extism_error(this.id);
+        var err = lib.extism_error(this.ctx.pointer, this.id);
         if (err.length == 0) {
-          reject(`extism_call: "${name}" failed`);
+          reject(`extism_plugin_call: "${name}" failed`);
         }
         reject(`Plugin error: ${err.toString()}, code: ${rc}`);
       }
 
-      var out_len = lib.extism_output_length(this.id);
-      var buf = Buffer.from(lib.extism_output_get(this.id).buffer, 0, out_len);
+      var out_len = lib.extism_plugin_output_length(this.ctx.pointer, this.id);
+      var buf = Buffer.from(lib.extism_plugin_output_data(this.ctx.pointer, this.id).buffer, 0, out_len);
       resolve(buf);
     });
   }
 
-  destroy() {
-    registry.unregister(this);
-    lib.extism_plugin_destroy(this.id);
+  free() {
+    pluginRegistry.unregister(this);
+    lib.extism_plugin_free(this.ctx.pointer, this.id);
     this.id = -1;
   }
-}
-
-export function reset() {
-  lib.extism_reset();
 }
 
 

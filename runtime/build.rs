@@ -12,6 +12,7 @@ fn main() {
         .with_pragma_once(true)
         .rename_item("Size", "ExtismSize")
         .rename_item("PluginIndex", "ExtismPlugin")
+        .rename_item("Context", "ExtismContext")
         .generate()
     {
         bindings.write_to_file("extism.h");

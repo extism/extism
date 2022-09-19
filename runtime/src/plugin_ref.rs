@@ -3,8 +3,7 @@ use crate::*;
 // PluginRef is used to access a plugin from the global plugin registry
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
-    pub plugins: std::sync::MutexGuard<'a, Vec<Option<Plugin>>>,
-    plugin: *mut Plugin,
+    plugin: &'a mut Plugin,
 }
 
 impl<'a> PluginRef<'a> {
@@ -25,32 +24,24 @@ impl<'a> PluginRef<'a> {
     /// # Safety
     ///
     /// This function is used to access the static `PLUGINS` registry
-    pub unsafe fn new(plugin_id: PluginIndex) -> Self {
-        let mut plugins = match PLUGINS.lock() {
-            Ok(p) => p,
-            Err(e) => e.into_inner(),
-        };
-
+    pub unsafe fn new(ctx: &'a mut Context, plugin_id: PluginIndex) -> Self {
         trace!("Loading plugin {plugin_id}");
 
-        if plugin_id < 0 || plugin_id as usize >= plugins.len() {
-            drop(plugins);
+        if plugin_id < 0 {
             panic!("Invalid PluginIndex {plugin_id}");
         }
 
-        let plugin = plugins.get_unchecked_mut(plugin_id as usize);
+        let plugin = ctx.plugin(plugin_id);
 
         let plugin = match plugin {
             None => {
-                drop(plugins);
                 panic!("Plugin no longer exists: {plugin_id}");
             }
-            Some(p) => p as *mut _,
+            Some(p) => p,
         };
 
         PluginRef {
             id: plugin_id,
-            plugins,
             plugin,
         }
     }
@@ -58,13 +49,13 @@ impl<'a> PluginRef<'a> {
 
 impl<'a> AsRef<Plugin> for PluginRef<'a> {
     fn as_ref(&self) -> &Plugin {
-        unsafe { &*self.plugin }
+        self.plugin
     }
 }
 
 impl<'a> AsMut<Plugin> for PluginRef<'a> {
     fn as_mut(&mut self) -> &mut Plugin {
-        unsafe { &mut *self.plugin }
+        self.plugin
     }
 }
 

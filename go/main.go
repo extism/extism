@@ -9,6 +9,9 @@ import (
 )
 
 func main() {
+	ctx := extism.NewContext()
+	defer ctx.Free()
+
 	// set some input data to provide to the plugin module
 	var data []byte
 	if len(os.Args) > 1 {
@@ -18,11 +21,12 @@ func main() {
 	}
 
 	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code.wasm"}}}
-	plugin, err := extism.LoadManifest(manifest, false)
+	plugin, err := ctx.PluginFromManifest(manifest, false)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)
 	}
+	defer plugin.Free()
 
 	// use the extism Go library to provide the input data to the plugin, execute it, and then
 	// collect the plugin state and error if present
@@ -38,5 +42,4 @@ func main() {
 	json.Unmarshal(out, &dest)
 
 	fmt.Println("Count:", dest["count"])
-	plugin.Destroy()
 }

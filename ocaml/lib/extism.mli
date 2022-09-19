@@ -40,13 +40,20 @@ module Manifest : sig
   val json: t -> string
 end
 
+module Context : sig
+  type t
+  
+  val create: unit -> t
+  val free: t -> unit
+  val reset: t -> unit
+end
+
 val set_log_file: ?level:string -> string -> bool
-val register: ?config:(string * string) list -> ?wasi:bool -> string -> (t, [`Msg of string]) result
-val register_manifest: ?config:(string * string) list -> ?wasi:bool -> Manifest.t -> (t, [`Msg of string]) result
+val plugin: ?config:(string * string) list -> ?wasi:bool -> Context.t -> string -> (t, [`Msg of string]) result
+val of_manifest: ?config:(string * string) list -> ?wasi:bool -> Context.t -> Manifest.t -> (t, [`Msg of string]) result
 val update: t -> ?config:(string * string) list -> ?wasi:bool -> string -> (unit, [`Msg of string]) result
 val update_manifest: t -> ?config:(string * string) list -> ?wasi:bool -> Manifest.t -> (unit, [`Msg of string]) result
 val call_bigstring: t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result
 val call: t -> name:string -> string -> (string, error) result
-val destroy: t -> unit
-val reset: unit -> unit
+val free: t -> unit
 val function_exists: t -> string -> bool

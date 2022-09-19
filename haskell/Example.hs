@@ -14,9 +14,10 @@ handlePlugin plugin = do
   res <- Extism.call plugin "count_vowels" (Extism.toByteString "this is a test")
   try (\bs -> do
     _ <- putStrLn (Extism.fromByteString bs)
-    _ <- Extism.destroy plugin
+    _ <- Extism.free plugin
     exitSuccess) res
 
 main = do
-  plugin <- Extism.registerManifest (manifest [wasmFile "../wasm/code.wasm"]) False
+  context <- Extism.newContext ()
+  plugin <- Extism.pluginFromManifest context (manifest [wasmFile "../wasm/code.wasm"]) False
   try handlePlugin plugin

@@ -15,8 +15,25 @@ import (
 */
 import "C"
 
+type Context struct {
+	pointer *C.ExtismContext
+}
+
+func NewContext() Context {
+	p := C.extism_context_new()
+	return Context{
+		pointer: p,
+	}
+}
+
+func (ctx *Context) Free() {
+	C.extism_context_free(ctx.pointer)
+	ctx.pointer = nil
+}
+
 type Plugin struct {
-	id int32
+	ctx *Context
+	id  int32
 }
 
 type WasmData struct {
@@ -66,16 +83,17 @@ func SetLogFile(filename string, level string) bool {
 	return bool(r)
 }
 
-func register(data []byte, wasi bool) (Plugin, error) {
+func register(ctx *Context, data []byte, wasi bool) (Plugin, error) {
 	ptr := makePointer(data)
-	plugin := C.extism_plugin_register(
+	plugin := C.extism_plugin_new(
+		ctx.pointer,
 		(*C.uchar)(ptr),
 		C.uint64_t(len(data)),
 		C._Bool(wasi),
 	)
 
 	if plugin < 0 {
-		err := C.extism_error(C.int32_t(-1))
+		err := C.extism_error(ctx.pointer, C.int32_t(-1))
 		msg := "Unknown"
 		if err != nil {
 			msg = C.GoString(err)
@@ -86,12 +104,13 @@ func register(data []byte, wasi bool) (Plugin, error) {
 		)
 	}
 
-	return Plugin{id: int32(plugin)}, nil
+	return Plugin{id: int32(plugin), ctx: ctx}, nil
 }
 
-func update(plugin int32, data []byte, wasi bool) error {
+func update(ctx *Context, plugin int32, data []byte, wasi bool) error {
 	ptr := makePointer(data)
 	b := bool(C.extism_plugin_update(
+		ctx.pointer,
 		C.int32_t(plugin),
 		(*C.uchar)(ptr),
 		C.uint64_t(len(data)),
@@ -102,7 +121,7 @@ func update(plugin int32, data []byte, wasi bool) error {
 		return nil
 	}
 
-	err := C.extism_error(C.int32_t(-1))
+	err := C.extism_error(ctx.pointer, C.int32_t(-1))
 	msg := "Unknown"
 	if err != nil {
 		msg = C.GoString(err)
@@ -113,22 +132,22 @@ func update(plugin int32, data []byte, wasi bool) error {
 	)
 }
 
-func LoadManifest(manifest Manifest, wasi bool) (Plugin, error) {
+func (ctx *Context) PluginFromManifest(manifest Manifest, wasi bool) (Plugin, error) {
 	data, err := json.Marshal(manifest)
 	if err != nil {
 		return Plugin{id: -1}, err
 	}
 
-	return register(data, wasi)
+	return register(ctx, data, wasi)
 }
 
-func LoadPlugin(module io.Reader, wasi bool) (Plugin, error) {
+func (ctx *Context) Plugin(module io.Reader, wasi bool) (Plugin, error) {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
 		return Plugin{id: -1}, err
 	}
 
-	return register(wasm, wasi)
+	return register(ctx, wasm, wasi)
 }
 
 func (p *Plugin) Update(module io.Reader, wasi bool) error {
@@ -137,7 +156,7 @@ func (p *Plugin) Update(module io.Reader, wasi bool) error {
 		return err
 	}
 
-	return update(p.id, wasm, wasi)
+	return update(p.ctx, p.id, wasm, wasi)
 }
 
 func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
@@ -146,7 +165,7 @@ func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
 		return err
 	}
 
-	return update(p.id, data, wasi)
+	return update(p.ctx, p.id, data, wasi)
 }
 
 func (plugin Plugin) SetConfig(data map[string][]byte) error {
@@ -155,13 +174,13 @@ func (plugin Plugin) SetConfig(data map[string][]byte) error {
 		return err
 	}
 	ptr := makePointer(s)
-	C.extism_plugin_config(C.int(plugin.id), (*C.uchar)(ptr), C.uint64_t(len(s)))
+	C.extism_plugin_config(plugin.ctx.pointer, C.int(plugin.id), (*C.uchar)(ptr), C.uint64_t(len(s)))
 	return nil
 }
 
 func (plugin Plugin) FunctionExists(functionName string) bool {
 	name := C.CString(functionName)
-	b := C.extism_function_exists(C.int(plugin.id), name)
+	b := C.extism_plugin_function_exists(plugin.ctx.pointer, C.int(plugin.id), name)
 	C.free(unsafe.Pointer(name))
 	return bool(b)
 }
@@ -169,7 +188,8 @@ func (plugin Plugin) FunctionExists(functionName string) bool {
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	ptr := makePointer(input)
 	name := C.CString(functionName)
-	rc := C.extism_call(
+	rc := C.extism_plugin_call(
+		plugin.ctx.pointer,
 		C.int32_t(plugin.id),
 		name,
 		(*C.uchar)(ptr),
@@ -178,7 +198,7 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	C.free(unsafe.Pointer(name))
 
 	if rc != 0 {
-		err := C.extism_error(C.int32_t(plugin.id))
+		err := C.extism_error(plugin.ctx.pointer, C.int32_t(plugin.id))
 		msg := "<unset by plugin>"
 		if err != nil {
 			msg = C.GoString(err)
@@ -189,10 +209,10 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 		)
 	}
 
-	length := C.extism_output_length(C.int32_t(plugin.id))
+	length := C.extism_plugin_output_length(plugin.ctx.pointer, C.int32_t(plugin.id))
 
 	if length > 0 {
-		x := C.extism_output_get(C.int32_t(plugin.id))
+		x := C.extism_plugin_output_data(plugin.ctx.pointer, C.int32_t(plugin.id))
 		y := (*[]byte)(unsafe.Pointer(&x))
 		return []byte((*y)[0:length]), nil
 
@@ -201,11 +221,14 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	return []byte{}, nil
 }
 
-func (plugin *Plugin) Destroy() {
-	C.extism_plugin_destroy(C.int32_t(plugin.id))
+func (plugin *Plugin) Free() {
+	if plugin.ctx.pointer == nil {
+		return
+	}
+	C.extism_plugin_free(plugin.ctx.pointer, C.int32_t(plugin.id))
 	plugin.id = -1
 }
 
-func Reset() {
-	C.extism_reset()
+func (ctx Context) Reset() {
+	C.extism_context_reset(ctx.pointer)
 }

@@ -174,6 +174,3 @@ impl Plugin {
         self.memory.dump();
     }
 }
-
-/// A registry for plugins
-pub static mut PLUGINS: std::sync::Mutex<Vec<Option<Plugin>>> = std::sync::Mutex::new(Vec::new());
