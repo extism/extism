@@ -39,6 +39,8 @@ ExtismPlugin extism_plugin_new(struct ExtismContext *ctx,
  *
  * Similar to `extism_plugin_new` but takes an `index` argument to specify
  * which plugin to update
+ *
+ * Memory for this plugin will be reset upon update
  */
 bool extism_plugin_update(struct ExtismContext *ctx,
                           ExtismPlugin index,

@@ -65,6 +65,8 @@ pub unsafe extern "C" fn extism_plugin_new(
 ///
 /// Similar to `extism_plugin_new` but takes an `index` argument to specify
 /// which plugin to update
+///
+/// Memory for this plugin will be reset upon update
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_update(
     ctx: *mut Context,
