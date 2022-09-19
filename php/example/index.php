@@ -2,8 +2,9 @@
 
 require_once __DIR__ . '/vendor/autoload.php';
 
+$ctx = new \Extism\Context();
 $wasm = file_get_contents("../../wasm/code.wasm");
-$plugin = new \Extism\Plugin($wasm);
+$plugin = new \Extism\Plugin($ctx, $wasm);
 
 $output = $plugin->call("count_vowels", "this is an example");
 $json = json_decode(pack('C*', ...$output));
