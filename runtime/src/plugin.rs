@@ -38,6 +38,22 @@ impl Internal {
             plugin: std::ptr::null_mut(),
         })
     }
+
+    pub fn plugin(&self) -> &Plugin {
+        unsafe { &*self.plugin }
+    }
+
+    pub fn plugin_mut(&mut self) -> &mut Plugin {
+        unsafe { &mut *self.plugin }
+    }
+
+    pub fn memory(&self) -> &PluginMemory {
+        &self.plugin().memory
+    }
+
+    pub fn memory_mut(&mut self) -> &mut PluginMemory {
+        &mut self.plugin_mut().memory
+    }
 }
 
 const EXPORT_MODULE_NAME: &str = "env";

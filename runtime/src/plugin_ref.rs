@@ -7,13 +7,14 @@ pub struct PluginRef<'a> {
 }
 
 impl<'a> PluginRef<'a> {
-    pub fn init(mut self) -> Self {
+    /// Initialize the plugin for a new call
+    ///
+    /// - Resets memory offsets
+    /// - Updates `input` pointer
+    pub fn init(mut self, data: *const u8, data_len: usize) -> Self {
         trace!("PluginRef::init: {}", self.id,);
-        // Initialize
         self.as_mut().memory.reset();
-        let internal = self.as_mut().memory.store.data_mut();
-        internal.input = std::ptr::null();
-        internal.input_length = 0;
+        self.plugin.set_input(data, data_len);
         self
     }
 

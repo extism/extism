@@ -39,13 +39,14 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
+    const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
+
     #[test]
     fn it_works() {
-        let wasm = include_bytes!("../../wasm/code.wasm");
         let wasm_start = Instant::now();
         set_log_file("test.log", Some(log::Level::Info));
         let context = Context::new();
-        let plugin = Plugin::new(&context, wasm, false).unwrap();
+        let plugin = Plugin::new(&context, WASM, false).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -130,5 +131,28 @@ mod tests {
         let avg: std::time::Duration = sum / num_tests as u32;
 
         println!("wasm function call (avg, N = {}): {:?}", num_tests, avg);
+    }
+
+    #[test]
+    fn test_threads() {
+        use std::io::Write;
+        std::thread::spawn(|| {
+            let context = Context::new();
+            let plugin = Plugin::new(&context, WASM, false).unwrap();
+            let output = plugin.call("count_vowels", "this is a test").unwrap();
+            std::io::stdout().write_all(output).unwrap();
+        });
+
+        std::thread::spawn(|| {
+            let context = Context::new();
+            let plugin = Plugin::new(&context, WASM, false).unwrap();
+            let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
+            std::io::stdout().write_all(output).unwrap();
+        });
+
+        let context = Context::new();
+        let plugin = Plugin::new(&context, WASM, false).unwrap();
+        let output = plugin.call("count_vowels", "abc123").unwrap();
+        std::io::stdout().write_all(output).unwrap();
     }
 }

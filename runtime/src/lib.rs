@@ -20,6 +20,8 @@ pub type PluginIndex = i32;
 
 pub(crate) use log::{debug, error, info, trace};
 
+/// Converts any type implementing `std::fmt::Debug` into a suitable CString to use
+/// as an error message
 pub(crate) fn error_string(e: impl std::fmt::Debug) -> std::ffi::CString {
     let x = format!("{:?}", e).into_bytes();
     let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {

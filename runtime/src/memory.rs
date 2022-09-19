@@ -20,6 +20,7 @@ const PAGE_SIZE: u32 = 65536;
 const BLOCK_SIZE_THRESHOLD: usize = 32;
 
 impl PluginMemory {
+    /// Create memory for a plugin
     pub fn new(store: Store<Internal>, memory: Memory) -> Self {
         PluginMemory {
             free: Vec::new(),
@@ -30,6 +31,7 @@ impl PluginMemory {
         }
     }
 
+    /// Write byte to memory
     pub(crate) fn store_u8(&mut self, offs: usize, data: u8) -> Result<(), MemoryAccessError> {
         trace!("store_u8: {data:x} at offset {offs}");
         if offs >= self.size() {
@@ -42,7 +44,7 @@ impl PluginMemory {
         Ok(())
     }
 
-    /// Read from memory
+    /// Read byte from memory
     pub(crate) fn load_u8(&self, offs: usize) -> Result<u8, MemoryAccessError> {
         trace!("load_u8: offset {offs}");
         if offs >= self.size() {
@@ -54,6 +56,7 @@ impl PluginMemory {
         Ok(self.memory.data(&self.store)[offs])
     }
 
+    /// Write u32 to memory
     pub(crate) fn store_u32(&mut self, offs: usize, data: u32) -> Result<(), MemoryAccessError> {
         trace!("store_u32: {data:x} at offset {offs}");
         let handle = MemoryBlock {
@@ -64,7 +67,7 @@ impl PluginMemory {
         Ok(())
     }
 
-    /// Read from memory
+    /// Read u32 from memory
     pub(crate) fn load_u32(&self, offs: usize) -> Result<u32, MemoryAccessError> {
         trace!("load_u32: offset {offs}");
         let mut buf = [0; 4];
@@ -77,6 +80,7 @@ impl PluginMemory {
         Ok(u32::from_ne_bytes(buf))
     }
 
+    /// Write u64 to memory
     pub(crate) fn store_u64(&mut self, offs: usize, data: u64) -> Result<(), MemoryAccessError> {
         trace!("store_u64: {data:x} at offset {offs}");
         let handle = MemoryBlock {
@@ -87,6 +91,7 @@ impl PluginMemory {
         Ok(())
     }
 
+    /// Read u64 from memory
     pub(crate) fn load_u64(&self, offs: usize) -> Result<u64, MemoryAccessError> {
         trace!("load_u64: offset {offs}");
         let mut buf = [0; 8];
@@ -98,7 +103,7 @@ impl PluginMemory {
         Ok(u64::from_ne_bytes(buf))
     }
 
-    /// Write to memory
+    /// Write slice to memory
     pub fn write(
         &mut self,
         pos: impl Into<MemoryBlock>,
@@ -110,7 +115,7 @@ impl PluginMemory {
             .write(&mut self.store, pos.offset, data.as_ref())
     }
 
-    /// Read from memory
+    /// Read slice from memory
     pub fn read(
         &self,
         pos: impl Into<MemoryBlock>,
@@ -232,13 +237,14 @@ impl PluginMemory {
         }
     }
 
+    /// Log entire memory as hexdump using the `trace` log level
     pub fn dump(&self) {
         let data = self.memory.data(&self.store);
 
         trace!("{:?}", data[..self.position].hex_dump());
     }
 
-    /// Reset memory
+    /// Reset memory - clears free-list and live blocks and resets position
     pub fn reset(&mut self) {
         self.free.clear();
         self.live_blocks.clear();
@@ -265,6 +271,12 @@ impl PluginMemory {
     pub fn get_mut(&mut self, handle: impl Into<MemoryBlock>) -> &mut [u8] {
         let handle = handle.into();
         &mut self.memory.data_mut(&mut self.store)[handle.offset..handle.offset + handle.length]
+    }
+
+    /// Pointer to the provided memory handle
+    pub fn ptr(&self, handle: impl Into<MemoryBlock>) -> *mut u8 {
+        let handle = handle.into();
+        unsafe { self.memory.data_ptr(&self.store).add(handle.offset) }
     }
 
     /// Get the length of the block starting at `offs`
