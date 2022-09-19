@@ -31,6 +31,7 @@ pub unsafe extern "C" fn extism_plugin_new(
 ) -> PluginIndex {
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
     let ctx = &mut *ctx;
+
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
@@ -65,7 +66,7 @@ pub unsafe extern "C" fn extism_plugin_update(
         Ok(x) => x,
         Err(e) => {
             error!("Error creating Plugin: {:?}", e);
-            ctx.error = Some(error_string(e));
+            ctx.set_error(e);
             return false;
         }
     };
@@ -96,6 +97,7 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
 #[no_mangle]
 pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
     let ctx = &mut *ctx;
+
     ctx.plugins.clear();
 }
 
@@ -107,7 +109,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     json_size: Size,
 ) -> bool {
     let ctx = &mut *ctx;
-    let mut plugin = PluginRef::new(ctx, plugin);
+    let mut plugin = PluginRef::new(ctx, plugin, true);
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -119,8 +121,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     let json: std::collections::BTreeMap<String, String> = match serde_json::from_slice(data) {
         Ok(x) => x,
         Err(e) => {
-            plugin.as_mut().set_error(e);
-            return false;
+            return plugin.as_mut().error(e, false);
         }
     };
 
@@ -143,12 +144,14 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     func_name: *const c_char,
 ) -> bool {
     let ctx = &mut *ctx;
-    let mut plugin = PluginRef::new(ctx, plugin);
+    let mut plugin = PluginRef::new(ctx, plugin, true);
 
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(x) => x,
-        Err(_) => return false,
+        Err(e) => {
+            return plugin.as_mut().error(e, false);
+        }
     };
 
     plugin.as_mut().get_func(name).is_some()
@@ -163,7 +166,8 @@ pub unsafe extern "C" fn extism_plugin_call(
     data_len: Size,
 ) -> i32 {
     let ctx = &mut *ctx;
-    let mut plugin = PluginRef::new(ctx, plugin_id).init();
+
+    let mut plugin = PluginRef::new(ctx, plugin_id, true).init();
     let plugin = plugin.as_mut();
 
     // Find function
@@ -209,11 +213,14 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
     if plugin < 0 {
         match ctx.error.as_ref() {
             Some(e) => return e.as_ptr() as *const _,
-            None => return std::ptr::null(),
+            None => {
+                trace!("Error is NULL");
+                return std::ptr::null();
+            }
         }
     }
 
-    let plugin = PluginRef::new(ctx, plugin);
+    let plugin = PluginRef::new(ctx, plugin, false);
     match &plugin.as_ref().last_error {
         Some(e) => e.as_ptr() as *const _,
         None => {
@@ -231,7 +238,7 @@ pub unsafe extern "C" fn extism_plugin_output_length(
     trace!("Call to extism_plugin_output_length for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin = PluginRef::new(ctx, plugin);
+    let plugin = PluginRef::new(ctx, plugin, true);
 
     let len = plugin.as_ref().memory.store.data().output_length as Size;
     trace!("Output length: {len}");
@@ -246,7 +253,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(
     trace!("Call to extism_plugin_output_get for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin = PluginRef::new(ctx, plugin);
+    let plugin = PluginRef::new(ctx, plugin, true);
     let data = plugin.as_ref().memory.store.data();
 
     plugin
@@ -312,8 +319,7 @@ pub unsafe extern "C" fn extism_log_file(
         } else {
             match FileAppender::builder().encoder(encoder).build(file) {
                 Ok(x) => Box::new(x),
-                Err(e) => {
-                    error!("Unable to set up log encoder: {e:?}");
+                Err(_) => {
                     return false;
                 }
             }

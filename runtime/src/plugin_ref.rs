@@ -8,12 +8,8 @@ pub struct PluginRef<'a> {
 
 impl<'a> PluginRef<'a> {
     pub fn init(mut self) -> Self {
-        trace!(
-            "Resetting memory and clearing error message for plugin {}",
-            self.id,
-        );
+        trace!("PluginRef::init: {}", self.id,);
         // Initialize
-        self.as_mut().clear_error();
         self.as_mut().memory.reset();
         let internal = self.as_mut().memory.store.data_mut();
         internal.input = std::ptr::null();
@@ -24,21 +20,29 @@ impl<'a> PluginRef<'a> {
     /// # Safety
     ///
     /// This function is used to access the static `PLUGINS` registry
-    pub unsafe fn new(ctx: &'a mut Context, plugin_id: PluginIndex) -> Self {
+    pub unsafe fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Self {
         trace!("Loading plugin {plugin_id}");
 
         if plugin_id < 0 {
-            panic!("Invalid PluginIndex {plugin_id}");
+            panic!("Invalid PluginIndex in PluginRef::new: {plugin_id}");
+        }
+
+        if clear_error {
+            ctx.error = None;
         }
 
         let plugin = ctx.plugin(plugin_id);
 
         let plugin = match plugin {
             None => {
-                panic!("Plugin no longer exists: {plugin_id}");
+                panic!("Plugin does not exist: {plugin_id}");
             }
             Some(p) => p,
         };
+
+        if clear_error {
+            plugin.clear_error();
+        }
 
         PluginRef {
             id: plugin_id,
