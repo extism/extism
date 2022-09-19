@@ -118,7 +118,7 @@ pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
 
     trace!(
         "Resetting context, plugins cleared: {:?}",
-        ctx.plugins.keys().collect::<Vec<i32>>()
+        ctx.plugins.keys().collect::<Vec<&i32>>()
     );
 
     ctx.plugins.clear();
