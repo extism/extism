@@ -28,6 +28,7 @@ impl Internal {
         for (k, v) in manifest.as_ref().config.iter() {
             wasi = wasi.env(k, v)?;
         }
+
         Ok(Internal {
             input_length: 0,
             output_offset: 0,

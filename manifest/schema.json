@@ -3,6 +3,13 @@
   "title": "Manifest",
   "type": "object",
   "properties": {
+    "allowed_hosts": {
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "config": {
       "default": {},
       "type": "object",

@@ -24,25 +24,30 @@ module Manifest : sig
   }
 
   type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url
-  
+
   type config = (string * string) list
 
   type t = {
     wasm : wasm list;
     memory : memory option;
     config: config option;
+    allowed_hosts: string list option;
   }
 
   val file: ?name:string -> ?hash:string -> string -> wasm
   val data: ?name:string -> ?hash:string -> string -> wasm
   val url: ?header:(string * string) list -> ?name:string -> ?meth:string -> ?hash:string -> string -> wasm
-  val v: ?config:config -> ?memory:memory -> wasm list -> t
+  val v:
+    ?config:config ->
+    ?memory:memory ->
+    ?allowed_hosts: string list ->
+    wasm list -> t
   val json: t -> string
 end
 
 module Context : sig
   type t
-  
+
   val create: unit -> t
   val free: t -> unit
   val reset: t -> unit
