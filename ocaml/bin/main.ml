@@ -9,4 +9,4 @@ let () =
   let plugin = Extism.of_manifest ctx manifest |> Result.get_ok in
   let res = Extism.call plugin ~name:"count_vowels" input |> Result.get_ok in
   print_endline res;
-  Extism.free plugin
+  Context.free ctx

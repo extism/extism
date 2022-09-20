@@ -87,6 +87,20 @@ export class Context {
   }
 }
 
+export async function withContext(f) {
+  let ctx = new Context();
+
+  try {
+    let x = await f(ctx);
+    ctx.free();
+    return x;
+  } catch (err) {
+    ctx.free();
+    throw err;
+  }
+
+}
+
 // Plugin provides an interface for calling WASM functions
 export class Plugin {
   constructor(ctx, data, wasi = false, config = null) {

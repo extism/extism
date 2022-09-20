@@ -48,6 +48,7 @@ module Context : sig
   val reset: t -> unit
 end
 
+val with_context : (Context.t -> 'a) -> 'a
 val set_log_file: ?level:string -> string -> bool
 val plugin: ?config:(string * string) list -> ?wasi:bool -> Context.t -> string -> (t, [`Msg of string]) result
 val of_manifest: ?config:(string * string) list -> ?wasi:bool -> Context.t -> Manifest.t -> (t, [`Msg of string]) result

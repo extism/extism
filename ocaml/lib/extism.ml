@@ -172,6 +172,17 @@ end
 
 type t = { id : int32; ctx : Context.t }
 
+let with_context f =
+  let ctx = Context.create () in
+  let x =
+    try f ctx
+    with exc ->
+      Context.free ctx;
+      raise exc
+  in
+  Context.free ctx;
+  x
+
 let set_config plugin config =
   match config with
   | Some config ->
@@ -183,7 +194,7 @@ let set_config plugin config =
       ()
   | None -> ()
 
-let free t = 
+let free t =
   if not (Ctypes.is_null t.ctx.pointer) then
     Bindings.extism_plugin_free t.ctx.pointer t.id
 

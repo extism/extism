@@ -16,10 +16,10 @@ hash = hashlib.sha256(wasm).hexdigest()
 config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
 with Context() as context:
-    with context.plugin(config) as plugin:
-        # Call `count_vowels`
-        j = json.loads(plugin.call("count_vowels", data))
-        print("Number of vowels:", j["count"])
+    plugin = context.plugin(config)
+    # Call `count_vowels`
+    j = json.loads(plugin.call("count_vowels", data))
+    print("Number of vowels:", j["count"])
 
 
 # Compare against Python implementation

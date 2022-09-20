@@ -39,30 +39,33 @@ module Extism
       $PLUGINS.delete(id)
     end
   }
-  
+
   $CONTEXTS = {}
   $FREE_CONTEXT = proc { |id|
-    if $CONTEXTS.has_value?(id) then
-      C.extism_context_free($CONTEXTS[id])
-      $CONTEXTS.delete(id)
+    begin
+      if $CONTEXTS.has_value?(id) then
+        C.extism_context_free($CONTEXTS[id])
+        $CONTEXTS.delete(id)
+      end
+    rescue
     end
   }
-  
+
   # Context is used to manage plugins
   class Context
     attr_accessor :pointer
-    
+
     def initialize
       @pointer = C.extism_context_new()
       $CONTEXTS[self.object_id] = @pointer
       ObjectSpace.define_finalizer(self,  $FREE_CONTEXT)
     end
-  
+
     # Remove all registered plugins
     def reset
       C.extism_context_reset(@pointer)
     end
-    
+
     # Free the context, this should be called when it is no longer needed
     def free
       if @pointer.nil? then
@@ -72,10 +75,21 @@ module Extism
       C.extism_context_free(@pointer)
       @pointer = nil
     end
-    
+
     # Create a new plugin from a WASM module or JSON encoded manifest
     def plugin(wasm, wasi=false, config=nil)
       return Plugin.new(self, wasm, wasi, config)
+    end
+  end
+
+
+  def self.with_context(&block)
+    ctx = Context.new
+    begin
+      x = block.call(ctx)
+      return x
+    ensure
+      ctx.free
     end
   end
 

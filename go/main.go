@@ -10,7 +10,7 @@ import (
 
 func main() {
 	ctx := extism.NewContext()
-	defer ctx.Free()
+	defer ctx.Free() // this will free the context and all associated plugins
 
 	// set some input data to provide to the plugin module
 	var data []byte
@@ -26,7 +26,6 @@ func main() {
 		fmt.Println(err)
 		os.Exit(1)
 	}
-	defer plugin.Free()
 
 	// use the extism Go library to provide the input data to the plugin, execute it, and then
 	// collect the plugin state and error if present
