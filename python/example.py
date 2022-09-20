@@ -11,11 +11,13 @@ if len(sys.argv) > 1:
 else:
     data = b"some data from python!"
 
-wasm = open("../wasm/code.wasm", 'rb').read()
-hash = hashlib.sha256(wasm).hexdigest()
-config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
-
+# a Context provides a scope for plugins to be managed within. creating multiple contexts
+# is expected and groups plugins based on source/tenant/lifetime etc.
 with Context() as context:
+    wasm = open("../wasm/code.wasm", 'rb').read()
+    hash = hashlib.sha256(wasm).hexdigest()
+    config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
+
     plugin = context.plugin(config)
     # Call `count_vowels`
     j = json.loads(plugin.call("count_vowels", data))
