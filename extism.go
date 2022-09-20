@@ -15,8 +15,29 @@ import (
 */
 import "C"
 
+// Context is used to manage Plugins
+type Context struct {
+	pointer *C.ExtismContext
+}
+
+// NewContext creates a new context, it should be freed using the `Free` method
+func NewContext() Context {
+	p := C.extism_context_new()
+	return Context{
+		pointer: p,
+	}
+}
+
+// Free a context
+func (ctx *Context) Free() {
+	C.extism_context_free(ctx.pointer)
+	ctx.pointer = nil
+}
+
+// Plugin is used to call WASM functions
 type Plugin struct {
-	id int32
+	ctx *Context
+	id  int32
 }
 
 type WasmData struct {
@@ -57,6 +78,7 @@ func makePointer(data []byte) unsafe.Pointer {
 	return ptr
 }
 
+// SetLogFile sets the log file and level, this is a global setting
 func SetLogFile(filename string, level string) bool {
 	name := C.CString(filename)
 	l := C.CString(level)
@@ -66,81 +88,120 @@ func SetLogFile(filename string, level string) bool {
 	return bool(r)
 }
 
-func register(data []byte, wasi bool) (Plugin, error) {
+func register(ctx *Context, data []byte, wasi bool) (Plugin, error) {
 	ptr := makePointer(data)
-	plugin := C.extism_plugin_register(
+	plugin := C.extism_plugin_new(
+		ctx.pointer,
 		(*C.uchar)(ptr),
 		C.uint64_t(len(data)),
 		C._Bool(wasi),
 	)
 
 	if plugin < 0 {
-		return Plugin{id: -1}, errors.New("Unable to load plugin")
+		err := C.extism_error(ctx.pointer, C.int32_t(-1))
+		msg := "Unknown"
+		if err != nil {
+			msg = C.GoString(err)
+		}
+
+		return Plugin{id: -1}, errors.New(
+			fmt.Sprintf("Unable to load plugin: %s", msg),
+		)
 	}
 
-	return Plugin{id: int32(plugin)}, nil
+	return Plugin{id: int32(plugin), ctx: ctx}, nil
 }
 
-func update(plugin int32, data []byte, wasi bool) bool {
+func update(ctx *Context, plugin int32, data []byte, wasi bool) error {
 	ptr := makePointer(data)
-	return bool(C.extism_plugin_update(
+	b := bool(C.extism_plugin_update(
+		ctx.pointer,
 		C.int32_t(plugin),
 		(*C.uchar)(ptr),
 		C.uint64_t(len(data)),
 		C._Bool(wasi),
 	))
+
+	if b {
+		return nil
+	}
+
+	err := C.extism_error(ctx.pointer, C.int32_t(-1))
+	msg := "Unknown"
+	if err != nil {
+		msg = C.GoString(err)
+	}
+
+	return errors.New(
+		fmt.Sprintf("Unable to load plugin: %s", msg),
+	)
 }
 
-func LoadManifest(manifest Manifest, wasi bool) (Plugin, error) {
+// PluginFromManifest creates a plugin from a `Manifest`
+func (ctx *Context) PluginFromManifest(manifest Manifest, wasi bool) (Plugin, error) {
 	data, err := json.Marshal(manifest)
 	if err != nil {
 		return Plugin{id: -1}, err
 	}
 
-	return register(data, wasi)
+	return register(ctx, data, wasi)
 }
 
-func LoadPlugin(module io.Reader, wasi bool) (Plugin, error) {
+// Plugin creates a plugin from a WASM module
+func (ctx *Context) Plugin(module io.Reader, wasi bool) (Plugin, error) {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
 		return Plugin{id: -1}, err
 	}
 
-	return register(wasm, wasi)
+	return register(ctx, wasm, wasi)
 }
 
-func (p *Plugin) Update(module io.Reader, wasi bool) (bool, error) {
+// Update a plugin with a new WASM module
+func (p *Plugin) Update(module io.Reader, wasi bool) error {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return update(p.id, wasm, wasi), nil
+	return update(p.ctx, p.id, wasm, wasi)
 }
 
-func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) (bool, error) {
+// Update a plugin with a new Manifest
+func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
 	data, err := json.Marshal(manifest)
 	if err != nil {
-		return false, err
+		return err
 	}
 
-	return update(p.id, data, wasi), nil
+	return update(p.ctx, p.id, data, wasi)
 }
 
+// Set configuration values
 func (plugin Plugin) SetConfig(data map[string][]byte) error {
 	s, err := json.Marshal(data)
 	if err != nil {
 		return err
 	}
 	ptr := makePointer(s)
-	C.extism_plugin_config(C.int(plugin.id), (*C.uchar)(ptr), C.uint64_t(len(s)))
+	C.extism_plugin_config(plugin.ctx.pointer, C.int(plugin.id), (*C.uchar)(ptr), C.uint64_t(len(s)))
 	return nil
 }
 
+/// FunctionExists returns true when the name function is present in the plugin
+func (plugin Plugin) FunctionExists(functionName string) bool {
+	name := C.CString(functionName)
+	b := C.extism_plugin_function_exists(plugin.ctx.pointer, C.int(plugin.id), name)
+	C.free(unsafe.Pointer(name))
+	return bool(b)
+}
+
+/// Call a function by name with the given input, returning the output
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	ptr := makePointer(input)
 	name := C.CString(functionName)
-	rc := C.extism_call(
+	rc := C.extism_plugin_call(
+		plugin.ctx.pointer,
 		C.int32_t(plugin.id),
 		name,
 		(*C.uchar)(ptr),
@@ -149,7 +210,7 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	C.free(unsafe.Pointer(name))
 
 	if rc != 0 {
-		err := C.extism_error(C.int32_t(plugin.id))
+		err := C.extism_error(plugin.ctx.pointer, C.int32_t(plugin.id))
 		msg := "<unset by plugin>"
 		if err != nil {
 			msg = C.GoString(err)
@@ -160,14 +221,27 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 		)
 	}
 
-	length := C.extism_output_length(C.int32_t(plugin.id))
+	length := C.extism_plugin_output_length(plugin.ctx.pointer, C.int32_t(plugin.id))
 
 	if length > 0 {
-		x := C.extism_output_get(C.int32_t(plugin.id))
+		x := C.extism_plugin_output_data(plugin.ctx.pointer, C.int32_t(plugin.id))
 		y := (*[]byte)(unsafe.Pointer(&x))
 		return []byte((*y)[0:length]), nil
-
 	}
 
 	return []byte{}, nil
+}
+
+// Free a plugin
+func (plugin *Plugin) Free() {
+	if plugin.ctx.pointer == nil {
+		return
+	}
+	C.extism_plugin_free(plugin.ctx.pointer, C.int32_t(plugin.id))
+	plugin.id = -1
+}
+
+// Reset removes all registered plugins in a Context
+func (ctx Context) Reset() {
+	C.extism_context_reset(ctx.pointer)
 }

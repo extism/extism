@@ -3,10 +3,22 @@
 pub type __uint8_t = ::std::os::raw::c_uchar;
 pub type __int32_t = ::std::os::raw::c_int;
 pub type __uint64_t = ::std::os::raw::c_ulong;
+#[repr(C)]
+#[derive(Debug, Copy, Clone)]
+pub struct ExtismContext {
+    _unused: [u8; 0],
+}
 pub type ExtismPlugin = i32;
 pub type ExtismSize = u64;
 extern "C" {
-    pub fn extism_plugin_register(
+    pub fn extism_context_new() -> *mut ExtismContext;
+}
+extern "C" {
+    pub fn extism_context_free(ctx: *mut ExtismContext);
+}
+extern "C" {
+    pub fn extism_plugin_new(
+        ctx: *mut ExtismContext,
         wasm: *const u8,
         wasm_size: ExtismSize,
         with_wasi: bool,
@@ -14,6 +26,7 @@ extern "C" {
 }
 extern "C" {
     pub fn extism_plugin_update(
+        ctx: *mut ExtismContext,
         index: ExtismPlugin,
         wasm: *const u8,
         wasm_size: ExtismSize,
@@ -21,20 +34,29 @@ extern "C" {
     ) -> bool;
 }
 extern "C" {
+    pub fn extism_plugin_free(ctx: *mut ExtismContext, plugin: ExtismPlugin);
+}
+extern "C" {
+    pub fn extism_context_reset(ctx: *mut ExtismContext);
+}
+extern "C" {
     pub fn extism_plugin_config(
+        ctx: *mut ExtismContext,
         plugin: ExtismPlugin,
         json: *const u8,
         json_size: ExtismSize,
     ) -> bool;
 }
 extern "C" {
-    pub fn extism_function_exists(
+    pub fn extism_plugin_function_exists(
+        ctx: *mut ExtismContext,
         plugin: ExtismPlugin,
         func_name: *const ::std::os::raw::c_char,
     ) -> bool;
 }
 extern "C" {
-    pub fn extism_call(
+    pub fn extism_plugin_call(
+        ctx: *mut ExtismContext,
         plugin_id: ExtismPlugin,
         func_name: *const ::std::os::raw::c_char,
         data: *const u8,
@@ -42,13 +64,17 @@ extern "C" {
     ) -> i32;
 }
 extern "C" {
-    pub fn extism_error(plugin: ExtismPlugin) -> *const ::std::os::raw::c_char;
+    pub fn extism_error(
+        ctx: *mut ExtismContext,
+        plugin: ExtismPlugin,
+    ) -> *const ::std::os::raw::c_char;
 }
 extern "C" {
-    pub fn extism_output_length(plugin: ExtismPlugin) -> ExtismSize;
+    pub fn extism_plugin_output_length(ctx: *mut ExtismContext, plugin: ExtismPlugin)
+        -> ExtismSize;
 }
 extern "C" {
-    pub fn extism_output_get(plugin: ExtismPlugin) -> *const u8;
+    pub fn extism_plugin_output_data(ctx: *mut ExtismContext, plugin: ExtismPlugin) -> *const u8;
 }
 extern "C" {
     pub fn extism_log_file(

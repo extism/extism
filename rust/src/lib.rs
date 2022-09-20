@@ -3,14 +3,17 @@ use std::collections::BTreeMap;
 use extism_manifest::Manifest;
 
 #[allow(non_camel_case_types)]
-mod bindings;
+pub(crate) mod bindings;
 
-#[repr(transparent)]
-pub struct Plugin(isize);
+mod context;
+mod plugin;
+
+pub use context::Context;
+pub use plugin::Plugin;
 
 #[derive(Debug)]
 pub enum Error {
-    UnableToLoadPlugin,
+    UnableToLoadPlugin(String),
     Message(String),
     Json(serde_json::Error),
 }
@@ -21,115 +24,14 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-impl Plugin {
-    pub fn new_with_manifest(manifest: &Manifest, wasi: bool) -> Result<Plugin, Error> {
-        let data = serde_json::to_vec(manifest)?;
-        Self::new(data, wasi)
-    }
-
-    pub fn new(data: impl AsRef<[u8]>, wasi: bool) -> Result<Plugin, Error> {
-        let plugin = unsafe {
-            bindings::extism_plugin_register(
-                data.as_ref().as_ptr(),
-                data.as_ref().len() as u64,
-                wasi,
-            )
-        };
-
-        if plugin < 0 {
-            return Err(Error::UnableToLoadPlugin);
-        }
-
-        Ok(Plugin(plugin as isize))
-    }
-
-    pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> bool {
-        unsafe {
-            bindings::extism_plugin_update(
-                self.0 as i32,
-                data.as_ref().as_ptr(),
-                data.as_ref().len() as u64,
-                wasi,
-            )
-        }
-    }
-
-    pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<bool, Error> {
-        let data = serde_json::to_vec(manifest)?;
-        Ok(self.update(data, wasi))
-    }
-
-    pub fn set_config(&self, config: &BTreeMap<String, String>) -> Result<(), Error> {
-        let encoded = serde_json::to_vec(config)?;
-        unsafe {
-            bindings::extism_plugin_config(
-                self.0 as i32,
-                encoded.as_ptr() as *const _,
-                encoded.len() as u64,
-            )
-        };
-        Ok(())
-    }
-
-    pub fn with_config(self, config: &BTreeMap<String, String>) -> Result<Self, Error> {
-        self.set_config(config)?;
-        Ok(self)
-    }
-
-    pub fn set_log_file(
-        &self,
-        filename: impl AsRef<std::path::Path>,
-        log_level: Option<log::LevelFilter>,
-    ) {
-        let log_level = log_level.map(|x| x.as_str());
-        unsafe {
-            bindings::extism_log_file(
-                filename.as_ref().as_os_str().to_string_lossy().as_ptr() as *const _,
-                log_level.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()) as *const _,
-            );
-        }
-    }
-
-    pub fn with_log_file(
-        self,
-        filename: impl AsRef<std::path::Path>,
-        log_level: Option<log::LevelFilter>,
-    ) -> Self {
-        self.set_log_file(filename, log_level);
-        self
-    }
-
-    pub fn has_function(&self, name: impl AsRef<str>) -> bool {
-        let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
-        unsafe { bindings::extism_function_exists(self.0 as i32, name.as_ptr() as *const _) }
-    }
-
-    pub fn call(&self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
-        let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
-        let rc = unsafe {
-            bindings::extism_call(
-                self.0 as i32,
-                name.as_ptr() as *const _,
-                input.as_ref().as_ptr() as *const _,
-                input.as_ref().len() as u64,
-            )
-        };
-
-        if rc != 0 {
-            let err = unsafe { bindings::extism_error(self.0 as i32) };
-            if !err.is_null() {
-                let s = unsafe { std::ffi::CStr::from_ptr(err) };
-                return Err(Error::Message(s.to_str().unwrap().to_string()));
-            }
-
-            return Err(Error::Message("extism_call failed".to_string()));
-        }
-
-        let out_len = unsafe { bindings::extism_output_length(self.0 as i32) };
-        unsafe {
-            let ptr = bindings::extism_output_get(self.0 as i32);
-            Ok(std::slice::from_raw_parts(ptr, out_len as usize))
-        }
+/// Set the log file and level, this is a global setting
+pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) {
+    let log_level = log_level.map(|x| x.as_str());
+    unsafe {
+        bindings::extism_log_file(
+            filename.as_ref().as_os_str().to_string_lossy().as_ptr() as *const _,
+            log_level.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()) as *const _,
+        );
     }
 }
 
@@ -138,13 +40,14 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
+    const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
+
     #[test]
     fn it_works() {
-        let wasm = include_bytes!("../../wasm/code.wasm");
         let wasm_start = Instant::now();
-        let plugin = Plugin::new(wasm, false)
-            .unwrap()
-            .with_log_file("test.log", Some(log::LevelFilter::Info));
+        set_log_file("test.log", Some(log::Level::Info));
+        let context = Context::new();
+        let plugin = Plugin::new(&context, WASM, false).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -229,5 +132,28 @@ mod tests {
         let avg: std::time::Duration = sum / num_tests as u32;
 
         println!("wasm function call (avg, N = {}): {:?}", num_tests, avg);
+    }
+
+    #[test]
+    fn test_threads() {
+        use std::io::Write;
+        std::thread::spawn(|| {
+            let context = Context::new();
+            let plugin = Plugin::new(&context, WASM, false).unwrap();
+            let output = plugin.call("count_vowels", "this is a test").unwrap();
+            std::io::stdout().write_all(output).unwrap();
+        });
+
+        std::thread::spawn(|| {
+            let context = Context::new();
+            let plugin = Plugin::new(&context, WASM, false).unwrap();
+            let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
+            std::io::stdout().write_all(output).unwrap();
+        });
+
+        let context = Context::new();
+        let plugin = Plugin::new(&context, WASM, false).unwrap();
+        let output = plugin.call("count_vowels", "abc123").unwrap();
+        std::io::stdout().write_all(output).unwrap();
     }
 }

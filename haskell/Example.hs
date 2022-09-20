@@ -5,13 +5,19 @@ import qualified Data.ByteString as B
 import Extism
 import Extism.Manifest
 
-main = do
-  plugin <- Extism.registerManifest (manifest [wasmFile "../wasm/code.wasm"]) False
+try f (Right x) = f x
+try f (Left (Error msg)) = do
+  _ <- putStrLn msg
+  exitFailure
+
+handlePlugin plugin = do
   res <- Extism.call plugin "count_vowels" (Extism.toByteString "this is a test")
-  case res of
-    Right (Error msg) -> do
-      _ <- putStrLn msg
-      exitFailure
-    Left bs -> do
-      _ <- putStrLn (Extism.fromByteString bs)
-      exitSuccess
+  try (\bs -> do
+    _ <- putStrLn (Extism.fromByteString bs)
+    _ <- Extism.free plugin
+    exitSuccess) res
+
+main = do
+  context <- Extism.newContext ()
+  plugin <- Extism.pluginFromManifest context (manifest [wasmFile "../wasm/code.wasm"]) False
+  try handlePlugin plugin

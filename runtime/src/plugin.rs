@@ -38,6 +38,22 @@ impl Internal {
             plugin: std::ptr::null_mut(),
         })
     }
+
+    pub fn plugin(&self) -> &Plugin {
+        unsafe { &*self.plugin }
+    }
+
+    pub fn plugin_mut(&mut self) -> &mut Plugin {
+        unsafe { &mut *self.plugin }
+    }
+
+    pub fn memory(&self) -> &PluginMemory {
+        &self.plugin().memory
+    }
+
+    pub fn memory_mut(&mut self) -> &mut PluginMemory {
+        &mut self.plugin_mut().memory
+    }
 }
 
 const EXPORT_MODULE_NAME: &str = "env";
@@ -145,14 +161,7 @@ impl Plugin {
     /// Set `last_error` field
     pub fn set_error(&mut self, e: impl std::fmt::Debug) {
         debug!("Set error: {:?}", e);
-        let x = format!("{:?}", e).into_bytes();
-        let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
-            x[1..x.len() - 1].to_vec()
-        } else {
-            x
-        };
-        let e = unsafe { std::ffi::CString::from_vec_unchecked(x) };
-        self.last_error = Some(e);
+        self.last_error = Some(error_string(e));
     }
 
     pub fn error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
@@ -181,6 +190,3 @@ impl Plugin {
         self.memory.dump();
     }
 }
-
-/// A registry for plugins
-pub static mut PLUGINS: std::sync::Mutex<Vec<Plugin>> = std::sync::Mutex::new(Vec::new());

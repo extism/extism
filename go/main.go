@@ -9,6 +9,9 @@ import (
 )
 
 func main() {
+	ctx := extism.NewContext()
+	defer ctx.Free() // this will free the context and all associated plugins
+
 	// set some input data to provide to the plugin module
 	var data []byte
 	if len(os.Args) > 1 {
@@ -18,7 +21,7 @@ func main() {
 	}
 
 	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code.wasm"}}}
-	plugin, err := extism.LoadManifest(manifest, false)
+	plugin, err := ctx.PluginFromManifest(manifest, false)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

@@ -6,6 +6,7 @@ use sha2::Digest;
 
 use crate::*;
 
+/// Manifest wraps the manifest exported by `extism_manifest`
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct Manifest(extism_manifest::Manifest);
@@ -59,11 +60,7 @@ fn check_hash(hash: &Option<String>, data: &[u8]) -> Result<(), Error> {
     }
 }
 
-fn hash_url(url: &str) -> String {
-    let digest = sha2::Sha256::digest(url.as_bytes());
-    hex(&digest)
-}
-
+/// Convert from manifest to a wasmtime Module
 fn to_module(
     engine: &Engine,
     wasm: &extism_manifest::ManifestWasm,
@@ -74,6 +71,7 @@ fn to_module(
                 return Err(anyhow::format_err!("File-based registration is disabled"));
             }
 
+            // Figure out a good name for the file
             let name = match name {
                 None => {
                     let name = path.with_extension("");
@@ -82,6 +80,7 @@ fn to_module(
                 Some(n) => n.clone(),
             };
 
+            // Load file
             let mut buf = Vec::new();
             let mut file = std::fs::File::open(path)?;
             file.read_to_end(&mut buf)?;
@@ -108,6 +107,7 @@ fn to_module(
                 },
             hash,
         } => {
+            // Get the file name
             let file_name = url.split('/').last().unwrap();
             let name = match name {
                 Some(name) => name.as_str(),
@@ -124,7 +124,6 @@ fn to_module(
                 }
             };
 
-            let url_hash = hash_url(url);
             if let Some(h) = hash {
                 if let Ok(Some(data)) = cache_get_file(h) {
                     check_hash(hash, &data)?;
@@ -140,7 +139,7 @@ fn to_module(
 
             #[cfg(feature = "register-http")]
             {
-                let url_hash = hash_url(url);
+                // Setup request
                 let mut req = ureq::request(method.as_deref().unwrap_or("GET"), url);
 
                 for (k, v) in header.iter() {
@@ -152,6 +151,7 @@ fn to_module(
                 let mut data = Vec::new();
                 r.read_to_end(&mut data)?;
 
+                // Try to cache file
                 if let Some(hash) = hash {
                     cache_add_file(hash, &data);
                 }
@@ -169,6 +169,7 @@ fn to_module(
 const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 
 impl Manifest {
+    /// Create a new Manifest, returns the manifest and a map of modules
     pub fn new(engine: &Engine, data: &[u8]) -> Result<(Self, BTreeMap<String, Module>), Error> {
         let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
         let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
@@ -196,6 +197,8 @@ impl Manifest {
         }
 
         let mut modules = BTreeMap::new();
+
+        // If there's only one module, it should be called `main`
         if self.0.wasm.len() == 1 {
             let (_, m) = to_module(engine, &self.0.wasm[0])?;
             modules.insert("main".to_string(), m);
