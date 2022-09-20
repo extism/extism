@@ -33,8 +33,8 @@ module Extism
 
   $PLUGINS = {}
   $FREE_PLUGIN = proc { |id|
-    if $PLUGINS.has_value?(id) then
-      x = $PLUGINS[id]
+    x = $PLUGINS[id]
+    if !x.nil? then
       C.extism_plugin_free(x[:context].pointer, x[:plugin])
       $PLUGINS.delete(id)
     end
@@ -42,12 +42,10 @@ module Extism
 
   $CONTEXTS = {}
   $FREE_CONTEXT = proc { |id|
-    begin
-      if $CONTEXTS.has_value?(id) then
-        C.extism_context_free($CONTEXTS[id])
-        $CONTEXTS.delete(id)
-      end
-    rescue
+    x = $CONTEXTS[id]
+    if !x.nil? then
+      C.extism_context_free($CONTEXTS[id])
+      $CONTEXTS.delete(id)
     end
   }
 
