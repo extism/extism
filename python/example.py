@@ -15,12 +15,11 @@ wasm = open("../wasm/code.wasm", 'rb').read()
 hash = hashlib.sha256(wasm).hexdigest()
 config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
-context = Context()
-plugin = context.plugin(config)
-
-# Call `count_vowels`
-j = json.loads(plugin.call("count_vowels", data))
-print("Number of vowels:", j["count"])
+with Context() as context:
+    with context.plugin(config) as plugin:
+        # Call `count_vowels`
+        j = json.loads(plugin.call("count_vowels", data))
+        print("Number of vowels:", j["count"])
 
 
 # Compare against Python implementation
@@ -33,5 +32,3 @@ def count_vowels(data):
 
 
 assert (j["count"] == count_vowels(data))
-del plugin
-del context

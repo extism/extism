@@ -117,6 +117,12 @@ class Context:
         lib.extism_context_free(self.pointer)
         self.pointer = ffi.NULL
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, exc, traceback):
+        self.__del__()
+
     def reset(self):
         '''Remove all registered plugins'''
         lib.extism_context_reset(self.pointer)
@@ -200,8 +206,7 @@ class Plugin:
             return buf
         return parse(buf)
 
-    def free(self):
-        '''Destroy the Plugin, this will be called automatically when the Plugin is GCed'''
+    def __del__(self):
         if not hasattr(self, 'ctx'):
             return
         if self.ctx.pointer == ffi.NULL:
@@ -209,5 +214,8 @@ class Plugin:
         lib.extism_plugin_free(self.ctx.pointer, self.plugin)
         self.plugin = -1
 
-    def __del__(self):
-        self.free()
+    def __enter__(self):
+        return self
+
+    def __exit__(self, type, exc, traceback):
+        self.__del__()
