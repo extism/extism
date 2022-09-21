@@ -36,7 +36,7 @@ Load WebAssembly modules at any time in your app's lifetime and Extism will exec
 
 ## Usage
 
-Head to the [project website](https://extism.org) for more information and docs. Also, consider reading an [overview](/docs/overview) of Extism and its goals & approach.
+Head to the [project website](https://extism.org) for more information and docs. Also, consider reading an [overview](https://extism.org/docs/overview) of Extism and its goals & approach.
 
 ## Contribution
 
