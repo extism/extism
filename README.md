@@ -15,7 +15,7 @@ The universal plug-in system. Run WebAssembly extensions inside your app. Use id
 Plug-in development kits (PDK) for plug-in authors supported in Rust, AssemblyScript, Go, C/C++.
 
 <p align="center">
-  <img src="https://user-images.githubusercontent.com/7517515/184472910-36d42d73-bd1e-49e2-9b4d-9b020959603d.png"/>
+  <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/191437220-4030840d-1a9e-47b9-a44a-39a004885308.png"/>
 </p>
 
 Add a flexible, secure, and _bLaZiNg FaSt_ plug-in system to your project. Server, desktop, mobile, web, database -- you name it. Enable users to write and execute safe extensions to your software in **3 easy steps:**
