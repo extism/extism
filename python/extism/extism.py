@@ -149,7 +149,7 @@ class Plugin:
         self.ctx = context
 
         if self.plugin < 0:
-            error = lib.extism_error(-1)
+            error = lib.extism_error(self.ctx.pointer, -1)
             if error != ffi.NULL:
                 raise Error(ffi.string(error).decode())
             raise Error("Unable to register plugin")
