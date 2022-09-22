@@ -351,7 +351,7 @@ pub(crate) fn http_request(
 ) -> Result<(), Trap> {
     #[cfg(not(feature = "http"))]
     {
-        let _ = (caller, input, output);
+        let _ = (caller, input);
 
         output[0] = Val::I64(0 as i64);
         error!("http_request is not enabled");
