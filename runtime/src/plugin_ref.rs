@@ -19,34 +19,30 @@ impl<'a> PluginRef<'a> {
     }
 
     /// Create a `PluginRef` from a context
-    pub fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Self {
+    pub fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Option<Self> {
         trace!("Loading plugin {plugin_id}");
 
-        if plugin_id < 0 {
-            panic!("Invalid PluginIndex in PluginRef::new: {plugin_id}");
+        if !ctx.plugin_exists(plugin_id) {
+            error!("Plugin does not exist: {plugin_id}");
+            return ctx.error(format!("Plugin does not exist: {plugin_id}"), None);
         }
 
         if clear_error {
+            trace!("Clearing context error");
             ctx.error = None;
         }
 
-        let plugin = ctx.plugin(plugin_id);
-
-        let plugin = match plugin {
-            None => {
-                panic!("Plugin does not exist: {plugin_id}");
-            }
-            Some(p) => p,
-        };
-
+        // `unwrap` is okay here because we already checked with `ctx.plugin_exists` above
+        let plugin = ctx.plugin(plugin_id).unwrap();
         if clear_error {
+            trace!("Clearing plugin error: {plugin_id}");
             plugin.clear_error();
         }
 
-        PluginRef {
+        Some(PluginRef {
             id: plugin_id,
             plugin,
-        }
+        })
     }
 }
 
