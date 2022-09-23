@@ -156,7 +156,7 @@ class Plugin:
 
         if config is not None:
             s = json.dumps(config).encode()
-            lib.extism_plugin_config(self.plugin, s, len(s))
+            lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
 
     def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
         '''Update a plugin with a new WASM module or manifest'''
