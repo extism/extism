@@ -228,31 +228,23 @@ pub(crate) fn config_get(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let offset = input[0].unwrap_i64() as usize;
-    let length = match data.memory().block_length(offset) {
+    let key_offset = input[0].unwrap_i64() as usize;
+    let key_length = match data.memory().block_length(key_offset) {
         Some(x) => x,
         None => return Err(Trap::new("Invalid offset in call to config_get")),
     };
 
-    let buf = data.memory().get((offset, length));
-    let str = unsafe { std::str::from_utf8_unchecked(buf) };
-    let val = data
-        .plugin()
-        .manifest
-        .as_ref()
-        .config
-        .get(str)
-        .map(|x| x.as_ptr());
+    let plugin = data.plugin_mut();
+    let key = plugin.memory.get((key_offset, key_length));
+    let key_str = unsafe { std::str::from_utf8_unchecked(key) };
+    let val = plugin.manifest.as_ref().config.get(key_str);
     let mem = match val {
-        Some(f) => data
-            .memory_mut()
-            .alloc_bytes(unsafe { std::slice::from_raw_parts(f, length) })?,
+        Some(f) => plugin.memory.alloc_bytes(f)?,
         None => {
             output[0] = Val::I64(0);
             return Ok(());
         }
     };
-
     output[0] = Val::I64(mem.offset as i64);
     Ok(())
 }
@@ -272,14 +264,15 @@ pub(crate) fn var_get(
         None => return Err(Trap::new("Invalid offset in call to var_get")),
     };
 
-    let val = {
+    let handle = {
         let buf = data.memory().ptr((offset, length));
         let buf = unsafe { std::slice::from_raw_parts(buf, length) };
         let str = unsafe { std::str::from_utf8_unchecked(buf) };
-        data.vars.get(str).map(|x| x.as_ptr())
+        data.vars.get(str)
     };
+    let val = handle.map(|x| (x.len(), x.as_ptr()));
     let mem = match val {
-        Some(f) => data
+        Some((length, f)) => data
             .memory_mut()
             .alloc_bytes(unsafe { std::slice::from_raw_parts(f, length) })?,
         None => {
