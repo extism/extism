@@ -179,10 +179,9 @@ impl Manifest {
                 return Ok((t, m));
             }
 
-            if let Ok(t) = serde_json::from_slice::<Self>(data) {
-                let m = t.modules(engine)?;
-                return Ok((t, m));
-            }
+            let t = serde_json::from_slice::<Self>(data)?;
+            let m = t.modules(engine)?;
+            return Ok((t, m));
         }
 
         let m = Module::new(engine, data)?;
