@@ -278,7 +278,9 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
         None => return std::ptr::null(),
         Some(p) => p,
     };
-    match &plugin.as_ref().last_error {
+
+    let err = plugin.as_ref().last_error.borrow();
+    match err.as_ref() {
         Some(e) => e.as_ptr() as *const _,
         None => {
             trace!("Error is NULL");
@@ -324,8 +326,9 @@ pub unsafe extern "C" fn extism_plugin_output_data(
     plugin
         .as_ref()
         .memory
-        .get(MemoryBlock::new(data.output_offset, data.output_length))
-        .as_ptr()
+        .ptr(MemoryBlock::new(data.output_offset, data.output_length))
+        .map(|x| x as *const _)
+        .unwrap_or(std::ptr::null())
 }
 
 /// Set log file and level
