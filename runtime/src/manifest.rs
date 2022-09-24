@@ -108,7 +108,7 @@ fn to_module(
             hash,
         } => {
             // Get the file name
-            let file_name = url.split('/').last().unwrap();
+            let file_name = url.split('/').last().unwrap_or_default();
             let name = match name {
                 Some(name) => name.as_str(),
                 None => {
