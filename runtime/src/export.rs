@@ -3,7 +3,7 @@ use crate::*;
 
 // This macro unwraps input arguments to prevent functions from panicking,
 // it should be used instead of `Val::unwrap_*` functions
-macro_rules! get {
+macro_rules! args {
     ($input:expr, $index:expr, $ty:ident) => {
         match $input[$index].$ty() {
             Some(x) => x,
@@ -12,7 +12,7 @@ macro_rules! get {
     };
     ($input:expr, $(($index:expr, $ty:ident)),*$(,)?) => {
         ($(
-            get!($input, $index, $ty),
+            args!($input, $index, $ty),
         )*)
     };
 }
@@ -58,7 +58,7 @@ pub(crate) fn input_load_u64(
     if data.input.is_null() {
         return Ok(());
     }
-    let offs = get!(input, 0, i64) as usize;
+    let offs = args!(input, 0, i64) as usize;
     let slice = unsafe { std::slice::from_raw_parts(data.input.add(offs), 8) };
     let byte = u64::from_ne_bytes(slice.try_into().unwrap());
     output[0] = Val::I64(byte as i64);
@@ -74,7 +74,7 @@ pub(crate) fn store_u8(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let (offset, byte) = get!(input, (0, i64), (1, i32));
+    let (offset, byte) = args!(input, (0, i64), (1, i32));
     data.memory_mut()
         .store_u8(offset as usize, byte as u8)
         .map_err(|_| Trap::new("Write error"))?;
@@ -90,7 +90,7 @@ pub(crate) fn load_u8(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     let byte = data
         .memory()
         .load_u8(offset)
@@ -108,7 +108,7 @@ pub(crate) fn store_u32(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let (offset, b) = get!(input, (0, i64), (1, i32));
+    let (offset, b) = args!(input, (0, i64), (1, i32));
     data.memory_mut()
         .store_u32(offset as usize, b as u32)
         .map_err(|_| Trap::new("Write error"))?;
@@ -124,7 +124,7 @@ pub(crate) fn load_u32(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     let b = data
         .memory()
         .load_u32(offset)
@@ -142,7 +142,7 @@ pub(crate) fn store_u64(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let (offset, b) = get!(input, (0, i64), (1, i64));
+    let (offset, b) = args!(input, (0, i64), (1, i64));
     data.memory_mut()
         .store_u64(offset as usize, b as u64)
         .map_err(|_| Trap::new("Write error"))?;
@@ -158,7 +158,7 @@ pub(crate) fn load_u64(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     let byte = data
         .memory()
         .load_u64(offset)
@@ -176,8 +176,9 @@ pub(crate) fn output_set(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    data.output_offset = get!(input, 0, i64) as usize;
-    data.output_length = get!(input, 1, i64) as usize;
+    let (offset, length) = args!(input, (0, i64), (1, i64));
+    data.output_offset = offset as usize;
+    data.output_length = length as usize;
     Ok(())
 }
 
@@ -205,7 +206,7 @@ pub(crate) fn free(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     data.memory_mut().free(offset);
     Ok(())
 }
@@ -219,7 +220,7 @@ pub(crate) fn error_set(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
 
     if offset == 0 {
         data.plugin_mut().clear_error();
@@ -243,7 +244,7 @@ pub(crate) fn config_get(
     let data: &mut Internal = caller.data_mut();
     let plugin = data.plugin_mut();
 
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     let key = plugin.memory.get_str(offset)?;
     let val = plugin.manifest.as_ref().config.get(key);
     let mem = match val {
@@ -268,7 +269,7 @@ pub(crate) fn var_get(
     let data: &mut Internal = caller.data_mut();
     let plugin = data.plugin_mut();
 
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     let key = plugin.memory.get_str(offset)?;
     let val = plugin.vars.get(key);
 
@@ -300,14 +301,14 @@ pub(crate) fn var_set(
         size += v.len();
     }
 
-    let voffset = get!(input, 1, i64) as usize;
+    let voffset = args!(input, 1, i64) as usize;
 
     // If the store is larger than 100MB then stop adding things
     if size > 1024 * 1024 * 100 && voffset != 0 {
         return Err(Trap::new("Variable store is full"));
     }
 
-    let key_offs = get!(input, 0, i64) as usize;
+    let key_offs = args!(input, 0, i64) as usize;
     let key = plugin.memory.get_str(key_offs)?;
 
     // Remove if the value offset is 0
@@ -345,13 +346,13 @@ pub(crate) fn http_request(
     {
         use std::io::Read;
         let data: &mut Internal = caller.data_mut();
-        let http_req_offset = get!(input, 0, i64) as usize;
+        let http_req_offset = args!(input, 0, i64) as usize;
 
         let req: extism_manifest::HttpRequest =
             serde_json::from_slice(data.memory().get(http_req_offset)?)
                 .map_err(|_| Trap::new("Invalid http request"))?;
 
-        let body_offset = get!(input, 1, i64) as usize;
+        let body_offset = args!(input, 1, i64) as usize;
 
         let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
 
@@ -390,7 +391,7 @@ pub(crate) fn length(
     output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &mut Internal = caller.data_mut();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     if offset == 0 {
         output[0] = Val::I64(0);
         return Ok(());
@@ -410,7 +411,7 @@ pub fn log(
     _output: &mut [Val],
 ) -> Result<(), Trap> {
     let data: &Internal = caller.data();
-    let offset = get!(input, 0, i64) as usize;
+    let offset = args!(input, 0, i64) as usize;
     let buf = data.memory().get(offset)?;
 
     match std::str::from_utf8(buf) {
