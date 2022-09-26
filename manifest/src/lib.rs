@@ -77,7 +77,7 @@ pub struct Manifest {
     #[serde(default)]
     pub config: BTreeMap<String, String>,
     #[serde(default)]
-    pub allowed_hosts: Vec<String>,
+    pub allowed_hosts: Option<Vec<String>>,
 }
 
 mod base64 {

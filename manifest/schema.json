@@ -4,8 +4,11 @@
   "type": "object",
   "properties": {
     "allowed_hosts": {
-      "default": [],
-      "type": "array",
+      "default": null,
+      "type": [
+        "array",
+        "null"
+      ],
       "items": {
         "type": "string"
       }
