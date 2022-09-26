@@ -13,6 +13,34 @@ pub struct PluginMemory {
     pub position: usize,
 }
 
+pub trait ToMemoryBlock {
+    fn to_memory_block(&self, mem: &PluginMemory) -> Result<MemoryBlock, Error>;
+}
+
+impl ToMemoryBlock for MemoryBlock {
+    fn to_memory_block(&self, _mem: &PluginMemory) -> Result<MemoryBlock, Error> {
+        Ok(*self)
+    }
+}
+
+impl ToMemoryBlock for (usize, usize) {
+    fn to_memory_block(&self, _mem: &PluginMemory) -> Result<MemoryBlock, Error> {
+        Ok(MemoryBlock {
+            offset: self.0,
+            length: self.1,
+        })
+    }
+}
+
+impl ToMemoryBlock for usize {
+    fn to_memory_block(&self, mem: &PluginMemory) -> Result<MemoryBlock, Error> {
+        match mem.at_offset(*self) {
+            Some(x) => Ok(x),
+            None => Err(Error::msg(format!("Invalid memory offset: {}", self))),
+        }
+    }
+}
+
 const PAGE_SIZE: u32 = 65536;
 
 // BLOCK_SIZE_THRESHOLD exists to ensure that free blocks are never split up any
@@ -57,7 +85,7 @@ impl PluginMemory {
     }
 
     /// Write u32 to memory
-    pub(crate) fn store_u32(&mut self, offs: usize, data: u32) -> Result<(), MemoryAccessError> {
+    pub(crate) fn store_u32(&mut self, offs: usize, data: u32) -> Result<(), Error> {
         trace!("store_u32: {data:x} at offset {offs}");
         let handle = MemoryBlock {
             offset: offs,
@@ -68,7 +96,7 @@ impl PluginMemory {
     }
 
     /// Read u32 from memory
-    pub(crate) fn load_u32(&self, offs: usize) -> Result<u32, MemoryAccessError> {
+    pub(crate) fn load_u32(&self, offs: usize) -> Result<u32, Error> {
         trace!("load_u32: offset {offs}");
         let mut buf = [0; 4];
 
@@ -81,7 +109,7 @@ impl PluginMemory {
     }
 
     /// Write u64 to memory
-    pub(crate) fn store_u64(&mut self, offs: usize, data: u64) -> Result<(), MemoryAccessError> {
+    pub(crate) fn store_u64(&mut self, offs: usize, data: u64) -> Result<(), Error> {
         trace!("store_u64: {data:x} at offset {offs}");
         let handle = MemoryBlock {
             offset: offs,
@@ -92,7 +120,7 @@ impl PluginMemory {
     }
 
     /// Read u64 from memory
-    pub(crate) fn load_u64(&self, offs: usize) -> Result<u64, MemoryAccessError> {
+    pub(crate) fn load_u64(&self, offs: usize) -> Result<u64, Error> {
         trace!("load_u64: offset {offs}");
         let mut buf = [0; 8];
         let handle = MemoryBlock {
@@ -104,26 +132,20 @@ impl PluginMemory {
     }
 
     /// Write slice to memory
-    pub fn write(
-        &mut self,
-        pos: impl Into<MemoryBlock>,
-        data: impl AsRef<[u8]>,
-    ) -> Result<(), MemoryAccessError> {
-        let pos = pos.into();
+    pub fn write(&mut self, pos: impl ToMemoryBlock, data: impl AsRef<[u8]>) -> Result<(), Error> {
+        let pos = pos.to_memory_block(self)?;
         assert!(data.as_ref().len() <= pos.length);
         self.memory
-            .write(&mut self.store, pos.offset, data.as_ref())
+            .write(&mut self.store, pos.offset, data.as_ref())?;
+        Ok(())
     }
 
     /// Read slice from memory
-    pub fn read(
-        &self,
-        pos: impl Into<MemoryBlock>,
-        mut data: impl AsMut<[u8]>,
-    ) -> Result<(), MemoryAccessError> {
-        let pos = pos.into();
+    pub fn read(&self, pos: impl ToMemoryBlock, mut data: impl AsMut<[u8]>) -> Result<(), Error> {
+        let pos = pos.to_memory_block(self)?;
         assert!(data.as_mut().len() <= pos.length);
-        self.memory.read(&self.store, pos.offset, data.as_mut())
+        self.memory.read(&self.store, pos.offset, data.as_mut())?;
+        Ok(())
     }
 
     /// Size of memory in bytes
@@ -262,26 +284,52 @@ impl PluginMemory {
     }
 
     /// Get bytes occupied by the provided memory handle
-    pub fn get(&self, handle: impl Into<MemoryBlock>) -> &[u8] {
-        let handle = handle.into();
-        &self.memory.data(&self.store)[handle.offset..handle.offset + handle.length]
+    pub fn get(&self, handle: impl ToMemoryBlock) -> Result<&[u8], Error> {
+        let handle = handle.to_memory_block(self)?;
+        Ok(&self.memory.data(&self.store)[handle.offset..handle.offset + handle.length])
     }
 
     /// Get mutable bytes occupied by the provided memory handle
-    pub fn get_mut(&mut self, handle: impl Into<MemoryBlock>) -> &mut [u8] {
-        let handle = handle.into();
-        &mut self.memory.data_mut(&mut self.store)[handle.offset..handle.offset + handle.length]
+    pub fn get_mut(&mut self, handle: impl ToMemoryBlock) -> Result<&mut [u8], Error> {
+        let handle = handle.to_memory_block(self)?;
+        Ok(
+            &mut self.memory.data_mut(&mut self.store)
+                [handle.offset..handle.offset + handle.length],
+        )
+    }
+
+    /// Get str occupied by the provided memory handle
+    pub fn get_str(&self, handle: impl ToMemoryBlock) -> Result<&str, Error> {
+        let handle = handle.to_memory_block(self)?;
+        Ok(std::str::from_utf8(
+            &self.memory.data(&self.store)[handle.offset..handle.offset + handle.length],
+        )?)
+    }
+
+    /// Get mutable str occupied by the provided memory handle
+    pub fn get_mut_str(&mut self, handle: impl ToMemoryBlock) -> Result<&mut str, Error> {
+        let handle = handle.to_memory_block(self)?;
+        Ok(std::str::from_utf8_mut(
+            &mut self.memory.data_mut(&mut self.store)
+                [handle.offset..handle.offset + handle.length],
+        )?)
     }
 
     /// Pointer to the provided memory handle
-    pub fn ptr(&self, handle: impl Into<MemoryBlock>) -> *mut u8 {
-        let handle = handle.into();
-        unsafe { self.memory.data_ptr(&self.store).add(handle.offset) }
+    pub fn ptr(&self, handle: impl ToMemoryBlock) -> Result<*mut u8, Error> {
+        let handle = handle.to_memory_block(self)?;
+        Ok(unsafe { self.memory.data_ptr(&self.store).add(handle.offset) })
     }
 
     /// Get the length of the block starting at `offs`
     pub fn block_length(&self, offs: usize) -> Option<usize> {
         self.live_blocks.get(&offs).cloned()
+    }
+
+    /// Get the block at the specified offset
+    pub fn at_offset(&self, offset: usize) -> Option<MemoryBlock> {
+        let block_length = self.block_length(offset);
+        block_length.map(|length| MemoryBlock { offset, length })
     }
 }
 

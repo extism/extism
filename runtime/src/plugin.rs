@@ -7,9 +7,10 @@ pub struct Plugin {
     pub module: Module,
     pub linker: Linker<Internal>,
     pub instance: Instance,
-    pub last_error: Option<std::ffi::CString>,
+    pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
     pub memory: PluginMemory,
     pub manifest: Manifest,
+    pub vars: BTreeMap<String, Vec<u8>>,
 }
 
 pub struct Internal {
@@ -17,7 +18,6 @@ pub struct Internal {
     pub input: *const u8,
     pub output_offset: usize,
     pub output_length: usize,
-    pub vars: BTreeMap<String, Vec<u8>>,
     pub wasi: wasmtime_wasi::WasiCtx,
     pub plugin: *mut Plugin,
 }
@@ -34,7 +34,6 @@ impl Internal {
             output_length: 0,
             input: std::ptr::null(),
             wasi: wasi.build(),
-            vars: BTreeMap::new(),
             plugin: std::ptr::null_mut(),
         })
     }
@@ -147,8 +146,9 @@ impl Plugin {
             linker,
             memory,
             instance,
-            last_error: None,
+            last_error: std::cell::RefCell::new(None),
             manifest,
+            vars: BTreeMap::new(),
         })
     }
 
@@ -159,19 +159,19 @@ impl Plugin {
     }
 
     /// Set `last_error` field
-    pub fn set_error(&mut self, e: impl std::fmt::Debug) {
+    pub fn set_error(&self, e: impl std::fmt::Debug) {
         debug!("Set error: {:?}", e);
-        self.last_error = Some(error_string(e));
+        *self.last_error.borrow_mut() = Some(error_string(e));
     }
 
-    pub fn error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
+    pub fn error<E>(&self, e: impl std::fmt::Debug, x: E) -> E {
         self.set_error(e);
         x
     }
 
     /// Unset `last_error` field
-    pub fn clear_error(&mut self) {
-        self.last_error = None;
+    pub fn clear_error(&self) {
+        *self.last_error.borrow_mut() = None;
     }
 
     /// Store input in memory and initialize `Internal` pointer

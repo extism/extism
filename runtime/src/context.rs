@@ -57,6 +57,7 @@ impl Context {
 
     /// Set the context error
     pub fn set_error(&mut self, e: impl std::fmt::Debug) {
+        trace!("Set context error: {:?}", e);
         self.error = Some(error_string(e));
     }
 
@@ -69,6 +70,10 @@ impl Context {
     /// Get a plugin from the context
     pub fn plugin(&mut self, id: PluginIndex) -> Option<&mut Plugin> {
         self.plugins.get_mut(&id)
+    }
+
+    pub fn plugin_exists(&mut self, id: PluginIndex) -> bool {
+        self.plugins.contains_key(&id)
     }
 
     /// Remove a plugin from the context

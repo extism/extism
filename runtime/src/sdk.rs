@@ -133,7 +133,10 @@ pub unsafe extern "C" fn extism_plugin_config(
     json_size: Size,
 ) -> bool {
     let ctx = &mut *ctx;
-    let mut plugin = PluginRef::new(ctx, plugin, true);
+    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return false,
+        Some(p) => p,
+    };
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -177,7 +180,10 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     func_name: *const c_char,
 ) -> bool {
     let ctx = &mut *ctx;
-    let mut plugin = PluginRef::new(ctx, plugin, true);
+    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return false,
+        Some(p) => p,
+    };
 
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!("Call to extism_plugin_function_exists for: {:?}", name);
@@ -209,7 +215,10 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Get a `PluginRef` and call `init` to set up the plugin input and memory, this is only
     // needed before a new call
-    let mut plugin = PluginRef::new(ctx, plugin_id, true).init(data, data_len as usize);
+    let mut plugin = match PluginRef::new(ctx, plugin_id, true) {
+        None => return -1,
+        Some(p) => p.init(data, data_len as usize),
+    };
     let plugin = plugin.as_mut();
 
     // Find function
@@ -243,6 +252,16 @@ pub unsafe extern "C" fn extism_plugin_call(
     results[0].unwrap_i32()
 }
 
+pub fn get_context_error(ctx: &Context) -> *const c_char {
+    match &ctx.error {
+        Some(e) => e.as_ptr() as *const _,
+        None => {
+            trace!("Context error is NULL");
+            std::ptr::null()
+        }
+    }
+}
+
 /// Get the error associated with a `Context` or `Plugin`, if `plugin` is `-1` then the context
 /// error will be returned
 #[no_mangle]
@@ -251,18 +270,17 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
 
     let ctx = &mut *ctx;
 
-    if plugin < 0 {
-        match ctx.error.as_ref() {
-            Some(e) => return e.as_ptr() as *const _,
-            None => {
-                trace!("Error is NULL");
-                return std::ptr::null();
-            }
-        }
+    if !ctx.plugin_exists(plugin) {
+        return get_context_error(ctx);
     }
 
-    let plugin = PluginRef::new(ctx, plugin, false);
-    match &plugin.as_ref().last_error {
+    let plugin = match PluginRef::new(ctx, plugin, false) {
+        None => return std::ptr::null(),
+        Some(p) => p,
+    };
+
+    let err = plugin.as_ref().last_error.borrow();
+    match err.as_ref() {
         Some(e) => e.as_ptr() as *const _,
         None => {
             trace!("Error is NULL");
@@ -280,7 +298,10 @@ pub unsafe extern "C" fn extism_plugin_output_length(
     trace!("Call to extism_plugin_output_length for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin = PluginRef::new(ctx, plugin, true);
+    let plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return 0,
+        Some(p) => p,
+    };
 
     let len = plugin.as_ref().memory.store.data().output_length as Size;
     trace!("Output length: {len}");
@@ -296,14 +317,18 @@ pub unsafe extern "C" fn extism_plugin_output_data(
     trace!("Call to extism_plugin_output_data for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin = PluginRef::new(ctx, plugin, true);
+    let plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return std::ptr::null(),
+        Some(p) => p,
+    };
     let data = plugin.as_ref().memory.store.data();
 
     plugin
         .as_ref()
         .memory
-        .get(MemoryBlock::new(data.output_offset, data.output_length))
-        .as_ptr()
+        .ptr(MemoryBlock::new(data.output_offset, data.output_length))
+        .map(|x| x as *const _)
+        .unwrap_or(std::ptr::null())
 }
 
 /// Set log file and level

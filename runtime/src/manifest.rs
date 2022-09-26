@@ -108,7 +108,7 @@ fn to_module(
             hash,
         } => {
             // Get the file name
-            let file_name = url.split('/').last().unwrap();
+            let file_name = url.split('/').last().unwrap_or_default();
             let name = match name {
                 Some(name) => name.as_str(),
                 None => {
@@ -179,10 +179,9 @@ impl Manifest {
                 return Ok((t, m));
             }
 
-            if let Ok(t) = serde_json::from_slice::<Self>(data) {
-                let m = t.modules(engine)?;
-                return Ok((t, m));
-            }
+            let t = serde_json::from_slice::<Self>(data)?;
+            let m = t.modules(engine)?;
+            return Ok((t, m));
         }
 
         let m = Module::new(engine, data)?;
