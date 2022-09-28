@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "extism"
-version = "0.0.1-rc.3"
+version = "0.0.1-rc.4"
 description = ""
 authors = ["The Extism Authors <oss@extism.org>"]
 license = "BSD-3-Clause"

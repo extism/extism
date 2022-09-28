@@ -1,6 +1,6 @@
 [package]
 name = "extism-runtime"
-version = "0.0.1-rc.3"
+version = "0.0.1-rc.4"
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
@@ -27,7 +27,7 @@ log4rs = "1.1"
 url = "2.3"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
-extism-manifest = { version = "0.0.1-rc.3", path = "../manifest" }
+extism-manifest = { version = "0.0.1-rc.4", path = "../manifest" }
 pretty-hex = { version = "0.3" }
 
 [features]
