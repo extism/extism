@@ -13,6 +13,7 @@ valueOrNull f Nothing = JSNull
 valueOrNull f (Just x) = f x
 makeString s = JSString (toJSString s)
 stringOrNull = valueOrNull makeString
+makeArray f [] = JSNull
 makeArray f x = JSArray [f a | a <- x]
 filterNulls obj = [(a, b) | (a, b) <- obj, not (isNull b)]
 mapObj f x = makeObj (filterNulls [(a, f b) | (a, b) <- x])
@@ -143,24 +144,38 @@ data Manifest = Manifest
     wasm :: [Wasm]
   , memory :: Maybe Memory
   , config :: [(String, String)]
+  , allowed_hosts :: [String]
   }
 
 manifest :: [Wasm] -> Manifest
-manifest wasm = Manifest {wasm = wasm, memory = Nothing, config = []}
+manifest wasm =
+  Manifest {
+    wasm = wasm,
+    memory = Nothing,
+    config = [],
+    allowed_hosts = []
+  }
 
 withConfig :: Manifest -> [(String, String)] -> Manifest
 withConfig m config =
   m { config = config }
+
+
+withHosts :: Manifest -> [String] -> Manifest
+withHosts m hosts =
+  m { allowed_hosts = hosts }
 
 instance JSONValue Manifest where
   toJSONValue x =
     let w = makeArray toJSONValue $ wasm x in
     let mem = valueOrNull toJSONValue $ memory x in
     let c = mapObj makeString $ config x in
+    let hosts = makeArray makeString $ allowed_hosts x in
     makeObj $ filterNulls [
       ("wasm", w),
       ("memory", mem),
-      ("config", c)
+      ("config", c),
+      ("allowed_hosts", hosts)
     ]
 
 toString :: Manifest -> String

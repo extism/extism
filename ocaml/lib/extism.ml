@@ -144,13 +144,14 @@ module Manifest = struct
     wasm : wasm list;
     memory : memory option; [@yojson.option]
     config : config option; [@yojson.option]
+    allowed_hosts: string list option; [@yojson.option]
   }
   [@@deriving yojson]
 
   let file ?name ?hash path = File { path; name; hash }
   let data ?name ?hash data = Data { data; name; hash }
   let url ?header ?name ?meth ?hash url = Url { header; name; meth; hash; url }
-  let v ?config ?memory wasm = { config; wasm; memory }
+  let v ?config ?memory ?allowed_hosts wasm = { config; wasm; memory; allowed_hosts }
   let json t = yojson_of_t t |> Yojson.Safe.to_string
 end
 
