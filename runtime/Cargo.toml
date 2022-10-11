@@ -17,6 +17,7 @@ crate-type = ["cdylib"]
 [dependencies]
 wasmtime = "1.0.0"
 wasmtime-wasi = "1.0.0"
+wasmtime-wasi-nn = {version = "1.0.1", optional=true}
 anyhow = "1"
 serde = { version = "1", features=["derive"] }
 toml = "0.5"
@@ -32,6 +33,8 @@ pretty-hex = { version = "0.3" }
 
 [features]
 default = ["http", "register-http", "register-filesystem"]
+all = ["nn", "http", "register-http", "register-filesystem"]
+nn = ["wasmtime-wasi-nn"]
 register-http = ["ureq"] # enables wasm to be downloaded using http
 register-filesystem = [] # enables wasm to be loaded from disk
 http = ["ureq"]          # enables extism_http_request

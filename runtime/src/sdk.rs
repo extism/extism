@@ -156,15 +156,17 @@ pub unsafe extern "C" fn extism_plugin_config(
     let plugin = plugin.as_mut();
     let wasi = &mut plugin.memory.store.data_mut().wasi;
     let config = &mut plugin.manifest.as_mut().config;
-    for (k, v) in json.into_iter() {
-        match v {
-            Some(v) => {
-                trace!("Config, adding {k}");
-                let _ = wasi.push_env(&k, &v);
-                config.insert(k, v);
-            }
-            None => {
-                config.remove(&k);
+    if let Some(wasi) = wasi {
+        for (k, v) in json.into_iter() {
+            match v {
+                Some(v) => {
+                    trace!("Config, adding {k}");
+                    let _ = wasi.push_env(&k, &v);
+                    config.insert(k, v);
+                }
+                None => {
+                    config.remove(&k);
+                }
             }
         }
     }
