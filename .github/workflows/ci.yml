@@ -39,7 +39,7 @@ jobs:
         run: cargo clippy --release --no-deps -p ${{ env.RUNTIME_CRATE }}
 
       - name: Test
-        run: cargo test --release -p ${{ env.RUNTIME_CRATE }}
+        run: cargo test --all-features --release -p ${{ env.RUNTIME_CRATE }}
 
       - name: Install extism shared library
         shell: bash
