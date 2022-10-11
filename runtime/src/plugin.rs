@@ -18,23 +18,46 @@ pub struct Internal {
     pub input: *const u8,
     pub output_offset: usize,
     pub output_length: usize,
-    pub wasi: wasmtime_wasi::WasiCtx,
     pub plugin: *mut Plugin,
+    pub wasi: Option<Wasi>,
+}
+
+pub struct Wasi {
+    pub ctx: wasmtime_wasi::WasiCtx,
+    #[cfg(feature = "nn")]
+    pub nn: wasmtime_wasi_nn::WasiNnCtx,
+    #[cfg(not(feature = "nn"))]
+    pub nn: (),
 }
 
 impl Internal {
-    fn new(manifest: &Manifest) -> Result<Self, Error> {
-        let mut wasi = wasmtime_wasi::WasiCtxBuilder::new();
-        for (k, v) in manifest.as_ref().config.iter() {
-            wasi = wasi.env(k, v)?;
-        }
+    fn new(manifest: &Manifest, wasi: bool) -> Result<Self, Error> {
+        let wasi = if wasi {
+            let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
+            for (k, v) in manifest.as_ref().config.iter() {
+                ctx = ctx.env(k, v)?;
+            }
+
+            #[cfg(feature = "nn")]
+            let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
+
+            #[cfg(not(feature = "nn"))]
+            let nn = ();
+
+            Some(Wasi {
+                ctx: ctx.build(),
+                nn,
+            })
+        } else {
+            None
+        };
 
         Ok(Internal {
             input_length: 0,
             output_offset: 0,
             output_length: 0,
             input: std::ptr::null(),
-            wasi: wasi.build(),
+            wasi,
             plugin: std::ptr::null_mut(),
         })
     }
@@ -63,7 +86,7 @@ impl Plugin {
     pub fn new(wasm: impl AsRef<[u8]>, with_wasi: bool) -> Result<Plugin, Error> {
         let engine = Engine::default();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
-        let mut store = Store::new(&engine, Internal::new(&manifest)?);
+        let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
         let memory = Memory::new(&mut store, MemoryType::new(4, manifest.as_ref().memory.max))?;
         let mut memory = PluginMemory::new(store, memory);
 
@@ -71,9 +94,15 @@ impl Plugin {
         linker.allow_shadowing(true);
 
         if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut Internal| &mut x.wasi)?;
-        }
+            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut Internal| {
+                &mut x.wasi.as_mut().unwrap().ctx
+            })?;
 
+            #[cfg(feature = "nn")]
+            wasmtime_wasi_nn::add_to_linker(&mut linker, |x: &mut Internal| {
+                &mut x.wasi.as_mut().unwrap().nn
+            })?;
+        }
         // Get the `main` module, or the last one if `main` doesn't exist
         let (main_name, main) = modules.get("main").map(|x| ("main", x)).unwrap_or_else(|| {
             let entry = modules.iter().last().unwrap();

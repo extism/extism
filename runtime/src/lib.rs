@@ -12,7 +12,7 @@ pub mod sdk;
 pub use context::Context;
 pub use manifest::Manifest;
 pub use memory::{MemoryBlock, PluginMemory};
-pub use plugin::{Internal, Plugin};
+pub use plugin::{Internal, Plugin, Wasi};
 pub use plugin_ref::PluginRef;
 
 pub type Size = u64;
