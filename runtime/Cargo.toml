@@ -33,7 +33,6 @@ pretty-hex = { version = "0.3" }
 
 [features]
 default = ["http", "register-http", "register-filesystem"]
-all = ["nn", "http", "register-http", "register-filesystem"]
 nn = ["wasmtime-wasi-nn"]
 register-http = ["ureq"] # enables wasm to be downloaded using http
 register-filesystem = [] # enables wasm to be loaded from disk

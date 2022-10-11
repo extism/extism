@@ -18,30 +18,38 @@ pub struct Internal {
     pub input: *const u8,
     pub output_offset: usize,
     pub output_length: usize,
-    pub wasi: Option<wasmtime_wasi::WasiCtx>,
-    #[cfg(feature = "nn")]
-    pub wasi_nn: Option<wasmtime_wasi_nn::WasiNnCtx>,
-    #[cfg(not(feature = "nn"))]
-    pub wasi_nn: Option<()>,
     pub plugin: *mut Plugin,
+    pub wasi: Option<Wasi>,
+}
+
+pub struct Wasi {
+    pub ctx: wasmtime_wasi::WasiCtx,
+    #[cfg(feature = "nn")]
+    pub nn: wasmtime_wasi_nn::WasiNnCtx,
+    #[cfg(not(feature = "nn"))]
+    pub nn: (),
 }
 
 impl Internal {
     fn new(manifest: &Manifest, wasi: bool) -> Result<Self, Error> {
-        let (wasi, wasi_nn) = if wasi {
-            let mut wasi = wasmtime_wasi::WasiCtxBuilder::new();
+        let wasi = if wasi {
+            let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
             for (k, v) in manifest.as_ref().config.iter() {
-                wasi = wasi.env(k, v)?;
+                ctx = ctx.env(k, v)?;
             }
 
             #[cfg(feature = "nn")]
-            let nn = Some(wasmtime_wasi_nn::WasiNnCtx::new()?);
+            let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 
             #[cfg(not(feature = "nn"))]
-            let nn = None;
-            (Some(wasi.build()), nn)
+            let nn = ();
+
+            Some(Wasi {
+                ctx: ctx.build(),
+                nn,
+            })
         } else {
-            (None, None)
+            None
         };
 
         Ok(Internal {
@@ -50,7 +58,6 @@ impl Internal {
             output_length: 0,
             input: std::ptr::null(),
             wasi,
-            wasi_nn,
             plugin: std::ptr::null_mut(),
         })
     }
@@ -87,13 +94,13 @@ impl Plugin {
         linker.allow_shadowing(true);
 
         if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut Internal| x.wasi.as_mut().unwrap())?;
-        }
+            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut Internal| {
+                &mut x.wasi.as_mut().unwrap().ctx
+            })?;
 
-        #[cfg(feature = "nn")]
-        if with_wasi {
+            #[cfg(feature = "nn")]
             wasmtime_wasi_nn::add_to_linker(&mut linker, |x: &mut Internal| {
-                x.wasi_nn.as_mut().unwrap()
+                &mut x.wasi.as_mut().unwrap().nn
             })?;
         }
         // Get the `main` module, or the last one if `main` doesn't exist
