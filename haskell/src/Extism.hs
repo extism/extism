@@ -29,6 +29,7 @@ foreign import ccall unsafe "extism.h extism_log_file" extism_log_file :: CStrin
 foreign import ccall unsafe "extism.h extism_plugin_config" extism_plugin_config :: Ptr ExtismContext -> Int32 -> Ptr Word8 -> Int64 -> IO CBool
 foreign import ccall unsafe "extism.h extism_plugin_free" extism_plugin_free :: Ptr ExtismContext -> Int32 -> IO ()
 foreign import ccall unsafe "extism.h extism_context_reset" extism_context_reset :: Ptr ExtismContext -> IO ()
+foreign import ccall unsafe "extism.h extism_version" extism_version :: IO CString
 
 -- Context manages plugins
 newtype Context = Context (ForeignPtr ExtismContext)
@@ -46,6 +47,11 @@ toByteString x = B.pack (Prelude.map c2w x)
 -- Helper function to convert a bytestring to a string
 fromByteString :: ByteString -> String
 fromByteString bs = Prelude.map w2c $ B.unpack bs
+
+-- Get the Extism version string
+extismVersion :: () -> IO String
+extismVersion () =
+  peekCString extism_version
 
 -- Remove all registered plugins in a Context
 reset :: Context -> IO ()
