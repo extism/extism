@@ -9,6 +9,9 @@ import (
 )
 
 func main() {
+	version := extism.ExtismVersion()
+	fmt.Println("Extism Version: ", version)
+
 	ctx := extism.NewContext()
 	defer ctx.Free() // this will free the context and all associated plugins
 

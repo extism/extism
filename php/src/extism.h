@@ -32,3 +32,5 @@ ExtismSize extism_output_length(ExtismPlugin plugin);
 void extism_output_get(ExtismPlugin plugin, uint8_t *buf, ExtismSize len);
 
 bool extism_log_file(const char *filename, const char *log_level);
+
+const char *extism_version();

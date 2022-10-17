@@ -24,6 +24,13 @@ impl From<serde_json::Error> for Error {
     }
 }
 
+/// Gets the version of Extism
+pub fn extism_version() -> String {
+    let err = unsafe { bindings::extism_version() };
+    let buf = unsafe { std::ffi::CStr::from_ptr(err) };
+    return buf.to_str().unwrap().to_string();
+}
+
 /// Set the log file and level, this is a global setting
 pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) {
     let log_level = log_level.map(|x| x.as_str());

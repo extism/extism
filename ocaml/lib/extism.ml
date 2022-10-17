@@ -77,6 +77,9 @@ module Bindings = struct
   let extism_log_file =
     fn "extism_log_file" (string @-> string_opt @-> returning bool)
 
+  let extism_version =
+    fn "extism_version" (void @-> returning string)
+
   let extism_plugin_free =
     fn "extism_plugin_free" (context @-> int32_t @-> returning void)
 
@@ -268,3 +271,5 @@ let function_exists { id; ctx } name =
   Bindings.extism_plugin_function_exists ctx.pointer id name
 
 let set_log_file ?level filename = Bindings.extism_log_file filename level
+
+let extism_version = Bindings.extism_version

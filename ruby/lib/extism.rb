@@ -17,10 +17,16 @@ module Extism
     attach_function :extism_log_file, [:string, :pointer], :void
     attach_function :extism_plugin_free, [:pointer, :int32], :void
     attach_function :extism_context_reset, [:pointer], :void
+    attach_function :extism_version, [], :string
   end
 
 
   class Error < StandardError
+  end
+
+  # Return the version of Extism
+  def self.extism_version
+    C.extism_version
   end
 
   # Set log file and level, this is a global configuration

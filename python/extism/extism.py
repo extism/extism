@@ -93,6 +93,9 @@ def set_log_file(file, level=ffi.NULL):
         level = level.encode()
     lib.extism_log_file(file.encode(), level)
 
+def extism_version():
+    '''Gets the Extism version string'''
+    return ffi.string(lib.extism_version()).decode()
 
 def _wasm(plugin):
     if isinstance(plugin, str) and os.path.exists(plugin):
