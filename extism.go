@@ -88,6 +88,11 @@ func SetLogFile(filename string, level string) bool {
 	return bool(r)
 }
 
+// ExtismVersion gets the Extism version string
+func ExtismVersion() string {
+	return C.GoString(C.extism_version())
+}
+
 func register(ctx *Context, data []byte, wasi bool) (Plugin, error) {
 	ptr := makePointer(data)
 	plugin := C.extism_plugin_new(
