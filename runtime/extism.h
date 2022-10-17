@@ -106,3 +106,5 @@ const uint8_t *extism_plugin_output_data(struct ExtismContext *ctx, ExtismPlugin
  * Set log file and level
  */
 bool extism_log_file(const char *filename, const char *log_level);
+
+const uint8_t *extism_version(void);

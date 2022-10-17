@@ -383,5 +383,11 @@ pub unsafe extern "C" fn extism_log_file(
     if log4rs::init_config(config).is_err() {
         return false;
     }
+
     true
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_version() -> *const u8 {
+    env!("CARGO_PKG_VERSION").as_ptr()
 }

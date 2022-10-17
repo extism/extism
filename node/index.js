@@ -18,6 +18,7 @@ let _functions = {
   extism_plugin_config: ['void', [context, 'int32', 'char*', 'uint64']],
   extism_plugin_free: ['void', [context, 'int32']],
   extism_context_reset: ['void', [context]],
+  extism_version: ['char*', []],
 };
 
 function locate(paths) {
@@ -48,6 +49,11 @@ var lib = locate(searchPath);
 // Set the log file and level
 export function setLogFile(filename, level = null) {
   lib.extism_log_file(filename, level);
+}
+
+// Get the version of Extism
+export function extismVersion() {
+  return lib.extism_version().toString();
 }
 
 const pluginRegistry = new FinalizationRegistry(({ id, pointer }) => {

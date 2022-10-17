@@ -51,3 +51,11 @@ function set_log_file($filename, $level)
     
     $lib->extism_log_file($filename, $level);
 }
+
+function extism_version()
+{
+    global $lib;
+
+    return $lib->extism_version();
+}
+

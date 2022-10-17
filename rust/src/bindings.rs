@@ -82,3 +82,9 @@ extern "C" {
         log_level: *const ::std::os::raw::c_char,
     ) -> bool;
 }
+
+extern "C" {
+    pub fn extism_version(
+    ) -> *const ::std::os::raw::c_char;
+}
+
