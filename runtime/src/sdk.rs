@@ -386,7 +386,7 @@ pub unsafe extern "C" fn extism_log_file(
     true
 }
 
-// Get the Extism version string
+/// Get the Extism version string
 #[no_mangle]
 pub unsafe extern "C" fn extism_version() -> *const c_char {
     env!("CARGO_PKG_VERSION").as_ptr() as *const _
