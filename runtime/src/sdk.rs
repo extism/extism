@@ -383,7 +383,6 @@ pub unsafe extern "C" fn extism_log_file(
     if log4rs::init_config(config).is_err() {
         return false;
     }
-
     true
 }
 

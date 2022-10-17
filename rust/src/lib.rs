@@ -24,7 +24,7 @@ impl From<serde_json::Error> for Error {
     }
 }
 
-/// Get's the version of Extism
+/// Gets the version of Extism
 pub fn extism_version() -> String {
     let err = unsafe { bindings::extism_version() };
     let buf = unsafe { std::ffi::CStr::from_ptr(err) };
