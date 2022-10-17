@@ -52,7 +52,7 @@ fromByteString bs = Prelude.map w2c $ B.unpack bs
 extismVersion :: () -> IO String
 extismVersion () = do
   v <- extism_version
-  return (peekCString v)
+  peekCString v
 
 -- Remove all registered plugins in a Context
 reset :: Context -> IO ()
