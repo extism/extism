@@ -4,7 +4,7 @@ synopsis: "Extism bindings"
 description: "Bindings to Extism, the universal plugin system"
 maintainer: ["Extism Authors <oss@extism.org>"]
 authors: ["Extism Authors <oss@extism.org>"]
-license: "BSD-3"
+license: "BSD-3-Clause"
 tags: ["topics" "wasm" "plugin"]
 homepage: "https://github.com/extism/extism"
 doc: "https://github.com/extism/extism"

@@ -11,7 +11,7 @@
 
 (maintainers "Extism Authors <oss@extism.org>")
 
-(license BSD-3)
+(license BSD-3-Clause)
 
 (documentation https://github.com/extism/extism)
 
