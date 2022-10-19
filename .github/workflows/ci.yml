@@ -11,6 +11,8 @@ jobs:
   build_and_test:
     name: Build & Test
     runs-on: ${{ matrix.os }}
+    env:
+      MIX_ENV: test
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
@@ -44,6 +46,20 @@ jobs:
       - name: Install extism shared library
         shell: bash
         run: sudo make install
+
+      - name: Setup Elixir Host SDK
+        if: ${{ runner.os != 'macOS' }}
+        uses: erlef/setup-beam@v1
+        with:
+          experimental-otp: true
+          otp-version: '25.0.4'
+          elixir-version: '1.14.0'
+
+      - name: Test Elixir Host SDK
+        if: ${{ runner.os != 'macOS' }}
+        run: |
+         cd elixir
+         LD_LIBRARY_PATH=/usr/local/lib mix do deps.get, test
 
       - name: Setup Go env
         uses: actions/setup-go@v3

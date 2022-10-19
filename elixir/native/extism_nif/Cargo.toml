@@ -1,0 +1,16 @@
+[package]
+name = "extism_nif"
+version = "0.0.1-rc.3"
+edition = "2021"
+authors = ["Benjamin Eckel <bhelx@simst.im>"]
+
+[lib]
+name = "extism_nif"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+[dependencies]
+rustler = "0.26.0"
+extism = { version = "0.0.1-rc.3", path = "../../../rust" }
+log = "0.4"
+

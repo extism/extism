@@ -6,6 +6,17 @@ pub struct Plugin<'a> {
 }
 
 impl<'a> Plugin<'a> {
+    pub unsafe fn from_id(id: i32, context: &'a Context) -> Plugin<'a> {
+        Plugin {
+            id,
+            context: context,
+        }
+    }
+
+    pub fn as_i32(&self) -> i32 {
+        self.id
+    }
+
     /// Create a new plugin from the given manifest
     pub fn new_with_manifest(
         ctx: &'a Context,

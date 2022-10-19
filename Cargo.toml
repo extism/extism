@@ -4,3 +4,7 @@ members = [
   "runtime",
   "rust",
 ]
+exclude = [
+  "elixir/native/extism_nif"
+]
+
