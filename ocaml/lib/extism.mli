@@ -1,6 +1,8 @@
 type t
 type error = [`Msg of string]
 
+val extism_version: unit -> string
+
 module Manifest : sig
   type memory = { max : int option } [@@deriving yojson]
   type wasm_file = {
