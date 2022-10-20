@@ -260,6 +260,44 @@ jobs:
           cargo publish --manifest-path runtime/Cargo.toml --no-verify
           cargo publish --manifest-path rust/Cargo.toml
 
+      - name: Setup Elixir Host SDK
+        uses: erlef/setup-beam@v1
+        with:
+          experimental-otp: true
+          otp-version: '25.0.4'
+          elixir-version: '1.14.0'
+
+      - name: Publish Elixir Host SDK to hex.pm
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_PM_API_TOKEN }}
+        run: |
+          cd elixir
+          mix do deps.get, deps.compile
+          mix hex.build
+          mix hex.publish --yes
+
+      - name: Setup Ruby
+        uses: actions/setup-ruby@v1
+        with:
+          ruby-version: '3.1' # Version range or exact version of a Ruby version to use, using semvers version range syntax.
+
+      - name: Publish Ruby Gem
+        env:
+          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_TOKEN }}
+        run: |
+          cd ruby
+          gem build extism.gemspec
+          gem push extism*.gem -k $RUBYGEMS_API_KEY
+        
+      - name: Publish Elixir Host SDK to hex.pm
+        env:
+          HEX_API_KEY: ${{ secrets.HEX_PM_API_TOKEN }}
+        run: |
+          cd elixir
+          mix do deps.get, deps.compile
+          mix hex.build
+          mix hex.publish --yes
+
       - name: Setup Python env
         uses: actions/setup-python@v4
         with:
@@ -272,11 +310,13 @@ jobs:
           python3 -m pip install --upgrade build
           cp ../LICENSE .
           cp ../README.md .
-          python3 -m build
+          python3 -m poetry build
           popd
 
       - name: Release Python Host SDK
         uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          INPUT_VERIFY_METADATA: false
         with:
           user: ${{ secrets.PYPI_API_USER }}
           password: ${{ secrets.PYPI_API_TOKEN }}
