@@ -298,7 +298,6 @@ jobs:
           mix hex.build
           mix hex.publish --yes
 
-
       - name: Setup Python env
         uses: actions/setup-python@v4
         with:
@@ -311,11 +310,13 @@ jobs:
           python3 -m pip install --upgrade build
           cp ../LICENSE .
           cp ../README.md .
-          python3 -m build
+          python3 -m poetry build
           popd
 
       - name: Release Python Host SDK
         uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          INPUT_VERIFY_METADATA: false
         with:
           user: ${{ secrets.PYPI_API_USER }}
           password: ${{ secrets.PYPI_API_TOKEN }}
