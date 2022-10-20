@@ -1,0 +1,18 @@
+{
+    "name": "extism/extism",
+    "description": "The universal plug-in system",
+    "type": "library",
+    "license": "BSD-3-Clause",
+    "autoload": {
+        "psr-4": {
+            "Extism\\Extism\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Dylibso",
+            "email": "oss@extism.org"
+        }
+    ],
+    "require": {}
+}
