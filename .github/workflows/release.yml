@@ -1,4 +1,6 @@
 on:
+  workflow_dispatch:
+    workflow: release-sdks
   release:
     types: [created]
 
