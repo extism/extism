@@ -272,6 +272,7 @@ jobs:
           HEX_API_KEY: ${{ secrets.HEX_PM_API_TOKEN }}
         run: |
           cd elixir
+          cp ../LICENSE .
           mix do deps.get, deps.compile
           mix hex.build
           mix hex.publish --yes
