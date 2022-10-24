@@ -83,6 +83,7 @@ jobs:
           cd python
           poetry install
           poetry run python example.py
+          poetry run python -m unittest discover
 
       - name: Setup Ruby env
         uses: ruby/setup-ruby@v1
