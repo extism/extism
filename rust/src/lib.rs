@@ -32,10 +32,10 @@ pub fn extism_version() -> String {
 }
 
 /// Set the log file and level, this is a global setting
-pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) {
+pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) -> bool {
     let log_level = log_level.map(|x| x.as_str());
     unsafe {
-        bindings::extism_log_file(
+        return bindings::extism_log_file(
             filename.as_ref().as_os_str().to_string_lossy().as_ptr() as *const _,
             log_level.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()) as *const _,
         );
