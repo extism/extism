@@ -1,5 +1,6 @@
 require 'ffi'
 require 'json'
+require_relative './extism/version'
 
 module Extism
   module C
@@ -99,6 +100,7 @@ module Extism
 
   class Plugin
     def initialize(context, wasm, wasi=false, config=nil)
+      @context = context
       if wasm.class == Hash then
         wasm = JSON.generate(wasm)
       end
@@ -106,13 +108,12 @@ module Extism
       code.put_bytes(0, wasm)
       @plugin = C.extism_plugin_new(context.pointer, code, wasm.bytesize, wasi)
       if @plugin < 0 then
-        err = C.extism_error(-1)
+        err = C.extism_error(@context.pointer, -1)
         if err&.empty? then
           raise Error.new "extism_plugin_new failed"
         else raise Error.new err
         end
       end
-      @context = context
       $PLUGINS[self.object_id] = {:plugin => @plugin, :context => context}
       ObjectSpace.define_finalizer(self,  $FREE_PLUGIN)
       if config != nil and @plugin >= 0 then
@@ -131,7 +132,7 @@ module Extism
       code.put_bytes(0, wasm)
       ok = C.extism_plugin_update(@context.pointer, @plugin, code, wasm.bytesize, wasi)
       if !ok then
-        err = C.extism_error(-1)
+        err = C.extism_error(@context.pointer, @plugin)
         if err&.empty? then
           raise Error.new "extism_plugin_update failed"
         else raise Error.new err
@@ -146,8 +147,8 @@ module Extism
     end
 
     # Check if a function exists
-    def function_exists(name)
-      return C.extism_function_exists(@context.pointer, @plugin, name)
+    def has_function?(name)
+      return C.extism_plugin_function_exists(@context.pointer, @plugin, name)
     end
 
     # Call a function by name
