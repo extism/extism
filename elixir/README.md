@@ -4,12 +4,12 @@ Extism Host SDK for Elixir and Erlang
 
 ## Installation
 
-> **N.B.:**: This library is not yet published to hex.pm
+You can find this package on [hex.pm](https://hex.pm/packages/extism).
 
 ```elixir
 def deps do
   [
-    {:extism, "~> 0.0.1-rc.4"}
+    {:extism, "~> 0.0.1-rc.5"}
   ]
 end
 ```
