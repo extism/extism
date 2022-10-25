@@ -106,6 +106,7 @@ jobs:
         run: |
           cd node
           npm i
+          npm run build
           LD_LIBRARY_PATH=/usr/local/lib node example.js
 
       - name: Test Rust Host SDK

@@ -1,4 +1,4 @@
-import { withContext, Context } from './index.js';
+import { withContext, Context } from './dist/index.js';
 import { readFileSync } from 'fs';
 
 withContext(async function (context) {
