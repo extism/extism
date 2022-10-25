@@ -1,12 +1,12 @@
 #pragma once
 
+#include <map>
 #include <memory>
 #include <string>
 #include <vector>
 
 #ifndef EXTISM_NO_JSON
 #include <jsoncpp/json/json.h>
-#include <map>
 #endif // EXTISM_NO_JSON
 
 extern "C" {
@@ -15,7 +15,6 @@ extern "C" {
 
 namespace extism {
 
-#ifndef EXTSIM_NO_JSON
 typedef std::map<std::string, std::string> Config;
 class Wasm {
 public:
@@ -24,6 +23,7 @@ public:
   // TODO: add base64 encoded raw data
   std::string hash;
 
+#ifndef EXTISM_NO_JSON
   Json::Value json() const {
     Json::Value doc;
 
@@ -41,6 +41,7 @@ public:
 
     return doc;
   }
+#endif
 };
 
 class Manifest {
@@ -61,6 +62,7 @@ public:
     return m;
   }
 
+#ifndef EXTISM_NO_JSON
   std::string json() const {
     Json::Value doc;
     Json::Value wasm;
@@ -91,6 +93,7 @@ public:
     Json::FastWriter writer;
     return writer.write(doc);
   }
+#endif
 
   void add_wasm_path(std::string s, std::string hash = std::string()) {
     Wasm w;
@@ -110,7 +113,6 @@ public:
 
   void set_config(std::string k, std::string v) { this->config[k] = v; }
 };
-#endif
 
 class Error : public std::exception {
 private:
@@ -152,7 +154,7 @@ public:
     this->context = ctx;
   }
 
-#ifndef EXTSIM_NO_JSON
+#ifndef EXTISM_NO_JSON
   Plugin(std::shared_ptr<ExtismContext> ctx, const Manifest &manifest,
          bool with_wasi = false) {
     auto buffer = manifest.json();
@@ -186,7 +188,6 @@ public:
 
 #ifndef EXTISM_NO_JSON
   void update(const Manifest &manifest, bool with_wasi = false) {
-
     auto buffer = manifest.json();
     bool b = extism_plugin_update(this->context.get(), this->plugin,
                                   (const uint8_t *)buffer.c_str(),
@@ -281,7 +282,7 @@ public:
     return Plugin(this->pointer, data.data(), data.size(), with_wasi);
   }
 
-#ifndef EXTSIM_NO_JSON
+#ifndef EXTISM_NO_JSON
   Plugin plugin(const Manifest &manifest, bool with_wasi = false) const {
     return Plugin(this->pointer, manifest, with_wasi);
   }

@@ -1,8 +1,8 @@
 build-example:
-	$(CXX) -std=c++11 -o example -I. example.cpp -lextism -ljsoncpp -L.
+	$(CXX) -std=c++11 -o example -I. example.cpp -lextism -L.
 	
 .PHONY: example
-example:
+example: build-example
 	./example
 
 build-test:

@@ -1,3 +1,4 @@
+#define EXTISM_NO_JSON
 #include "extism.hpp"
 
 #include <cstring>

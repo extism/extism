@@ -4,11 +4,10 @@
 
 #include <gtest/gtest.h>
 
-std::vector<uint8_t> read_file(const char *filename) {
-  std::ifstream instream(filename, std::ios::in | std::ios::binary);
-  std::vector<uint8_t> data((std::istreambuf_iterator<char>(instream)),
-                            std::istreambuf_iterator<char>());
-  return data;
+std::vector<uint8_t> read(const char *filename) {
+  std::ifstream file(filename, std::ios::binary);
+  return std::vector<uint8_t>((std::istreambuf_iterator<char>(file)),
+                              std::istreambuf_iterator<char>());
 }
 
 namespace {
@@ -39,7 +38,7 @@ TEST(Plugin, BadManifest) {
 
 TEST(Plugin, Bytes) {
   Context context;
-  auto wasm = read_file("code.wasm");
+  auto wasm = read("code.wasm");
   ASSERT_NO_THROW(Plugin plugin = context.plugin(wasm));
   Plugin plugin = context.plugin(wasm);
 
