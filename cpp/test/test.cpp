@@ -48,7 +48,7 @@ TEST(Plugin, Bytes) {
 
 TEST(Plugin, UpdateConfig) {
   Context context;
-  auto wasm = read_file("code.wasm");
+  auto wasm = read("code.wasm");
   Plugin plugin = context.plugin(wasm);
 
   Config config;
@@ -58,7 +58,7 @@ TEST(Plugin, UpdateConfig) {
 
 TEST(Plugin, FunctionExists) {
   Context context;
-  auto wasm = read_file("code.wasm");
+  auto wasm = read("code.wasm");
   Plugin plugin = context.plugin(wasm);
 
   ASSERT_FALSE(plugin.function_exists("bad_function"));
