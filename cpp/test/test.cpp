@@ -22,7 +22,7 @@ TEST(Context, Basic) {
 TEST(Plugin, Manifest) {
   Context context;
   Manifest manifest = Manifest::path("code.wasm");
-  manifest.config["a"] = "1";
+  manifest.set_config("a", "1");
 
   ASSERT_NO_THROW(Plugin plugin = context.plugin(manifest));
   Plugin plugin = context.plugin(manifest);

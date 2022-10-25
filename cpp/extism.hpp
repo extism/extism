@@ -47,6 +47,7 @@ class Manifest {
 public:
   Config config;
   std::vector<Wasm> wasm;
+  std::vector<std::string> allowed_hosts;
 
   static Manifest path(std::string s, std::string hash = std::string()) {
     Manifest m;
@@ -78,6 +79,15 @@ public:
       doc["config"] = conf;
     }
 
+    if (!this->allowed_hosts.empty()) {
+      Json::Value h;
+
+      for (auto s : this->allowed_hosts) {
+        h.append(s);
+      }
+      doc["allowed_hosts"] = h;
+    }
+
     Json::FastWriter writer;
     return writer.write(doc);
   }
@@ -95,6 +105,10 @@ public:
     w.hash = hash;
     this->wasm.push_back(w);
   }
+
+  void allow_host(std::string host) { this->allowed_hosts.push_back(host); }
+
+  void set_config(std::string k, std::string v) { this->config[k] = v; }
 };
 #endif
 
