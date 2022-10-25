@@ -1,7 +1,4 @@
-import sys
-import io
 import subprocess
-import os
 
 from header import *
 
@@ -58,6 +55,7 @@ if __name__ == '__main__':
         Lang('python', 'py'),
         Lang('ruby', 'rb'),
         Lang('rust', 'rs'),
+        Lang('elixir', 'ex'),
     ]
 
     header = Header()
