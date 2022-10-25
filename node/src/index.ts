@@ -1,8 +1,6 @@
 import ffi  from 'ffi-napi';
 import path from 'path';
-import url from 'url';
 
-const __dirname = url.fileURLToPath(new URL('.', import.meta.url));
 const context = 'void*';
 const _functions = {
     extism_context_new: [context, []],
@@ -26,7 +24,7 @@ interface LibExtism {
     extism_context_free: (ctx: Buffer) => void;
     extism_plugin_new: (ctx: Buffer, data: string | Buffer, data_len: number, wasi: boolean) => number;
     extism_plugin_update: (ctx: Buffer, plugin_id: number, data: string | Buffer, data_len: number, wasi: boolean) => boolean;
-    extism_error: (ctx: Buffer, plugin_id: number) => string;
+    extism_error: (ctx: Buffer, plugin_id: number) => Buffer;
     extism_plugin_call: (ctx: Buffer, plugin_id: number, func: string, input: string, input_len: number) => number;
     extism_plugin_output_length: (ctx: Buffer, plugin_id: number) => number;
     extism_plugin_output_data: (ctx: Buffer, plugin_id: Number) => Uint8Array;
@@ -35,7 +33,7 @@ interface LibExtism {
     extism_plugin_config: (ctx: Buffer, plugin_id: number, data: string | Buffer, data_len: number) => void;
     extism_plugin_free: (ctx: Buffer, plugin_id: number) => void;
     extism_context_reset: (ctx: Buffer) => void;
-    extism_version: () => string;
+    extism_version: () => Buffer;
 }
 
 function locate(paths: string[]): LibExtism {
@@ -76,12 +74,12 @@ export function extismVersion(): string {
 
 // @ts-ignore
 const pluginRegistry = new FinalizationRegistry(({ id, pointer }) => {
-    lib.extism_plugin_free(pointer, id);
+    if (id && pointer) lib.extism_plugin_free(pointer, id);
 });
 
 // @ts-ignore
 const contextRegistry = new FinalizationRegistry((pointer) => {
-    lib.extism_context_free(pointer);
+    if (pointer) lib.extism_context_free(pointer);
 });
 
 export type ManifestWasmFile = {
@@ -106,13 +104,12 @@ export type ManifestWasm = ManifestWasmFile | ManifestWasmData;
 
 export type Manifest = {
     wasm: Array<ManifestWasm>;
-    memory: ManifestMemory;
+    memory?: ManifestMemory;
     config?: PluginConfig;
     allowed_hosts?: Array<string>;
 }
 
 type ManifestData = Manifest | Buffer | string;
-
 
 // Context manages plugins
 export class Context {
@@ -146,10 +143,10 @@ export class Context {
 }
 
 export async function withContext(f: (ctx: Context) => Promise<any>) {
-    let ctx = new Context();
+    const ctx = new Context();
 
     try {
-        let x = await f(ctx);
+        const x = await f(ctx);
         ctx.free();
         return x;
     } catch (err) {
@@ -224,14 +221,14 @@ export class Plugin {
     }
 
     // Call a function by name with the given input
-    async call(name: string, input: string) {
-        return new Promise((resolve, reject) => {
+    async call(functionName: string, input: string): Promise<Buffer> {
+        return new Promise<Buffer>((resolve, reject) => {
             if (!this.ctx.pointer) throw Error("No Context set");
-            var rc = lib.extism_plugin_call(this.ctx.pointer, this.id, name, input, input.length);
+            var rc = lib.extism_plugin_call(this.ctx.pointer, this.id, functionName, input, input.length);
             if (rc !== 0) {
                 var err = lib.extism_error(this.ctx.pointer, this.id);
                 if (err.length === 0) {
-                    reject(`extism_plugin_call: "${name}" failed`);
+                    reject(`extism_plugin_call: "${functionName}" failed`);
                 }
                 reject(`Plugin error: ${err.toString()}, code: ${rc}`);
             }

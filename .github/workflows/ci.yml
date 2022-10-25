@@ -106,8 +106,9 @@ jobs:
         run: |
           cd node
           npm i
-          npm run build
-          LD_LIBRARY_PATH=/usr/local/lib node example.js
+          LD_LIBRARY_PATH=/usr/local/lib npm run build
+          LD_LIBRARY_PATH=/usr/local/lib npm run example
+          LD_LIBRARY_PATH=/usr/local/lib npm run test
 
       - name: Test Rust Host SDK
         run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
