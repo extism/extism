@@ -66,7 +66,9 @@ module Context : sig
 end
 
 val with_context : (Context.t -> 'a) -> 'a
-val set_log_file : ?level:string -> string -> bool
+
+val set_log_file :
+  ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
 val plugin :
   ?config:(string * string) list ->

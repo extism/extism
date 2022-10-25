@@ -174,15 +174,13 @@ module Context = struct
     ctx.pointer <- Ctypes.null
 
   let reset ctx = Bindings.extism_context_reset ctx.pointer
-  
-  
+
   let%test "test context" =
     let ctx = create () in
     reset ctx;
     free ctx;
     true
 end
-
 
 type t = { id : int32; ctx : Context.t }
 
@@ -272,13 +270,51 @@ let call_bigstring (t : t) ~name input =
   let ptr = Ctypes.bigarray_start Ctypes.array1 input in
   call' Bindings.extism_plugin_call t ~name ptr len
 
+let%test "call_bigstring" =
+  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  with_context (fun ctx ->
+      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      call_bigstring plugin ~name:"count_vowels"
+        (Bigstringaf.of_string ~off:0 ~len:14 "this is a test")
+      |> Result.get_ok |> Bigstringaf.to_string = "{\"count\": 4}")
+
 let call (t : t) ~name input =
   let len = String.length input in
   call' Bindings.extism_plugin_call_s t ~name input (Unsigned.UInt64.of_int len)
   |> Result.map Bigstringaf.to_string
 
+let%test "call" =
+  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  with_context (fun ctx ->
+      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      call plugin ~name:"count_vowels" "this is a test"
+      |> Result.get_ok = "{\"count\": 4}")
+
 let function_exists { id; ctx } name =
   Bindings.extism_plugin_function_exists ctx.pointer id name
 
-let set_log_file ?level filename = Bindings.extism_log_file filename level
+let%test "function exists" =
+  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  with_context (fun ctx ->
+      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      function_exists plugin "count_vowels"
+      && not (function_exists plugin "function_does_not_exist"))
+
+let set_log_file ?level filename =
+  let level =
+    Option.map
+      (function
+        | `Error -> "error"
+        | `Warn -> "warn"
+        | `Info -> "info"
+        | `Debug -> "debug"
+        | `Trace -> "trace")
+      level
+  in
+  Bindings.extism_log_file filename level
+
+let%test _ = set_log_file ~level:`Trace "stderr"
+
 let extism_version = Bindings.extism_version
+
+let%test _ = String.length (extism_version ()) > 0
