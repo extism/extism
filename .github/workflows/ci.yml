@@ -95,6 +95,7 @@ jobs:
           cd ruby
           bundle install
           ruby example.rb
+          rake test
 
       - name: Setup Node env
         uses: actions/setup-node@v3
