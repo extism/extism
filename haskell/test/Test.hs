@@ -23,7 +23,7 @@ pluginFunctionExists = do
     assertBool "function exists" exists
     exists' <- functionExists p "function_doesnt_exist"
     assertBool "function doesn't exist" (not exists'))
-    
+
 checkCallResult p = do
     res <- unwrap (call p "count_vowels" (toByteString "this is a test"))
     assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
@@ -54,6 +54,10 @@ pluginConfig = do
     b <- setConfig p [("a", Just "1"), ("b", Just "2"), ("c", Just "3"), ("d", Nothing)]
     assertBool "set config" b)
 
+testSetLogFile = do
+  b <- setLogFile "stderr" Error
+  assertBool "set log file" b
+
 t name f = TestLabel name (TestCase f)
 
 main = do
@@ -64,5 +68,6 @@ main = do
       , t "Plugin.Multiple" pluginMultiple
       , t "Plugin.Update" pluginUpdate
       , t "Plugin.Config" pluginConfig
+      , t "SetLogFile" testSetLogFile
     ])
 
