@@ -21,13 +21,20 @@ TEST(Context, Basic) {
 
 TEST(Plugin, Manifest) {
   Context context;
-  Manifest manifest;
-  manifest.add_wasm_path("code.wasm");
+  Manifest manifest = Manifest::path("code.wasm");
+  manifest.config["a"] = "1";
+
   ASSERT_NO_THROW(Plugin plugin = context.plugin(manifest));
   Plugin plugin = context.plugin(manifest);
 
   Buffer buf = plugin.call("count_vowels", "this is a test");
   ASSERT_EQ((std::string)buf, "{\"count\": 4}");
+}
+
+TEST(Plugin, BadManifest) {
+  Context context;
+  Manifest manifest;
+  ASSERT_THROW(Plugin plugin = context.plugin(manifest), Error);
 }
 
 TEST(Plugin, Bytes) {
@@ -37,7 +44,17 @@ TEST(Plugin, Bytes) {
   Plugin plugin = context.plugin(wasm);
 
   Buffer buf = plugin.call("count_vowels", "this is another test");
-  ASSERT_EQ((std::string)buf, "{\"count\": 6}");
+  ASSERT_EQ(buf.string(), "{\"count\": 6}");
+}
+
+TEST(Plugin, UpdateConfig) {
+  Context context;
+  auto wasm = read_file("code.wasm");
+  Plugin plugin = context.plugin(wasm);
+
+  Config config;
+  config["abc"] = "123";
+  ASSERT_NO_THROW(plugin.config(config));
 }
 
 TEST(Plugin, FunctionExists) {
