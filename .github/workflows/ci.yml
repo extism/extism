@@ -152,10 +152,10 @@ jobs:
         run: |
           brew install jsoncpp googletest
 
-      - name: Test C++ SDK deps
+      - name: Install C++ SDK deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          sudo apt-get install g++ libjsoncpp-dev googletest
+          sudo apt-get install g++ libjsoncpp-dev libgtest-dev
 
       - name: Run C++ tests
         run: |
