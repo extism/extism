@@ -4,11 +4,76 @@
 #include <string>
 #include <vector>
 
+#ifndef EXTISM_NO_JSON
+#include <jsoncpp/json/json.h>
+#endif // EXTISM_NO_JSON
+
 extern "C" {
 #include <extism.h>
 }
 
 namespace extism {
+
+#ifndef EXTSIM_NO_JSON
+class Wasm {
+public:
+  std::string path;
+  std::string url;
+  // TODO: add base64 encoded raw data
+  std::string hash;
+
+  Json::Value json() const {
+    Json::Value doc;
+
+    if (!this->path.empty()) {
+      doc["path"] = this->path;
+    }
+
+    if (!this->url.empty()) {
+      doc["url"] = this->url;
+    }
+
+    if (!this->hash.empty()) {
+      doc["hash"] = this->hash;
+    }
+
+    return doc;
+  }
+};
+
+class Manifest {
+public:
+  std::vector<Wasm> wasm;
+
+  std::string json() const {
+    Json::Value doc;
+    Json::Value wasm;
+    for (auto w : this->wasm) {
+      wasm.append(w.json());
+    }
+
+    doc["wasm"] = wasm;
+
+    Json::FastWriter writer;
+    return writer.write(doc);
+  }
+
+  void add_wasm_path(std::string s, std::string hash = std::string()) {
+    Wasm w;
+    w.path = s;
+    w.hash = hash;
+    this->wasm.push_back(w);
+  }
+
+  void add_wasm_url(std::string u, std::string hash = std::string()) {
+    Wasm w;
+    w.url = u;
+    w.hash = hash;
+    this->wasm.push_back(w);
+  }
+};
+#endif
+
 class Error : public std::exception {
 private:
   std::string message;
@@ -45,10 +110,35 @@ public:
     this->context = ctx;
   }
 
+#ifndef EXTSIM_NO_JSON
+  Plugin(std::shared_ptr<ExtismContext> ctx, const Manifest &manifest,
+         bool with_wasi = false) {
+    auto buffer = manifest.json();
+    this->plugin = extism_plugin_new(ctx.get(), (const uint8_t *)buffer.c_str(),
+                                     buffer.size(), with_wasi);
+    if (this->plugin < 0) {
+      const char *err = extism_error(ctx.get(), -1);
+      throw Error(err == nullptr ? "Unable to load plugin from manifest" : err);
+    }
+    this->context = ctx;
+  }
+#endif
+
   ~Plugin() {
     extism_plugin_free(this->context.get(), this->plugin);
     this->plugin = -1;
   }
+
+  void config(const char *json, size_t length) {
+    bool b = extism_plugin_config(this->context.get(), this->plugin,
+                                  (const uint8_t *)json, length);
+    if (!b) {
+      const char *err = extism_error(this->context.get(), this->plugin);
+      throw Error(err == nullptr ? "Unable to update plugin config" : err);
+    }
+  }
+
+  void config(std::string &&json) { this->config(json.c_str(), json.size()); }
 
   void update(const uint8_t *wasm, size_t length, bool with_wasi = false) {
     bool b = extism_plugin_update(this->context.get(), this->plugin, wasm,
@@ -87,6 +177,11 @@ public:
   Buffer call(const std::string &func, const std::string &input) {
     return this->call(func, (const uint8_t *)input.c_str(), input.size());
   }
+
+  bool function_exists(const std::string &func) {
+    return extism_plugin_function_exists(this->context.get(), this->plugin,
+                                         func.c_str());
+  }
 };
 
 class Context {
@@ -109,6 +204,19 @@ public:
   Plugin plugin(const std::vector<uint8_t> &data, bool with_wasi = false) {
     return Plugin(this->pointer, data.data(), data.size(), with_wasi);
   }
+
+#ifndef EXTSIM_NO_JSON
+  Plugin plugin(const Manifest &manifest, bool with_wasi = false) {
+    return Plugin(this->pointer, manifest, with_wasi);
+  }
+#endif
+
+  void reset() { extism_context_reset(this->pointer.get()); }
 };
 
+inline bool set_log_file(const char *filename, const char *level) {
+  return extism_log_file(filename, level);
+}
+
+inline std::string version() { return std::string(extism_version()); }
 } // namespace extism
