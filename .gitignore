@@ -13,6 +13,8 @@ __pycache__
 python/dist
 python/poetry.lock
 c/main
+cpp/test/test
+cpp/example
 go/main
 ruby/.bundle/
 ruby/.yardoc
@@ -23,7 +25,6 @@ ruby/pkg/
 ruby/spec/reports/
 ruby/tmp/
 ruby/Gemfile.lock
-cpp/example
 rust/target
 rust/test.log
 ocaml/duniverse
