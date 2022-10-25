@@ -11,7 +11,8 @@ import Control.Monad (void)
 import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
-import Text.JSON (JSON, toJSObject, encode)
+import Data.Bifunctor (second)
+import Text.JSON (JSON, toJSObject, toJSString, encode, JSValue(JSNull, JSString))
 import Extism.Manifest (Manifest, toString)
 
 newtype ExtismContext = ExtismContext () deriving Show
@@ -41,7 +42,7 @@ data Plugin = Plugin Context Int32
 data LogLevel = Error | Warn | Info | Debug | Trace deriving (Show)
 
 -- Extism error
-data Error = ErrorMessage String deriving Show
+newtype Error = ErrorMessage String deriving Show
 
 -- Helper function to convert a string to a bytestring
 toByteString :: String -> ByteString
@@ -60,8 +61,7 @@ extismVersion () = do
 -- Remove all registered plugins in a Context
 reset :: Context -> IO ()
 reset (Context ctx) =
-  withForeignPtr ctx (\ctx ->
-    extism_context_reset ctx)
+  withForeignPtr ctx extism_context_reset
 
 -- Create a new context
 newContext :: () -> IO Context
@@ -74,8 +74,7 @@ newContext () = do
 withContext :: (Context -> IO a) -> IO a
 withContext f = do
   ctx <- newContext ()
-  x <- f ctx
-  return x
+  f ctx
 
 -- Create a plugin from a WASM module, `useWasi` determines if WASI should
 -- be linked
@@ -127,13 +126,16 @@ updateManifest plugin manifest useWasi =
 isValid :: Plugin -> Bool
 isValid (Plugin _ p) = p >= 0
 
+convertMaybeString Nothing = JSNull
+convertMaybeString (Just s) = JSString (toJSString s)
+
 -- Set configuration values for a plugin
 setConfig :: Plugin -> [(String, Maybe String)] -> IO Bool
 setConfig (Plugin (Context ctx) plugin) x =
   if plugin < 0
     then return False
   else
-    let obj = toJSObject x in
+    let obj = toJSObject [(k, convertMaybeString v) | (k, v) <- x] in
     let bs = toByteString (encode obj) in
     let length = fromIntegral (B.length bs) in
     unsafeUseAsCString bs (\s -> do
@@ -187,5 +189,4 @@ call (Plugin (Context ctx) plugin) name input =
 -- Free a plugin
 free :: Plugin -> IO ()
 free (Plugin (Context ctx) plugin) =
-  withForeignPtr ctx (\ctx ->
-    extism_plugin_free ctx plugin)
+  withForeignPtr ctx (`extism_plugin_free` plugin)
