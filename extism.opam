@@ -16,6 +16,7 @@ depends: [
   "bigstringaf"
   "ppx_yojson_conv"
   "base64"
+  "ppx_inline_test"
   "odoc" {with-doc}
 ]
 build: [
