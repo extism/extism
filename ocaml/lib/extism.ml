@@ -77,8 +77,7 @@ module Bindings = struct
   let extism_log_file =
     fn "extism_log_file" (string @-> string_opt @-> returning bool)
 
-  let extism_version =
-    fn "extism_version" (void @-> returning string)
+  let extism_version = fn "extism_version" (void @-> returning string)
 
   let extism_plugin_free =
     fn "extism_plugin_free" (context @-> int32_t @-> returning void)
@@ -147,14 +146,17 @@ module Manifest = struct
     wasm : wasm list;
     memory : memory option; [@yojson.option]
     config : config option; [@yojson.option]
-    allowed_hosts: string list option; [@yojson.option]
+    allowed_hosts : string list option; [@yojson.option]
   }
   [@@deriving yojson]
 
   let file ?name ?hash path = File { path; name; hash }
   let data ?name ?hash data = Data { data; name; hash }
   let url ?header ?name ?meth ?hash url = Url { header; name; meth; hash; url }
-  let v ?config ?memory ?allowed_hosts wasm = { config; wasm; memory; allowed_hosts }
+
+  let v ?config ?memory ?allowed_hosts wasm =
+    { config; wasm; memory; allowed_hosts }
+
   let json t = yojson_of_t t |> Yojson.Safe.to_string
 end
 
@@ -172,7 +174,15 @@ module Context = struct
     ctx.pointer <- Ctypes.null
 
   let reset ctx = Bindings.extism_context_reset ctx.pointer
+  
+  
+  let%test "test context" =
+    let ctx = create () in
+    reset ctx;
+    free ctx;
+    true
 end
+
 
 type t = { id : int32; ctx : Context.t }
 
@@ -271,5 +281,4 @@ let function_exists { id; ctx } name =
   Bindings.extism_plugin_function_exists ctx.pointer id name
 
 let set_log_file ?level filename = Bindings.extism_log_file filename level
-
 let extism_version = Bindings.extism_version
