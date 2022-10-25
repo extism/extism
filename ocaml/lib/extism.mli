@@ -27,7 +27,7 @@ module Manifest : sig
   }
 
   type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url
-  type config = (string * string) list
+  type config = (string * (string option)) list
 
   type t = {
     wasm : wasm list;
@@ -55,6 +55,7 @@ module Manifest : sig
     t
 
   val json : t -> string
+  val with_config : t -> config -> t
 end
 
 module Context : sig
@@ -71,14 +72,13 @@ val set_log_file :
   ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
 val plugin :
-  ?config:(string * string) list ->
+  ?config:(string * string option) list ->
   ?wasi:bool ->
   Context.t ->
   string ->
   (t, [ `Msg of string ]) result
 
 val of_manifest :
-  ?config:(string * string) list ->
   ?wasi:bool ->
   Context.t ->
   Manifest.t ->
@@ -86,14 +86,13 @@ val of_manifest :
 
 val update :
   t ->
-  ?config:(string * string) list ->
+  ?config:(string * string option) list ->
   ?wasi:bool ->
   string ->
   (unit, [ `Msg of string ]) result
 
 val update_manifest :
   t ->
-  ?config:(string * string) list ->
   ?wasi:bool ->
   Manifest.t ->
   (unit, [ `Msg of string ]) result

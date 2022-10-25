@@ -123,7 +123,7 @@ module Manifest = struct
   }
   [@@deriving yojson]
 
-  type config = (string * string) list
+  type config = (string * string option) list
   type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url
 
   let yojson_of_wasm = function
@@ -136,11 +136,20 @@ module Manifest = struct
     with _ -> (
       try Data (wasm_data_of_yojson x) with _ -> Url (wasm_url_of_yojson x))
 
+  let is_null = function `Null -> true | _ -> false
+
   let config_of_yojson j =
     let assoc = Yojson.Safe.Util.to_assoc j in
-    List.map (fun (k, v) -> (k, Yojson.Safe.Util.to_string v)) assoc
+    List.map
+      (fun (k, v) ->
+        (k, if is_null v then None else Some (Yojson.Safe.Util.to_string v)))
+      assoc
 
-  let yojson_of_config c = `Assoc (List.map (fun (k, v) -> (k, `String v)) c)
+  let yojson_of_config c =
+    `Assoc
+      (List.map
+         (fun (k, v) -> (k, match v with None -> `Null | Some v -> `String v))
+         c)
 
   type t = {
     wasm : wasm list;
@@ -158,6 +167,7 @@ module Manifest = struct
     { config; wasm; memory; allowed_hosts }
 
   let json t = yojson_of_t t |> Yojson.Safe.to_string
+  let with_config t config = { t with config = Some config }
 end
 
 module Context = struct
@@ -195,16 +205,12 @@ let with_context f =
   Context.free ctx;
   x
 
-let set_config plugin config =
-  match config with
+let set_config plugin = function
+  | None -> true
   | Some config ->
       let config = Manifest.yojson_of_config config |> Yojson.Safe.to_string in
-      let _ =
-        Bindings.extism_plugin_config plugin.ctx.pointer plugin.id config
-          (Unsigned.UInt64.of_int (String.length config))
-      in
-      ()
-  | None -> ()
+      Bindings.extism_plugin_config plugin.ctx.pointer plugin.id config
+        (Unsigned.UInt64.of_int (String.length config))
 
 let free t =
   if not (Ctypes.is_null t.ctx.pointer) then
@@ -222,13 +228,21 @@ let plugin ?config ?(wasi = false) ctx wasm =
     | Some msg -> Error (`Msg msg)
   else
     let t = { id; ctx } in
-    let () = set_config t config in
-    let () = Gc.finalise free t in
-    Ok t
+    if not (set_config t config) then Error (`Msg "call to set_config failed")
+    else
+      let () = Gc.finalise free t in
+      Ok t
 
-let of_manifest ?config ?wasi ctx manifest =
+let of_manifest ?wasi ctx manifest =
   let data = Manifest.json manifest in
-  plugin ctx ?config ?wasi data
+  plugin ctx ?wasi data
+
+let%test "free plugin" =
+  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  with_context (fun ctx ->
+      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      free plugin;
+      true)
 
 let update plugin ?config ?(wasi = false) wasm =
   let { id; ctx } = plugin in
@@ -241,13 +255,21 @@ let update plugin ?config ?(wasi = false) wasm =
     match Bindings.extism_error ctx.pointer (-1l) with
     | None -> Error (`Msg "extism_plugin_update failed")
     | Some msg -> Error (`Msg msg)
-  else
-    let () = set_config plugin config in
-    Ok ()
+  else if not (set_config plugin config) then
+    Error (`Msg "call to set_config failed")
+  else Ok ()
 
-let update_manifest plugin ?config ?wasi manifest =
+let update_manifest plugin ?wasi manifest =
   let data = Manifest.json manifest in
-  update plugin ?config ?wasi data
+  update plugin ?wasi data
+
+let%test "update plugin manifest and config" =
+  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  with_context (fun ctx ->
+      let config = [ ("a", Some "1") ] in
+      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      let manifest = Manifest.with_config manifest config in
+      update_manifest plugin manifest |> Result.is_ok)
 
 let call' f { id; ctx } ~name input len =
   let rc = f ctx.pointer id name input len in
