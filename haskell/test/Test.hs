@@ -23,33 +23,30 @@ pluginFunctionExists = do
     assertBool "function exists" exists
     exists' <- functionExists p "function_doesnt_exist"
     assertBool "function doesn't exist" (not exists'))
+    
+checkCallResult p = do
+    res <- unwrap (call p "count_vowels" (toByteString "this is a test"))
+    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
 
 pluginCall = do
   withContext (\ctx -> do
     p <- initPlugin ctx
-    res <- unwrap (call p "count_vowels" (toByteString "this is a test"))
-    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res))
+    checkCallResult p)
 
 pluginMultiple = do
   withContext (\ctx -> do
     p <- initPlugin ctx
-    res <- unwrap (call p "count_vowels" (toByteString "this is a test     "))
-    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
+    checkCallResult p
     q <- initPlugin ctx
     r <- initPlugin ctx
-    res <- unwrap (call q "count_vowels" (toByteString " this is a test"))
-    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
-    res <- unwrap (call r "count_vowels" (toByteString "this is a test"))
-    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
-    )
+    checkCallResult q
+    checkCallResult r)
 
 pluginUpdate = do
   withContext (\ctx -> do
     p <- initPlugin ctx
     unwrap (updateManifest p defaultManifest True)
-    res <- unwrap (call p "count_vowels" (toByteString "this is a test"))
-    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res))
-
+    checkCallResult p)
 
 pluginConfig = do
   withContext (\ctx -> do
