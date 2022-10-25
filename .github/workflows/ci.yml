@@ -160,6 +160,7 @@ jobs:
       - name: Run C++ tests
         run: |
           cd cpp
+          LD_LIBRARY_PATH=/usr/local/lib make example
           LD_LIBRARY_PATH=/usr/local/lib make test
 
   sdk_api_coverage:
