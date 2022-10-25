@@ -6,7 +6,11 @@
 #include <vector>
 
 #ifndef EXTISM_NO_JSON
+#if __has_include(<jsoncpp/json/json.h>)
 #include <jsoncpp/json/json.h>
+#else
+#include <json/json.h>
+#endif
 #endif // EXTISM_NO_JSON
 
 extern "C" {

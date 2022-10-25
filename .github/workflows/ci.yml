@@ -150,12 +150,12 @@ jobs:
       - name: Install C++ SDK deps
         if: ${{ matrix.os == 'macos-latest' }}
         run: |
-          brew install jsoncpp googletest
+          brew install jsoncpp googletest pkg-config
 
       - name: Install C++ SDK deps
         if: ${{ matrix.os == 'ubuntu-latest' }}
         run: |
-          sudo apt-get install g++ libjsoncpp-dev libgtest-dev
+          sudo apt-get install g++ libjsoncpp-dev libgtest-dev pkg-config
 
       - name: Run C++ tests
         run: |
