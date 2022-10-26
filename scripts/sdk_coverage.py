@@ -55,7 +55,7 @@ if __name__ == '__main__':
         Lang('python', 'py'),
         Lang('ruby', 'rb'),
         Lang('rust', 'rs'),
-        Lang('elixir', 'ex'),
+        Lang('elixir', 'ex', path='../elixir/lib/extism/'),
     ]
 
     header = Header()
