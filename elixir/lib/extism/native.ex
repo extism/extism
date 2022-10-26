@@ -1,7 +1,11 @@
 defmodule Extism.Native do
+  @moduledoc """
+  This module represents the Native Extism runtime API and is for internal use.
+  Do not use or rely on this this module.
+  """
   use Rustler,
-  otp_app: :extism,
-  crate: :extism_nif
+    otp_app: :extism,
+    crate: :extism_nif
 
   def context_new(), do: error()
   def context_reset(_ctx), do: error()
