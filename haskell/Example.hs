@@ -6,7 +6,7 @@ import Extism
 import Extism.Manifest
 
 try f (Right x) = f x
-try f (Left (Error msg)) = do
+try f (Left (ErrorMessage msg)) = do
   _ <- putStrLn msg
   exitFailure
 
