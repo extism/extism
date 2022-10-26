@@ -277,7 +277,17 @@ jobs:
         with:
           enable-stack: true
           stack-version: "latest"
-
+      - name: Cache Haskell
+        id: cache-haskell
+        uses: actions/cache@v3
+        with:
+          path: .stack-work
+          key: ${{ runner.os }}-haskell-${{ hashFiles('haskell/**') }}
+      - name: Build Haskell Host SDK
+        if: steps.cache-haskell.outputs.cache-hit != 'true'
+        run: |
+          cd haskell
+          LD_LIBRARY_PATH=/usr/local/lib stack build
       - name: Test Haskell SDK
         run: |
           cd haskell
