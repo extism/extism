@@ -1,5 +1,8 @@
 (library
  (name extism)
  (public_name extism)
+ (inline_tests
+  (deps test/code.wasm))
  (libraries ctypes.foreign bigstringaf base64)
- (preprocess (pps ppx_yojson_conv)))
+ (preprocess
+  (pps ppx_yojson_conv ppx_inline_test)))

@@ -115,14 +115,17 @@ jobs:
       - name: Test Rust Host SDK
         run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
 
-      # - name: Setup OCaml env
-      #   uses: ocaml/setup-ocaml@v2
+      - name: Setup OCaml env
+        uses: ocaml/setup-ocaml@v2
+        with:
+          ocaml-compiler: ocaml-base-compiler.5.0.0~beta1
 
-      # - name: Test OCaml Host SDK
-      #   run: |
-      #     opam install -y .
-      #     cd ocaml
-      #     opam exec -- dune exec extism
+      - name: Test OCaml Host SDK
+        run: |
+          opam install -y --deps-only .
+          cd ocaml
+          LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune exec ./bin/main.exe
+          LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune runtest
 
       - name: Setup Haskell env
         uses: haskell/actions/setup@v2

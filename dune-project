@@ -19,6 +19,6 @@
  (name extism)
  (synopsis "Extism bindings")
  (description "Bindings to Extism, the universal plugin system")
- (depends ocaml dune ctypes-foreign bigstringaf ppx_yojson_conv base64)
+ (depends ocaml dune ctypes-foreign bigstringaf ppx_yojson_conv base64 ppx_inline_test)
  (tags
   (topics wasm plugin)))
