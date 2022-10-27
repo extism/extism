@@ -9,7 +9,8 @@ defmodule Extism.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      aliases: aliases()
+      aliases: aliases(),
+      docs: docs()
     ]
   end
 
@@ -24,7 +25,7 @@ defmodule Extism.MixProject do
     [
       {:rustler, "~> 0.26.0"},
       {:json, "~> 1.4"},
-      {:ex_doc, ">= 0.0.0", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
   end
 
@@ -43,7 +44,16 @@ defmodule Extism.MixProject do
       description: "Extism Host SDK for Elixir and Erlang",
       name: "extism",
       files: ~w(lib native priv .formatter.exs mix.exs README.md LICENSE),
-      links: %{ "GitHub" => "https://github.com/extism/extism" },
+      links: %{"GitHub" => "https://github.com/extism/extism"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Extism",
+      logo: "./logo.png",
+      main: "readme",
+      extras: ["README.md"]
     ]
   end
 end
