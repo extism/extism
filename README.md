@@ -51,8 +51,9 @@ The easiest way to start would be to join the [Discord](https://discord.gg/cx3us
 Extism is an open-source product from the team at:
 
 <p align="left">
-  <a href="https://dylib.so" _target="blanks"><img width="200px" src="https://user-images.githubusercontent.com/7517515/195408048-0f199b26-cba3-4635-b683-f43b1e610c82.svg"/></a>
-</p>![dylibso-logo-outline]
+  <a href="https://dylib.so" _target="blanks"><img width="200px" src="https://user-images.githubusercontent.com/7517515/198204119-5afdebb9-a5d8-4322-bd2a-46179c8d7b24.svg"/></a>
+</p>
+
 
 
 _Reach out and tell us what you're building! We'd love to help._
