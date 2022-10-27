@@ -27,7 +27,7 @@ There are two primary classes you need to understand:
 
 #### Context
 
-The [Context](Extism/Context.html) can be thought of as a session. You need a context to interact with the Extism runtime. The context holds your plugins and when you free the context, it frees your plugins. We recommend using the [Extism.with_context](Extism.html#with_context-class_method) method to ensure that your plugins are cleaned up. But if you need a long lived context for some reason, you can use the constructor [Extism::Context.new](Extism/Context.html#initialize-instance_method).
+The [Context](Extism/Context.html) can be thought of as a session. You need a context to interact with the Extism runtime. The context holds your plugins and when you free the context, it frees your plugins. We recommend using the [Extism.with_context](Extism.html#with_context-class_method) method to ensure that your plugins are cleaned up. But if you need a long lived context for any reason, you can use the constructor [Extism::Context.new](Extism/Context.html#initialize-instance_method).
 
 #### Plugin
 
