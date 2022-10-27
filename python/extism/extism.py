@@ -1,4 +1,3 @@
-import sys
 import json
 import os
 from base64 import b64encode
@@ -9,14 +8,12 @@ from typing import Union
 
 
 class Error(Exception):
-    '''Extism error type'''
+    """Extism error type"""
+
     pass
 
 
-search_dirs = [
-    "/usr/local", "/usr",
-    os.path.join(os.getenv("HOME"), ".local"), "."
-]
+search_dirs = ["/usr/local", "/usr", os.path.join(os.getenv("HOME"), ".local"), "."]
 
 
 def exists(a, *b):
@@ -29,21 +26,22 @@ def check_for_header_and_lib(p):
             return os.path.join(p, "extism.h"), os.path.join(p, "libextism.so")
 
         if exists(p, "libextism.dylib"):
-            return os.path.join(p, "extism.h"), os.path.join(
-                p, "libextism.dylib")
+            return os.path.join(p, "extism.h"), os.path.join(p, "libextism.dylib")
 
     if exists(p, "include", "extism.h"):
         if exists(p, "lib", "libextism.so"):
             return os.path.join(p, "include", "extism.h"), os.path.join(
-                p, "lib", "libextism.so")
+                p, "lib", "libextism.so"
+            )
 
         if exists(p, "lib", "libextism.dylib"):
             return os.path.join(p, "include", "extism.h"), os.path.join(
-                p, "lib", "libextism.dylib")
+                p, "lib", "libextism.dylib"
+            )
 
 
 def locate():
-    '''Locate extism library and header'''
+    """Locate extism library and header"""
     script_dir = os.path.dirname(__file__)
     env = os.getenv("EXTISM_PATH")
     if env is not None:
@@ -73,9 +71,9 @@ header, lib = locate()
 with open(header) as f:
     lines = []
     for line in f.readlines():
-        if line[0] != '#':
+        if line[0] != "#":
             lines.append(line)
-    ffi.cdef(''.join(lines))
+    ffi.cdef("".join(lines))
 lib = ffi.dlopen(lib)
 
 
@@ -88,18 +86,20 @@ class Base64Encoder(json.JSONEncoder):
 
 
 def set_log_file(file, level=ffi.NULL):
-    '''Sets the log file and level, this is a global configuration'''
+    """Sets the log file and level, this is a global configuration"""
     if isinstance(level, str):
         level = level.encode()
     lib.extism_log_file(file.encode(), level)
 
+
 def extism_version():
-    '''Gets the Extism version string'''
+    """Gets the Extism version string"""
     return ffi.string(lib.extism_version()).decode()
+
 
 def _wasm(plugin):
     if isinstance(plugin, str) and os.path.exists(plugin):
-        with open(plugin, 'rb') as f:
+        with open(plugin, "rb") as f:
             wasm = f.read()
     elif isinstance(plugin, str):
         wasm = plugin.encode()
@@ -111,7 +111,7 @@ def _wasm(plugin):
 
 
 class Context:
-    '''Context is used to store and manage plugins'''
+    """Context is used to store and manage plugins"""
 
     def __init__(self):
         self.pointer = lib.extism_context_new()
@@ -127,27 +127,24 @@ class Context:
         self.__del__()
 
     def reset(self):
-        '''Remove all registered plugins'''
+        """Remove all registered plugins"""
         lib.extism_context_reset(self.pointer)
 
     def plugin(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
-        '''Register a new plugin from a WASM module or JSON encoded manifest'''
+        """Register a new plugin from a WASM module or JSON encoded manifest"""
         return Plugin(self, plugin, wasi, config)
 
 
 class Plugin:
-    '''Plugin is used to call WASM functions'''
+    """Plugin is used to call WASM functions"""
 
-    def __init__(self,
-                 context: Context,
-                 plugin: Union[str, bytes, dict],
-                 wasi=False,
-                 config=None):
+    def __init__(
+        self, context: Context, plugin: Union[str, bytes, dict], wasi=False, config=None
+    ):
         wasm = _wasm(plugin)
 
         # Register plugin
-        self.plugin = lib.extism_plugin_new(context.pointer, wasm, len(wasm),
-                                            wasi)
+        self.plugin = lib.extism_plugin_new(context.pointer, wasm, len(wasm), wasi)
 
         self.ctx = context
 
@@ -162,10 +159,11 @@ class Plugin:
             lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
 
     def update(self, plugin: Union[str, bytes, dict], wasi=False, config=None):
-        '''Update a plugin with a new WASM module or manifest'''
+        """Update a plugin with a new WASM module or manifest"""
         wasm = _wasm(plugin)
-        ok = lib.extism_plugin_update(self.ctx.pointer, self.plugin, wasm,
-                                      len(wasm), wasi)
+        ok = lib.extism_plugin_update(
+            self.ctx.pointer, self.plugin, wasm, len(wasm), wasi
+        )
         if not ok:
             error = lib.extism_error(self.ctx.pointer, -1)
             if error != ffi.NULL:
@@ -184,25 +182,27 @@ class Plugin:
             raise Error(f"Error code: {rc}")
 
     def function_exists(self, name: str) -> bool:
-        '''Returns true if the given function exists'''
-        return lib.extism_plugin_function_exists(self.ctx.pointer, self.plugin,
-                                                 name.encode())
+        """Returns true if the given function exists"""
+        return lib.extism_plugin_function_exists(
+            self.ctx.pointer, self.plugin, name.encode()
+        )
 
     def call(self, name: str, data: Union[str, bytes], parse=bytes):
-        '''
+        """
         Call a function by name with the provided input data
 
         The `parse` argument can be used to transform the output buffer into
         your expected type. It expects a function that takes a buffer as the
         only argument
-        '''
+        """
         if isinstance(data, str):
             data = data.encode()
         self._check_error(
-            lib.extism_plugin_call(self.ctx.pointer, self.plugin,
-                                   name.encode(), data, len(data)))
-        out_len = lib.extism_plugin_output_length(self.ctx.pointer,
-                                                  self.plugin)
+            lib.extism_plugin_call(
+                self.ctx.pointer, self.plugin, name.encode(), data, len(data)
+            )
+        )
+        out_len = lib.extism_plugin_output_length(self.ctx.pointer, self.plugin)
         out_buf = lib.extism_plugin_output_data(self.ctx.pointer, self.plugin)
         buf = ffi.buffer(out_buf, out_len)
         if parse is None:
@@ -210,7 +210,7 @@ class Plugin:
         return parse(buf)
 
     def __del__(self):
-        if not hasattr(self, 'ctx'):
+        if not hasattr(self, "ctx"):
             return
         if self.ctx.pointer == ffi.NULL:
             return
