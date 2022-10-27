@@ -1,0 +1,18 @@
+on: [workflow_call]
+
+name: libextism
+
+runs:
+  using: composite
+  steps:
+    - name: Checkout sources
+      uses: actions/checkout@v3
+    - name: Download libextism
+      uses: actions/download-artifact@v3
+      with:
+        name: libextism-${{ matrix.os }}
+    - name: Install extism shared library
+      shell: bash
+      run: |
+        sudo cp libextism.* /usr/local/lib
+        sudo cp runtime/extism.h /usr/local/include
