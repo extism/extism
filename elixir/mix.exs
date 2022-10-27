@@ -9,7 +9,8 @@ defmodule Extism.MixProject do
       start_permanent: Mix.env() == :prod,
       deps: deps(),
       package: package(),
-      aliases: aliases()
+      aliases: aliases(),
+      docs: docs()
     ]
   end
 
@@ -44,6 +45,15 @@ defmodule Extism.MixProject do
       name: "extism",
       files: ~w(lib native priv .formatter.exs mix.exs README.md LICENSE),
       links: %{"GitHub" => "https://github.com/extism/extism"}
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Extism",
+      logo: "./logo.png",
+      main: "readme",
+      extras: ["README.md"]
     ]
   end
 end
