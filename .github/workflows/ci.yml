@@ -102,7 +102,7 @@ jobs:
       - name: Setup Node env
         uses: actions/setup-node@v3
         with:
-          node-version: 16
+          node-version: 18
 
       - name: Test Node Host SDK
         run: |
