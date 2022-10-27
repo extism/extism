@@ -15,14 +15,14 @@ class TestExtism < Minitest::Test
     Extism.with_context do |ctx|
       plugin = ctx.plugin(manifest)
       res = JSON.parse(plugin.call("count_vowels", "this is a test"))
-      assert_equal res['count'], 4
+      assert_equal res["count"], 4
       res = JSON.parse(plugin.call("count_vowels", "this is a test again"))
-      assert_equal res['count'], 7
+      assert_equal res["count"], 7
       res = JSON.parse(plugin.call("count_vowels", "this is a test thrice"))
-      assert_equal res['count'], 6
+      assert_equal res["count"], 6
     end
   end
-  
+
   def test_can_free_plugin
     ctx = Extism::Context.new
     plugin = ctx.plugin(manifest)
@@ -42,18 +42,18 @@ class TestExtism < Minitest::Test
       plugin.update(raw_module)
       # check we can still call it
       res = JSON.parse(plugin.call("count_vowels", "this is a test"))
-      assert_equal res['count'], 4
+      assert_equal res["count"], 4
     end
   end
 
   def test_errors_on_bad_manifest
     Extism.with_context do |ctx|
       assert_raises(Extism::Error) do
-        _plugin = ctx.plugin({not_a_real_manifest: true})
+        _plugin = ctx.plugin({ not_a_real_manifest: true })
       end
       plugin = ctx.plugin(manifest)
       assert_raises(Extism::Error) do
-        plugin.update({not_a_real_manifest: true})
+        plugin.update({ not_a_real_manifest: true })
       end
     end
   end
@@ -81,9 +81,9 @@ class TestExtism < Minitest::Test
     {
       wasm: [
         {
-          path: File.join(__dir__, "code.wasm")
-        }
-      ]
+          path: File.join(__dir__, "code.wasm"),
+        },
+      ],
     }
   end
 end

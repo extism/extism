@@ -6,4 +6,10 @@ source "https://rubygems.org"
 gemspec
 
 gem "rake", "~> 13.0"
-gem "ffi"
+gem "ffi", "~> 1.15.5"
+
+group :development do
+  gem "yard", "~> 0.9.28"
+  gem "rufo", "~> 0.13.0"
+  gem "minitest", "~> 5.16.3"
+end
