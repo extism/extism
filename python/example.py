@@ -1,10 +1,9 @@
 import sys
-import os
 import json
 import hashlib
 
 sys.path.append(".")
-from extism import Plugin, Context
+from extism import Context
 
 if len(sys.argv) > 1:
     data = sys.argv[1].encode()

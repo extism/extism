@@ -19,8 +19,8 @@ format:
 lint:
 	poetry run black --check extism/ tests/ example.py
 
-# docs:
-# 	mix docs
+docs:
+	poetry run pdoc --force --html extism
 
-# show-docs: docs
-# 	open doc/index.html
+show-docs: docs
+	open html/extism/index.html
