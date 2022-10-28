@@ -247,15 +247,15 @@ jobs:
         uses: actions/cache@v3
         with:
           path: _build
-          key: ${{ runner.os }}-ocaml-${{ hashFiles('ocaml/**') }}-${{ hashFiles('dune-project') }}
+          key: ${{ runner.os }}-ocaml-${{ hashFiles('ocaml/lib/**') }}-${{ hashFiles('ocaml/bin/**') }}-${{ hashFiles('dune-project') }}
       - name: Build OCaml Host SDK
         if: steps.cache-ocaml.outputs.cache-hit != 'true'
         run: |
+          opam install -y --deps-only .
           cd ocaml
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune build
       - name: Test OCaml Host SDK
         run: |
-          opam install -y --deps-only .
           cd ocaml
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune exec ./bin/main.exe
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune runtest
