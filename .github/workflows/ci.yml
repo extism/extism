@@ -251,6 +251,7 @@ jobs:
       - name: Build OCaml Host SDK
         if: steps.cache-ocaml.outputs.cache-hit != 'true'
         run: |
+          opam install -y --deps-only .
           cd ocaml
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune build
       - name: Test OCaml Host SDK
