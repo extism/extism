@@ -10,6 +10,8 @@ python = "^3.7"
 cffi = "^1.10.0"
 
 [tool.poetry.dev-dependencies]
+black = "^22.10.0"
+pdoc3 = "^0.10.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
