@@ -15,7 +15,7 @@ The universal plug-in system. Run WebAssembly extensions inside your app. Use id
 Plug-in development kits (PDK) for plug-in authors supported in [Rust](https://github.com/extism/rust-pdk), [AssemblyScript](https://github.com/extism/assemblyscript-pdk), [Go](https://github.com/extism/go-pdk), [C/C++](https://github.com/extism/c-pdk).
 
 <p align="center">
-  <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/191437220-4030840d-1a9e-47b9-a44a-39a004885308.png"/>
+  <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/198499438-f3de06e5-71b4-439d-ab31-a3672acc6ede.png"/>
 </p>
 
 Add a flexible, secure, and _bLaZiNg FaSt_ plug-in system to your project. Server, desktop, mobile, web, database -- you name it. Enable users to write and execute safe extensions to your software in **3 easy steps:**
