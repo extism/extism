@@ -2,9 +2,9 @@ pub use anyhow::Error;
 pub(crate) use wasmtime::*;
 
 mod context;
-pub(crate) mod export;
 pub mod manifest;
 mod memory;
+pub(crate) mod pdk;
 mod plugin;
 mod plugin_ref;
 pub mod sdk;
