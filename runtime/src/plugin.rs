@@ -115,7 +115,7 @@ impl Plugin {
                 $(
                     concat!("extism_", stringify!($name)) => {
                         let t = FuncType::new([$($args),*], [$($($r),*)?]);
-                        let f = Func::new(&mut memory.store, t, export::$name);
+                        let f = Func::new(&mut memory.store, t, pdk::$name);
                         linker.define(EXPORT_MODULE_NAME, concat!("extism_", stringify!($name)), Extern::Func(f))?;
                         continue
                     }
