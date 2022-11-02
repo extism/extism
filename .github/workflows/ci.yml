@@ -256,6 +256,7 @@ jobs:
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune build
       - name: Test OCaml Host SDK
         run: |
+          opam install -y --deps-only .
           cd ocaml
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune exec ./bin/main.exe
           LD_LIBRARY_PATH=/usr/local/lib opam exec -- dune runtest
