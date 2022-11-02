@@ -15,9 +15,9 @@ crate-type = ["cdylib"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-wasmtime = "1.0.0"
-wasmtime-wasi = "1.0.0"
-wasmtime-wasi-nn = {version = "1.0.1", optional=true}
+wasmtime = "2.0.1"
+wasmtime-wasi = "2.0.1"
+wasmtime-wasi-nn = {version = "2.0.1", optional=true}
 anyhow = "1"
 serde = { version = "1", features=["derive"] }
 toml = "0.5"
