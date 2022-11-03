@@ -105,9 +105,9 @@ impl Context {
 
     /// Remove a plugin from the context
     pub fn remove(&mut self, id: PluginIndex) {
-        self.plugins.remove(&id);
-
-        // Collect old IDs in case we need to re-use them
-        self.reclaimed_ids.push_back(id);
+        if self.plugins.remove(&id).is_some() {
+            // Collect old IDs in case we need to re-use them
+            self.reclaimed_ids.push_back(id);
+        }
     }
 }
