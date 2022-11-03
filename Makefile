@@ -28,7 +28,7 @@ build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
 install:
-	install libextism/extism.h $(DEST)/include
+	install runtime/extism.h $(DEST)/include
 	install target/release/libextism.$(SOEXT) $(DEST)/lib
 
 uninstall:

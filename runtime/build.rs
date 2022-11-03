@@ -11,6 +11,6 @@ fn main() {
         .rename_item("Context", "ExtismContext")
         .generate()
     {
-        bindings.write_to_file("../libextism/extism.h");
+        bindings.write_to_file("extism.h");
     }
 }

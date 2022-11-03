@@ -21,6 +21,3 @@ nn = ["extism-runtime/nn"]
 register-http = ["extism-runtime/register-http"] # enables wasm to be downloaded using http
 register-filesystem = ["extism-runtime/register-filesystem"] # enables wasm to be loaded from disk
 http = ["extism-runtime/http"] # enables extism_http_request
-
-[build-dependencies]
-cbindgen = "0.24"
