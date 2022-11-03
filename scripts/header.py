@@ -78,7 +78,7 @@ class Visitor(c_ast.NodeVisitor):
 
 class Header:
 
-    def __init__(self, filename='runtime/extism.h'):
+    def __init__(self, filename='libextism/extism.h'):
         self.functions = []
         self.header = parse_file(filename, use_cpp=True, cpp_args='-w')
         self.visitor = Visitor(self)

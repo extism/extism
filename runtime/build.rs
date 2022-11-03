@@ -1,6 +1,6 @@
 fn main() {
     if let Ok(bindings) = cbindgen::Builder::new()
-        .with_crate("../runtime")
+        .with_crate(".")
         .with_language(cbindgen::Language::C)
         .with_no_includes()
         .with_sys_include("stdint.h")
@@ -11,6 +11,6 @@ fn main() {
         .rename_item("Context", "ExtismContext")
         .generate()
     {
-        bindings.write_to_file("extism.h");
+        bindings.write_to_file("../libextism/extism.h");
     }
 }
