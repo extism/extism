@@ -15,4 +15,4 @@ runs:
       shell: bash
       run: |
         sudo cp libextism.* /usr/local/lib
-        sudo cp runtime/extism.h /usr/local/include
+        sudo cp libextism/extism.h /usr/local/include
