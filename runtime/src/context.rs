@@ -29,7 +29,7 @@ impl Context {
 
     /// Get the next valid plugin ID
     pub fn next_id(&mut self) -> Result<PluginIndex, Error> {
-        // Make sure we haven't exhausted all plugin IDs, it reach this it would require the machine
+        // Make sure we haven't exhausted all plugin IDs, to reach this it would require the machine
         // running this code to have a lot of memory - no computer I tested on was able to allocate
         // the max number of plugins.
         //
@@ -37,7 +37,7 @@ impl Context {
         // try to use one of those before returning an error
         let exhausted = self.next_id.load(std::sync::atomic::Ordering::SeqCst) == PluginIndex::MAX;
 
-        // If there is a significant number of old IDs we can start to re-use them
+        // If there are a significant number of old IDs we can start to re-use them
         if self.reclaimed_ids.len() >= START_REUSING_IDS || exhausted {
             if let Some(x) = self.reclaimed_ids.pop_front() {
                 return Ok(x);
@@ -53,6 +53,33 @@ impl Context {
         Ok(self
             .next_id
             .fetch_add(1, std::sync::atomic::Ordering::SeqCst))
+    }
+
+    pub fn insert(&mut self, plugin: Plugin) -> PluginIndex {
+        // Generate a new plugin ID
+        let id: i32 = match self.next_id() {
+            Ok(id) => id,
+            Err(e) => {
+                error!("Error creating Plugin: {:?}", e);
+                self.set_error(e);
+                return -1;
+            }
+        };
+        self.plugins.insert(id, plugin);
+        id
+    }
+
+    pub fn new_plugin(&mut self, data: impl AsRef<[u8]>, with_wasi: bool) -> PluginIndex {
+        let plugin = match Plugin::new(data, with_wasi) {
+            Ok(x) => x,
+            Err(e) => {
+                error!("Error creating Plugin: {:?}", e);
+                self.set_error(e);
+                return -1;
+            }
+        };
+        let id = self.insert(plugin);
+        id
     }
 
     /// Set the context error
