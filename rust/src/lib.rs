@@ -2,8 +2,7 @@ use std::collections::BTreeMap;
 
 use extism_manifest::Manifest;
 
-#[allow(non_camel_case_types)]
-pub(crate) mod bindings;
+pub use extism_runtime::sdk as bindings;
 
 mod context;
 mod plugin;

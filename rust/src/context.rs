@@ -1,7 +1,7 @@
 use crate::*;
 
 pub struct Context {
-    pub(crate) pointer: *mut bindings::ExtismContext,
+    pub(crate) pointer: *mut extism_runtime::Context,
 }
 
 impl Default for Context {

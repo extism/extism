@@ -1,16 +1,13 @@
 use crate::*;
 
 pub struct Plugin<'a> {
-    id: bindings::ExtismPlugin,
+    id: extism_runtime::PluginIndex,
     context: &'a Context,
 }
 
 impl<'a> Plugin<'a> {
     pub unsafe fn from_id(id: i32, context: &'a Context) -> Plugin<'a> {
-        Plugin {
-            id,
-            context: context,
-        }
+        Plugin { id, context }
     }
 
     pub fn as_i32(&self) -> i32 {

@@ -1,0 +1,26 @@
+[package]
+name = "libextism"
+version = "0.0.0"
+edition = "2021"
+authors = ["The Extism Authors", "oss@extism.org"]
+license = "BSD-3-Clause"
+homepage = "https://extism.org"
+repository = "https://github.com/extism/extism"
+description = "libextism"
+
+[lib]
+name = "extism"
+crate-type = ["cdylib"]
+
+[dependencies]
+extism-runtime = {path = "../runtime"}
+
+[features]
+default = ["http", "register-http", "register-filesystem"]
+nn = ["extism-runtime/nn"]
+register-http = ["extism-runtime/register-http"] # enables wasm to be downloaded using http
+register-filesystem = ["extism-runtime/register-filesystem"] # enables wasm to be loaded from disk
+http = ["extism-runtime/http"] # enables extism_http_request
+
+[build-dependencies]
+cbindgen = "0.24"

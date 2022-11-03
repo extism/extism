@@ -25,10 +25,10 @@ lint:
 	cargo clippy --release --no-deps --manifest-path runtime/Cargo.toml
 
 build:
-	cargo build --release $(FEATURE_FLAGS) --manifest-path runtime/Cargo.toml
+	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
 install:
-	install runtime/extism.h $(DEST)/include
+	install libextism/extism.h $(DEST)/include
 	install target/release/libextism.$(SOEXT) $(DEST)/lib
 
 uninstall:
