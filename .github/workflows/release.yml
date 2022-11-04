@@ -239,7 +239,7 @@ jobs:
           CI: true
         run: |
           cd node
-          npm publish
+          make publish
 
       - name: Setup Rust env
         uses: actions-rs/toolchain@v1
@@ -275,9 +275,7 @@ jobs:
         run: |
           cd elixir
           cp ../LICENSE .
-          mix do deps.get, deps.compile
-          mix hex.build
-          mix hex.publish --yes
+          make publish
 
       - name: Setup Ruby
         uses: actions/setup-ruby@v1
@@ -289,17 +287,14 @@ jobs:
           RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_TOKEN }}
         run: |
           cd ruby
-          gem build extism.gemspec
-          gem push extism*.gem -k $RUBYGEMS_API_KEY
+          make publish
         
       - name: Publish Elixir Host SDK to hex.pm
         env:
           HEX_API_KEY: ${{ secrets.HEX_PM_API_TOKEN }}
         run: |
           cd elixir
-          mix do deps.get, deps.compile
-          mix hex.build
-          mix hex.publish --yes
+          make publish
 
       - name: Setup Python env
         uses: actions/setup-python@v4
@@ -309,12 +304,11 @@ jobs:
 
       - name: Build Python Host SDK
         run: |
-          pushd python
-          python3 -m pip install --upgrade build
+          cd python
           cp ../LICENSE .
           cp ../README.md .
-          python3 -m poetry build
-          popd
+          make clean
+          make build
 
       - name: Release Python Host SDK
         uses: pypa/gh-action-pypi-publish@release/v1
