@@ -194,7 +194,7 @@ func (plugin Plugin) SetConfig(data map[string][]byte) error {
 	return nil
 }
 
-// / FunctionExists returns true when the name function is present in the plugin
+// FunctionExists returns true when the named function is present in the plugin
 func (plugin Plugin) FunctionExists(functionName string) bool {
 	name := C.CString(functionName)
 	b := C.extism_plugin_function_exists(plugin.ctx.pointer, C.int(plugin.id), name)
