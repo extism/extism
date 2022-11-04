@@ -86,7 +86,7 @@ module Extism
 
     # Create a new plugin from a WASM module or JSON encoded manifest
     #
-    # @param wasm [Hash, String] The manifest for the plugin
+    # @param wasm [Hash, String] The manifest for the plugin. See https://extism.org/docs/concepts/manifest/.
     # @param wasi [Boolean] Enable WASI support
     # @param config [Hash] The plugin config
     # @return [Plugin]
@@ -121,7 +121,7 @@ module Extism
     #
     # @see Extism::Context#plugin
     # @param context [Context] The context to manager this plugin
-    # @param wasm [Hash, String] The manifest or WASM binary
+    # @param wasm [Hash, String] The manifest or WASM binary. See https://extism.org/docs/concepts/manifest/.
     # @param wasi [Boolean] Enable WASI support
     # @param config [Hash] The plugin config
     def initialize(context, wasm, wasi = false, config = nil)
@@ -151,7 +151,7 @@ module Extism
 
     # Update a plugin with new WASM module or manifest
     #
-    # @param wasm [Hash, String] The manifest or WASM binary
+    # @param wasm [Hash, String] The manifest or WASM binary. See https://extism.org/docs/concepts/manifest/.
     # @param wasi [Boolean] Enable WASI support
     # @param config [Hash] The plugin config
     # @return [void]

@@ -49,7 +49,7 @@ defmodule Extism.Context do
   ## Parameters
 
     - ctx: The Context to manage this plugin
-    - manifest: The String or Map of the WASM module or manifest
+    - manifest: The String or Map of the WASM module or [manifest](https://extism.org/docs/concepts/manifest)
     - wasi: A bool you set to true if you want WASI support
 
   """
