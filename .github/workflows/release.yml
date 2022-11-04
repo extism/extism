@@ -1,8 +1,7 @@
 on:
-  workflow_dispatch:
-    workflow: release-sdks
   release:
     types: [created]
+  workflow_dispatch:
 
 name: Release
 
@@ -215,106 +214,3 @@ jobs:
           files: |
             *.tar.gz
             *.txt
-
-  release-sdks:
-    needs: [release-linux, release-macos] # release-windows
-    name: publish-sdks
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Setup Node env
-        uses: actions/setup-node@v3
-        with:
-          node-version: 16
-          registry-url: "https://registry.npmjs.org"
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}
-          CI: true
-
-      - name: Release Node Host SDK
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_API_TOKEN }}
-          CI: true
-        run: |
-          cd node
-          make publish
-
-      - name: Setup Rust env
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          target: ${{ matrix.target }}
-
-      - name: Release Rust Host SDK
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
-        run: |
-          # order of crate publication matter: manifest, runtime, rust
-
-          cargo publish --manifest-path manifest/Cargo.toml
-          # allow for crates.io to update so dependant crates can locate extism-manifest
-          sleep 5 
-
-          cargo publish --manifest-path runtime/Cargo.toml --no-verify
-          cargo publish --manifest-path rust/Cargo.toml
-
-      - name: Setup Elixir Host SDK
-        uses: erlef/setup-beam@v1
-        with:
-          experimental-otp: true
-          otp-version: '25.0.4'
-          elixir-version: '1.14.0'
-
-      - name: Publish Elixir Host SDK to hex.pm
-        env:
-          HEX_API_KEY: ${{ secrets.HEX_PM_API_TOKEN }}
-        run: |
-          cd elixir
-          cp ../LICENSE .
-          make publish
-
-      - name: Setup Ruby
-        uses: actions/setup-ruby@v1
-        with:
-          ruby-version: '3.1' # Version range or exact version of a Ruby version to use, using semvers version range syntax.
-
-      - name: Publish Ruby Gem
-        env:
-          RUBYGEMS_API_KEY: ${{ secrets.RUBYGEMS_API_TOKEN }}
-        run: |
-          cd ruby
-          make publish
-        
-      - name: Publish Elixir Host SDK to hex.pm
-        env:
-          HEX_API_KEY: ${{ secrets.HEX_PM_API_TOKEN }}
-        run: |
-          cd elixir
-          make publish
-
-      - name: Setup Python env
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.9"
-          check-latest: true
-
-      - name: Build Python Host SDK
-        run: |
-          cd python
-          cp ../LICENSE .
-          cp ../README.md .
-          make clean
-          make build
-
-      - name: Release Python Host SDK
-        uses: pypa/gh-action-pypi-publish@release/v1
-        env:
-          INPUT_VERIFY_METADATA: false
-        with:
-          user: ${{ secrets.PYPI_API_USER }}
-          password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: python/dist/
