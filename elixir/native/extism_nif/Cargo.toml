@@ -1,6 +1,6 @@
 [package]
 name = "extism_nif"
-version = "0.0.1-rc.5"
+version = "0.0.1-rc.6"
 edition = "2021"
 authors = ["Benjamin Eckel <bhelx@simst.im>"]
 
