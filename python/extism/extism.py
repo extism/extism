@@ -168,7 +168,7 @@ class Context:
         Parameters
         ----------
         manifest : Union[str, bytes, dict]
-            A manifest dictionary describing the plugin or the raw bytes for a module
+            A manifest dictionary describing the plugin or the raw bytes for a module. See [Extism > Concepts > Manifest](https://extism.org/docs/concepts/manifest/).
         wasi : bool
             Set to `True` to enable WASI support
         config : dict
@@ -220,7 +220,7 @@ class Plugin:
         Parameters
         ----------
         plugin : Union[str, bytes, dict]
-            A manifest dictionary describing the plugin or the raw bytes for a module
+            A manifest dictionary describing the plugin or the raw bytes for a module. See [Extism > Concepts > Manifest](https://extism.org/docs/concepts/manifest/).
         wasi : bool
             Set to `True` to enable WASI support
         config : dict

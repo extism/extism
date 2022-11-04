@@ -161,6 +161,8 @@ export type ManifestWasm = ManifestWasmFile | ManifestWasmData;
 /**
  * The manifest which describes the {@link Plugin} code and
  * runtime constraints.
+ * 
+ * @see [Extism > Concepts > Manifest](https://extism.org/docs/concepts/manifest)
  */
 export type Manifest = {
   wasm: Array<ManifestWasm>;
@@ -216,7 +218,7 @@ export class Context {
   /**
    * Create a plugin managed by this context
    *
-   * @param manifest - The Manifest describing the plugin code and config
+   * @param manifest - The {@link Manifest} describing the plugin code and config
    * @param wasi - Set to `true` to enable WASI
    * @param config - Config details for the plugin
    * @returns A new Plugin scoped to this Context
@@ -275,7 +277,7 @@ export class Plugin {
    * Constructor for a plugin. @see {@link Context#plugin}.
    *
    * @param ctx - The context to manage this plugin
-   * @param manifest - The manifest
+   * @param manifest - The {@link Manifest}
    * @param wasi - Set to true to enable WASI support
    * @param config - The plugin config
    */
@@ -324,7 +326,7 @@ export class Plugin {
   /**
    * Update an existing plugin with new WASM or manifest
    *
-   * @param manifest - The new manifest data
+   * @param manifest - The new {@link Manifest} data
    * @param wasi - Set to true to enable WASI support
    * @param config - The new plugin config
    */
