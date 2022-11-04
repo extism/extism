@@ -13,7 +13,7 @@ clean:
 
 publish: clean prepare
 	gem build extism.gemspec
-	gem push extism-*.gem
+	gem push extism-*.gem -k $RUBYGEMS_API_TOKEN
 
 lint:
 	bundle exec rufo --check .
