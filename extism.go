@@ -202,7 +202,7 @@ func (plugin Plugin) FunctionExists(functionName string) bool {
 	return bool(b)
 }
 
-// / Call a function by name with the given input, returning the output
+// Call a function by name with the given input, returning the output
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	ptr := makePointer(input)
 	name := C.CString(functionName)
