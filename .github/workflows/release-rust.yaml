@@ -11,7 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       
-      - name: Setup Rust env
+      - name: Setup Rust Env
         uses: actions-rs/toolchain@v1
         with:
           toolchain: stable

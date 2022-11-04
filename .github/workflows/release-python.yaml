@@ -17,13 +17,13 @@ jobs:
           python-version: "3.9"
           check-latest: true
 
-      - name: Build Python Host SDK
+      - name: Build Python Env
         run: |
           cd python
           cp ../LICENSE .
           cp ../README.md .
           make clean
-          make build
+          make prepare
 
       - name: Release Python Host SDK
         uses: pypa/gh-action-pypi-publish@release/v1
