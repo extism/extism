@@ -1,0 +1,36 @@
+on:
+  workflow_dispatch:
+
+name: Release Python SDK
+
+jobs:
+  release-sdks:
+    name: release-python
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Python env
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          check-latest: true
+
+      - name: Build Python Host SDK
+        run: |
+          cd python
+          cp ../LICENSE .
+          cp ../README.md .
+          make clean
+          make build
+
+      - name: Release Python Host SDK
+        uses: pypa/gh-action-pypi-publish@release/v1
+        env:
+          INPUT_VERIFY_METADATA: false
+        with:
+          user: ${{ secrets.PYPI_API_USER }}
+          password: ${{ secrets.PYPI_API_TOKEN }}
+          packages_dir: python/dist/
+
