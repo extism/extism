@@ -1,21 +1,133 @@
 <html>
   <head>
-    <script type="module">
-      import { ExtismContext } from './dist/index.esm.js'
-
-      async function run() {
-          let ctx = new ExtismContext()
-          let plugin = await ctx.newPlugin("https://raw.githubusercontent.com/extism/extism/main/wasm/code.wasm") 
-          let output = await plugin.call("count_vowels", "this is a test")
-          console.log(output)
-          let result = JSON.parse(new TextDecoder().decode(output))
-          console.log(result)
-          debugger
+    <script src="https://unpkg.com/babel-standalone@6/babel.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <style>
+      #main {
+        width: 100%;
       }
+      .manifest {
+        display: flex; /* or inline-flex */
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: 100%;
+      }
+      .urlInput {
+        width: 600px;
+      }
+      .funcName {
+        width: 150px;
+      }
+      .textAreas {
+        display: flex; /* or inline-flex */
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: 100%;
+        height: 500px;
+      }
+      .inputBox {
+        width: 100%;
+        height: 100%; 
+      }
+      .inputBox > textarea {
+        width: 100%;
+        height: 100%; 
+      }
+      .outputBox {
+        width: 100%;
+        height: 100%; 
+      }
+      .outputBox > textarea {
+        width: 100%;
+        height: 100%; 
+      }
+      
+    </style>
 
-      console.log("Running")
-      run().then()
+    <script type="text/babel">
+      class App extends React.Component {
+        state = {
+          url: "https://raw.githubusercontent.com/extism/extism/main/wasm/code.wasm",
+          input: "",
+          output: "",
+          func_name: "count_vowels",
+        }
+
+        constructor(props) {
+          super(props)
+          this.extismContext = props.extismContext
+        }
+
+        handleUrlChange(e) {
+          e.preventDefault();
+          this.setState({ url: e.target.value })
+        }
+
+        handleFuncChange(e) {
+          e.preventDefault();
+          this.setState({ func_name: e.target.value })
+        }
+
+        handleInputChange(e) {
+          e.preventDefault();
+          this.setState({ input: e.target.value })
+        }
+
+        async handleOnRun(e) {
+          e.preventDefault();
+          console.log("one run aslkdjasld")
+          let plugin = await this.extismContext.newPlugin(this.state.url) 
+          let result = await plugin.call(this.state.func_name, this.state.input)
+          let output = new TextDecoder().decode(result)
+          this.setState({output})
+        }
+
+        render() {
+          return <div className="app">
+            <div className="manifest">
+              <div>
+                <label>WASM Url: </label>
+                <input type="text" className="urlInput" value={this.state.url} onChange={this.handleUrlChange.bind(this)}/>
+              </div>
+              <div>
+                <label>Function: </label>
+                <input type="text" className="funcName" value={this.state.func_name} onChange={this.handleFuncChange.bind(this)}/>
+              </div>
+              <div>
+                <button onClick={this.handleOnRun.bind(this)}>Run</button>
+              </div>
+            </div>
+            <div className="textAreas">
+              <div className="inputBox">
+                <h3>Input</h3>
+                <textarea value={this.state.input} onChange={this.handleInputChange.bind(this)}></textarea>
+              </div>
+              <div className="outputBox">
+                <h3>Output</h3>
+                <textarea  defaultValue={this.state.output}></textarea>
+              </div>
+            </div>
+          </div>
+        }
+      }
+      window.App = App
     </script>
 
+    <script type="module">
+      import { ExtismContext } from './dist/index.esm.js'
+      const e = React.createElement;
+
+      window.onload = () => {
+        const domContainer = document.getElementById('main');
+        console.log(domContainer)
+        const root = ReactDOM.createRoot(domContainer);
+        const extismContext = new ExtismContext()
+        root.render(e(App, {extismContext}));
+      }
+    </script>
   </head>
+  <body>
+    <div id="main"></div>
+  </body>
 </html>
