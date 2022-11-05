@@ -1,13 +1,15 @@
 <html>
   <head>
     <script type="module">
-      import { ExtismPlugin } from './dist/index.esm.js'
+      import { ExtismContext } from './dist/index.esm.js'
 
       async function run() {
-          let plugin = new ExtismPlugin()
-          await plugin.load("https://raw.githubusercontent.com/extism/extism/main/wasm/code.wasm") 
-          let count = JSON.parse(plugin.call("count_vowels", "this is a test"))
-          console.log(count)
+          let ctx = new ExtismContext()
+          let plugin = await ctx.newPlugin("https://raw.githubusercontent.com/extism/extism/main/wasm/code.wasm") 
+          let output = await plugin.call("count_vowels", "this is a test")
+          console.log(output)
+          let result = JSON.parse(new TextDecoder().decode(output))
+          console.log(result)
           debugger
       }
 

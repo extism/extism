@@ -8,11 +8,7 @@ function packU8toU64(bytes: Uint8Array): BigInt {
     return (new BigInt64Array(bytes.buffer))[0]
 }
 
-function stringToBytes(s: string, offset: number, len: number): Uint8Array {
-    return new Uint8Array(s.slice(offset, len).split("").map(c => c.charCodeAt(0)))
-}
-
-function makeEnv(plugin: ExtismPlugin): any {
+function makeEnv(plugin: ExtismPluginCall): any {
     return {
         extism_alloc(n: BigInt): BigInt {
             return BigInt(50) // just pick a safe? number for now
@@ -38,19 +34,19 @@ function makeEnv(plugin: ExtismPlugin): any {
         },
         extism_input_load_u8(i: number): number {
             //@ts-ignore
-            return plugin.input[i].charCodeAt(0)
+            return plugin.input[i]
         },
         extism_input_load_u64(idx: BigInt) {
             const i = Number(idx)
             //@ts-ignore
-            return packU8toU64(stringToBytes(plugin.input, i, i+8))
+            return packU8toU64(plugin.input.slice(i, i+8))
         },
         extism_output_set(offset: BigInt, len: number): number {
             //@ts-ignore
             offset = Number(offset)
             len = Number(len)
             //@ts-ignore
-            plugin.output = String.fromCharCode(...plugin.memory.slice(offset, offset+len))
+            plugin.output = plugin.memory.slice(offset, offset+len)
             return 0
         },
         extism_error_set(i: BigInt) { debugger; },
@@ -66,38 +62,53 @@ function makeEnv(plugin: ExtismPlugin): any {
     }
 }
 
-export class ExtismPlugin {
-    memory: Uint8Array
-    module?: WebAssembly.WebAssemblyInstantiatedSource;
-    input?: string
-    output?: string
-
-    constructor() {
-      this.memory = new Uint8Array(100)
-      this.module = undefined
-      this.input = undefined
-      this.output = undefined
-    }
-
-    async load(url: string) {
+export class ExtismContext {
+    async newPlugin(url: string) {
         let response = await fetch(url)
         let buffer = await response.arrayBuffer()
-        let environment = makeEnv(this)
-        //@ts-ignore
-        this.module = await WebAssembly.instantiate(buffer, { env: environment })
+        return new ExtismPlugin(buffer)
+    }
+}
+
+class ExtismPluginCall {
+    memory: Uint8Array
+    input: Uint8Array
+    output: Uint8Array
+
+    constructor(memory: Uint8Array, input: Uint8Array, output: Uint8Array) {
+        this.memory = memory
+        this.input = input
+        this.output = output
+    }
+}
+
+class ExtismPlugin {
+    moduleData: ArrayBuffer
+
+    constructor(moduleData: ArrayBuffer) {
+        this.moduleData = moduleData
     }
 
-    call(func_name: string, input: string): string {
-        this.input = input
-        let func = this.module?.instance.exports[func_name]
+    async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
+        const memory = new Uint8Array(10000)
+        const output = new Uint8Array()
+        let inputBytes: Uint8Array
+        if (typeof input === 'string') {
+            inputBytes = new TextEncoder().encode(input)
+        } else if (input instanceof Uint8Array) {
+            inputBytes = input
+        } else {
+            throw new Error("input should be string or Uint8Array")
+        }
+        const call = new ExtismPluginCall(memory, inputBytes, output)
+        const environment = makeEnv(call)
+        const module = await WebAssembly.instantiate(this.moduleData, { env: environment })
+        let func = module.instance.exports[func_name]
         if (!func){
             throw Error(`function does not exist ${func_name}`)
         }
         //@ts-ignore
         func()
-        let output = `${this.output}`
-        this.output = undefined
-        this.input = undefined
-        return output
+        return call.output
     }
 }
