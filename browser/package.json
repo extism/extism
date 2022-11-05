@@ -1,15 +1,18 @@
 {
-  "name": "extism-runtime-browser",
-  "version": "1.0.0",
+  "name": "@extism/runtime-browser",
+  "version": "0.0.1-rc.6",
   "description": "Extism runtime in the browser",
-  "main": "index.js",
   "scripts": {
     "build": "node build.js",
     "format": "prettier --write \"src/**/*.ts\"",
     "lint": "tslint -p tsconfig.json",
     "test": "jest --config jest.config.js"
   },
-  "author": "",
+  "files": ["dist/*"],
+  "module": "dist/index.esm.js",
+  "main": "dist/index.js",
+  "typings": "dist/index.d.ts",
+  "author": "The Extism Authors <oss@extism.org>",
   "license": "BSD-3-Clause",
   "devDependencies": {
     "@types/jest": "^29.2.2",

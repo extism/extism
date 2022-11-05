@@ -62,7 +62,7 @@ function makeEnv(plugin: ExtismPluginCall): any {
     }
 }
 
-export class ExtismContext {
+export default class ExtismContext {
     async newPlugin(url: string) {
         let response = await fetch(url)
         let buffer = await response.arrayBuffer()
@@ -112,3 +112,4 @@ class ExtismPlugin {
         return call.output
     }
 }
+
