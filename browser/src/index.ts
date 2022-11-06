@@ -11,9 +11,11 @@ function packU8toU64(bytes: Uint8Array): BigInt {
 function makeEnv(plugin: ExtismPluginCall): any {
     return {
         extism_alloc(n: BigInt): BigInt {
-            return BigInt(50) // just pick a safe? number for now
+            return BigInt(10000) // just pick a safe? number for now
         },
-        extism_free (n: BigInt) {debugger},
+        extism_free (n: BigInt) {
+            console.log("Free ", n)
+        },
         extism_load_u8(n: BigInt): number { debugger; return 0 },
         extism_load_u32(n: BigInt): number {debugger; return 0 },
         extism_load_u64(n: BigInt): BigInt { debugger;return BigInt(0)},
@@ -98,7 +100,7 @@ class ExtismPlugin {
     }
 
     async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
-        const memory = new Uint8Array(10000)
+        const memory = new Uint8Array(100000)
         const output = new Uint8Array()
         let inputBytes: Uint8Array
         if (typeof input === 'string') {
