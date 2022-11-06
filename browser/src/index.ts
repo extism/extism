@@ -89,6 +89,14 @@ class ExtismPlugin {
         this.moduleData = moduleData
     }
 
+    async getExportedFunctions() {
+        // we can make an empty call environment
+        let empty = new Uint8Array()
+        let call = new ExtismPluginCall(empty, empty, empty)
+        let module = await this._instantiateModule(call)
+        return Object.keys(module.instance.exports).filter(f => !f.startsWith("__") && f !== "memory")
+    }
+
     async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
         const memory = new Uint8Array(10000)
         const output = new Uint8Array()
@@ -101,8 +109,7 @@ class ExtismPlugin {
             throw new Error("input should be string or Uint8Array")
         }
         const call = new ExtismPluginCall(memory, inputBytes, output)
-        const environment = makeEnv(call)
-        const module = await WebAssembly.instantiate(this.moduleData, { env: environment })
+        const module = await this._instantiateModule(call)
         let func = module.instance.exports[func_name]
         if (!func){
             throw Error(`function does not exist ${func_name}`)
@@ -110,6 +117,11 @@ class ExtismPlugin {
         //@ts-ignore
         func()
         return call.output
+    }
+
+    async _instantiateModule(call: ExtismPluginCall) {
+        const environment = makeEnv(call)
+        return await WebAssembly.instantiate(this.moduleData, { env: environment })
     }
 }
 
