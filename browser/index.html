@@ -52,6 +52,15 @@
           input: "",
           output: "",
           func_name: "count_vowels",
+          functions: []
+        }
+
+        componentDidMount() {
+          (async function () {
+            let plugin = await this.extismContext.newPlugin(this.state.url) 
+            let functions = await plugin.getExportedFunctions()
+            this.setState({functions})
+          }).bind(this)()
         }
 
         constructor(props) {
@@ -59,40 +68,34 @@
           this.extismContext = props.extismContext
         }
 
-        handleUrlChange(e) {
-          e.preventDefault();
-          this.setState({ url: e.target.value })
-        }
-
-        handleFuncChange(e) {
-          e.preventDefault();
-          this.setState({ func_name: e.target.value })
-        }
-
         handleInputChange(e) {
           e.preventDefault();
-          this.setState({ input: e.target.value })
+          this.setState({ [e.target.name]: e.target.value })
         }
 
         async handleOnRun(e) {
           e.preventDefault();
-          console.log("one run aslkdjasld")
           let plugin = await this.extismContext.newPlugin(this.state.url) 
           let result = await plugin.call(this.state.func_name, this.state.input)
           let output = new TextDecoder().decode(result)
           this.setState({output})
         }
 
+
         render() {
+          const funcOptions = this.state.functions.map(f => <option value={f}>{f}</option>)
+
           return <div className="app">
             <div className="manifest">
               <div>
                 <label>WASM Url: </label>
-                <input type="text" className="urlInput" value={this.state.url} onChange={this.handleUrlChange.bind(this)}/>
+                <input type="text" name="url" className="urlInput" value={this.state.url} onChange={this.handleInputChange.bind(this)}/>
               </div>
               <div>
                 <label>Function: </label>
-                <input type="text" className="funcName" value={this.state.func_name} onChange={this.handleFuncChange.bind(this)}/>
+                <select type="text" name="func_name" className="funcName" value={this.state.func_name} onChange={this.handleInputChange.bind(this)}>
+                  {funcOptions}
+                </select>
               </div>
               <div>
                 <button onClick={this.handleOnRun.bind(this)}>Run</button>
@@ -101,7 +104,7 @@
             <div className="textAreas">
               <div className="inputBox">
                 <h3>Input</h3>
-                <textarea value={this.state.input} onChange={this.handleInputChange.bind(this)}></textarea>
+                <textarea name="input" value={this.state.input} onChange={this.handleInputChange.bind(this)}></textarea>
               </div>
               <div className="outputBox">
                 <h3>Output</h3>
