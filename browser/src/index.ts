@@ -10,11 +10,11 @@ class Allocator {
     freed: MemoryBlock[]
     memory: Uint8Array
     
-    constructor() {
+    constructor(memory) {
         this.currentIndex = BigInt(1);
         this.active = {};
         this.freed = [];    
-        this.memory = new Uint8Array(1024)
+        this.memory = memory;
     }
     
     alloc(length: BigInt) : MemoryBlock {
@@ -72,7 +72,7 @@ function makeEnv(plugin: ExtismPlugin): any {
             plugin.allocator.free(n);
         },
         extism_load_u8(n: BigInt): number { 
-            return plugin.allocator.memory[Number(n)];
+            return plugin.allocator.memory[Number(n) - 1];
         },
         extism_load_u32(n: BigInt): number {debugger; return 0 },
         extism_load_u64(n: BigInt): BigInt { 
@@ -103,10 +103,10 @@ function makeEnv(plugin: ExtismPlugin): any {
         },
         extism_output_set(offset: BigInt, len: number): number {
             //@ts-ignore
-            offset = Number(offset) - 1
+            offset = Number(offset) - 1;
             len = Number(len)
             //@ts-ignore
-            plugin.output = plugin.memory.slice(offset, offset+len)
+            plugin.output = plugin.allocator.memory.slice(offset, offset+len)
             return 0
         },
         extism_error_set(i: BigInt) { debugger; },
@@ -131,14 +131,13 @@ export default class ExtismContext {
 }
 
 class ExtismPluginCall {
-    memory: Uint8Array
     input: Uint8Array
     output: Uint8Array
 
     constructor(memory: Uint8Array, input: Uint8Array, output: Uint8Array) {
-        this.memory = memory
         this.input = input
         this.output = output
+        this.allocator = new Allocator(memory);
     }
 }
 
