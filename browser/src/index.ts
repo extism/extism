@@ -72,21 +72,21 @@ function makeEnv(plugin: ExtismPlugin): any {
             plugin.allocator.free(n);
         },
         extism_load_u8(n: BigInt): number { 
-            return plugin.allocator.memory[Number(n) - 1];
+            return plugin.allocator.memory[Number(n)];
         },
         extism_load_u32(n: BigInt): number {debugger; return 0 },
         extism_load_u64(n: BigInt): BigInt { 
-            let cast = new BigUint64Array(plugin.allocator.memory.buffer, Number(n) - 1);
-            return cast[0];
+            let cast = new DataView(plugin.allocator.memory.buffer, Number(n));
+            return cast.getBigUint64(0, true);
         },
         extism_store_u8(offset: BigInt, n: number) {
             //@ts-ignore
-            plugin.allocator.memory[offset - BigInt(1)] = Number(n)
+            plugin.allocator.memory[offset] = Number(n)
         },
         extism_store_u32(n: BigInt, i: number) {debugger; },
         extism_store_u64(offset: BigInt, n: BigInt) {
-            const tmp = new BigUint64Array(plugin.allocator.memory.buffer, Number(offset) - 1);
-            tmp[0] = n;
+            const tmp = new DataView(plugin.allocator.memory.buffer, Number(offset));
+            tmp.setBigUint64(0, n, true);
         },
         extism_input_length(): BigInt {
             //@ts-ignore
@@ -98,12 +98,12 @@ function makeEnv(plugin: ExtismPlugin): any {
         },
         extism_input_load_u64(idx: BigInt) : BigInt {
             //@ts-ignore
-            let cast = new BigUint64Array(plugin.allocator.memory.buffer, Number(idx));
-            return cast[0];
+            let cast = new DataView(plugin.allocator.memory.buffer, Number(idx));
+            return cast.getBigUint64(0, true);
         },
         extism_output_set(offset: BigInt, len: number): number {
             //@ts-ignore
-            offset = Number(offset) - 1;
+            offset = Number(offset);
             len = Number(len)
             //@ts-ignore
             plugin.output = plugin.allocator.memory.slice(offset, offset+len)
