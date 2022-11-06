@@ -24,7 +24,7 @@
         flex-direction: row;
         flex-wrap: nowrap;
         width: 100%;
-        height: 500px;
+        height: 300px;
       }
       .inputBox {
         width: 100%;
@@ -42,10 +42,50 @@
         width: 100%;
         height: 100%; 
       }
+      .space {
+        height: 80px;
+      }
+      .dragAreas {
+        display: flex; /* or inline-flex */
+        flex-direction: row;
+        flex-wrap: nowrap;
+        width: 100%;
+        height: 200px;
+      }
+      .dragInput {
+        width: 100%;
+        height: 100%; 
+        border-style: dotted;
+        border-color: #000;
+      }
+      .dragOutput {
+        width: 100%;
+        height: 100%; 
+      }
+      .dropZone {
+        width: 100%;
+        height: 100%; 
+      } 
+      .outputImage {
+        width: 100%;
+        height: 100%; 
+      }
       
     </style>
 
     <script type="text/babel">
+      function getBase64(file, cb) {
+        var reader = new FileReader();
+        reader.readAsDataURL(file);
+        reader.onload = function () {
+          cb(reader.result)
+        };
+        reader.onerror = function (error) {
+          console.log("error")
+        };
+      }
+
+
       class App extends React.Component {
         state = {
           url: "https://raw.githubusercontent.com/extism/extism/main/wasm/code.wasm",
@@ -55,12 +95,15 @@
           functions: []
         }
 
-        componentDidMount() {
-          (async function () {
-            let plugin = await this.extismContext.newPlugin(this.state.url) 
+        async loadFunctions(url) {
+            let plugin = await this.extismContext.newPlugin(url) 
             let functions = await plugin.getExportedFunctions()
+            console.log("funcs ", functions)
             this.setState({functions})
-          }).bind(this)()
+        }
+
+        componentDidMount() {
+          this.loadFunctions(this.state.url)
         }
 
         constructor(props) {
@@ -71,19 +114,62 @@
         handleInputChange(e) {
           e.preventDefault();
           this.setState({ [e.target.name]: e.target.value })
+          if (e.target.name === "url") {
+            this.loadFunctions(e.target.value)
+          }
         }
 
         async handleOnRun(e) {
-          e.preventDefault();
+          e && e.preventDefault && e.preventDefault();
           let plugin = await this.extismContext.newPlugin(this.state.url) 
           let result = await plugin.call(this.state.func_name, this.state.input)
           let output = new TextDecoder().decode(result)
           this.setState({output})
         }
 
+        nop = (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+        };
+        handleDrop = e => {
+          e.preventDefault();
+          e.stopPropagation();
+          let files = [...e.dataTransfer.files];
+          if (files && files.length == 1) {
+            let file = files[0]
+            console.log(file)
+            getBase64(file, (b64) => {
+              // we need to remove the content type part of the string
+              b64 = b64.substring(b64.indexOf(",") + 1);
+              let input = JSON.stringify({
+                "event_file_name": file.name,
+                "event_file_data": b64,
+              })
+              this.setState({input})
+              this.handleOnRun()
+            })
+
+          } else {
+            throw Error("Only one file please")
+          }
+        };
 
         render() {
           const funcOptions = this.state.functions.map(f => <option value={f}>{f}</option>)
+          let image = null
+          if (this.state.output) {
+            try {
+              let result = JSON.parse(this.state.output)
+              if (result.output_file_data) {
+                image = <img src={`data:image/png;base64,${result.output_file_data}`}/>
+
+              } else {
+                console.log("No output_file_data, moving on")
+              }
+            } catch (e) {
+              console.log("Could not parse output json, moving on")
+            }
+          }
 
           return <div className="app">
             <div className="manifest">
@@ -103,12 +189,31 @@
             </div>
             <div className="textAreas">
               <div className="inputBox">
-                <h3>Input</h3>
+                <h3>Text Input</h3>
                 <textarea name="input" value={this.state.input} onChange={this.handleInputChange.bind(this)}></textarea>
               </div>
               <div className="outputBox">
-                <h3>Output</h3>
+                <h3>Text Output</h3>
                 <textarea  defaultValue={this.state.output}></textarea>
+              </div>
+            </div>
+            <div className="space" />
+            <div className="dragAreas">
+              <div className="dragInput">
+                <h3>Image Input</h3>
+                <div className="dropZone"
+                  onDrop={this.handleDrop.bind(this)}
+                  onDragOver={this.nop.bind(this)}
+                  onDragEnter={this.nop.bind(this)}
+                  onDragLeave={this.nop.bind(this)}
+                >
+                </div>
+              </div>
+              <div className="dragOutput">
+                <h3>Image Output</h3>
+                <div className="outputImage">
+                  {image}
+                </div>
               </div>
             </div>
           </div>
