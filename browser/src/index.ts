@@ -98,7 +98,7 @@ function makeEnv(plugin: ExtismPlugin): any {
         },
         extism_input_load_u64(idx: BigInt) : BigInt {
             //@ts-ignore
-            let cast = new DataView(plugin.allocator.memory.buffer, Number(idx));
+            let cast = new DataView(plugin.input.buffer, Number(idx));
             return cast.getBigUint64(0, true);
         },
         extism_output_set(offset: BigInt, len: number): number {
