@@ -36,29 +36,8 @@ pub unsafe extern "C" fn extism_plugin_new(
 ) -> PluginIndex {
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
     let ctx = &mut *ctx;
-
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
-    let plugin = match Plugin::new(data, with_wasi) {
-        Ok(x) => x,
-        Err(e) => {
-            error!("Error creating Plugin: {:?}", e);
-            ctx.set_error(e);
-            return -1;
-        }
-    };
-
-    // Allocate a new plugin ID
-    let id: i32 = match ctx.next_id() {
-        Ok(id) => id,
-        Err(e) => {
-            error!("Error creating Plugin: {:?}", e);
-            ctx.set_error(e);
-            return -1;
-        }
-    };
-    ctx.plugins.insert(id, plugin);
-    info!("New plugin added: {id}");
-    id
+    ctx.new_plugin(data, with_wasi)
 }
 
 /// Update a plugin, keeping the existing ID

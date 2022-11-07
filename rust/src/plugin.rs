@@ -1,16 +1,14 @@
 use crate::*;
+use std::collections::BTreeMap;
 
 pub struct Plugin<'a> {
-    id: bindings::ExtismPlugin,
+    id: extism_runtime::PluginIndex,
     context: &'a Context,
 }
 
 impl<'a> Plugin<'a> {
     pub unsafe fn from_id(id: i32, context: &'a Context) -> Plugin<'a> {
-        Plugin {
-            id,
-            context: context,
-        }
+        Plugin { id, context }
     }
 
     pub fn as_i32(&self) -> i32 {
@@ -19,7 +17,7 @@ impl<'a> Plugin<'a> {
 
     /// Create a new plugin from the given manifest
     pub fn new_with_manifest(
-        ctx: &'a Context,
+        ctx: &'a mut Context,
         manifest: &Manifest,
         wasi: bool,
     ) -> Result<Plugin<'a>, Error> {
@@ -29,17 +27,10 @@ impl<'a> Plugin<'a> {
 
     /// Create a new plugin from a WASM module
     pub fn new(ctx: &'a Context, data: impl AsRef<[u8]>, wasi: bool) -> Result<Plugin, Error> {
-        let plugin = unsafe {
-            bindings::extism_plugin_new(
-                ctx.pointer,
-                data.as_ref().as_ptr(),
-                data.as_ref().len() as u64,
-                wasi,
-            )
-        };
+        let plugin = ctx.lock().new_plugin(data, wasi);
 
         if plugin < 0 {
-            let err = unsafe { bindings::extism_error(ctx.pointer, -1) };
+            let err = unsafe { bindings::extism_error(&mut *ctx.lock(), -1) };
             let buf = unsafe { std::ffi::CStr::from_ptr(err) };
             let buf = buf.to_str().unwrap().to_string();
             return Err(Error::UnableToLoadPlugin(buf));
@@ -55,7 +46,7 @@ impl<'a> Plugin<'a> {
     pub fn update(&mut self, data: impl AsRef<[u8]>, wasi: bool) -> Result<(), Error> {
         let b = unsafe {
             bindings::extism_plugin_update(
-                self.context.pointer,
+                &mut *self.context.lock(),
                 self.id,
                 data.as_ref().as_ptr(),
                 data.as_ref().len() as u64,
@@ -66,7 +57,7 @@ impl<'a> Plugin<'a> {
             return Ok(());
         }
 
-        let err = unsafe { bindings::extism_error(self.context.pointer, -1) };
+        let err = unsafe { bindings::extism_error(&mut *self.context.lock(), -1) };
         if !err.is_null() {
             let s = unsafe { std::ffi::CStr::from_ptr(err) };
             return Err(Error::Message(s.to_str().unwrap().to_string()));
@@ -82,11 +73,11 @@ impl<'a> Plugin<'a> {
     }
 
     /// Set configuration values
-    pub fn set_config(&self, config: &BTreeMap<String, Option<String>>) -> Result<(), Error> {
+    pub fn set_config(&mut self, config: &BTreeMap<String, Option<String>>) -> Result<(), Error> {
         let encoded = serde_json::to_vec(config)?;
         unsafe {
             bindings::extism_plugin_config(
-                self.context.pointer,
+                &mut *self.context.lock(),
                 self.id,
                 encoded.as_ptr() as *const _,
                 encoded.len() as u64,
@@ -96,7 +87,7 @@ impl<'a> Plugin<'a> {
     }
 
     /// Set configuration values, builder-style
-    pub fn with_config(self, config: &BTreeMap<String, Option<String>>) -> Result<Self, Error> {
+    pub fn with_config(mut self, config: &BTreeMap<String, Option<String>>) -> Result<Self, Error> {
         self.set_config(config)?;
         Ok(self)
     }
@@ -106,7 +97,7 @@ impl<'a> Plugin<'a> {
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
         unsafe {
             bindings::extism_plugin_function_exists(
-                self.context.pointer,
+                &mut *self.context.lock(),
                 self.id,
                 name.as_ptr() as *const _,
             )
@@ -114,11 +105,11 @@ impl<'a> Plugin<'a> {
     }
 
     /// Call a function with the given input
-    pub fn call(&self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
+    pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
         let rc = unsafe {
             bindings::extism_plugin_call(
-                self.context.pointer,
+                &mut *self.context.lock(),
                 self.id,
                 name.as_ptr() as *const _,
                 input.as_ref().as_ptr() as *const _,
@@ -127,7 +118,7 @@ impl<'a> Plugin<'a> {
         };
 
         if rc != 0 {
-            let err = unsafe { bindings::extism_error(self.context.pointer, self.id) };
+            let err = unsafe { bindings::extism_error(&mut *self.context.lock(), self.id) };
             if !err.is_null() {
                 let s = unsafe { std::ffi::CStr::from_ptr(err) };
                 return Err(Error::Message(s.to_str().unwrap().to_string()));
@@ -137,9 +128,9 @@ impl<'a> Plugin<'a> {
         }
 
         let out_len =
-            unsafe { bindings::extism_plugin_output_length(self.context.pointer, self.id) };
+            unsafe { bindings::extism_plugin_output_length(&mut *self.context.lock(), self.id) };
         unsafe {
-            let ptr = bindings::extism_plugin_output_data(self.context.pointer, self.id);
+            let ptr = bindings::extism_plugin_output_data(&mut *self.context.lock(), self.id);
             Ok(std::slice::from_raw_parts(ptr, out_len as usize))
         }
     }
@@ -147,9 +138,6 @@ impl<'a> Plugin<'a> {
 
 impl<'a> Drop for Plugin<'a> {
     fn drop(&mut self) {
-        if self.context.pointer.is_null() {
-            return;
-        }
-        unsafe { bindings::extism_plugin_free(self.context.pointer, self.id) }
+        unsafe { bindings::extism_plugin_free(&mut *self.context.lock(), self.id) }
     }
 }

@@ -3,8 +3,8 @@ on: [pull_request, workflow_dispatch]
 name: CI
 
 env:
-  RUNTIME_MANIFEST: runtime/Cargo.toml
   RUNTIME_CRATE: extism-runtime
+  LIBEXTISM_CRATE: libextism
   RUST_SDK_CRATE: extism
 
 jobs:
@@ -41,7 +41,7 @@ jobs:
       - name: Build
         if: steps.cache-libextism.outputs.cache-hit != 'true'
         shell: bash
-        run: cargo build --release -p ${{ env.RUNTIME_CRATE }}
+        run: cargo build --release -p ${{ env.LIBEXTISM_CRATE }}
       - name: Upload artifact
         uses: actions/upload-artifact@v3
         with:

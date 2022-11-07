@@ -9,7 +9,7 @@ repository = "https://github.com/extism/extism"
 description = "Extism plug-in manifest crate"
 
 [dependencies]
-serde = {version = "1", features=["derive"]}
+serde = {version = "1", features = ["derive"]}
 base64 = "0.20.0-alpha"
 schemars = {version = "0.8", optional=true}
 

@@ -3,8 +3,8 @@ members = [
   "manifest",
   "runtime",
   "rust",
+  "libextism"
 ]
 exclude = [
   "elixir/native/extism_nif"
 ]
-

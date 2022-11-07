@@ -1,8 +1,6 @@
 use crate::*;
 
-pub struct Context {
-    pub(crate) pointer: *mut bindings::ExtismContext,
-}
+pub struct Context(pub(crate) std::sync::Arc<std::sync::Mutex<extism_runtime::Context>>);
 
 impl Default for Context {
     fn default() -> Context {
@@ -13,25 +11,20 @@ impl Default for Context {
 impl Context {
     /// Create a new context
     pub fn new() -> Context {
-        let pointer = unsafe { bindings::extism_context_new() };
-        Context { pointer }
+        Context(std::sync::Arc::new(std::sync::Mutex::new(
+            extism_runtime::Context::new(),
+        )))
     }
 
     /// Remove all registered plugins
     pub fn reset(&mut self) {
-        unsafe { bindings::extism_context_reset(self.pointer) }
+        unsafe { bindings::extism_context_reset(&mut *self.lock()) }
     }
-}
 
-unsafe impl Send for Context {}
-unsafe impl Sync for Context {}
-
-impl Drop for Context {
-    fn drop(&mut self) {
-        if self.pointer.is_null() {
-            return;
+    pub(crate) fn lock<'a>(&'a self) -> std::sync::MutexGuard<'a, extism_runtime::Context> {
+        match self.0.lock() {
+            Ok(x) => x,
+            Err(x) => x.into_inner(),
         }
-        unsafe { bindings::extism_context_free(self.pointer) }
-        self.pointer = std::ptr::null_mut();
     }
 }

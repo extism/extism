@@ -8,24 +8,18 @@ homepage = "https://extism.org"
 repository = "https://github.com/extism/extism"
 description = "Extism runtime component"
 
-[lib]
-name = "extism"
-crate-type = ["cdylib"]
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 wasmtime = "2.0.1"
 wasmtime-wasi = "2.0.1"
 wasmtime-wasi-nn = {version = "2.0.1", optional=true}
 anyhow = "1"
-serde = { version = "1", features=["derive"] }
-toml = "0.5"
+serde = {version = "1", features = ["derive"]}
 serde_json = "1"
+toml = "0.5"
 sha2 = "0.10"
 log = "0.4"
 log4rs = "1.1"
-url = "2.3"
+url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
 extism-manifest = { version = "0.0.1-rc.6", path = "../manifest" }
