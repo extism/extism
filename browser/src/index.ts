@@ -18,9 +18,11 @@ class Allocator {
     }
     
     alloc(length: BigInt) : MemoryBlock {
-        for (var block of this.freed) {
-            if (block.length == length){
+        for (var i = 0; i < this.freed.length; i++) {
+            let block = this.freed[i];
+            if (block.length === length){
                 this.active[block.offset] = block;
+                this.freed.splice(i, 1);
                 return block.offset;    
             } else if (block.length > length + BigInt(64)){
                 const newBlock = {offset: block.offset, length};
