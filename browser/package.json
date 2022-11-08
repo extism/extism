@@ -8,6 +8,7 @@
     "lint": "tslint -p tsconfig.json",
     "test": "jest --config jest.config.js"
   },
+  "private": false,
   "files": ["dist/*"],
   "module": "dist/index.esm.js",
   "main": "dist/index.js",
