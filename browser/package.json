@@ -9,6 +9,9 @@
     "test": "jest --config jest.config.js"
   },
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "files": ["dist/*"],
   "module": "dist/index.esm.js",
   "main": "dist/index.js",
