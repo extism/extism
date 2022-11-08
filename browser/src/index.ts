@@ -99,7 +99,7 @@ function makeEnv(plugin: ExtismPluginCall): any {
         },
         extism_input_length(): bigint {
             //@ts-ignore
-            return bigint(plugin.input.length)
+            return BigInt(plugin.input.length)
         },
         extism_input_load_u8(i: number): number {
             //@ts-ignore

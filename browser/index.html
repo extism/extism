@@ -119,6 +119,13 @@
           }
         }
 
+        onInputKeyPress(e) {
+          if (e.keyCode == 13 && e.shiftKey == true) {
+            e.preventDefault()
+            this.handleOnRun()
+          }
+        }
+
         async handleOnRun(e) {
           e && e.preventDefault && e.preventDefault();
           let plugin = await this.extismContext.newPlugin(this.state.url) 
@@ -175,7 +182,7 @@
             <div className="manifest">
               <div>
                 <label>WASM Url: </label>
-                <input type="text" name="url" className="urlInput" value={this.state.url} onChange={this.handleInputChange.bind(this)}/>
+                <input type="text" name="url" className="urlInput" value={this.state.url} onChange={this.handleInputChange.bind(this)} />
               </div>
               <div>
                 <label>Function: </label>
@@ -190,7 +197,7 @@
             <div className="textAreas">
               <div className="inputBox">
                 <h3>Text Input</h3>
-                <textarea name="input" value={this.state.input} onChange={this.handleInputChange.bind(this)}></textarea>
+                <textarea name="input" value={this.state.input} onChange={this.handleInputChange.bind(this)} onKeyDown={this.onInputKeyPress.bind(this)}></textarea>
               </div>
               <div className="outputBox">
                 <h3>Text Output</h3>
