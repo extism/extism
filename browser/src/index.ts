@@ -6,22 +6,28 @@ type MemoryBlock = {offset: BigInt, length: BigInt}
 
 class Allocator {
     currentIndex: BigInt
-    active: Record<BigInt, MemoryBlock>
+    active: Record<number, MemoryBlock>
     freed: MemoryBlock[]
     memory: Uint8Array
     
-    constructor(memory) {
+    constructor(n: number) {
         this.currentIndex = BigInt(1);
         this.active = {};
         this.freed = [];    
-        this.memory = memory;
+        this.memory = new Uint8Array(n);
+    }
+
+    reset(){
+        this.currentIndex = BigInt(1);
+        this.active = {};
+        this.freed = [];
     }
     
-    alloc(length: BigInt) : MemoryBlock {
+    alloc(length: BigInt) : BigInt {
         for (var i = 0; i < this.freed.length; i++) {
             let block = this.freed[i];
             if (block.length === length){
-                this.active[block.offset] = block;
+                this.active[Number(block.offset)] = block;
                 this.freed.splice(i, 1);
                 return block.offset;    
             } else if (block.length > length + BigInt(64)){
@@ -35,40 +41,41 @@ class Allocator {
         // Resize memory if needed
         // TODO: put a limit on the memory size
         if (BigInt(this.memory.length) < this.currentIndex + length){
-            const tmp = new Uint8Array(this.currentIndex + length + BigInt(64)).set(this.memory.buffer);
+            const tmp = new Uint8Array(this.currentIndex + length + BigInt(64));
+            tmp.set(this.memory);
             this.memory = tmp;
         }
         
         const offset = this.currentIndex;
         this.currentIndex += length;
-        this.active[offset] = {offset, length};
-        return this.active[offset];
+        this.active[Number(offset)] = {offset, length};
+        return offset;
     }
     
     getLength(offset: BigInt) : BigInt {
-        const block = this.active[offset];
+        const block = this.active[Number(offset)];
         if (!block){
-            return 0;    
+            return BigInt(0);
         }
         
         return block.length;
     }
     
     free(offset: BigInt) {
-        const block = this.active[offset];
+        const block = this.active[Number(offset)];
         if (!block){
             return;    
         }
         
-        delete this.active[offset];
-        this.freed.append(block);
+        delete this.active[Number(offset)];
+        this.freed.push(block);
     }
 }
 
-function makeEnv(plugin: ExtismPlugin): any {
+function makeEnv(plugin: ExtismPluginCall): any {
     return {
         extism_alloc(n: BigInt): BigInt {
-            return plugin.allocator.alloc(n).offset;
+            return plugin.allocator.alloc(n);
         },
         extism_free (n: BigInt) {
             plugin.allocator.free(n);
@@ -116,7 +123,7 @@ function makeEnv(plugin: ExtismPlugin): any {
         extism_var_get(i: BigInt): number {debugger;return 0},
         extism_var_set(n: BigInt, i: BigInt) {debugger;},
         extism_http_request(n: BigInt, i: BigInt): number {debugger;return 0},
-        extism_length(i: BigInt): number { return plugin.allocator.getLength(i); },
+        extism_length(i: BigInt): BigInt { return plugin.allocator.getLength(i); },
         extism_log_warn(i: number) {debugger;},
         extism_log_info(i: number) {debugger;},
         extism_log_debug(i: number) {debugger;},
@@ -135,31 +142,33 @@ export default class ExtismContext {
 class ExtismPluginCall {
     input: Uint8Array
     output: Uint8Array
+    allocator: Allocator
 
-    constructor(memory: Uint8Array, input: Uint8Array, output: Uint8Array) {
+    constructor(allocator: Allocator, input: Uint8Array, output: Uint8Array) {
         this.input = input
         this.output = output
-        this.allocator = new Allocator(memory);
+        this.allocator = allocator
     }
 }
 
 class ExtismPlugin {
     moduleData: ArrayBuffer
+    allocator: Allocator
 
     constructor(moduleData: ArrayBuffer) {
         this.moduleData = moduleData
+        this.allocator = new Allocator(1024 * 1024)
     }
 
     async getExportedFunctions() {
         // we can make an empty call environment
         let empty = new Uint8Array()
-        let call = new ExtismPluginCall(empty, empty, empty)
+        let call = new ExtismPluginCall(this.allocator, empty, empty)
         let module = await this._instantiateModule(call)
         return Object.keys(module.instance.exports).filter(f => !f.startsWith("__") && f !== "memory")
     }
 
     async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
-        const memory = new Uint8Array(100000)
         const output = new Uint8Array()
         let inputBytes: Uint8Array
         if (typeof input === 'string') {
@@ -169,7 +178,9 @@ class ExtismPlugin {
         } else {
             throw new Error("input should be string or Uint8Array")
         }
-        const call = new ExtismPluginCall(memory, inputBytes, output)
+        this.allocator.reset();
+        // TODO: only instantiate module once
+        const call = new ExtismPluginCall(this.allocator, inputBytes, output)
         const module = await this._instantiateModule(call)
         let func = module.instance.exports[func_name]
         if (!func){
