@@ -48,64 +48,54 @@ class Allocator {
     return offset;
   }
 
+  getBytes(offset: bigint): Uint8Array | null {
+    const block = this.active[Number(offset)];
+    if (!block) {
+      return null;
+    }
+
+    return new Uint8Array(this.memory.buffer, Number(offset), Number(block.length));
+  }
+
+  getString(offset: bigint): string | null {
+    const bytes = this.getBytes(offset);
+    if (bytes === null) {
+      return null;
+    }
+
+    return new TextDecoder().decode(bytes);
+  }
+
+  allocBytes(data: Uint8Array): bigint {
+    const offs = this.alloc(BigInt(data.length));
+    const bytes = this.getBytes(offs);
+    if (bytes === null) {
+      this.free(offs);
+      return BigInt(0);
+    }
+
+    bytes.set(data);
+    return offs;
+  }
+
+  allocString(data: string): bigint {
+    const bytes = new TextEncoder().encode(data);
+    return this.allocBytes(bytes);
+  }
+
   getLength(offset: bigint): bigint {
     const block = this.active[Number(offset)];
     if (!block) {
       return BigInt(0);
     }
 
-    getBytes(offset: bigint): Uint8Array | null {
-        const block = this.active[Number(offset)];
-        if (!block) {
-            return null;
-        }
+    return block.length;
+  }
 
-        return new Uint8Array(this.memory.buffer, Number(offset), Number(block.length));
-    }
-
-    getString(offset: bigint): string | null {
-        const bytes = this.getBytes(offset);
-        if (bytes === null) {
-            return null;
-        }
-
-        return new TextDecoder().decode(bytes);
-    }
-
-    allocBytes(data: Uint8Array): bigint {
-        const offs = this.alloc(BigInt(data.length));
-        const bytes = this.getBytes(offs);
-        if (bytes === null) {
-            this.free(offs);
-            return BigInt(0);
-        }
-
-        bytes.set(data);
-        return offs;
-    }
-
-    allocString(data: string): bigint {
-        const bytes = new TextEncoder().encode(data);
-        return this.allocBytes(bytes);
-    }
-    
-    getLength(offset: bigint) : bigint {
-        const block = this.active[Number(offset)];
-        if (!block){
-            return BigInt(0);
-        }
-        
-        return block.length;
-    }
-    
-    free(offset: bigint) {
-        const block = this.active[Number(offset)];
-        if (!block){
-            return;    
-        }
-        
-        delete this.active[Number(offset)];
-        this.freed.push(block);
+  free(offset: bigint) {
+    const block = this.active[Number(offset)];
+    if (!block) {
+      return;
     }
 
     delete this.active[Number(offset)];
@@ -114,55 +104,83 @@ class Allocator {
 }
 
 function makeEnv(plugin: ExtismPluginCall): any {
-    return {
-        extism_alloc(n: bigint): bigint {
-            return plugin.allocator.alloc(n);
-        },
-        extism_free (n: bigint) {
-            plugin.allocator.free(n);
-        },
-        extism_load_u8(n: bigint): number { 
-            return plugin.allocator.memory[Number(n)];
-        },
-        extism_load_u32(n: bigint): number {debugger; return 0 },
-        extism_load_u64(n: bigint): bigint { 
-            let cast = new DataView(plugin.allocator.memory.buffer, Number(n));
-            return cast.getBigUint64(0, true);
-        },
-        extism_store_u8(offset: bigint, n: number) {
-            plugin.allocator.memory[Number(offset)] = Number(n)
-        },
-        extism_store_u32(n: bigint, i: number) {debugger; },
-        extism_store_u64(offset: bigint, n: bigint) {
-            const tmp = new DataView(plugin.allocator.memory.buffer, Number(offset));
-            tmp.setBigUint64(0, n, true);
-        },
-        extism_input_length(): bigint {
-            return BigInt(plugin.input.length)
-        },
-        extism_input_load_u8(i: bigint): number {
-            return plugin.input[Number(i)]
-        },
-        extism_input_load_u64(idx: bigint) : bigint {
-            let cast = new DataView(plugin.input.buffer, Number(idx));
-            return cast.getBigUint64(0, true);
-        },
-        extism_output_set(offset: bigint, length: bigint) {
-            const offs = Number(offset);
-            const len = Number(length)
-            plugin.output = plugin.allocator.memory.slice(offs, offs+len)
-        },
-        extism_error_set(i: bigint) { debugger; },
-        extism_config_get(i: bigint): number { debugger; return 0 },
-        extism_var_get(i: bigint): number {debugger;return 0},
-        extism_var_set(n: bigint, i: bigint) {debugger;},
-        extism_http_request(n: bigint, i: bigint): number {debugger;return 0},
-        extism_length(i: bigint): bigint { return plugin.allocator.getLength(i); },
-        extism_log_warn(i: number) {debugger;},
-        extism_log_info(i: number) {debugger;},
-        extism_log_debug(i: number) {debugger;},
-        extism_log_error(i: number) {debugger;},
-    }
+  return {
+    extism_alloc(n: bigint): bigint {
+      return plugin.allocator.alloc(n);
+    },
+    extism_free(n: bigint) {
+      plugin.allocator.free(n);
+    },
+    extism_load_u8(n: bigint): number {
+      return plugin.allocator.memory[Number(n)];
+    },
+    extism_load_u32(n: bigint): number {
+      debugger;
+      return 0;
+    },
+    extism_load_u64(n: bigint): bigint {
+      let cast = new DataView(plugin.allocator.memory.buffer, Number(n));
+      return cast.getBigUint64(0, true);
+    },
+    extism_store_u8(offset: bigint, n: number) {
+      plugin.allocator.memory[Number(offset)] = Number(n);
+    },
+    extism_store_u32(n: bigint, i: number) {
+      debugger;
+    },
+    extism_store_u64(offset: bigint, n: bigint) {
+      const tmp = new DataView(plugin.allocator.memory.buffer, Number(offset));
+      tmp.setBigUint64(0, n, true);
+    },
+    extism_input_length(): bigint {
+      return BigInt(plugin.input.length);
+    },
+    extism_input_load_u8(i: bigint): number {
+      return plugin.input[Number(i)];
+    },
+    extism_input_load_u64(idx: bigint): bigint {
+      let cast = new DataView(plugin.input.buffer, Number(idx));
+      return cast.getBigUint64(0, true);
+    },
+    extism_output_set(offset: bigint, length: bigint) {
+      const offs = Number(offset);
+      const len = Number(length);
+      plugin.output = plugin.allocator.memory.slice(offs, offs + len);
+    },
+    extism_error_set(i: bigint) {
+      debugger;
+    },
+    extism_config_get(i: bigint): number {
+      debugger;
+      return 0;
+    },
+    extism_var_get(i: bigint): number {
+      debugger;
+      return 0;
+    },
+    extism_var_set(n: bigint, i: bigint) {
+      debugger;
+    },
+    extism_http_request(n: bigint, i: bigint): number {
+      debugger;
+      return 0;
+    },
+    extism_length(i: bigint): bigint {
+      return plugin.allocator.getLength(i);
+    },
+    extism_log_warn(i: number) {
+      debugger;
+    },
+    extism_log_info(i: number) {
+      debugger;
+    },
+    extism_log_debug(i: number) {
+      debugger;
+    },
+    extism_log_error(i: number) {
+      debugger;
+    },
+  };
 }
 
 /**
