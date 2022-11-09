@@ -85,18 +85,25 @@
         };
       }
 
+      function arrayTob64(buffer) {
+        var binary = '';
+        var bytes = [].slice.call(buffer);
+        bytes.forEach((b) => binary += String.fromCharCode(b));
+        return window.btoa(binary);
+      }
+
 
       class App extends React.Component {
         state = {
           url: "https://raw.githubusercontent.com/extism/extism/main/wasm/code.wasm",
-          input: "",
-          output: "",
+          input: new Uint8Array(),
+          output: new Uint8Array(),
           func_name: "count_vowels",
           functions: []
         }
 
         async loadFunctions(url) {
-            let plugin = await this.extismContext.newPlugin(url) 
+            let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": url } ] }) 
             let functions = await plugin.getExportedFunctions()
             console.log("funcs ", functions)
             this.setState({functions})
@@ -128,9 +135,9 @@
 
         async handleOnRun(e) {
           e && e.preventDefault && e.preventDefault();
-          let plugin = await this.extismContext.newPlugin(this.state.url) 
+          let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": this.state.url } ] }) 
           let result = await plugin.call(this.state.func_name, this.state.input)
-          let output = new TextDecoder().decode(result)
+          let output = result
           this.setState({output})
         }
 
@@ -145,17 +152,10 @@
           if (files && files.length == 1) {
             let file = files[0]
             console.log(file)
-            getBase64(file, (b64) => {
-              // we need to remove the content type part of the string
-              b64 = b64.substring(b64.indexOf(",") + 1);
-              let input = JSON.stringify({
-                "event_file_name": file.name,
-                "event_file_data": b64,
-              })
-              this.setState({input})
+            file.arrayBuffer().then(b => {
+              this.setState({input: new Uint8Array(b)})
               this.handleOnRun()
             })
-
           } else {
             throw Error("Only one file please")
           }
@@ -165,17 +165,7 @@
           const funcOptions = this.state.functions.map(f => <option value={f}>{f}</option>)
           let image = null
           if (this.state.output) {
-            try {
-              let result = JSON.parse(this.state.output)
-              if (result.output_file_data) {
-                image = <img src={`data:image/png;base64,${result.output_file_data}`}/>
-
-              } else {
-                console.log("No output_file_data, moving on")
-              }
-            } catch (e) {
-              console.log("Could not parse output json, moving on")
-            }
+              image = <img src={`data:image/png;base64,${arrayTob64(this.state.output)}`}/>
           }
 
           return <div className="app">
@@ -201,7 +191,7 @@
               </div>
               <div className="outputBox">
                 <h3>Text Output</h3>
-                <textarea  defaultValue={this.state.output}></textarea>
+                <textarea name="output" value={new TextDecoder().decode(this.state.output)} ></textarea>
               </div>
             </div>
             <div className="space" />

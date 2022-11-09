@@ -12,7 +12,9 @@
   "publishConfig": {
     "access": "public"
   },
-  "files": ["dist/*"],
+  "files": [
+    "dist/*"
+  ],
   "module": "dist/index.esm.js",
   "main": "dist/index.js",
   "typings": "dist/index.d.ts",
@@ -27,6 +29,7 @@
     "ts-jest": "^29.0.3",
     "tslint": "^6.1.3",
     "tslint-config-prettier": "^1.18.0",
+    "typedoc": "^0.23.20",
     "typescript": "^4.8.4"
   }
 }
