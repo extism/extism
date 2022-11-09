@@ -225,6 +225,12 @@ jobs:
           LD_LIBRARY_PATH=/usr/local/lib npm run example
           LD_LIBRARY_PATH=/usr/local/lib npm run test
 
+      - name: Test Browser Runtime
+        run: |
+          cd browser
+          npm i
+          npm run test
+
   ocaml:
     name: OCaml
     needs: lib
