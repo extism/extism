@@ -13,48 +13,49 @@ class ExtismPluginCall {
   }
 
   makeEnv(): any {
+    const plugin = this;
     return {
       extism_alloc(n: bigint): bigint {
-        return this.allocator.alloc(n);
+        return plugin.allocator.alloc(n);
       },
       extism_free(n: bigint) {
-        this.allocator.free(n);
+        plugin.allocator.free(n);
       },
       extism_load_u8(n: bigint): number {
-        return this.allocator.memory[Number(n)];
+        return plugin.allocator.memory[Number(n)];
       },
       extism_load_u32(n: bigint): number {
         debugger;
         return 0;
       },
       extism_load_u64(n: bigint): bigint {
-        let cast = new DataView(this.allocator.memory.buffer, Number(n));
+        let cast = new DataView(plugin.allocator.memory.buffer, Number(n));
         return cast.getBigUint64(0, true);
       },
       extism_store_u8(offset: bigint, n: number) {
-        this.allocator.memory[Number(offset)] = Number(n);
+        plugin.allocator.memory[Number(offset)] = Number(n);
       },
       extism_store_u32(n: bigint, i: number) {
         debugger;
       },
       extism_store_u64(offset: bigint, n: bigint) {
-        const tmp = new DataView(this.allocator.memory.buffer, Number(offset));
+        const tmp = new DataView(plugin.allocator.memory.buffer, Number(offset));
         tmp.setBigUint64(0, n, true);
       },
       extism_input_length(): bigint {
-        return BigInt(this.input.length);
+        return BigInt(plugin.input.length);
       },
       extism_input_load_u8(i: bigint): number {
-        return this.input[Number(i)];
+        return plugin.input[Number(i)];
       },
       extism_input_load_u64(idx: bigint): bigint {
-        let cast = new DataView(this.input.buffer, Number(idx));
+        let cast = new DataView(plugin.input.buffer, Number(idx));
         return cast.getBigUint64(0, true);
       },
       extism_output_set(offset: bigint, length: bigint) {
         const offs = Number(offset);
         const len = Number(length);
-        this.output = this.allocator.memory.slice(offs, offs + len);
+        plugin.output = plugin.allocator.memory.slice(offs, offs + len);
       },
       extism_error_set(i: bigint) {
         debugger;
@@ -75,7 +76,7 @@ class ExtismPluginCall {
         return 0;
       },
       extism_length(i: bigint): bigint {
-        return this.allocator.getLength(i);
+        return plugin.allocator.getLength(i);
       },
       extism_log_warn(i: number) {
         debugger;
