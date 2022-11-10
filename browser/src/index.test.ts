@@ -1,4 +1,4 @@
-import ExtismContext from './';
+import {ExtismContext} from './';
 import fs from 'fs';
 import path from 'path';
 
