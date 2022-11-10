@@ -1,6 +1,6 @@
 {
   "name": "@extism/runtime-browser",
-  "version": "0.0.1-rc.6",
+  "version": "0.0.1-rc.8",
   "description": "Extism runtime in the browser",
   "scripts": {
     "build": "node build.js",
