@@ -16,6 +16,8 @@ jobs:
         with:
           python-version: "3.9"
           check-latest: true
+      - name: Run image
+        uses: abatilo/actions-poetry@v2
 
       - name: Build Python Host SDK
         run: |
