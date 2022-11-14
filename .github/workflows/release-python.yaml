@@ -17,6 +17,9 @@ jobs:
           python-version: "3.9"
           check-latest: true
 
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+
       - name: Build Python Host SDK
         run: |
           cd python
