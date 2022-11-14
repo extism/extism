@@ -16,6 +16,8 @@ jobs:
         with:
           python-version: "3.9"
           check-latest: true
+      - name: Run image
+        uses: abatilo/actions-poetry@v2
 
       - name: Build Python Host SDK
         run: |
@@ -23,12 +25,11 @@ jobs:
           cp ../LICENSE .
           cp ../README.md .
           make clean
-          make build
+          make prepare
+          poetry build
 
       - name: Release Python Host SDK
         uses: pypa/gh-action-pypi-publish@release/v1
-        env:
-          INPUT_VERIFY_METADATA: false
         with:
           user: ${{ secrets.PYPI_API_USER }}
           password: ${{ secrets.PYPI_API_TOKEN }}
