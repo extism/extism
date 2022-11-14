@@ -115,8 +115,11 @@ fn set_log_file(filename: String, log_level: String) -> Result<Atom, rustler::Er
     match log::Level::from_str(&log_level) {
         Err(_e) => Err(rustler::Error::Term(Box::new(format!("{} not a valid log level", log_level)))),
         Ok(level) => {
-            extism::set_log_file(path, Some(level));
-            Ok(atoms::ok())
+            if extism::set_log_file(path, Some(level)) {
+                Ok(atoms::ok())
+            } else {
+                Err(rustler::Error::Term(Box::new("Did not set log file, received false from the API.")))
+            }
         }
     }
 }
