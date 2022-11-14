@@ -10,7 +10,7 @@ test: prepare
 	bundle exec rake test
 
 clean:
-	rm extism-*.gem
+	rm -f extism-*.gem
 
 publish-local: clean prepare
 	gem build extism.gemspec
