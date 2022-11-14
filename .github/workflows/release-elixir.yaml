@@ -3,6 +3,11 @@ on:
 
 name: Release Elixir SDK
 
+env:
+  RUNTIME_CRATE: extism-runtime
+  LIBEXTISM_CRATE: libextism
+  RUST_SDK_CRATE: extism
+
 jobs:
   release-sdks:
     name: release-elixir
@@ -10,7 +15,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-
       - name: Download libextism
         uses: actions/download-artifact@v3
         with:
