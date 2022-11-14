@@ -18,7 +18,7 @@ jobs:
       - name: Download libextism
         uses: actions/download-artifact@v3
         with:
-          name: libextism-${{ matrix.os }}
+          name: libextism-ubuntu-latest
       - name: Install extism shared library
         shell: bash
         run: |
