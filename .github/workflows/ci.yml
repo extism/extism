@@ -170,6 +170,7 @@ jobs:
       - name: Test Python Host SDK
         run: |
           cd python
+          cp ../README.md .
           poetry install
           poetry run python example.py
           poetry run python -m unittest discover
