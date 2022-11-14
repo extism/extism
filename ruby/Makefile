@@ -18,7 +18,7 @@ publish-local: clean prepare
 
 publish: clean prepare
 	gem build extism.gemspec
-	gem push extism-*.gem -k $(RUBYGEMS_API_KEY)
+	GEM_HOST_API_KEY=$(RUBYGEMS_API_KEY) gem push extism-*.gem
 
 lint:
 	bundle exec rufo --check .
