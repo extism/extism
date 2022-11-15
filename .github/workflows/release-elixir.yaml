@@ -18,6 +18,8 @@ jobs:
       - name: Install extism shared library
         shell: bash
         run: |
+          mkdir -p /home/runner/.local/bin/  
+          export PATH="/home/runner/.local/bin/ :$PATH"
           curl https://raw.githubusercontent.com/extism/cli/main/install.sh | sh
           extism --sudo --prefix /usr/local install
       - name: Setup Elixir Host SDK
