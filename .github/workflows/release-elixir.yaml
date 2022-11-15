@@ -3,11 +3,6 @@ on:
 
 name: Release Elixir SDK
 
-env:
-  RUNTIME_CRATE: extism-runtime
-  LIBEXTISM_CRATE: libextism
-  RUST_SDK_CRATE: extism
-
 jobs:
   release-sdks:
     name: release-elixir
