@@ -15,16 +15,11 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      - name: Download libextism
-        uses: actions/download-artifact@v3
-        with:
-          name: libextism-ubuntu-latest
       - name: Install extism shared library
         shell: bash
         run: |
-          sudo cp libextism.* /usr/local/lib
-          sudo cp runtime/extism.h /usr/local/include
-
+          curl https://raw.githubusercontent.com/extism/cli/main/install.sh | sh
+          extism --sudo --prefix /usr/local install
       - name: Setup Elixir Host SDK
         uses: erlef/setup-beam@v1
         with:
