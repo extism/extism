@@ -99,40 +99,6 @@ pub(crate) fn load_u8(
     Ok(())
 }
 
-/// Store an unsigned 32 bit integer in memory
-/// Params: i64 (offset), i32 (int)
-/// Returns: none
-pub(crate) fn store_u32(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Trap> {
-    let data: &mut Internal = caller.data_mut();
-    let (offset, b) = args!(input, (0, i64), (1, i32));
-    data.memory_mut()
-        .store_u32(offset as usize, b as u32)
-        .map_err(|_| Trap::new("Write error"))?;
-    Ok(())
-}
-
-/// Load an unsigned 32 bit integer from memory
-/// Params: i64 (offset)
-/// Returns: i32 (int)
-pub(crate) fn load_u32(
-    caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Trap> {
-    let data: &Internal = caller.data();
-    let offset = args!(input, 0, i64) as usize;
-    let b = data
-        .memory()
-        .load_u32(offset)
-        .map_err(|_| Trap::new("Read error"))?;
-    output[0] = Val::I32(b as i32);
-    Ok(())
-}
-
 /// Store an unsigned 64 bit integer in memory
 /// Params: i64 (offset), i64 (int)
 /// Returns: none

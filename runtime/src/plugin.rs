@@ -137,10 +137,8 @@ impl Plugin {
                         alloc(I64) -> I64;
                         free(I64);
                         load_u8(I64) -> I32;
-                        load_u32(I64) -> I32;
                         load_u64(I64) -> I64;
                         store_u8(I64, I32);
-                        store_u32(I64, I32);
                         store_u64(I64, I64);
                         input_length() -> I64;
                         input_load_u8(I64) -> I32;
