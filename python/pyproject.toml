@@ -4,7 +4,7 @@ version = "0.0.1-rc.6"
 description = "Extism Host SDK for python"
 authors = ["The Extism Authors <oss@extism.org>"]
 license = "BSD-3-Clause"
-readme = "README.md"
+readme = "../README.md"
 
 [tool.poetry.dependencies]
 python = "^3.7"
