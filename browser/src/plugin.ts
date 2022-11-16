@@ -1,15 +1,61 @@
 import Allocator from './allocator';
 import { PluginConfig } from './manifest';
 
-class ExtismPluginCall {
+export default class ExtismPlugin {
+  moduleData: ArrayBuffer;
+  allocator: Allocator;
+  config?: PluginConfig;
+  vars: Record<string, Uint8Array>;
   input: Uint8Array;
   output: Uint8Array;
-  allocator: Allocator;
+  module?: WebAssembly.WebAssemblyInstantiatedSource;
 
-  constructor(allocator: Allocator, input: Uint8Array, output: Uint8Array) {
-    this.input = input;
-    this.output = output;
-    this.allocator = allocator;
+  constructor(moduleData: ArrayBuffer, config?: PluginConfig) {
+    this.moduleData = moduleData;
+    this.allocator = new Allocator(1024 * 1024);
+    this.config = config;
+    this.vars = {};
+    this.input = new Uint8Array();
+    this.output = new Uint8Array();
+  }
+
+  async getExportedFunctions() {
+    const module = await this._instantiateModule();
+    return Object.keys(module.instance.exports).filter((f) => !f.startsWith('__') && f !== 'memory');
+  }
+
+  async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
+    if (typeof input === 'string') {
+      this.input = new TextEncoder().encode(input);
+    } else if (input instanceof Uint8Array) {
+      this.input = input;
+    } else {
+      throw new Error('input should be string or Uint8Array');
+    }
+
+    this.allocator.reset();
+
+    if (!this.module) {
+      await this._instantiateModule();
+    }
+
+    if (!this.module) {
+      throw "Unable to instantiate WebAssembly module";
+    }
+
+    let func = this.module.instance.exports[func_name];
+    if (!func) {
+      throw Error(`function does not exist ${func_name}`);
+    }
+    //@ts-ignore
+    func();
+    return this.output;
+  }
+
+  async _instantiateModule(): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
+    const environment = this.makeEnv();
+    this.module = await WebAssembly.instantiate(this.moduleData, { env: environment });
+    return this.module;
   }
 
   makeEnv(): any {
@@ -24,19 +70,12 @@ class ExtismPluginCall {
       extism_load_u8(n: bigint): number {
         return plugin.allocator.memory[Number(n)];
       },
-      extism_load_u32(n: bigint): number {
-        debugger;
-        return 0;
-      },
       extism_load_u64(n: bigint): bigint {
         let cast = new DataView(plugin.allocator.memory.buffer, Number(n));
         return cast.getBigUint64(0, true);
       },
       extism_store_u8(offset: bigint, n: number) {
         plugin.allocator.memory[Number(offset)] = Number(n);
-      },
-      extism_store_u32(n: bigint, i: number) {
-        debugger;
       },
       extism_store_u64(offset: bigint, n: bigint) {
         const tmp = new DataView(plugin.allocator.memory.buffer, Number(offset));
@@ -58,18 +97,43 @@ class ExtismPluginCall {
         plugin.output = plugin.allocator.memory.slice(offs, offs + len);
       },
       extism_error_set(i: bigint) {
-        debugger;
+        throw plugin.allocator.getString(i);
       },
-      extism_config_get(i: bigint): number {
-        debugger;
-        return 0;
+      extism_config_get(i: bigint): bigint {
+        if (typeof plugin.config === 'undefined') {
+          return BigInt(0);
+        }
+        const key = plugin.allocator.getString(i);
+        if (key === null) {
+          return BigInt(0);
+        }
+        const value = plugin.config.get(key);
+        if (typeof value === 'undefined') {
+          return BigInt(0);
+        }
+        return plugin.allocator.allocString(value);
       },
-      extism_var_get(i: bigint): number {
-        debugger;
-        return 0;
+      extism_var_get(i: bigint): bigint {
+        const key = plugin.allocator.getString(i);
+        if (key === null) {
+          return BigInt(0);
+        }
+        const value = plugin.vars[key];
+        if (typeof value === 'undefined') {
+          return BigInt(0);
+        }
+        return plugin.allocator.allocBytes(value);
       },
       extism_var_set(n: bigint, i: bigint) {
-        debugger;
+        const key = plugin.allocator.getString(n);
+        if (key === null) {
+          return;
+        }
+        const value = plugin.allocator.getBytes(i);
+        if (value === null) {
+          return;
+        }
+        plugin.vars[key] = value;
       },
       extism_http_request(n: bigint, i: bigint): number {
         debugger;
@@ -78,66 +142,22 @@ class ExtismPluginCall {
       extism_length(i: bigint): bigint {
         return plugin.allocator.getLength(i);
       },
-      extism_log_warn(i: number) {
-        debugger;
+      extism_log_warn(i: bigint) {
+        const s = plugin.allocator.getString(i);
+        console.warn(s);
       },
-      extism_log_info(i: number) {
-        debugger;
+      extism_log_info(i: bigint) {
+        const s = plugin.allocator.getString(i);
+        console.log(s);
       },
-      extism_log_debug(i: number) {
-        debugger;
+      extism_log_debug(i: bigint) {
+        const s = plugin.allocator.getString(i);
+        console.debug(s);
       },
-      extism_log_error(i: number) {
-        debugger;
+      extism_log_error(i: bigint) {
+        const s = plugin.allocator.getString(i);
+        console.error(s);
       },
     };
-  }
-}
-
-export default class ExtismPlugin {
-  moduleData: ArrayBuffer;
-  allocator: Allocator;
-  config?: PluginConfig;
-
-  constructor(moduleData: ArrayBuffer, config?: PluginConfig) {
-    this.moduleData = moduleData;
-    this.allocator = new Allocator(1024 * 1024);
-    this.config = config;
-  }
-
-  async getExportedFunctions() {
-    // we can make an empty call environment
-    let empty = new Uint8Array();
-    let call = new ExtismPluginCall(this.allocator, empty, empty);
-    let module = await this._instantiateModule(call);
-    return Object.keys(module.instance.exports).filter((f) => !f.startsWith('__') && f !== 'memory');
-  }
-
-  async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
-    const output = new Uint8Array();
-    let inputBytes: Uint8Array;
-    if (typeof input === 'string') {
-      inputBytes = new TextEncoder().encode(input);
-    } else if (input instanceof Uint8Array) {
-      inputBytes = input;
-    } else {
-      throw new Error('input should be string or Uint8Array');
-    }
-    this.allocator.reset();
-    // TODO: only instantiate module once
-    const call = new ExtismPluginCall(this.allocator, inputBytes, output);
-    const module = await this._instantiateModule(call);
-    let func = module.instance.exports[func_name];
-    if (!func) {
-      throw Error(`function does not exist ${func_name}`);
-    }
-    //@ts-ignore
-    func();
-    return call.output;
-  }
-
-  async _instantiateModule(call: ExtismPluginCall) {
-    const environment = call.makeEnv();
-    return await WebAssembly.instantiate(this.moduleData, { env: environment });
   }
 }
