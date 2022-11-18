@@ -21,7 +21,7 @@ impl Context {
         unsafe { bindings::extism_context_reset(&mut *self.lock()) }
     }
 
-    pub(crate) fn lock<'a>(&'a self) -> std::sync::MutexGuard<'a, extism_runtime::Context> {
+    pub(crate) fn lock(&self) -> std::sync::MutexGuard<extism_runtime::Context> {
         match self.0.lock() {
             Ok(x) => x,
             Err(x) => x.into_inner(),
