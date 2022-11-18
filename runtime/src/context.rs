@@ -78,8 +78,7 @@ impl Context {
                 return -1;
             }
         };
-        let id = self.insert(plugin);
-        id
+        self.insert(plugin)
     }
 
     /// Set the context error

@@ -43,6 +43,7 @@ impl Internal {
             let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 
             #[cfg(not(feature = "nn"))]
+            #[allow(clippy::let_unit_value)]
             let nn = ();
 
             Some(Wasi {
