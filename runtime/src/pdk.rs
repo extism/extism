@@ -303,7 +303,7 @@ pub(crate) fn http_request(
     {
         let _ = (caller, input);
 
-        output[0] = Val::I64(0 as i64);
+        output[0] = Val::I64(0);
         error!("http_request is not enabled");
         return Ok(());
     }
@@ -349,19 +349,22 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
-        let mut res = if body_offset > 0 {
+        let res = if body_offset > 0 {
             let buf = data.memory().get(body_offset)?;
-            r.send_bytes(buf)
-                .map_err(|e| Trap::new(&format!("Request error: {e:?}")))?
-                .into_reader()
+            let res = r
+                .send_bytes(buf)
+                .map_err(|e| Trap::new(&format!("Request error: {e:?}")))?;
+            data.http_status = res.status();
+            res.into_reader()
         } else {
-            r.call()
-                .map_err(|e| Trap::new(format!("{:?}", e)))?
-                .into_reader()
+            let res = r.call().map_err(|e| Trap::new(format!("{:?}", e)))?;
+            data.http_status = res.status();
+            res.into_reader()
         };
 
         let mut buf = Vec::new();
-        res.read_to_end(&mut buf)
+        res.take(1024 * 1024 * 50) // TODO: make this limit configurable
+            .read_to_end(&mut buf)
             .map_err(|e| Trap::new(format!("{:?}", e)))?;
 
         let mem = data.memory_mut().alloc_bytes(buf)?;
@@ -369,6 +372,19 @@ pub(crate) fn http_request(
         output[0] = Val::I64(mem.offset as i64);
         Ok(())
     }
+}
+
+/// Get the status code of the last HTTP request
+/// Params: none
+/// Returns: i32 (status code)
+pub(crate) fn http_status_code(
+    mut caller: Caller<Internal>,
+    _input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Trap> {
+    let data: &mut Internal = caller.data_mut();
+    output[0] = Val::I32(data.http_status as i32);
+    Ok(())
 }
 
 /// Get the length of an allocated block given the offset
