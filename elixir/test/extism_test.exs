@@ -35,6 +35,8 @@ defmodule ExtismTest do
     assert JSON.decode(output) == {:ok, %{"count" => 7}}
     {:ok, output} = Extism.Plugin.call(plugin, "count_vowels", "this is a test thrice")
     assert JSON.decode(output) == {:ok, %{"count" => 6}}
+    {:ok, output} = Extism.Plugin.call(plugin, "count_vowels", "🌎hello🌎world🌎")
+    assert JSON.decode(output) == {:ok, %{"count" => 3}}
     Extism.Context.free(ctx)
   end
 

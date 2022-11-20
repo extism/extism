@@ -20,6 +20,8 @@ class TestExtism(unittest.TestCase):
             self.assertEqual(j["count"], 7)
             j = json.loads(plugin.call("count_vowels", "this is a test thrice"))
             self.assertEqual(j["count"], 6)
+            j = json.loads(plugin.call("count_vowels", "🌎hello🌎world🌎"))
+            self.assertEqual(j["count"], 3)
 
     def test_update_plugin_manifest(self):
         with extism.Context() as ctx:
