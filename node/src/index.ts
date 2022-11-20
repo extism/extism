@@ -94,12 +94,6 @@ if (process.env.EXTISM_PATH) {
 
 const lib = locate(searchPath);
 
-// get the true byte size of a utf-8 string
-const byteSize = (data: string | Buffer) => {
-  if (Buffer.isBuffer(data)) return data.length;
-  return new Blob([data]).size;
-}
-
 /**
  * Sets the logfile and level of the Extism runtime
  *
@@ -305,7 +299,7 @@ export class Plugin {
     let plugin = lib.extism_plugin_new(
       ctx.pointer,
       dataRaw,
-      byteSize(dataRaw),
+      Buffer.byteLength(dataRaw, 'utf-8'),
       wasi
     );
     if (plugin < 0) {
@@ -325,7 +319,7 @@ export class Plugin {
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(ctx.pointer, this.id, s, byteSize(s));
+      lib.extism_plugin_config(ctx.pointer, this.id, s, Buffer.byteLength(s, 'utf-8'),);
     }
   }
 
@@ -350,7 +344,7 @@ export class Plugin {
       this.ctx.pointer,
       this.id,
       dataRaw,
-      byteSize(dataRaw),
+      Buffer.byteLength(dataRaw, 'utf-8'),
       wasi
     );
     if (!ok) {
@@ -363,7 +357,7 @@ export class Plugin {
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(this.ctx.pointer, this.id, s, byteSize(s));
+      lib.extism_plugin_config(this.ctx.pointer, this.id, s, Buffer.byteLength(s, 'utf-8'),);
     }
   }
 
@@ -407,7 +401,7 @@ export class Plugin {
         this.id,
         functionName,
         input.toString(),
-        byteSize(input)
+        Buffer.byteLength(input, 'utf-8'),
       );
       if (rc !== 0) {
         var err = lib.extism_error(this.ctx.pointer, this.id);
