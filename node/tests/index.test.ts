@@ -31,6 +31,9 @@ describe("test extism", () => {
       output = await plugin.call("count_vowels", "this is a test thrice");
       result = JSON.parse(output.toString());
       expect(result["count"]).toBe(6);
+      output = await plugin.call("count_vowels", "hello 🌎 world");
+      result = JSON.parse(output.toString());
+      expect(result["count"]).toBe(3);
     });
   });
 
