@@ -20,6 +20,8 @@ class TestExtism < Minitest::Test
       assert_equal res["count"], 7
       res = JSON.parse(plugin.call("count_vowels", "this is a test thrice"))
       assert_equal res["count"], 6
+      res = JSON.parse(plugin.call("count_vowels", "🌎hello🌎world🌎"))
+      assert_equal res["count"], 3
     end
   end
 
