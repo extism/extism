@@ -19,12 +19,24 @@ export default class ExtismPlugin {
     this.output = new Uint8Array();
   }
 
-  async getExportedFunctions() {
+  async getExports(): Promise<WebAssembly.Exports> {
     const module = await this._instantiateModule();
-    return Object.keys(module.instance.exports).filter((f) => !f.startsWith('__') && f !== 'memory');
+    return module.instance.exports;
+  }
+
+  async getImports(): Promise<WebAssembly.ModuleImportDescriptor[]> {
+    const module = await this._instantiateModule();
+    return WebAssembly.Module.imports(module.module);
+  }
+
+  async getInstance(): Promise<WebAssembly.Instance> {
+    const module = await this._instantiateModule();
+    return module.instance;
   }
 
   async call(func_name: string, input: Uint8Array | string): Promise<Uint8Array> {
+    const module = await this._instantiateModule();
+
     if (typeof input === 'string') {
       this.input = new TextEncoder().encode(input);
     } else if (input instanceof Uint8Array) {
@@ -35,15 +47,7 @@ export default class ExtismPlugin {
 
     this.allocator.reset();
 
-    if (!this.module) {
-      await this._instantiateModule();
-    }
-
-    if (!this.module) {
-      throw "Unable to instantiate WebAssembly module";
-    }
-
-    let func = this.module.instance.exports[func_name];
+    let func = module.instance.exports[func_name];
     if (!func) {
       throw Error(`function does not exist ${func_name}`);
     }
@@ -53,6 +57,9 @@ export default class ExtismPlugin {
   }
 
   async _instantiateModule(): Promise<WebAssembly.WebAssemblyInstantiatedSource> {
+    if (this.module) {
+      return this.module;
+    }
     const environment = this.makeEnv();
     this.module = await WebAssembly.instantiate(this.moduleData, { env: environment });
     return this.module;
