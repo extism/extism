@@ -33,6 +33,7 @@
             "Extism\\": "php/src/"
         },
         "files": [
+            "php/src/Context.php",
             "php/src/Plugin.php",
             "php/src/generate.php",
             "php/src/extism.h"
