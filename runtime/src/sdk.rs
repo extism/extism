@@ -222,17 +222,29 @@ pub unsafe extern "C" fn extism_plugin_call(
     };
 
     // Call function with offset+length pointing to input data.
-    let mut results = vec![Val::I32(0)];
+    let n_results = func.ty(&plugin.memory.store).results().len();
+    let mut results = vec![Val::null(); n_results];
     match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
         Ok(r) => r,
         Err(e) => {
             plugin.dump_memory();
+
+            if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
+                return exit.0;
+            }
+
             error!("Call: {e:?}");
             return plugin.error(e.context("Call failed"), -1);
         }
     };
 
     plugin.dump_memory();
+
+    // If `results` is empty then the return value is expected to be returned
+    // in the error block of the func call above using `I32Exit`
+    if results.is_empty() {
+        return 0;
+    }
 
     // Return result to caller
     results[0].unwrap_i32()
