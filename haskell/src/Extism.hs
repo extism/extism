@@ -64,8 +64,8 @@ reset (Context ctx) =
   withForeignPtr ctx extism_context_reset
 
 -- Create a new context
-newContext :: () -> IO Context
-newContext () = do
+newContext :: IO Context
+newContext = do
   ptr <- extism_context_new
   fptr <- newForeignPtr extism_context_free ptr
   return (Context fptr)
@@ -73,7 +73,7 @@ newContext () = do
 -- Execute a function with a new context that is destroyed when it returns
 withContext :: (Context -> IO a) -> IO a
 withContext f = do
-  ctx <- newContext ()
+  ctx <- newContext
   f ctx
 
 -- Create a plugin from a WASM module, `useWasi` determines if WASI should
