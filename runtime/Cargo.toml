@@ -9,7 +9,7 @@ repository = "https://github.com/extism/extism"
 description = "Extism runtime component"
 
 [dependencies]
-wasmtime = "2.0.1"
+wasmtime = "3.0.0"
 wasmtime-wasi = "2.0.1"
 wasmtime-wasi-nn = {version = "2.0.1", optional=true}
 anyhow = "1"
