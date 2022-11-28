@@ -2,8 +2,6 @@
 declare(strict_types=1);
 namespace Extism;
 
-require_once "vendor/autoload.php";
-require_once "generate.php";
 require_once "ExtismLib.php";
 
 $lib = new \ExtismLib(\ExtismLib::SOFILE);
