@@ -27,7 +27,7 @@ library
     reexported-modules: Extism.Manifest
 
     -- Modules included in this library but not exported.
-    other-modules:
+    other-modules: Extism.Bindings
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
