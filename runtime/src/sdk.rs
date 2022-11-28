@@ -221,8 +221,15 @@ pub unsafe extern "C" fn extism_plugin_call(
         None => return plugin.error(format!("Function not found: {name}"), -1),
     };
 
-    // Call function with offset+length pointing to input data.
+    // Check the number of results, reject functions with more than 1 result
     let n_results = func.ty(&plugin.memory.store).results().len();
+    if n_results > 1 {
+        return plugin.error(
+            format!("Function {name} has {n_results} results, expected 0 or 1"),
+            -1,
+        );
+    }
+
     let mut results = vec![Val::null(); n_results];
     match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
         Ok(r) => r,
