@@ -178,6 +178,6 @@ instance JSONValue Manifest where
       ("allowed_hosts", hosts)
     ]
 
-toString :: Manifest -> String
-toString manifest =
-  encode (toJSONValue manifest)
+toString :: (JSONValue a) => a -> String
+toString v =
+  encode (toJSONValue v)
