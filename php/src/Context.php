@@ -5,7 +5,7 @@ namespace Extism;
 require_once "vendor/autoload.php";
 
 function generate_extism_lib() {
-    return (new FFIMe\FFIMe("libextism.".soext()))
+    return (new \FFIMe\FFIMe("libextism.".soext()))
         ->include("extism.h")
         ->showWarnings(false)
         ->codeGen('ExtismLib', __DIR__.'/ExtismLib.php');
@@ -21,7 +21,7 @@ function soext() {
         case "Windows":
             return "dll";
         default:
-            throw new Exeception("Extism: unsupported platform ".$platform);
+            throw new \Exception("Extism: unsupported platform ".$platform);
     }
 }
 
@@ -33,7 +33,7 @@ require_once "ExtismLib.php";
 
 $lib = new \ExtismLib(\ExtismLib::SOFILE);
 if ($lib == null) {
-    throw new Exception("Extism: failed to create new runtime instance");
+    throw new \Exception("Extism: failed to create new runtime instance");
 }
 
 class Context

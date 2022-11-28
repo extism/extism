@@ -32,13 +32,13 @@ class Plugin
         $id = $this->lib->extism_plugin_new($ctx->pointer, $data, count($data), (int)$wasi);
         if ($id < 0) {
             $err = $this->lib->extism_error($ctx->pointer, -1);
-            throw new Exception("Extism: unable to load plugin: " . $err);
+            throw new \Exception("Extism: unable to load plugin: " . $err);
         }
         $this->id = $id;
         $this->context = $ctx;
 
-        if ($config != null) {
-            $cfg = string_to_bytes(json_encode(config));
+        if ($this->config != null) {
+            $cfg = string_to_bytes(json_encode($config));
             $this->lib->extism_plugin_config($ctx->pointer, $this->id, $cfg, count($cfg));
         }
     }
@@ -71,14 +71,14 @@ class Plugin
             if ($err) {
                 $msg = $msg . ", error = " . $err;
             }
-            throw new Execption("Extism: call to '".$name."' failed with " . $msg);
+            throw new \Exception("Extism: call to '".$name."' failed with " . $msg);
         }
 
         $length = $this->lib->extism_plugin_output_length($this->context->pointer, $this->id);
 
         $buf = $this->lib->extism_plugin_output_data($this->context->pointer, $this->id);
 
-        $ouput = [];
+        $output = [];
         $data = $buf->getData();
         for ($i = 0; $i < $length; $i++) {
             $output[$i] = $data[$i];
@@ -99,7 +99,7 @@ class Plugin
         $ok = $this->lib->extism_plugin_update($this->context->pointer, $this->id, $data, count($data), (int)$wasi);
         if (!$ok) {
             $err = $this->lib->extism_error($this->context->pointer, -1);
-            throw new Exception("Extism: unable to update plugin: " . $err);
+            throw new \Exception("Extism: unable to update plugin: " . $err);
         }
 
         if ($config != null) {
