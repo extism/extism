@@ -9,8 +9,8 @@ import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
 import Data.Bifunctor (second)
-import Text.JSON (JSON, toJSObject, toJSString, encode, JSValue(JSNull, JSString))
-import Extism.Manifest (Manifest, toString)
+import Text.JSON (encode, toJSObject)
+import Extism.Manifest (Manifest, toString, toJSONValue)
 import Extism.Bindings
 
 -- Context manages plugins
@@ -107,16 +107,13 @@ updateManifest plugin manifest useWasi =
 isValid :: Plugin -> Bool
 isValid (Plugin _ p) = p >= 0
 
-convertMaybeString Nothing = JSNull
-convertMaybeString (Just s) = JSString (toJSString s)
-
 -- Set configuration values for a plugin
 setConfig :: Plugin -> [(String, Maybe String)] -> IO Bool
 setConfig (Plugin (Context ctx) plugin) x =
   if plugin < 0
     then return False
   else
-    let obj = toJSObject [(k, convertMaybeString v) | (k, v) <- x] in
+    let obj = toJSObject [(k, toJSONValue v) | (k, v) <- x] in
     let bs = toByteString (encode obj) in
     let length = fromIntegral (B.length bs) in
     unsafeUseAsCString bs (\s -> do
