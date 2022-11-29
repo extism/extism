@@ -19,7 +19,7 @@ function soext() {
         case "Windows":
             return "dll";
         default:
-            throw new Exeception("Extism: unsupported platform ".$platform);
+            throw new Exception("Extism: unsupported platform ".$platform);
     }
 }
 
