@@ -7,7 +7,7 @@ name: Release
 
 env:
   RUNTIME_MANIFEST: runtime/Cargo.toml
-  RUNTIME_CRATE: extism-runtime
+  RUNTIME_CRATE: libextism
   RUSTFLAGS: -C target-feature=-crt-static
   ARTIFACT_DIR: release-artifacts
 
