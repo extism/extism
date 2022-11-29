@@ -1,4 +1,4 @@
-cabal-version:      2.4
+cabal-version:      3.0
 name:               extism
 version:            0.0.1.0
 
@@ -23,22 +23,41 @@ category: Plugins, WebAssembly
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules: Extism Extism.Manifest
+    exposed-modules: Extism
+    reexported-modules: Extism.Manifest
 
+    -- Modules included in this library but not exported.
+    other-modules: Extism.Bindings
+
+    -- LANGUAGE extensions used by modules in this package.
+    -- other-extensions:
+    build-depends:    
+          base >= 1.6.0
+        , bytestring
+        , json
+        , manifest
+    hs-source-dirs:   src
+    default-language: Haskell2010
+    extra-libraries: extism
+    extra-lib-dirs: /usr/local/lib
+
+library manifest
+    exposed-modules: Extism.Manifest
+    
+    visibility: public
+    
     -- Modules included in this library but not exported.
     other-modules:
 
     -- LANGUAGE extensions used by modules in this package.
     -- other-extensions:
     build-depends:    
-          base ^>=4.16.1.0
+          base
         , bytestring
         , base64-bytestring
         , json
-    hs-source-dirs:   src
+    hs-source-dirs:   manifest
     default-language: Haskell2010
-    extra-libraries: extism
-    extra-lib-dirs: /usr/local/lib
     
 Test-Suite extism-example
     type:       exitcode-stdio-1.0

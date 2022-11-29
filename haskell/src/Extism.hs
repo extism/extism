@@ -1,36 +1,17 @@
-{-# LANGUAGE ForeignFunctionInterface #-}
-
 module Extism (module Extism, module Extism.Manifest) where
-import GHC.Int
-import GHC.Word
-import Foreign.C.Types
-import Foreign.Ptr
+import Data.Int
+import Data.Word
+import Control.Monad (void)
 import Foreign.ForeignPtr
 import Foreign.C.String
-import Control.Monad (void)
+import Foreign.Ptr
 import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
 import Data.Bifunctor (second)
-import Text.JSON (JSON, toJSObject, toJSString, encode, JSValue(JSNull, JSString))
-import Extism.Manifest (Manifest, toString)
-
-newtype ExtismContext = ExtismContext () deriving Show
-
-foreign import ccall unsafe "extism.h extism_context_new" extism_context_new :: IO (Ptr ExtismContext)
-foreign import ccall unsafe "extism.h &extism_context_free" extism_context_free :: FunPtr (Ptr ExtismContext -> IO ())
-foreign import ccall unsafe "extism.h extism_plugin_new" extism_plugin_new :: Ptr ExtismContext -> Ptr Word8 -> Word64 -> CBool -> IO Int32
-foreign import ccall unsafe "extism.h extism_plugin_update" extism_plugin_update :: Ptr ExtismContext -> Int32 -> Ptr Word8 -> Word64 -> CBool -> IO CBool
-foreign import ccall unsafe "extism.h extism_plugin_call" extism_plugin_call :: Ptr ExtismContext -> Int32 -> CString -> Ptr Word8 -> Word64 -> IO Int32
-foreign import ccall unsafe "extism.h extism_plugin_function_exists" extism_plugin_function_exists :: Ptr ExtismContext -> Int32 -> CString -> IO CBool
-foreign import ccall unsafe "extism.h extism_error" extism_error :: Ptr ExtismContext -> Int32 -> IO CString
-foreign import ccall unsafe "extism.h extism_plugin_output_length" extism_plugin_output_length :: Ptr ExtismContext -> Int32 -> IO Word64
-foreign import ccall unsafe "extism.h extism_plugin_output_data" extism_plugin_output_data :: Ptr ExtismContext -> Int32 -> IO (Ptr Word8)
-foreign import ccall unsafe "extism.h extism_log_file" extism_log_file :: CString -> CString -> IO CBool
-foreign import ccall unsafe "extism.h extism_plugin_config" extism_plugin_config :: Ptr ExtismContext -> Int32 -> Ptr Word8 -> Int64 -> IO CBool
-foreign import ccall unsafe "extism.h extism_plugin_free" extism_plugin_free :: Ptr ExtismContext -> Int32 -> IO ()
-foreign import ccall unsafe "extism.h extism_context_reset" extism_context_reset :: Ptr ExtismContext -> IO ()
-foreign import ccall unsafe "extism.h extism_version" extism_version :: IO CString
+import Text.JSON (encode, toJSObject)
+import Extism.Manifest (Manifest, toString, toJSONValue)
+import Extism.Bindings
 
 -- Context manages plugins
 newtype Context = Context (ForeignPtr ExtismContext)
@@ -64,8 +45,8 @@ reset (Context ctx) =
   withForeignPtr ctx extism_context_reset
 
 -- Create a new context
-newContext :: () -> IO Context
-newContext () = do
+newContext :: IO Context
+newContext = do
   ptr <- extism_context_new
   fptr <- newForeignPtr extism_context_free ptr
   return (Context fptr)
@@ -73,7 +54,7 @@ newContext () = do
 -- Execute a function with a new context that is destroyed when it returns
 withContext :: (Context -> IO a) -> IO a
 withContext f = do
-  ctx <- newContext ()
+  ctx <- newContext
   f ctx
 
 -- Create a plugin from a WASM module, `useWasi` determines if WASI should
@@ -126,16 +107,13 @@ updateManifest plugin manifest useWasi =
 isValid :: Plugin -> Bool
 isValid (Plugin _ p) = p >= 0
 
-convertMaybeString Nothing = JSNull
-convertMaybeString (Just s) = JSString (toJSString s)
-
 -- Set configuration values for a plugin
 setConfig :: Plugin -> [(String, Maybe String)] -> IO Bool
 setConfig (Plugin (Context ctx) plugin) x =
   if plugin < 0
     then return False
   else
-    let obj = toJSObject [(k, convertMaybeString v) | (k, v) <- x] in
+    let obj = toJSObject [(k, toJSONValue v) | (k, v) <- x] in
     let bs = toByteString (encode obj) in
     let length = fromIntegral (B.length bs) in
     unsafeUseAsCString bs (\s -> do

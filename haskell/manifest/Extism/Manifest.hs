@@ -1,7 +1,10 @@
+{-# LANGUAGE FlexibleInstances, UndecidableInstances #-}
+
 module Extism.Manifest where
 
 import Text.JSON
   (
+    JSON,
     JSValue(JSNull, JSString, JSArray),
     toJSString, showJSON, makeObj, encode
   )
@@ -9,16 +12,12 @@ import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as BS (unpack)
 
-valueOrNull f Nothing = JSNull
-valueOrNull f (Just x) = f x
-makeString s = JSString (toJSString s)
-stringOrNull = valueOrNull makeString
-makeArray f [] = JSNull
-makeArray f x = JSArray [f a | a <- x]
-filterNulls obj = [(a, b) | (a, b) <- obj, not (isNull b)]
-mapObj f x = makeObj (filterNulls [(a, f b) | (a, b) <- x])
+makeArray x = JSArray [toJSONValue a | a <- x]
 isNull JSNull = True
 isNull _ = False
+filterNulls obj = [(a, b) | (a, b) <- obj, not (isNull b)]
+object x = makeObj $ filterNulls x
+(.=) a b = (a, toJSONValue b)
 
 newtype Memory = Memory
   {
@@ -27,32 +26,37 @@ newtype Memory = Memory
 
 class JSONValue a where
   toJSONValue :: a -> JSValue
+  
+instance {-# OVERLAPS #-} (JSON a) => (JSONValue a) where
+  toJSONValue j = showJSON j
+
+instance {-# OVERLAPS #-} (JSONValue a) => (JSONValue (Maybe a)) where
+  toJSONValue Nothing = JSNull
+  toJSONValue (Just x) = toJSONValue x
 
 instance JSONValue Memory where
-  toJSONValue x =
-    case memoryMax x of
-      Nothing -> makeObj []
-      Just max -> makeObj [("max", showJSON max)]
+  toJSONValue (Memory max) =
+    object [
+      "max" .= max
+    ]
 
-data HttpRequest = HttpRequest
+data HTTPRequest = HTTPRequest
   {
     url :: String
-  , header :: [(String, String)]
+  , header :: Maybe [(String, String)]
   , method :: Maybe String
   }
 
-requestObj x =
-  let meth = stringOrNull $ method x in
-  let h = mapObj makeString $ header x in
-  filterNulls [
-    ("url", makeString $ url x),
-    ("header", h),
-    ("method", meth)
+requestObj (HTTPRequest url header method) =
+  [
+    "url" .= url ,
+    "header" .= header,
+    "method" .= method
   ]
 
-instance JSONValue HttpRequest where
+instance JSONValue HTTPRequest where
   toJSONValue x =
-    makeObj $ requestObj x
+    object $ requestObj x
 
 data WasmFile = WasmFile
   {
@@ -62,14 +66,11 @@ data WasmFile = WasmFile
   }
 
 instance JSONValue WasmFile where
-  toJSONValue x =
-    let path = makeString $ filePath x in
-    let name = stringOrNull $ fileName x in
-    let hash = stringOrNull $ fileHash x in
-    makeObj $ filterNulls [
-      ("path", path),
-      ("name", name),
-      ("hash", hash)
+  toJSONValue (WasmFile path name hash) =
+    object [
+      "path" .= path,
+      "name" .= name,
+      "hash" .= hash
     ]
 
 data WasmCode = WasmCode
@@ -81,30 +82,26 @@ data WasmCode = WasmCode
 
 
 instance JSONValue WasmCode where
-  toJSONValue x =
-    let bytes = makeString $ BS.unpack $ B64.encode $ codeBytes x in
-    let name = stringOrNull $ codeName x in
-    let hash = stringOrNull $ codeHash x in
-    makeObj $ filterNulls [
-      ("data", bytes),
-      ("name", name),
-      ("hash", hash)
+  toJSONValue (WasmCode x name hash) =
+    let bytes = BS.unpack $ B64.encode x in
+    object [
+      "data" .= bytes,
+      "name" .= name,
+      "hash" .= hash
     ]
 
 data WasmURL = WasmURL
   {
-    req :: HttpRequest
+    req :: HTTPRequest
   , urlName :: Maybe String
   , urlHash :: Maybe String
   }
 
 
 instance JSONValue WasmURL where
-  toJSONValue x =
-    let request = requestObj $ req x in
-    let name = stringOrNull $ urlName x in
-    let hash = stringOrNull $ urlHash x in
-    makeObj $ filterNulls $ ("name", name) : ("hash", hash) : request
+  toJSONValue (WasmURL req name hash) =
+    let request = requestObj $ req in
+    object $ "name" .= name : "hash" .= hash : request
 
 data Wasm = File WasmFile | Code WasmCode | URL WasmURL
 
@@ -121,7 +118,7 @@ wasmFile path =
 
 wasmURL :: String -> String -> Wasm
 wasmURL method url =
-  let r = HttpRequest { url = url, header = [], method = Just method } in
+  let r = HTTPRequest { url = url, header = Nothing, method = Just method } in
   URL WasmURL { req = r, urlName = Nothing, urlHash = Nothing }
 
 wasmCode :: B.ByteString -> Wasm
@@ -143,8 +140,8 @@ data Manifest = Manifest
   {
     wasm :: [Wasm]
   , memory :: Maybe Memory
-  , config :: [(String, String)]
-  , allowed_hosts :: [String]
+  , config :: Maybe [(String, String)]
+  , allowedHosts :: Maybe [String]
   }
 
 manifest :: [Wasm] -> Manifest
@@ -152,32 +149,29 @@ manifest wasm =
   Manifest {
     wasm = wasm,
     memory = Nothing,
-    config = [],
-    allowed_hosts = []
+    config = Nothing,
+    allowedHosts = Nothing
   }
 
 withConfig :: Manifest -> [(String, String)] -> Manifest
 withConfig m config =
-  m { config = config }
+  m { config = Just config }
 
 
 withHosts :: Manifest -> [String] -> Manifest
 withHosts m hosts =
-  m { allowed_hosts = hosts }
+  m { allowedHosts = Just hosts }
 
 instance JSONValue Manifest where
-  toJSONValue x =
-    let w = makeArray toJSONValue $ wasm x in
-    let mem = valueOrNull toJSONValue $ memory x in
-    let c = mapObj makeString $ config x in
-    let hosts = makeArray makeString $ allowed_hosts x in
-    makeObj $ filterNulls [
-      ("wasm", w),
-      ("memory", mem),
-      ("config", c),
-      ("allowed_hosts", hosts)
+  toJSONValue (Manifest wasm memory config hosts) =
+    let w = makeArray wasm in
+    object [
+      "wasm" .= w,
+      "memory" .= memory,
+      "config" .= config,
+      "allowed_hosts" .= hosts
     ]
 
-toString :: Manifest -> String
-toString manifest =
-  encode (toJSONValue manifest)
+toString :: (JSONValue a) => a -> String
+toString v =
+  encode (toJSONValue v)
