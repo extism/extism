@@ -23,7 +23,6 @@ jobs:
         run: |
           cd python
           cp ../LICENSE .
-          cp ../README.md .
           make clean
           make prepare
           poetry build
