@@ -8,11 +8,11 @@
     "packages": [
         {
             "name": "extism/extism",
-            "version": "dev-feat-reuse-plugins",
+            "version": "dev-php-sdk-fix",
             "dist": {
                 "type": "path",
                 "url": "../..",
-                "reference": "9e5f576acff0aa9c8720fdf6d1103b7c1996bf14"
+                "reference": "6119eae37bcb2e02f7c7b5b203ab9f959819e83d"
             },
             "require": {
                 "ircmaxell/ffime": "dev-master",
@@ -22,7 +22,12 @@
             "autoload": {
                 "psr-4": {
                     "Extism\\": "php/src/"
-                }
+                },
+                "files": [
+                    "php/src/Context.php",
+                    "php/src/Plugin.php",
+                    "php/src/extism.h"
+                ]
             },
             "autoload-dev": {
                 "psr-4": []
@@ -59,12 +64,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/FFIMe.git",
-                "reference": "7b9e0bf23adceddd5fde3130d30275a45cfc1867"
+                "reference": "f6911d7a6a7090a9782a21a946819a2efa9a2ff7"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/7b9e0bf23adceddd5fde3130d30275a45cfc1867",
-                "reference": "7b9e0bf23adceddd5fde3130d30275a45cfc1867",
+                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/f6911d7a6a7090a9782a21a946819a2efa9a2ff7",
+                "reference": "f6911d7a6a7090a9782a21a946819a2efa9a2ff7",
                 "shasum": ""
             },
             "require": {
@@ -97,7 +102,7 @@
                 "issues": "https://github.com/ircmaxell/FFIMe/issues",
                 "source": "https://github.com/ircmaxell/FFIMe/tree/master"
             },
-            "time": "2022-09-07T19:50:56+00:00"
+            "time": "2022-09-25T18:13:59+00:00"
         },
         {
             "name": "ircmaxell/php-c-parser",
@@ -105,12 +110,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/php-c-parser.git",
-                "reference": "55e0a4fdf88d6e955d928860e1e107a68492c1cf"
+                "reference": "fd8f5efefd0fcc6c5119d945694acaa3a6790ada"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/55e0a4fdf88d6e955d928860e1e107a68492c1cf",
-                "reference": "55e0a4fdf88d6e955d928860e1e107a68492c1cf",
+                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/fd8f5efefd0fcc6c5119d945694acaa3a6790ada",
+                "reference": "fd8f5efefd0fcc6c5119d945694acaa3a6790ada",
                 "shasum": ""
             },
             "require": {
@@ -146,7 +151,7 @@
                 "issues": "https://github.com/ircmaxell/php-c-parser/issues",
                 "source": "https://github.com/ircmaxell/php-c-parser/tree/master"
             },
-            "time": "2022-08-27T17:37:14+00:00"
+            "time": "2022-09-23T19:39:35+00:00"
         },
         {
             "name": "ircmaxell/php-object-symbolresolver",
@@ -154,12 +159,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/php-object-symbolresolver.git",
-                "reference": "88c918a0f4621ef59dc4a4c21ead7f39bd720337"
+                "reference": "dfe1b1aa6c15b198bdef50fff8485e98e89f2a09"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/88c918a0f4621ef59dc4a4c21ead7f39bd720337",
-                "reference": "88c918a0f4621ef59dc4a4c21ead7f39bd720337",
+                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/dfe1b1aa6c15b198bdef50fff8485e98e89f2a09",
+                "reference": "dfe1b1aa6c15b198bdef50fff8485e98e89f2a09",
                 "shasum": ""
             },
             "require": {
@@ -191,7 +196,7 @@
                 "issues": "https://github.com/ircmaxell/php-object-symbolresolver/issues",
                 "source": "https://github.com/ircmaxell/php-object-symbolresolver/tree/master"
             },
-            "time": "2022-09-07T19:47:04+00:00"
+            "time": "2022-09-15T18:21:50+00:00"
         }
     ],
     "packages-dev": [],
