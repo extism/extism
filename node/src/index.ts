@@ -299,7 +299,7 @@ export class Plugin {
     let plugin = lib.extism_plugin_new(
       ctx.pointer,
       dataRaw,
-      dataRaw.length,
+      Buffer.byteLength(dataRaw, 'utf-8'),
       wasi
     );
     if (plugin < 0) {
@@ -319,7 +319,7 @@ export class Plugin {
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(ctx.pointer, this.id, s, s.length);
+      lib.extism_plugin_config(ctx.pointer, this.id, s, Buffer.byteLength(s, 'utf-8'),);
     }
   }
 
@@ -344,7 +344,7 @@ export class Plugin {
       this.ctx.pointer,
       this.id,
       dataRaw,
-      dataRaw.length,
+      Buffer.byteLength(dataRaw, 'utf-8'),
       wasi
     );
     if (!ok) {
@@ -357,7 +357,7 @@ export class Plugin {
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(this.ctx.pointer, this.id, s, s.length);
+      lib.extism_plugin_config(this.ctx.pointer, this.id, s, Buffer.byteLength(s, 'utf-8'),);
     }
   }
 
@@ -401,7 +401,7 @@ export class Plugin {
         this.id,
         functionName,
         input.toString(),
-        input.length
+        Buffer.byteLength(input, 'utf-8'),
       );
       if (rc !== 0) {
         var err = lib.extism_error(this.ctx.pointer, this.id);

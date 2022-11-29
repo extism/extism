@@ -20,6 +20,7 @@ pub struct Internal {
     pub output_length: usize,
     pub plugin: *mut Plugin,
     pub wasi: Option<Wasi>,
+    pub http_status: u16,
 }
 
 pub struct Wasi {
@@ -42,6 +43,7 @@ impl Internal {
             let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 
             #[cfg(not(feature = "nn"))]
+            #[allow(clippy::let_unit_value)]
             let nn = ();
 
             Some(Wasi {
@@ -59,6 +61,7 @@ impl Internal {
             input: std::ptr::null(),
             wasi,
             plugin: std::ptr::null_mut(),
+            http_status: 0,
         })
     }
 
@@ -137,10 +140,8 @@ impl Plugin {
                         alloc(I64) -> I64;
                         free(I64);
                         load_u8(I64) -> I32;
-                        load_u32(I64) -> I32;
                         load_u64(I64) -> I64;
                         store_u8(I64, I32);
-                        store_u32(I64, I32);
                         store_u64(I64, I64);
                         input_length() -> I64;
                         input_load_u8(I64) -> I32;
@@ -151,6 +152,7 @@ impl Plugin {
                         var_get(I64) -> I64;
                         var_set(I64, I64);
                         http_request(I64, I64) -> I64;
+                        http_status_code() -> I32;
                         length(I64) -> I64;
                         log_warn(I64);
                         log_info(I64);

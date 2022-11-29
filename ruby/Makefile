@@ -1,3 +1,4 @@
+RUBYGEMS_API_KEY ?=
 
 .PHONY: prepare test
 
@@ -9,11 +10,15 @@ test: prepare
 	bundle exec rake test
 
 clean:
-	rm extism-*.gem
+	rm -f extism-*.gem
+
+publish-local: clean prepare
+	gem build extism.gemspec
+	gem push extism-*.gem
 
 publish: clean prepare
 	gem build extism.gemspec
-	gem push extism-*.gem
+	GEM_HOST_API_KEY=$(RUBYGEMS_API_KEY) gem push extism-*.gem
 
 lint:
 	bundle exec rufo --check .

@@ -84,30 +84,6 @@ impl PluginMemory {
         Ok(self.memory.data(&self.store)[offs])
     }
 
-    /// Write u32 to memory
-    pub(crate) fn store_u32(&mut self, offs: usize, data: u32) -> Result<(), Error> {
-        trace!("store_u32: {data:x} at offset {offs}");
-        let handle = MemoryBlock {
-            offset: offs,
-            length: 4,
-        };
-        self.write(handle, data.to_ne_bytes())?;
-        Ok(())
-    }
-
-    /// Read u32 from memory
-    pub(crate) fn load_u32(&self, offs: usize) -> Result<u32, Error> {
-        trace!("load_u32: offset {offs}");
-        let mut buf = [0; 4];
-
-        let handle = MemoryBlock {
-            offset: offs,
-            length: 4,
-        };
-        self.read(handle, &mut buf)?;
-        Ok(u32::from_ne_bytes(buf))
-    }
-
     /// Write u64 to memory
     pub(crate) fn store_u64(&mut self, offs: usize, data: u64) -> Result<(), Error> {
         trace!("store_u64: {data:x} at offset {offs}");

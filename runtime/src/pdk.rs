@@ -7,7 +7,7 @@ macro_rules! args {
     ($input:expr, $index:expr, $ty:ident) => {
         match $input[$index].$ty() {
             Some(x) => x,
-            None => return Err(Trap::new("Invalid input type"))
+            None => return Err(Error::msg("Invalid input type"))
         }
     };
     ($input:expr, $(($index:expr, $ty:ident)),*$(,)?) => {
@@ -24,7 +24,7 @@ pub(crate) fn input_length(
     caller: Caller<Internal>,
     _input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &Internal = caller.data();
     output[0] = Val::I64(data.input_length as i64);
     Ok(())
@@ -37,7 +37,7 @@ pub(crate) fn input_load_u8(
     caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &Internal = caller.data();
     if data.input.is_null() {
         return Ok(());
@@ -53,7 +53,7 @@ pub(crate) fn input_load_u64(
     caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &Internal = caller.data();
     if data.input.is_null() {
         return Ok(());
@@ -72,12 +72,10 @@ pub(crate) fn store_u8(
     mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let (offset, byte) = args!(input, (0, i64), (1, i32));
-    data.memory_mut()
-        .store_u8(offset as usize, byte as u8)
-        .map_err(|_| Trap::new("Write error"))?;
+    data.memory_mut().store_u8(offset as usize, byte as u8)?;
     Ok(())
 }
 
@@ -88,48 +86,11 @@ pub(crate) fn load_u8(
     caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &Internal = caller.data();
     let offset = args!(input, 0, i64) as usize;
-    let byte = data
-        .memory()
-        .load_u8(offset)
-        .map_err(|_| Trap::new("Read error"))?;
+    let byte = data.memory().load_u8(offset)?;
     output[0] = Val::I32(byte as i32);
-    Ok(())
-}
-
-/// Store an unsigned 32 bit integer in memory
-/// Params: i64 (offset), i32 (int)
-/// Returns: none
-pub(crate) fn store_u32(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Trap> {
-    let data: &mut Internal = caller.data_mut();
-    let (offset, b) = args!(input, (0, i64), (1, i32));
-    data.memory_mut()
-        .store_u32(offset as usize, b as u32)
-        .map_err(|_| Trap::new("Write error"))?;
-    Ok(())
-}
-
-/// Load an unsigned 32 bit integer from memory
-/// Params: i64 (offset)
-/// Returns: i32 (int)
-pub(crate) fn load_u32(
-    caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Trap> {
-    let data: &Internal = caller.data();
-    let offset = args!(input, 0, i64) as usize;
-    let b = data
-        .memory()
-        .load_u32(offset)
-        .map_err(|_| Trap::new("Read error"))?;
-    output[0] = Val::I32(b as i32);
     Ok(())
 }
 
@@ -140,12 +101,10 @@ pub(crate) fn store_u64(
     mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let (offset, b) = args!(input, (0, i64), (1, i64));
-    data.memory_mut()
-        .store_u64(offset as usize, b as u64)
-        .map_err(|_| Trap::new("Write error"))?;
+    data.memory_mut().store_u64(offset as usize, b as u64)?;
     Ok(())
 }
 
@@ -156,13 +115,10 @@ pub(crate) fn load_u64(
     caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &Internal = caller.data();
     let offset = args!(input, 0, i64) as usize;
-    let byte = data
-        .memory()
-        .load_u64(offset)
-        .map_err(|_| Trap::new("Read error"))?;
+    let byte = data.memory().load_u64(offset)?;
     output[0] = Val::I64(byte as i64);
     Ok(())
 }
@@ -174,7 +130,7 @@ pub(crate) fn output_set(
     mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let (offset, length) = args!(input, (0, i64), (1, i64));
     data.output_offset = offset as usize;
@@ -189,7 +145,7 @@ pub(crate) fn alloc(
     mut caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let offs = data.memory_mut().alloc(input[0].unwrap_i64() as _)?;
     output[0] = Val::I64(offs.offset as i64);
@@ -204,7 +160,7 @@ pub(crate) fn free(
     mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let offset = args!(input, 0, i64) as usize;
     data.memory_mut().free(offset);
@@ -218,7 +174,7 @@ pub(crate) fn error_set(
     mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let offset = args!(input, 0, i64) as usize;
 
@@ -240,7 +196,7 @@ pub(crate) fn config_get(
     mut caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let plugin = data.plugin_mut();
 
@@ -265,7 +221,7 @@ pub(crate) fn var_get(
     mut caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let plugin = data.plugin_mut();
 
@@ -292,7 +248,7 @@ pub(crate) fn var_set(
     mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let plugin = data.plugin_mut();
 
@@ -305,7 +261,7 @@ pub(crate) fn var_set(
 
     // If the store is larger than 100MB then stop adding things
     if size > 1024 * 1024 * 100 && voffset != 0 {
-        return Err(Trap::new("Variable store is full"));
+        return Err(Error::msg("Variable store is full"));
     }
 
     let key_offs = args!(input, 0, i64) as usize;
@@ -332,12 +288,12 @@ pub(crate) fn http_request(
     #[allow(unused_mut)] mut caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     #[cfg(not(feature = "http"))]
     {
         let _ = (caller, input);
 
-        output[0] = Val::I64(0 as i64);
+        output[0] = Val::I64(0);
         error!("http_request is not enabled");
         return Ok(());
     }
@@ -349,14 +305,13 @@ pub(crate) fn http_request(
         let http_req_offset = args!(input, 0, i64) as usize;
 
         let req: extism_manifest::HttpRequest =
-            serde_json::from_slice(data.memory().get(http_req_offset)?)
-                .map_err(|_| Trap::new("Invalid http request"))?;
+            serde_json::from_slice(data.memory().get(http_req_offset)?)?;
 
         let body_offset = args!(input, 1, i64) as usize;
 
         let url = match url::Url::parse(&req.url) {
             Ok(u) => u,
-            Err(e) => return Err(Trap::new(format!("Invalid URL: {e:?}"))),
+            Err(e) => return Err(Error::msg(format!("Invalid URL: {e:?}"))),
         };
         let allowed_hosts = &data.plugin().manifest.as_ref().allowed_hosts;
         let host_str = url.host_str().unwrap_or_default();
@@ -370,7 +325,7 @@ pub(crate) fn http_request(
                 pat.matches(host_str)
             });
             if !allowed_hosts.is_empty() && !host_matches_allowed {
-                return Err(Trap::new(format!(
+                return Err(Error::msg(format!(
                     "HTTP request to {} is not allowed",
                     req.url
                 )));
@@ -383,26 +338,39 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
-        let mut res = if body_offset > 0 {
+        let res = if body_offset > 0 {
             let buf = data.memory().get(body_offset)?;
-            r.send_bytes(buf)
-                .map_err(|e| Trap::new(&format!("Request error: {e:?}")))?
-                .into_reader()
+            let res = r.send_bytes(buf)?;
+            data.http_status = res.status();
+            res.into_reader()
         } else {
-            r.call()
-                .map_err(|e| Trap::new(format!("{:?}", e)))?
-                .into_reader()
+            let res = r.call()?;
+            data.http_status = res.status();
+            res.into_reader()
         };
 
         let mut buf = Vec::new();
-        res.read_to_end(&mut buf)
-            .map_err(|e| Trap::new(format!("{:?}", e)))?;
+        res.take(1024 * 1024 * 50) // TODO: make this limit configurable
+            .read_to_end(&mut buf)?;
 
         let mem = data.memory_mut().alloc_bytes(buf)?;
 
         output[0] = Val::I64(mem.offset as i64);
         Ok(())
     }
+}
+
+/// Get the status code of the last HTTP request
+/// Params: none
+/// Returns: i32 (status code)
+pub(crate) fn http_status_code(
+    mut caller: Caller<Internal>,
+    _input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Error> {
+    let data: &mut Internal = caller.data_mut();
+    output[0] = Val::I32(data.http_status as i32);
+    Ok(())
 }
 
 /// Get the length of an allocated block given the offset
@@ -412,7 +380,7 @@ pub(crate) fn length(
     mut caller: Caller<Internal>,
     input: &[Val],
     output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
     let offset = args!(input, 0, i64) as usize;
     if offset == 0 {
@@ -421,7 +389,7 @@ pub(crate) fn length(
     }
     let length = match data.memory().block_length(offset) {
         Some(x) => x,
-        None => return Err(Trap::new("Unable to find length for offset")),
+        None => return Err(Error::msg("Unable to find length for offset")),
     };
     output[0] = Val::I64(length as i64);
     Ok(())
@@ -432,7 +400,7 @@ pub fn log(
     caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     let data: &Internal = caller.data();
     let offset = args!(input, 0, i64) as usize;
     let buf = data.memory().get(offset)?;
@@ -451,7 +419,7 @@ pub(crate) fn log_warn(
     caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     log(log::Level::Warn, caller, input, _output)
 }
 
@@ -462,7 +430,7 @@ pub(crate) fn log_info(
     caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     log(log::Level::Info, caller, input, _output)
 }
 
@@ -473,7 +441,7 @@ pub(crate) fn log_debug(
     caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     log(log::Level::Debug, caller, input, _output)
 }
 
@@ -484,6 +452,6 @@ pub(crate) fn log_error(
     caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
-) -> Result<(), Trap> {
+) -> Result<(), Error> {
     log(log::Level::Error, caller, input, _output)
 }

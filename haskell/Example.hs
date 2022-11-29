@@ -18,6 +18,6 @@ handlePlugin plugin = do
     exitSuccess) res
 
 main = do
-  context <- Extism.newContext ()
+  context <- Extism.newContext
   plugin <- Extism.pluginFromManifest context (manifest [wasmFile "../wasm/code.wasm"]) False
   try handlePlugin plugin

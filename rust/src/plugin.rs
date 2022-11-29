@@ -7,6 +7,10 @@ pub struct Plugin<'a> {
 }
 
 impl<'a> Plugin<'a> {
+    /// Create plugin from a known-good ID
+    ///
+    /// # Safety
+    /// This function does not check to ensure the provided ID is valid
     pub unsafe fn from_id(id: i32, context: &'a Context) -> Plugin<'a> {
         Plugin { id, context }
     }
