@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               extism
-version:            0.0.1.0
+version:            0.0.1
 
 -- A short (one-line) description of the package.
 synopsis: Extism bindings
