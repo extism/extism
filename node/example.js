@@ -1,5 +1,5 @@
-import { withContext, Context } from "./dist/index.js";
-import { readFileSync } from "fs";
+const { withContext, Context } = require('./dist/index.js');
+const { readFileSync } = require('fs');
 
 withContext(async function (context) {
   let wasm = readFileSync("../wasm/code.wasm");
