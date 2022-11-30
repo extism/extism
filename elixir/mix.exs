@@ -43,7 +43,7 @@ defmodule Extism.MixProject do
       licenses: ["BSD-3-Clause"],
       description: "Extism Host SDK for Elixir and Erlang",
       name: "extism",
-      files: ~w(lib native priv .formatter.exs mix.exs README.md LICENSE),
+      files: ~w(lib native .formatter.exs mix.exs README.md LICENSE),
       links: %{"GitHub" => "https://github.com/extism/extism"}
     ]
   end
