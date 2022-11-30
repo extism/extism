@@ -1,23 +1,15 @@
 module Main where
 
-import System.Exit (exitFailure, exitSuccess)
-import qualified Data.ByteString as B
 import Extism
-import Extism.Manifest
+import Extism.Manifest(manifest, wasmFile)
 
-try f (Right x) = f x
-try f (Left (ErrorMessage msg)) = do
-  _ <- putStrLn msg
-  exitFailure
-
-handlePlugin plugin = do
-  res <- Extism.call plugin "count_vowels" (Extism.toByteString "this is a test")
-  try (\bs -> do
-    _ <- putStrLn (Extism.fromByteString bs)
-    _ <- Extism.free plugin
-    exitSuccess) res
+unwrap (Right x) = x
+unwrap (Left (ErrorMessage msg)) = do
+  error msg
 
 main = do
   context <- Extism.newContext
-  plugin <- Extism.pluginFromManifest context (manifest [wasmFile "../wasm/code.wasm"]) False
-  try handlePlugin plugin
+  plugin <- unwrap <$> Extism.pluginFromManifest context (manifest [wasmFile "../wasm/code.wasm"]) False 
+  res <- unwrap <$> Extism.call plugin "count_vowels" (Extism.toByteString "this is a test")
+  putStrLn (Extism.fromByteString res)
+  Extism.free plugin
