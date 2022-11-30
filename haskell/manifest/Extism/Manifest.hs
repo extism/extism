@@ -28,7 +28,7 @@ class JSONValue a where
   toJSONValue :: a -> JSValue
   
 instance {-# OVERLAPS #-} (JSON a) => (JSONValue a) where
-  toJSONValue j = showJSON j
+  toJSONValue = showJSON
 
 instance {-# OVERLAPS #-} (JSONValue a) => (JSONValue (Maybe a)) where
   toJSONValue Nothing = JSNull
@@ -100,7 +100,7 @@ data WasmURL = WasmURL
 
 instance JSONValue WasmURL where
   toJSONValue (WasmURL req name hash) =
-    let request = requestObj $ req in
+    let request = requestObj req in
     object $ "name" .= name : "hash" .= hash : request
 
 data Wasm = File WasmFile | Code WasmCode | URL WasmURL
