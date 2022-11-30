@@ -13,7 +13,7 @@ You can find this package on [hex.pm](https://hex.pm/packages/extism).
 ```elixir
 def deps do
   [
-    {:extism, "~> 0.0.1-rc.6"}
+    {:extism, "~> 0.1.0"}
   ]
 end
 ```
