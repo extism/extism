@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.4.33110.190
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExtismSharp", "src\ExtismSharp\ExtismSharp.csproj", "{1FAA7B6E-249C-4E4C-AE7A-A493A9D24475}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example", "src\Example\Example.csproj", "{87790265-CFEC-4083-AFBD-525E72862377}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1FAA7B6E-249C-4E4C-AE7A-A493A9D24475}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1FAA7B6E-249C-4E4C-AE7A-A493A9D24475}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1FAA7B6E-249C-4E4C-AE7A-A493A9D24475}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1FAA7B6E-249C-4E4C-AE7A-A493A9D24475}.Release|Any CPU.Build.0 = Release|Any CPU
+		{87790265-CFEC-4083-AFBD-525E72862377}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{87790265-CFEC-4083-AFBD-525E72862377}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{87790265-CFEC-4083-AFBD-525E72862377}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{87790265-CFEC-4083-AFBD-525E72862377}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {2B6BF267-F2A5-4CB5-8DFD-F11CC8787E6B}
+	EndGlobalSection
+EndGlobal

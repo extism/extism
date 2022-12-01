@@ -33,3 +33,4 @@ php/Extism.php
 dist-newstyle
 .stack-work
 vendor
+dotnet/.vs/
