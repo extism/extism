@@ -8,11 +8,11 @@
     "packages": [
         {
             "name": "extism/extism",
-            "version": "dev-php-sdk-fix",
+            "version": "dev-main",
             "dist": {
                 "type": "path",
                 "url": "../..",
-                "reference": "6119eae37bcb2e02f7c7b5b203ab9f959819e83d"
+                "reference": "de24fffc7c553118dacfc8e11c84b30953f4d55c"
             },
             "require": {
                 "ircmaxell/ffime": "dev-master",
@@ -25,8 +25,7 @@
                 },
                 "files": [
                     "php/src/Context.php",
-                    "php/src/Plugin.php",
-                    "php/src/extism.h"
+                    "php/src/Plugin.php"
                 ]
             },
             "autoload-dev": {
