@@ -43,6 +43,33 @@ pub struct WasmMetadata {
     pub hash: Option<String>,
 }
 
+impl From<HttpRequest> for Wasm {
+    fn from(req: HttpRequest) -> Self {
+        Wasm::Url {
+            req,
+            meta: WasmMetadata::default(),
+        }
+    }
+}
+
+impl From<std::path::PathBuf> for Wasm {
+    fn from(path: std::path::PathBuf) -> Self {
+        Wasm::File {
+            path,
+            meta: WasmMetadata::default(),
+        }
+    }
+}
+
+impl From<Vec<u8>> for Wasm {
+    fn from(data: Vec<u8>) -> Self {
+        Wasm::Data {
+            data,
+            meta: WasmMetadata::default(),
+        }
+    }
+}
+
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
