@@ -405,7 +405,11 @@ pub unsafe extern "C" fn extism_log_file(
 
     let config = match Config::builder()
         .appender(Appender::builder().build("logfile", logfile))
-        .logger(Logger::builder().appender("logfile").build("extism", level))
+        .logger(
+            Logger::builder()
+                .appender("logfile")
+                .build("extism_runtime", level),
+        )
         .build(Root::builder().build(LevelFilter::Off))
     {
         Ok(x) => x,
