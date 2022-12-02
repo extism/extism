@@ -15,6 +15,7 @@ pub struct MemoryOptions {
 pub struct HttpRequest {
     pub url: String,
     #[serde(default)]
+    #[serde(alias = "headers")]
     pub header: std::collections::BTreeMap<String, String>,
     pub method: Option<String>,
 }
