@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ExtismSharp.Native;
+namespace Extism.Host.Native;
 
 /// <summary>
 /// Represents an Extism context through which you can load <see cref="Plugin"/>s.

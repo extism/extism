@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace ExtismSharp.Native;
+namespace Extism.Host.Native;
 
 /// <summary>
 /// Represents a WASM Extism plugin.

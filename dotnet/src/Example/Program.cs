@@ -1,4 +1,4 @@
-﻿using ExtismSharp.Native;
+﻿using Extism.Host.Native;
 
 using System.Text;
 

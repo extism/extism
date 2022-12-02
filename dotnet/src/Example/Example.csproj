@@ -14,7 +14,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\ExtismSharp\ExtismSharp.csproj" />
+    <ProjectReference Include="..\Extism.Host\Extism.Host.csproj" />
   </ItemGroup>
 
 </Project>
