@@ -25,7 +25,7 @@ public class Context : IDisposable
     /// <summary>
     /// Loads an Extism <see cref="Plugin"/>.
     /// </summary>
-    /// <param name="wasm">The plugin WASM bytes.</param>
+    /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
     /// <returns></returns>
     public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, bool withWasi)
