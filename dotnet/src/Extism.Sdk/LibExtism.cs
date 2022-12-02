@@ -2,6 +2,9 @@ using System.Runtime.InteropServices;
 
 namespace Extism.Sdk.Native;
 
+/// <summary>
+/// Functions exposed by the native Extism library.
+/// </summary>
 public static class LibExtism
 {
     /// <summary>
@@ -70,7 +73,7 @@ public static class LibExtism
     unsafe public static extern bool extism_plugin_config(IntPtr context, IntPtr plugin, byte* json, int jsonLength);
 
     /// <summary>
-    /// Returns true if <see cref="funcName"/> exists.
+    /// Returns true if funcName exists.
     /// </summary>
     /// <param name="context"></param>
     /// <param name="plugin"></param>
@@ -134,6 +137,9 @@ public static class LibExtism
     [DllImport("extism", EntryPoint = "extism_version")]
     public static extern IntPtr extism_version();
 
+    /// <summary>
+    /// Extism Log Levels
+    /// </summary>
     public static class LogLevels
     {
         /// <summary>

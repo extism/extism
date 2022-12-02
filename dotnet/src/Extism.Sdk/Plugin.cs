@@ -108,12 +108,18 @@ public class Plugin : IDisposable
         return Marshal.PtrToStringUTF8(result);
     }
 
+    /// <summary>
+    /// Frees all resources held by this Plugin.
+    /// </summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Frees all resources held by this Plugin.
+    /// </summary>
     protected virtual void Dispose(bool disposing)
     {
         if (_disposed) return;
@@ -129,6 +135,9 @@ public class Plugin : IDisposable
         _disposed = true;
     }
 
+    /// <summary>
+    /// Destructs the current Plugin and frees all resources used by it.
+    /// </summary>
     ~Plugin()
     {
         Dispose(false);

@@ -14,7 +14,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Extism.Sdk\Extism.Sdk.csproj" />
+    <ProjectReference Include="..\..\src\Extism.Sdk\Extism.Sdk.csproj" />
   </ItemGroup>
+
 
 </Project>

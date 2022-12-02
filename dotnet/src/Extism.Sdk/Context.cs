@@ -8,11 +8,18 @@ namespace Extism.Sdk.Native;
 public class Context : IDisposable
 {
     private bool _disposed;
+
+    /// <summary>
+    /// Initialize a new Extism Context.
+    /// </summary>
     public Context()
     {
         NativeHandle = LibExtism.extism_context_new();
     }
 
+    /// <summary>
+    /// Native pointer to the Extism Context.
+    /// </summary>
     public IntPtr NativeHandle { get; }
 
     /// <summary>
@@ -51,12 +58,18 @@ public class Context : IDisposable
         return Marshal.PtrToStringUTF8(result);
     }
 
+    /// <summary>
+    /// Frees all resources held by this Context.
+    /// </summary>
     public void Dispose()
     {
         Dispose(true);
         GC.SuppressFinalize(this);
     }
 
+    /// <summary>
+    /// Frees all resources held by this Context.
+    /// </summary>
     protected virtual void Dispose(bool disposing)
     {
         if (_disposed) return;
@@ -72,6 +85,9 @@ public class Context : IDisposable
         _disposed = true;
     }
 
+    /// <summary>
+    /// Destructs the current Context and frees all resources used by it.
+    /// </summary>
     ~Context()
     {
         Dispose(false);
@@ -108,6 +124,9 @@ public class Context : IDisposable
     }
 }
 
+/// <summary>
+/// Extism Log Levels
+/// </summary>
 public enum LogLevel
 {
     /// <summary>

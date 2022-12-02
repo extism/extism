@@ -6,10 +6,10 @@
 		<Nullable>enable</Nullable>
 		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
 		<LangVersion>10</LangVersion>
+		<Authors>Muhammad Azeez</Authors>
 	</PropertyGroup>
 
 	<ItemGroup>
-	  <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+		<PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
 	</ItemGroup>
-
 </Project>
