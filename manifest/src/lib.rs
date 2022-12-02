@@ -1,10 +1,13 @@
 use std::collections::BTreeMap;
 
+#[deprecated]
+pub type ManifestMemory = MemoryOptions;
+
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 pub struct MemoryOptions {
-    #[serde(alias = "max")]
-    pub max_pages: Option<u32>,
+    #[serde(alias = "max_pages")]
+    pub max: Option<u32>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -69,6 +72,9 @@ impl From<Vec<u8>> for Wasm {
         }
     }
 }
+
+#[deprecated]
+pub type ManifestWasm = Wasm;
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
