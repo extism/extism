@@ -1,6 +1,7 @@
 package org.extism.sdk;
 
-import com.sun.jna.Memory;
+import org.extism.sdk.manifest.Manifest;
+
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 
@@ -14,10 +15,11 @@ public class Plugin {
     private int index;
 
     // Create a new plugin
-    public Plugin(Context context, byte[] wasm, boolean withWASI) {
+    public Plugin(Context context, Manifest manifest, boolean withWASI) {
+        byte[] manifestJson = manifest.toJson().getBytes();
         this.context = context;
         IntByReference pluginIndex = new IntByReference();
-        LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), wasm, wasm.length, withWASI, pluginIndex);
+        LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), manifestJson, manifestJson.length, withWASI, pluginIndex);
         this.index = pluginIndex.getValue();
     }
 

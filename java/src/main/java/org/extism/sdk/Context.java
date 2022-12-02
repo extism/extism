@@ -28,8 +28,7 @@ public class Context {
 
     // Create a new plugin
     public Plugin newPlugin(Manifest manifest, boolean withWASI) {
-        ManifestWasmData wasm = (ManifestWasmData) manifest.wasm.get(0);
-        return new Plugin(this, wasm.data, withWASI);
+        return new Plugin(this, manifest, withWASI);
     }
 
     // Remove all plugins from the registry

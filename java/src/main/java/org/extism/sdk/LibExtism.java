@@ -3,7 +3,6 @@ package org.extism.sdk;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import com.sun.jna.Memory;
 import com.sun.jna.ptr.IntByReference;
 //import com.sun.jna.Platform;
 
