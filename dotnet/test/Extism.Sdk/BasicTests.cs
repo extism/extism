@@ -1,9 +1,9 @@
-using Extism.Host.Native;
+using Extism.Sdk.Native;
 using System.Text;
 
 using Xunit;
 
-namespace Extism.Host.Tests;
+namespace Extism.Sdk.Tests;
 
 public class BasicTests
 {

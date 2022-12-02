@@ -29,7 +29,7 @@
 
 
 	<ItemGroup>
-		<ProjectReference Include="..\..\src\Extism.Host\Extism.Host.csproj" />
+		<ProjectReference Include="..\..\src\Extism.Sdk\Extism.Sdk.csproj" />
 	</ItemGroup>
 
 </Project>

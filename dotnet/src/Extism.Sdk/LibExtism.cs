@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace Extism.Host.Native;
+namespace Extism.Sdk.Native;
 
 public static class LibExtism
 {
