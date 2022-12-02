@@ -5,7 +5,9 @@ VisualStudioVersion = 17.4.33110.190
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ExtismSharp", "src\ExtismSharp\ExtismSharp.csproj", "{1FAA7B6E-249C-4E4C-AE7A-A493A9D24475}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Example", "src\Example\Example.csproj", "{87790265-CFEC-4083-AFBD-525E72862377}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Example", "src\Example\Example.csproj", "{87790265-CFEC-4083-AFBD-525E72862377}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ExtismSharp.Tests", "test\ExtismSharp.Tests\ExtismSharp.Tests.csproj", "{F7C5AA4A-1551-4063-B8DA-A3A7AD239B61}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,6 +23,10 @@ Global
 		{87790265-CFEC-4083-AFBD-525E72862377}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87790265-CFEC-4083-AFBD-525E72862377}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87790265-CFEC-4083-AFBD-525E72862377}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F7C5AA4A-1551-4063-B8DA-A3A7AD239B61}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F7C5AA4A-1551-4063-B8DA-A3A7AD239B61}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F7C5AA4A-1551-4063-B8DA-A3A7AD239B61}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F7C5AA4A-1551-4063-B8DA-A3A7AD239B61}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
