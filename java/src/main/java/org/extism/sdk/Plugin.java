@@ -1,22 +1,20 @@
 package org.extism.sdk;
 
-import org.extism.sdk.LibExtism;
-import com.sun.jna.Library;
-import com.sun.jna.Native;
+import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 
 // Represents a plugin
-public class ExtismPlugin {
+public class Plugin {
 
     // The ExtismContext that the plugin belongs to
-    private ExtismContext context;
+    private Context context;
 
     // The index of the plugin
     private int index;
 
     // Create a new plugin
-    public ExtismPlugin(ExtismContext context, byte[] wasm, boolean withWASI) {
+    public Plugin(Context context, byte[] wasm, boolean withWASI) {
         this.context = context;
         IntByReference pluginIndex = new IntByReference();
         LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), wasm, wasm.length, withWASI, pluginIndex);
@@ -25,6 +23,14 @@ public class ExtismPlugin {
 
     public int getIndex() {
         return this.index;
+    }
+
+    // Call a plugin
+    public byte[] call(String function_name, byte[] inputData) {
+        int _result = LibExtism.INSTANCE.extism_plugin_call(this.context.getPointer(), this.index, function_name, inputData, inputData.length);
+        int length = LibExtism.INSTANCE.extism_plugin_output_length(this.context.getPointer(), this.index);
+        Pointer output = LibExtism.INSTANCE.extism_plugin_output_data(this.context.getPointer(), this.index);
+        return output.getByteArray(0, length);
     }
 
     // Update a plugin, keeping the existing ID

@@ -1,19 +1,19 @@
 package org.extism.sdk;
 
-import org.extism.sdk.LibExtism;
-import com.sun.jna.Library;
-import com.sun.jna.Native;
+import org.extism.sdk.manifest.ManifestWasmData;
+import org.extism.sdk.manifest.ManifestWasm;
+import org.extism.sdk.manifest.Manifest;
+
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
 
 // ExtismContext is used to store and manage plugins
-public class ExtismContext {
+public class Context {
 
     // A pointer to the ExtismContext struct
     private Pointer contextPointer;
 
     // Create a new context
-    public ExtismContext() {
+    public Context() {
         this.contextPointer = LibExtism.INSTANCE.extism_context_new();
     }
 
@@ -27,8 +27,9 @@ public class ExtismContext {
     }
 
     // Create a new plugin
-    public ExtismPlugin newPlugin(byte[] wasm, boolean withWASI) {
-        return new ExtismPlugin(this, wasm, withWASI);
+    public Plugin newPlugin(Manifest manifest, boolean withWASI) {
+        ManifestWasmData wasm = (ManifestWasmData) manifest.wasm.get(0);
+        return new Plugin(this, wasm.data, withWASI);
     }
 
     // Remove all plugins from the registry
@@ -38,7 +39,7 @@ public class ExtismContext {
 
     // Get the error associated with a context, if plugin is null then the context
     // error will be returned
-    public String error(ExtismPlugin plugin) {
+    public String error(Plugin plugin) {
         return LibExtism.INSTANCE.extism_error(this.contextPointer, plugin == null ? -1 : plugin.getIndex());
     }
 

@@ -3,6 +3,7 @@ package org.extism.sdk;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
+import com.sun.jna.Memory;
 import com.sun.jna.ptr.IntByReference;
 //import com.sun.jna.Platform;
 
@@ -23,6 +24,12 @@ public interface LibExtism extends Library {
 
     void extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI,
             IntByReference pluginIndex);
+
+    int extism_plugin_call(Pointer contextPointer, int pluginIndex, String function_name, byte[] wasm, int length);
+
+    int extism_plugin_output_length(Pointer contextPointer, int pluginIndex);
+
+    Pointer extism_plugin_output_data(Pointer contextPointer, int pluginIndex);
 
     boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, boolean withWASI);
 
