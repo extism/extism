@@ -6,8 +6,8 @@ pub type ManifestMemory = MemoryOptions;
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 pub struct MemoryOptions {
-    #[serde(alias = "max_pages")]
-    pub max: Option<u32>,
+    #[serde(alias = "max")]
+    pub max_pages: Option<u32>,
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
@@ -15,8 +15,8 @@ pub struct MemoryOptions {
 pub struct HttpRequest {
     pub url: String,
     #[serde(default)]
-    #[serde(alias = "headers")]
-    pub header: std::collections::BTreeMap<String, String>,
+    #[serde(alias = "header")]
+    pub headers: std::collections::BTreeMap<String, String>,
     pub method: Option<String>,
 }
 
@@ -24,7 +24,7 @@ impl HttpRequest {
     pub fn new(url: impl Into<String>) -> HttpRequest {
         HttpRequest {
             url: url.into(),
-            header: Default::default(),
+            headers: Default::default(),
             method: None,
         }
     }
@@ -35,7 +35,7 @@ impl HttpRequest {
     }
 
     pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> HttpRequest {
-        self.header.insert(key.into(), value.into());
+        self.headers.insert(key.into(), value.into());
         self
     }
 }

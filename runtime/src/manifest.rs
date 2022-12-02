@@ -98,7 +98,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             req:
                 extism_manifest::HttpRequest {
                     url,
-                    header,
+                    headers,
                     method,
                 },
             meta,
@@ -138,7 +138,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 // Setup request
                 let mut req = ureq::request(method.as_deref().unwrap_or("GET"), url);
 
-                for (k, v) in header.iter() {
+                for (k, v) in headers.iter() {
                     req = req.set(k, v);
                 }
 

@@ -22,7 +22,7 @@
     },
     "memory": {
       "default": {
-        "max": null
+        "max_pages": null
       },
       "allOf": [
         {
@@ -42,7 +42,7 @@
     "MemoryOptions": {
       "type": "object",
       "properties": {
-        "max": {
+        "max_pages": {
           "type": [
             "integer",
             "null"
@@ -113,7 +113,7 @@
                 "null"
               ]
             },
-            "header": {
+            "headers": {
               "default": {},
               "type": "object",
               "additionalProperties": {
