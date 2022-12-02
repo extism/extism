@@ -161,6 +161,16 @@ pub struct Manifest {
     pub allowed_hosts: Option<Vec<String>>,
 }
 
+impl Manifest {
+    /// Create a new manifest
+    pub fn new(wasm: impl Into<Vec<Wasm>>) -> Manifest {
+        Manifest {
+            wasm: wasm.into(),
+            ..Default::default()
+        }
+    }
+}
+
 mod base64 {
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
