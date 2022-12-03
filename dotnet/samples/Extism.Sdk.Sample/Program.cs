@@ -1,5 +1,6 @@
 ﻿using Extism.Sdk.Native;
 
+using System.Reflection;
 using System.Text;
 
 Console.WriteLine($"Extism version {Context.GetExtismVersion()}");
@@ -7,7 +8,8 @@ var x = Context.SetExtismLogFile("log.log", LogLevel.Trace);
 
 using var context = new Context();
 
-var wasm = await File.ReadAllBytesAsync("code.wasm");
+var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+var wasm = await File.ReadAllBytesAsync(Path.Combine(binDirectory, "code.wasm"));
 using var plugin = context.CreatePlugin(wasm.AsSpan(), withWasi: true);
 
 Console.Write("Input: ");
