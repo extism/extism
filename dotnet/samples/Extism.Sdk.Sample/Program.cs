@@ -10,7 +10,7 @@ using var context = new Context();
 
 var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
 var wasm = await File.ReadAllBytesAsync(Path.Combine(binDirectory, "code.wasm"));
-using var plugin = context.CreatePlugin(wasm.AsSpan(), withWasi: true);
+using var plugin = context.CreatePlugin(wasm, withWasi: true);
 
 Console.Write("Input: ");
 var input = Console.ReadLine() ?? "";

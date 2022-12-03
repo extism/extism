@@ -1,4 +1,6 @@
 using Extism.Sdk.Native;
+
+using System.Reflection;
 using System.Text;
 
 using Xunit;
@@ -12,7 +14,8 @@ public class BasicTests
     {
         using var context = new Context();
 
-        var wasm = await File.ReadAllBytesAsync("code.wasm");
+        var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+        var wasm = await File.ReadAllBytesAsync(Path.Combine(binDirectory, "code.wasm"));
         using var plugin = context.CreatePlugin(wasm, withWasi: true);
 
         var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
