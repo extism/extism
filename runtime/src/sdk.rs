@@ -231,15 +231,20 @@ pub unsafe extern "C" fn extism_plugin_call(
     }
 
     let mut results = vec![Val::null(); n_results];
-    match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
-        Ok(r) => r,
+    let res = func.call(&mut plugin.memory.store, &[], results.as_mut_slice());
+
+    plugin.dump_memory();
+
+    if name == "_start" {
+        // Reinstantiate plugin after calling _start because according to the WASI
+        // applicate ABI _start should be called "at most once":
+        // https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md
+        plugin.reinstantiate()
+    }
+
+    match res {
+        Ok(()) => (),
         Err(e) => {
-            plugin.dump_memory();
-
-            if name == "_start" {
-                plugin.reinstantiate()
-            }
-
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
                 error!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
@@ -253,14 +258,8 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     };
 
-    plugin.dump_memory();
-
-    if name == "_start" {
-        plugin.reinstantiate();
-    }
-
-    // If `results` is empty then the return value is expected to be returned
-    // in the error block of the func call above using `I32Exit`
+    // If `results` is empty and the return value wasn't a WASI exit code then
+    // the call succeeded
     if results.is_empty() {
         return 0;
     }
