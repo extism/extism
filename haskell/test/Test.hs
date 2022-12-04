@@ -4,7 +4,7 @@ import Extism.Manifest
 
 
 unwrap (Right x) = return x
-unwrap (Left (ErrorMessage msg)) =
+unwrap (Left (ExtismError msg)) =
   assertFailure msg
 
 defaultManifest = manifest [wasmFile "test/code.wasm"]

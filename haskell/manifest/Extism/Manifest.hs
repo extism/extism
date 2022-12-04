@@ -19,9 +19,10 @@ filterNulls obj = [(a, b) | (a, b) <- obj, not (isNull b)]
 object x = makeObj $ filterNulls x
 (.=) a b = (a, toJSONValue b)
 
+-- | Memory options
 newtype Memory = Memory
   {
-    memoryMax :: Maybe Int
+    memoryMaxPages :: Maybe Int
   }
 
 class JSONValue a where
@@ -37,9 +38,10 @@ instance {-# OVERLAPS #-} (JSONValue a) => (JSONValue (Maybe a)) where
 instance JSONValue Memory where
   toJSONValue (Memory max) =
     object [
-      "max" .= max
+      "max_pages" .= max
     ]
 
+-- | HTTP request
 data HTTPRequest = HTTPRequest
   {
     url :: String
@@ -58,6 +60,7 @@ instance JSONValue HTTPRequest where
   toJSONValue x =
     object $ requestObj x
 
+-- | WASM from file
 data WasmFile = WasmFile
   {
     filePath :: String
@@ -73,16 +76,17 @@ instance JSONValue WasmFile where
       "hash" .= hash
     ]
 
-data WasmCode = WasmCode
+-- | WASM from raw bytes
+data WasmData = WasmData
   {
-    codeBytes :: B.ByteString
-  , codeName :: Maybe String
-  , codeHash :: Maybe String
+    dataBytes :: B.ByteString
+  , dataName :: Maybe String
+  , dataHash :: Maybe String
   }
 
 
-instance JSONValue WasmCode where
-  toJSONValue (WasmCode x name hash) =
+instance JSONValue WasmData where
+  toJSONValue (WasmData x name hash) =
     let bytes = BS.unpack $ B64.encode x in
     object [
       "data" .= bytes,
@@ -90,6 +94,7 @@ instance JSONValue WasmCode where
       "hash" .= hash
     ]
 
+-- | WASM from a URL
 data WasmURL = WasmURL
   {
     req :: HTTPRequest
@@ -103,13 +108,14 @@ instance JSONValue WasmURL where
     let request = requestObj req in
     object $ "name" .= name : "hash" .= hash : request
 
-data Wasm = File WasmFile | Code WasmCode | URL WasmURL
+-- | Specifies where to get WASM module data
+data Wasm = File WasmFile | Data WasmData | URL WasmURL
 
 instance JSONValue Wasm where
   toJSONValue x =
     case x of
       File f -> toJSONValue f
-      Code d -> toJSONValue d
+      Data d -> toJSONValue d
       URL u -> toJSONValue u
 
 wasmFile :: String -> Wasm
@@ -121,21 +127,23 @@ wasmURL method url =
   let r = HTTPRequest { url = url, headers = Nothing, method = Just method } in
   URL WasmURL { req = r, urlName = Nothing, urlHash = Nothing }
 
-wasmCode :: B.ByteString -> Wasm
-wasmCode code =
-  Code WasmCode { codeBytes = code, codeName = Nothing, codeHash = Nothing }
+wasmData :: B.ByteString -> Wasm
+wasmData d =
+  Data WasmData { dataBytes = d, dataName = Nothing, dataHash = Nothing }
 
 withName :: Wasm -> String -> Wasm
-withName (Code code) name = Code code { codeName = Just name }
+withName (Data d) name = Data d { dataName = Just name }
 withName (URL url) name =  URL url { urlName = Just name }
 withName (File f) name = File  f { fileName = Just name }
 
 
 withHash :: Wasm -> String -> Wasm
-withHash (Code code) hash = Code code { codeHash = Just hash }
+withHash (Data d) hash = Data d { dataHash = Just hash }
 withHash (URL url) hash =  URL url { urlHash = Just hash }
 withHash (File f) hash = File  f { fileHash = Just hash }
 
+-- | The 'Manifest' type is used to provide WASM data and configuration to the
+-- | Extism runtime
 data Manifest = Manifest
   {
     wasm :: [Wasm]
@@ -144,6 +152,7 @@ data Manifest = Manifest
   , allowedHosts :: Maybe [String]
   }
 
+-- | Create a new 'Manifest' from a list of 'Wasm' 
 manifest :: [Wasm] -> Manifest
 manifest wasm =
   Manifest {
@@ -153,11 +162,13 @@ manifest wasm =
     allowedHosts = Nothing
   }
 
+-- | Update the config values
 withConfig :: Manifest -> [(String, String)] -> Manifest
 withConfig m config =
   m { config = Just config }
 
 
+-- | Update allowed hosts for `extism_http_request`
 withHosts :: Manifest -> [String] -> Manifest
 withHosts m hosts =
   m { allowedHosts = Just hosts }

@@ -4,7 +4,7 @@ import Extism
 import Extism.Manifest(manifest, wasmFile)
 
 unwrap (Right x) = x
-unwrap (Left (ErrorMessage msg)) = do
+unwrap (Left (ExtismError msg)) = do
   error msg
 
 main = do

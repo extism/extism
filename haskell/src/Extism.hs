@@ -13,53 +13,56 @@ import Text.JSON (encode, toJSObject)
 import Extism.Manifest (Manifest, toString, toJSONValue)
 import Extism.Bindings
 
--- Context manages plugins
+-- | Context for managing plugins
 newtype Context = Context (ForeignPtr ExtismContext)
 
--- Plugins can be used to call WASM function
+-- | Plugins can be used to call WASM function
 data Plugin = Plugin Context Int32
 
--- Log level
+-- | Log level
 data LogLevel = Error | Warn | Info | Debug | Trace deriving (Show)
 
--- Extism error
-newtype Error = ErrorMessage String deriving Show
+-- | Extism error
+newtype Error = ExtismError String deriving Show
 
--- Helper function to convert a string to a bytestring
+-- | Result type
+type Result a = Either Error a
+
+-- | Helper function to convert a 'String' to a 'ByteString'
 toByteString :: String -> ByteString
 toByteString x = B.pack (Prelude.map c2w x)
 
--- Helper function to convert a bytestring to a string
+-- | Helper function to convert a 'ByteString' to a 'String'
 fromByteString :: ByteString -> String
 fromByteString bs = Prelude.map w2c $ B.unpack bs
 
--- Get the Extism version string
+-- | Get the Extism version string
 extismVersion :: () -> IO String
 extismVersion () = do
   v <- extism_version
   peekCString v
 
--- Remove all registered plugins in a Context
+-- | Remove all registered plugins in a 'Context'
 reset :: Context -> IO ()
 reset (Context ctx) =
   withForeignPtr ctx extism_context_reset
 
--- Create a new context
+-- | Create a new 'Context'
 newContext :: IO Context
 newContext = do
   ptr <- extism_context_new
   fptr <- newForeignPtr extism_context_free ptr
   return (Context fptr)
  
--- Execute a function with a new context that is destroyed when it returns
+-- | Execute a function with a new 'Context' that is destroyed when it returns
 withContext :: (Context -> IO a) -> IO a
 withContext f = do
   ctx <- newContext
   f ctx
 
--- Create a plugin from a WASM module, `useWasi` determines if WASI should
--- be linked
-plugin :: Context -> B.ByteString -> Bool -> IO (Either Error Plugin)
+-- | Create a 'Plugin' from a WASM module, `useWasi` determines if WASI should
+-- | be linked
+plugin :: Context -> B.ByteString -> Bool -> IO (Result Plugin)
 plugin c wasm useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
@@ -71,18 +74,18 @@ plugin c wasm useWasi =
       if p < 0 then do
         err <- extism_error ctx (-1)
         e <- peekCString err
-        return $ Left (ErrorMessage e)
+        return $ Left (ExtismError e)
       else
         return $ Right (Plugin c p))
 
--- Create a plugin from a Manifest
-pluginFromManifest :: Context -> Manifest -> Bool -> IO (Either Error Plugin)
+-- | Create a 'Plugin' from a 'Manifest'
+pluginFromManifest :: Context -> Manifest -> Bool -> IO (Result Plugin)
 pluginFromManifest ctx manifest useWasi =
   let wasm = toByteString $ toString manifest in
   plugin ctx wasm useWasi
 
--- Update a plugin with a new WASM module
-update :: Plugin -> B.ByteString -> Bool -> IO (Either Error ())
+-- | Update a 'Plugin' with a new WASM module
+update :: Plugin -> B.ByteString -> Bool -> IO (Result ())
 update (Plugin (Context ctx) id) wasm useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
@@ -93,21 +96,21 @@ update (Plugin (Context ctx) id) wasm useWasi =
       if b <= 0 then do
         err <- extism_error ctx (-1)
         e <- peekCString err
-        return $ Left (ErrorMessage e)
+        return $ Left (ExtismError e)
       else
         return (Right ()))
 
--- Update a plugin with a new Manifest
-updateManifest :: Plugin -> Manifest -> Bool -> IO (Either Error ())
+-- | Update a 'Plugin' with a new 'Manifest'
+updateManifest :: Plugin -> Manifest -> Bool -> IO (Result ())
 updateManifest plugin manifest useWasi =
   let wasm = toByteString $ toString manifest in
   update plugin wasm useWasi
 
--- Check if a plugin is value
+-- | Check if a 'Plugin' is valid
 isValid :: Plugin -> Bool
 isValid (Plugin _ p) = p >= 0
 
--- Set configuration values for a plugin
+-- | Set configuration values for a plugin
 setConfig :: Plugin -> [(String, Maybe String)] -> IO Bool
 setConfig (Plugin (Context ctx) plugin) x =
   if plugin < 0
@@ -127,7 +130,7 @@ levelStr Warn = "warn"
 levelStr Trace = "trace"
 levelStr Info = "info"
 
--- Set the log file and level, this is a global configuration
+-- | Set the log file and level, this is a global configuration
 setLogFile :: String -> LogLevel -> IO Bool
 setLogFile filename level =
   let s = levelStr level in
@@ -136,15 +139,15 @@ setLogFile filename level =
       b <- extism_log_file f l
       return $ b /= 0))
 
--- Check if a function exists in the given plugin
+-- | Check if a function exists in the given plugin
 functionExists :: Plugin -> String -> IO Bool
 functionExists (Plugin (Context ctx) plugin) name = do
   withForeignPtr ctx (\ctx -> do
     b <- withCString name (extism_plugin_function_exists ctx plugin)
     if b == 1 then return True else return False)
 
---- Call a function provided by the given plugin
-call :: Plugin -> String -> B.ByteString -> IO (Either Error B.ByteString)
+--- | Call a function provided by the given plugin
+call :: Plugin -> String -> B.ByteString -> IO (Result B.ByteString)
 call (Plugin (Context ctx) plugin) name input =
   let length = fromIntegral (B.length input) in
   do
@@ -155,16 +158,17 @@ call (Plugin (Context ctx) plugin) name input =
       err <- extism_error ctx plugin
       if err /= nullPtr
         then do e <- peekCString err
-                return $ Left (ErrorMessage e)
+                return $ Left (ExtismError e)
       else if rc == 0
         then do
           length <- extism_plugin_output_length ctx plugin
           ptr <- extism_plugin_output_data ctx plugin
           buf <- packCStringLen (castPtr ptr, fromIntegral length)
           return $ Right buf
-      else return $ Left (ErrorMessage "Call failed"))
+      else return $ Left (ExtismError "Call failed"))
 
--- Free a plugin
+-- | Free a 'Plugin', this will automatically be called for every plugin
+-- | associated with a 'Context' when that 'Context' is freed
 free :: Plugin -> IO ()
 free (Plugin (Context ctx) plugin) =
   withForeignPtr ctx (`extism_plugin_free` plugin)
