@@ -235,7 +235,7 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     plugin.dump_memory();
 
-    if name == "_start" {
+    if plugin.has_wasi() && name == "_start" {
         plugin.should_reinstantiate = true;
     }
 

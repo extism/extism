@@ -231,4 +231,8 @@ impl Plugin {
         self.instance = instance;
         Ok(())
     }
+
+    pub fn has_wasi(&self) -> bool {
+        self.memory.store.data().wasi.is_some()
+    }
 }
