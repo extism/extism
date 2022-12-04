@@ -90,7 +90,10 @@ impl Plugin {
         let engine = Engine::default();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
-        let memory = Memory::new(&mut store, MemoryType::new(4, manifest.as_ref().memory.max))?;
+        let memory = Memory::new(
+            &mut store,
+            MemoryType::new(20, manifest.as_ref().memory.max),
+        )?;
         let mut memory = PluginMemory::new(store, memory);
 
         let mut linker = Linker::new(&engine);
@@ -136,6 +139,11 @@ impl Plugin {
                 use ValType::*;
 
                 if module_name == EXPORT_MODULE_NAME {
+                    linker.define(
+                        EXPORT_MODULE_NAME,
+                        "memory",
+                        Extern::Memory(memory.memory.clone()),
+                    )?;
                     define_funcs!(name,  {
                         alloc(I64) -> I64;
                         free(I64);
@@ -220,5 +228,13 @@ impl Plugin {
 
     pub fn dump_memory(&self) {
         self.memory.dump();
+    }
+
+    pub fn reinstantiate(&mut self) {
+        let instance = self
+            .linker
+            .instantiate(&mut self.memory.store, &self.module)
+            .unwrap();
+        self.instance = instance;
     }
 }

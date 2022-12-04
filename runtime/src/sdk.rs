@@ -236,6 +236,10 @@ pub unsafe extern "C" fn extism_plugin_call(
         Err(e) => {
             plugin.dump_memory();
 
+            if name == "_start" {
+                plugin.reinstantiate()
+            }
+
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
                 error!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
@@ -250,6 +254,10 @@ pub unsafe extern "C" fn extism_plugin_call(
     };
 
     plugin.dump_memory();
+
+    if name == "_start" {
+        plugin.reinstantiate();
+    }
 
     // If `results` is empty then the return value is expected to be returned
     // in the error block of the func call above using `I32Exit`
