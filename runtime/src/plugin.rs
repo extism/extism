@@ -11,6 +11,7 @@ pub struct Plugin {
     pub memory: PluginMemory,
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
+    pub should_reinstantiate: bool,
 }
 
 pub struct Internal {
@@ -189,6 +190,7 @@ impl Plugin {
             last_error: std::cell::RefCell::new(None),
             manifest,
             vars: BTreeMap::new(),
+            should_reinstantiate: false,
         })
     }
 
@@ -230,11 +232,11 @@ impl Plugin {
         self.memory.dump();
     }
 
-    pub fn reinstantiate(&mut self) {
+    pub fn reinstantiate(&mut self) -> Result<(), Error> {
         let instance = self
             .linker
-            .instantiate(&mut self.memory.store, &self.module)
-            .unwrap();
+            .instantiate(&mut self.memory.store, &self.module)?;
         self.instance = instance;
+        Ok(())
     }
 }

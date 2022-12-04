@@ -236,10 +236,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     plugin.dump_memory();
 
     if name == "_start" {
-        // Reinstantiate plugin after calling _start because according to the WASI
-        // applicate ABI _start should be called "at most once":
-        // https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md
-        plugin.reinstantiate()
+        plugin.should_reinstantiate = true;
     }
 
     match res {
