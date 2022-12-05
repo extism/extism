@@ -145,7 +145,7 @@ export type ManifestWasmData = {
  * Memory options for the {@link Plugin}
  */
 export type ManifestMemory = {
-  max?: number;
+  max_pages?: number;
 };
 
 /**

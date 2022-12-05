@@ -43,14 +43,14 @@ instance JSONValue Memory where
 data HTTPRequest = HTTPRequest
   {
     url :: String
-  , header :: Maybe [(String, String)]
+  , headers :: Maybe [(String, String)]
   , method :: Maybe String
   }
 
-requestObj (HTTPRequest url header method) =
+requestObj (HTTPRequest url headers method) =
   [
     "url" .= url ,
-    "header" .= header,
+    "headers" .= headers,
     "method" .= method
   ]
 
@@ -118,7 +118,7 @@ wasmFile path =
 
 wasmURL :: String -> String -> Wasm
 wasmURL method url =
-  let r = HTTPRequest { url = url, header = Nothing, method = Just method } in
+  let r = HTTPRequest { url = url, headers = Nothing, method = Just method } in
   URL WasmURL { req = r, urlName = Nothing, urlHash = Nothing }
 
 wasmCode :: B.ByteString -> Wasm

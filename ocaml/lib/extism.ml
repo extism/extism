@@ -93,7 +93,7 @@ end
 type error = [ `Msg of string ]
 
 module Manifest = struct
-  type memory = { max : int option [@yojson.option] } [@@deriving yojson]
+  type memory = { max_pages : int option [@yojson.option] } [@@deriving yojson]
 
   type wasm_file = {
     path : string;
@@ -116,7 +116,7 @@ module Manifest = struct
 
   type wasm_url = {
     url : string;
-    header : (string * string) list option; [@yojson.option]
+    headers : (string * string) list option; [@yojson.option]
     name : string option; [@yojson.option]
     meth : string option; [@yojson.option] [@key "method"]
     hash : string option; [@yojson.option]
@@ -161,7 +161,7 @@ module Manifest = struct
 
   let file ?name ?hash path = File { path; name; hash }
   let data ?name ?hash data = Data { data; name; hash }
-  let url ?header ?name ?meth ?hash url = Url { header; name; meth; hash; url }
+  let url ?headers ?name ?meth ?hash url = Url { headers; name; meth; hash; url }
 
   let v ?config ?memory ?allowed_hosts wasm =
     { config; wasm; memory; allowed_hosts }
