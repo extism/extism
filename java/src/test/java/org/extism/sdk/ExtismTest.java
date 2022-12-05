@@ -40,7 +40,8 @@ public class ExtismTest extends TestCase {
         System.out.print(plugin.getIndex());
 
         byte[] b = plugin.call("count_vowels", "Hello World".getBytes());
+        String output =new String(b, StandardCharsets.UTF_8);
 
-        System.out.println(new String(b, StandardCharsets.UTF_8));
+        this.assertEquals("{\"count\": 3}", output);
     }
 }
