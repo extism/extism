@@ -5,39 +5,131 @@ import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
 
+/**
+ * Wrapper around the Extism library.
+ */
 public interface LibExtism extends Library {
 
     /**
      * Holds the extism library instance.
-     *
      * Resolves the extism library based on the resolution algorithm defined in {@link com.sun.jna.NativeLibrary}.
      */
     LibExtism INSTANCE = Native.loadLibrary("extism", LibExtism.class);
 
+    /**
+     * Create a new context
+     */
     Pointer extism_context_new();
 
+    /**
+     * Free a context
+     */
     void extism_context_free(Pointer contextPointer);
 
+    /**
+     * Remove all plugins from the registry.
+     *
+     * @param contextPointer
+     */
     void extism_context_reset(Pointer contextPointer);
 
+    /**
+     * Returns the error associated with a @{@link Context} or @{@link Plugin}, if {@code pluginId} is {@literal -1} then the context error will be returned
+     *
+     * @param contextPointer
+     * @param pluginId
+     * @return
+     */
     String extism_error(Pointer contextPointer, int pluginId);
 
+    /**
+     * Create a new plugin.
+     *
+     * @param contextPointer pointer to the {@link Context}.
+     * @param wasm           is a WASM module (wat or wasm) or a JSON encoded manifest
+     * @param wasmSize       the length of the `wasm` parameter
+     * @param withWASI       enables/disables WASI
+     * @return id of the plugin
+     */
     int extism_plugin_new(long contextPointer, byte[] wasm, long wasmSize, boolean withWASI);
 
+    /**
+     * Returns the Extism version string
+     */
     String extism_version();
 
-    void extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI,
-            IntByReference pluginIndex);
+    /**
+     * Create a new plugin.
+     *
+     * @param contextPointer pointer to the {@link Context}.
+     * @param wasm           is a WASM module (wat or wasm) or a JSON encoded manifest
+     * @param length         the length of the `wasm` parameter
+     * @param withWASI       enables/disables WASI
+     * @param pluginIndex    output parameter for the plugin id.
+     * @see #extism_plugin_new(long, byte[], long, boolean)
+     */
+    void extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI, IntByReference pluginIndex);
 
-    int extism_plugin_call(Pointer contextPointer, int pluginIndex, String function_name, byte[] wasm, int length);
+    /**
+     * Calls a function from the @{@link Plugin} at the given {@code pluginIndex}.
+     *
+     * @param contextPointer
+     * @param pluginIndex
+     * @param function_name  is the function to call
+     * @param data           is the data input data
+     * @param dataLength     is the data input data length
+     * @return the result code of the plugin call.
+     */
+    int extism_plugin_call(Pointer contextPointer, int pluginIndex, String function_name, byte[] data, int dataLength);
 
+    /**
+     * Returns the length of a plugin's output data.
+     *
+     * @param contextPointer
+     * @param pluginIndex
+     * @return
+     */
     int extism_plugin_output_length(Pointer contextPointer, int pluginIndex);
 
+    /**
+     * Returns the plugin's output data.
+     *
+     * @param contextPointer
+     * @param pluginIndex
+     * @return
+     */
     Pointer extism_plugin_output_data(Pointer contextPointer, int pluginIndex);
 
+    /**
+     * Update a plugin, keeping the existing ID.
+     * Similar to {@link #extism_plugin_new(long, byte[], long, boolean)} but takes an {@code pluginIndex} argument to specify which plugin to update.
+     * Note: Memory for this plugin will be reset upon update.
+     *
+     * @param contextPointer
+     * @param pluginIndex
+     * @param wasm
+     * @param length
+     * @param withWASI
+     * @return
+     */
     boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, boolean withWASI);
 
+    /**
+     * Remove a plugin from the registry and free associated memory.
+     *
+     * @param contextPointer
+     * @param pluginIndex
+     */
     void extism_plugin_free(Pointer contextPointer, int pluginIndex);
 
+    /**
+     * Update plugin config values, this will merge with the existing values.
+     *
+     * @param contextPointer
+     * @param pluginIndex
+     * @param json
+     * @param jsonLength
+     * @return
+     */
     boolean extism_plugin_config(Pointer contextPointer, int pluginIndex, byte[] json, int jsonLength);
 }
