@@ -172,24 +172,26 @@ impl Manifest {
             ..Default::default()
         }
     }
-}
 
-mod base64 {
-    use serde::{Deserialize, Serialize};
-    use serde::{Deserializer, Serializer};
-
-    pub fn serialize<S: Serializer>(v: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
-        let base64 = base64::encode(v);
-        String::serialize(&base64, s)
+    /// Disable HTTP requests to all hosts
+    pub fn disable_all_hosts(mut self) -> Self {
+        self.allowed_hosts = Some(vec![]);
+        self
     }
 
-    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
-        let base64 = String::deserialize(d)?;
-        base64::decode(base64.as_bytes()).map_err(serde::de::Error::custom)
-    }
-}
+    /// Add a hostname to `allowed_hosts`
+    pub fn with_allowed_host(mut self, host: impl Into<String>) -> Self {
+        match &mut self.allowed_hosts {
+            Some(h) => {
+                h.push(host.into());
+            }
+            None => self.allowed_hosts = Some(vec![host.into()]),
+        }
 
-impl Manifest {
+        self
+    }
+
+    /// Add a path to `allowed_paths`
     pub fn with_allowed_path(mut self, src: impl AsRef<Path>, dest: impl AsRef<Path>) -> Self {
         let src = src.as_ref().to_path_buf();
         let dest = dest.as_ref().to_path_buf();
@@ -205,5 +207,20 @@ impl Manifest {
         }
 
         self
+    }
+}
+
+mod base64 {
+    use serde::{Deserialize, Serialize};
+    use serde::{Deserializer, Serializer};
+
+    pub fn serialize<S: Serializer>(v: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
+        let base64 = base64::encode(v);
+        String::serialize(&base64, s)
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
+        let base64 = String::deserialize(d)?;
+        base64::decode(base64.as_bytes()).map_err(serde::de::Error::custom)
     }
 }
