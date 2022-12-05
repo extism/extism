@@ -243,7 +243,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         Ok(()) => (),
         Err(e) => {
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
-                error!("WASI return code: {}", exit.0);
+                trace!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
                     return plugin.error(&e, exit.0);
                 }
