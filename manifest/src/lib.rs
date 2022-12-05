@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 #[deprecated]
 pub type ManifestMemory = MemoryOptions;
@@ -82,8 +83,7 @@ pub type ManifestWasm = Wasm;
 #[serde(untagged)]
 pub enum Wasm {
     File {
-        path: std::path::PathBuf,
-
+        path: PathBuf,
         #[serde(flatten)]
         meta: WasmMetadata,
     },
@@ -161,7 +161,7 @@ pub struct Manifest {
     #[serde(default)]
     pub allowed_hosts: Option<Vec<String>>,
     #[serde(default)]
-    pub allowed_paths: Option<BTreeMap<String, String>>,
+    pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
 }
 
 impl Manifest {
@@ -186,5 +186,24 @@ mod base64 {
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
         let base64 = String::deserialize(d)?;
         base64::decode(base64.as_bytes()).map_err(serde::de::Error::custom)
+    }
+}
+
+impl Manifest {
+    pub fn with_allowed_path(mut self, src: impl AsRef<Path>, dest: impl AsRef<Path>) -> Self {
+        let src = src.as_ref().to_path_buf();
+        let dest = dest.as_ref().to_path_buf();
+        match &mut self.allowed_paths {
+            Some(p) => {
+                p.insert(src, dest);
+            }
+            None => {
+                let mut p = BTreeMap::new();
+                p.insert(src, dest);
+                self.allowed_paths = Some(p);
+            }
+        }
+
+        self
     }
 }
