@@ -10,7 +10,11 @@ public class JsonSerializer {
     private static final Gson GSON;
 
     static {
-        GSON = new GsonBuilder().disableHtmlEscaping().setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES).setPrettyPrinting().create();
+        GSON = new GsonBuilder() //
+                .disableHtmlEscaping() //
+                .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES) //
+                .setPrettyPrinting() //
+                .create();
     }
 
     public static String toJson(Manifest manifest) {
