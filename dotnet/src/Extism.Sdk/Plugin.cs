@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace Extism.Sdk.Native;
@@ -7,8 +8,10 @@ namespace Extism.Sdk.Native;
 /// </summary>
 public class Plugin : IDisposable
 {
+    private const int DisposedMarker = 1;
+
     private readonly Context _context;
-    private bool _disposed;
+    private int _disposed;
 
     internal Plugin(Context context, IntPtr handle)
     {
@@ -19,16 +22,17 @@ public class Plugin : IDisposable
     /// <summary>
     /// A pointer to the native Plugin struct.
     /// </summary>
-    public IntPtr NativeHandle { get; }
+    internal IntPtr NativeHandle { get; }
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
     /// </summary>
     /// <param name="wasm">The plugin WASM bytes.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    /// <returns></returns>
     unsafe public bool Update(ReadOnlySpan<byte> wasm, bool withWasi)
     {
+        CheckNotDisposed();
+
         fixed (byte* wasmPtr = wasm)
         {
             return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, withWasi);
@@ -39,9 +43,10 @@ public class Plugin : IDisposable
     ///  Update plugin config values, this will merge with the existing values.
     /// </summary>
     /// <param name="json">The configuration JSON encoded in UTF8.</param>
-    /// <returns></returns>
     unsafe public bool SetConfig(ReadOnlySpan<byte> json)
     {
+        CheckNotDisposed();
+
         fixed (byte* jsonPtr = json)
         {
             return LibExtism.extism_plugin_config(_context.NativeHandle, NativeHandle, jsonPtr, json.Length);
@@ -51,10 +56,10 @@ public class Plugin : IDisposable
     /// <summary>
     /// Checks if a specific function exists in the current plugin.
     /// </summary>
-    /// <param name="name"></param>
-    /// <returns></returns>
     public bool FunctionExists(string name)
     {
+        CheckNotDisposed();
+
         return LibExtism.extism_plugin_function_exists(_context.NativeHandle, NativeHandle, name);
     }
 
@@ -63,11 +68,13 @@ public class Plugin : IDisposable
     /// If the status represents an error, call <see cref="GetError"/> to get the error.
     /// Othewise, call <see cref="OutputData"/> to get the function's output data.
     /// </summary>
-    /// <param name="functionName"></param>
-    /// <param name="data"></param>
-    /// <returns></returns>
+    /// <param name="functionName">Name of the function in the plugin to invoke.</param>
+    /// <param name="data">A buffer to provide as input to the function.</param>
+    /// <returns>The exit code of the function.</returns>
     unsafe public int CallFunction(string functionName, Span<byte> data)
     {
+        CheckNotDisposed();
+
         fixed (byte* dataPtr = data)
         {
             return LibExtism.extism_plugin_call(_context.NativeHandle, NativeHandle, functionName, dataPtr, data.Length);
@@ -77,18 +84,20 @@ public class Plugin : IDisposable
     /// <summary>
     /// Get the length of a plugin's output data.
     /// </summary>
-    /// <returns></returns>
     public int OutputLength()
     {
+        CheckNotDisposed();
+
         return (int)LibExtism.extism_plugin_output_length(_context.NativeHandle, NativeHandle);
     }
 
     /// <summary>
     /// Get the plugin's output data.
     /// </summary>
-    /// <returns></returns>
     public ReadOnlySpan<byte> OutputData()
     {
+        CheckNotDisposed();
+
         var length = OutputLength();
 
         unsafe
@@ -104,6 +113,8 @@ public class Plugin : IDisposable
     /// <returns></returns>
     public string? GetError()
     {
+        CheckNotDisposed();
+
         var result = LibExtism.extism_error(_context.NativeHandle, NativeHandle);
         return Marshal.PtrToStringUTF8(result);
     }
@@ -113,8 +124,32 @@ public class Plugin : IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, DisposedMarker) == DisposedMarker)
+        {
+            // Already disposed.
+            return;
+        }
+
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Throw an appropriate exception if the plugin has been disposed.
+    /// </summary>
+    protected void CheckNotDisposed()
+    {
+        Interlocked.MemoryBarrier();
+        if (_disposed == DisposedMarker)
+        {
+            ThrowDisposedException();
+        }
+    }
+
+    [DoesNotReturn]
+    private static void ThrowDisposedException()
+    {
+        throw new ObjectDisposedException(nameof(Plugin));
     }
 
     /// <summary>
@@ -122,17 +157,13 @@ public class Plugin : IDisposable
     /// </summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (_disposed) return;
-
         if (disposing)
         {
             // Free up any managed resources here
         }
 
-        // Free up unamanged resources
+        // Free up unmanaged resources
         LibExtism.extism_plugin_free(_context.NativeHandle, NativeHandle);
-
-        _disposed = true;
     }
 
     /// <summary>

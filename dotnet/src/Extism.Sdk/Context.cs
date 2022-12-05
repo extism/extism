@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
 namespace Extism.Sdk.Native;
@@ -7,7 +8,9 @@ namespace Extism.Sdk.Native;
 /// </summary>
 public class Context : IDisposable
 {
-    private bool _disposed;
+    private const int DisposedMarker = 1;
+
+    private int _disposed;
 
     /// <summary>
     /// Initialize a new Extism Context.
@@ -20,16 +23,17 @@ public class Context : IDisposable
     /// <summary>
     /// Native pointer to the Extism Context.
     /// </summary>
-    public IntPtr NativeHandle { get; }
+    internal IntPtr NativeHandle { get; }
 
     /// <summary>
     /// Loads an Extism <see cref="Plugin"/>.
     /// </summary>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    /// <returns></returns>
     public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, bool withWasi)
     {
+        CheckNotDisposed();
+
         unsafe
         {
             fixed (byte* wasmPtr = wasm)
@@ -45,6 +49,8 @@ public class Context : IDisposable
     /// </summary>
     public void Reset()
     {
+        CheckNotDisposed();
+
         LibExtism.extism_context_reset(NativeHandle);
     }
 
@@ -54,6 +60,8 @@ public class Context : IDisposable
     /// <returns></returns>
     public string? GetError()
     {
+        CheckNotDisposed();
+
         var result = LibExtism.extism_error(NativeHandle, -1);
         return Marshal.PtrToStringUTF8(result);
     }
@@ -63,8 +71,32 @@ public class Context : IDisposable
     /// </summary>
     public void Dispose()
     {
+        if (Interlocked.Exchange(ref _disposed, DisposedMarker) == DisposedMarker)
+        {
+            // Already disposed.
+            return;
+        }
+
         Dispose(true);
         GC.SuppressFinalize(this);
+    }
+
+    /// <summary>
+    /// Throw an appropriate exception if the plugin has been disposed.
+    /// </summary>
+    protected void CheckNotDisposed()
+    {
+        Interlocked.MemoryBarrier();
+        if (_disposed == DisposedMarker)
+        {
+            ThrowDisposedException();
+        }
+    }
+
+    [DoesNotReturn]
+    private static void ThrowDisposedException()
+    {
+        throw new ObjectDisposedException(nameof(Context));
     }
 
     /// <summary>
@@ -72,17 +104,13 @@ public class Context : IDisposable
     /// </summary>
     protected virtual void Dispose(bool disposing)
     {
-        if (_disposed) return;
-
         if (disposing)
         {
             // Free up any managed resources here
         }
 
-        // Free up unamanged resources
+        // Free up unmanaged resources
         LibExtism.extism_context_free(NativeHandle);
-
-        _disposed = true;
     }
 
     /// <summary>
@@ -96,7 +124,6 @@ public class Context : IDisposable
     /// <summary>
     /// Get the Extism version string.
     /// </summary>
-    /// <returns></returns>
     public static string GetExtismVersion()
     {
         var pointer = LibExtism.extism_version();
@@ -106,8 +133,8 @@ public class Context : IDisposable
     /// <summary>
     /// Set Extism's log file and level. This is applied for all <see cref="Context"/>s.
     /// </summary>
-    /// <param name="logPath"></param>
-    /// <param name="level"></param>
+    /// <param name="logPath">Log file; can be 'stdout' or 'stderr' to write logs to the console.</param>
+    /// <param name="level">The log level to write at.</param>
     public static bool SetExtismLogFile(string logPath, LogLevel level)
     {
         var logLevel = level switch

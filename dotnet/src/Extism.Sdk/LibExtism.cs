@@ -5,7 +5,7 @@ namespace Extism.Sdk.Native;
 /// <summary>
 /// Functions exposed by the native Extism library.
 /// </summary>
-public static class LibExtism
+internal static class LibExtism
 {
     /// <summary>
     /// Create a new context.
