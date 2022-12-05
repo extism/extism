@@ -1,19 +1,23 @@
 package org.extism.sdk;
 
-import org.extism.sdk.manifest.ManifestWasmData;
-import org.extism.sdk.manifest.ManifestWasm;
 import org.extism.sdk.manifest.Manifest;
 
 import com.sun.jna.Pointer;
 
-// ExtismContext is used to store and manage plugins
-public class Context {
-
-    // A pointer to the ExtismContext struct
-    private Pointer contextPointer;
+/**
+ * Extism Context is used to store and manage plugins.
+ */
+public class Context implements AutoCloseable {
 
     /**
-     * Create a new Context. A Context is used to manage Plugins
+     * Holds a pointer to the ExtismContext struct.
+     */
+    private final Pointer contextPointer;
+
+    /**
+     * Creates a new context.
+     * <p>
+     * A Context is used to manage Plugins
      * and make sure they are cleaned up when you are done with them.
      */
     public Context() {
@@ -50,21 +54,35 @@ public class Context {
 
     /**
      * Get the version string of the linked Extism Runtime.
-     * 
-     * @return
+     *
+     * @return the version
      */
     public String getVersion() {
         return LibExtism.INSTANCE.extism_version();
     }
 
-    // Get the error associated with a context, if plugin is null then the context
-    // error will be returned
-    protected String error(Plugin plugin) {
+    /**
+     * Get the error associated with a context, if plugin is {@literal null} then the context error will be returned.
+     * @param plugin
+     * @return
+     */
+    public String error(Plugin plugin) {
         return LibExtism.INSTANCE.extism_error(this.contextPointer, plugin == null ? -1 : plugin.getIndex());
     }
 
-    protected Pointer getPointer() {
+    /**
+     * Return the raw pointer to this context.
+     * @return
+     */
+    public Pointer getPointer() {
         return this.contextPointer;
     }
 
+    /**
+     * Calls {@link #free()} if used in the context of a TWR block.
+     */
+    @Override
+    public void close() {
+        this.free();
+    }
 }
