@@ -4,10 +4,15 @@ import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
 import com.sun.jna.ptr.IntByReference;
-//import com.sun.jna.Platform;
 
 public interface LibExtism extends Library {
-    LibExtism INSTANCE = (LibExtism) Native.loadLibrary("/usr/local/lib/libextism.dylib", LibExtism.class);
+
+    /**
+     * Holds the extism library instance.
+     *
+     * Resolves the extism library based on the resolution algorithm defined in {@link com.sun.jna.NativeLibrary}.
+     */
+    LibExtism INSTANCE = Native.loadLibrary("extism", LibExtism.class);
 
     Pointer extism_context_new();
 

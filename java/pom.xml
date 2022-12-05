@@ -8,11 +8,20 @@
   <name>extism</name>
   <url>http://maven.apache.org</url>
   <properties>
-    <maven.compiler.source>19</maven.compiler.source>
-    <maven.compiler.target>19</maven.compiler.target>
+    <java.version>19</java.version>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
   </properties>
   <build>
     <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-compiler-plugin</artifactId>
+        <version>3.10.1</version>
+        <configuration>
+            <source>${java.version}</source>
+            <target>${java.version}</target>
+        </configuration>
+      </plugin>
       <plugin>
           <artifactId>maven-assembly-plugin</artifactId>
           <configuration>
@@ -35,6 +44,16 @@
               </execution>
           </executions>
       </plugin>
+        <plugin>
+            <groupId>org.apache.maven.plugins</groupId>
+            <artifactId>maven-surefire-plugin</artifactId>
+            <version>2.22.2</version>
+            <configuration>
+                <systemPropertyVariables>
+                    <jna.library.path>../target/release</jna.library.path>
+                </systemPropertyVariables>
+            </configuration>
+        </plugin>
     </plugins>
   </build>
   <dependencies>

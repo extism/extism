@@ -26,7 +26,7 @@ public class ExtismTest extends TestCase {
         return new TestSuite( ExtismTest.class );
     }
 
-    public void testApp() throws IOException {
+    public void testApp() {
         Path resourceDirectory = Paths.get("src", "test", "resources", "code.wasm");
         String absolutePath = resourceDirectory.toFile().getAbsolutePath();
         Context ctx = new Context();
