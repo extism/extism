@@ -13,6 +13,16 @@
         "type": "string"
       }
     },
+    "allowed_paths": {
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "config": {
       "default": {},
       "type": "object",

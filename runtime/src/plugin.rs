@@ -40,6 +40,13 @@ impl Internal {
                 ctx = ctx.env(k, v)?;
             }
 
+            if let Some(a) = &manifest.as_ref().allowed_paths {
+                for (k, v) in a.iter() {
+                    let d = wasmtime_wasi::Dir::from_std_file(std::fs::File::open(k)?);
+                    ctx = ctx.preopened_dir(d, v)?;
+                }
+            }
+
             #[cfg(feature = "nn")]
             let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 

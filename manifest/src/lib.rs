@@ -160,6 +160,8 @@ pub struct Manifest {
     pub config: BTreeMap<String, String>,
     #[serde(default)]
     pub allowed_hosts: Option<Vec<String>>,
+    #[serde(default)]
+    pub allowed_paths: Option<BTreeMap<String, String>>,
 }
 
 impl Manifest {
