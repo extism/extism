@@ -11,24 +11,17 @@ impl<'a> PluginRef<'a> {
     ///
     /// - Resets memory offsets
     /// - Updates `input` pointer
-    /// - Reinstantiates if `should_reinstantiate` is set to `true`
     pub fn init(mut self, data: *const u8, data_len: usize) -> Self {
         trace!("PluginRef::init: {}", self.id,);
         self.as_mut().memory.reset();
         self.plugin.set_input(data, data_len);
 
-        // Reinstantiate plugin after calling _start because according to the WASI
-        // applicate ABI _start should be called "at most once":
-        // https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md
-        if self.plugin.should_reinstantiate {
-            let _ = self.plugin.reinstantiate();
-            self.plugin.should_reinstantiate = false;
-        }
-
         self
     }
 
     /// Create a `PluginRef` from a context
+    ///
+    /// - Reinstantiates the plugin if `should_reinstantiate` is set to `true` and WASI is enabled
     pub fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Option<Self> {
         trace!("Loading plugin {plugin_id}");
 
@@ -47,6 +40,17 @@ impl<'a> PluginRef<'a> {
         if clear_error {
             trace!("Clearing plugin error: {plugin_id}");
             plugin.clear_error();
+        }
+
+        // Reinstantiate plugin after calling _start because according to the WASI
+        // applicate ABI _start should be called "at most once":
+        // https://github.com/WebAssembly/WASI/blob/main/legacy/application-abi.md
+        if plugin.should_reinstantiate {
+            plugin.should_reinstantiate = false;
+            if let Err(e) = plugin.reinstantiate() {
+                error!("Failed to reinstantiate: {e:?}");
+                return plugin.error(format!("Failed to reinstantiate: {e:?}"), None);
+            }
         }
 
         Some(PluginRef {
