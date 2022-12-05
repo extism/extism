@@ -30,7 +30,9 @@ public class ExtismTest {
 
     @Test
     public void shouldReturnVersionString() {
-        var version = LibExtism.INSTANCE.extism_version();
-        assertThat(version).isNotNull();
+        try (var ctx = new Context()) {
+            var version = ctx.getVersion();
+            assertThat(version).isNotNull();
+        }
     }
 }
