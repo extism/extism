@@ -66,7 +66,7 @@ class TestExtism(unittest.TestCase):
     def _manifest(self):
         wasm = self._count_vowels_wasm()
         hash = hashlib.sha256(wasm).hexdigest()
-        return {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
+        return {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max_pages": 5}}
 
     def _count_vowels_wasm(self):
         path = join(dirname(__file__), "code.wasm")

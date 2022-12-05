@@ -334,7 +334,7 @@ pub(crate) fn http_request(
 
         let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
 
-        for (k, v) in req.header.iter() {
+        for (k, v) in req.headers.iter() {
             r = r.set(k, v);
         }
 

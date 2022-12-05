@@ -4,7 +4,7 @@ type error = [ `Msg of string ]
 val extism_version : unit -> string
 
 module Manifest : sig
-  type memory = { max : int option } [@@deriving yojson]
+  type memory = { max_pages : int option } [@@deriving yojson]
 
   type wasm_file = {
     path : string;
@@ -20,7 +20,7 @@ module Manifest : sig
 
   type wasm_url = {
     url : string;
-    header : (string * string) list option; [@yojson.option]
+    headers : (string * string) list option; [@yojson.option]
     name : string option; [@yojson.option]
     meth : string option; [@yojson.option] [@key "method"]
     hash : string option; [@yojson.option]
@@ -40,7 +40,7 @@ module Manifest : sig
   val data : ?name:string -> ?hash:string -> string -> wasm
 
   val url :
-    ?header:(string * string) list ->
+    ?headers:(string * string) list ->
     ?name:string ->
     ?meth:string ->
     ?hash:string ->
