@@ -35,6 +35,7 @@ pub struct Wasi {
 impl Internal {
     fn new(manifest: &Manifest, wasi: bool) -> Result<Self, Error> {
         let wasi = if wasi {
+            let auth = wasmtime_wasi::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
             for (k, v) in manifest.as_ref().config.iter() {
                 ctx = ctx.env(k, v)?;
@@ -42,7 +43,7 @@ impl Internal {
 
             if let Some(a) = &manifest.as_ref().allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::from_std_file(std::fs::File::open(k)?);
+                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
                     ctx = ctx.preopened_dir(d, v)?;
                 }
             }
