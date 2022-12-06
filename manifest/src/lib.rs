@@ -173,8 +173,8 @@ impl Manifest {
         }
     }
 
-    /// Disable HTTP requests to all hosts
-    pub fn disable_all_hosts(mut self) -> Self {
+    /// Disallow HTTP requests to all hosts
+    pub fn disallow_all_hosts(mut self) -> Self {
         self.allowed_hosts = Some(vec![]);
         self
     }
