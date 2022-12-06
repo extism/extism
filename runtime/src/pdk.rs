@@ -324,7 +324,7 @@ pub(crate) fn http_request(
 
                 pat.matches(host_str)
             });
-            if !allowed_hosts.is_empty() && !host_matches_allowed {
+            if !host_matches_allowed {
                 return Err(Error::msg(format!(
                     "HTTP request to {} is not allowed",
                     req.url
