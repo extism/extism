@@ -179,6 +179,12 @@ impl Manifest {
         self
     }
 
+    /// Set memory options
+    pub fn with_memory_options(mut self, memory: MemoryOptions) -> Self {
+        self.memory = memory;
+        self
+    }
+
     /// Add a hostname to `allowed_hosts`
     pub fn with_allowed_host(mut self, host: impl Into<String>) -> Self {
         match &mut self.allowed_hosts {
@@ -188,6 +194,12 @@ impl Manifest {
             None => self.allowed_hosts = Some(vec![host.into()]),
         }
 
+        self
+    }
+
+    /// Set `allowed_hosts`
+    pub fn with_allowed_hosts(mut self, hosts: impl Iterator<Item = String>) -> Self {
+        self.allowed_hosts = Some(hosts.collect());
         self
     }
 
@@ -206,6 +218,18 @@ impl Manifest {
             }
         }
 
+        self
+    }
+
+    /// Set `allowed_paths`
+    pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (PathBuf, PathBuf)>) -> Self {
+        self.allowed_paths = Some(paths.collect());
+        self
+    }
+
+    /// Set `config`
+    pub fn with_config(mut self, c: impl Iterator<Item = (String, String)>) -> Self {
+        self.config = c.collect();
         self
     }
 }
