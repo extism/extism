@@ -1,4 +1,5 @@
 use std::collections::BTreeMap;
+use std::path::{Path, PathBuf};
 
 #[deprecated]
 pub type ManifestMemory = MemoryOptions;
@@ -82,8 +83,7 @@ pub type ManifestWasm = Wasm;
 #[serde(untagged)]
 pub enum Wasm {
     File {
-        path: std::path::PathBuf,
-
+        path: PathBuf,
         #[serde(flatten)]
         meta: WasmMetadata,
     },
@@ -160,6 +160,8 @@ pub struct Manifest {
     pub config: BTreeMap<String, String>,
     #[serde(default)]
     pub allowed_hosts: Option<Vec<String>>,
+    #[serde(default)]
+    pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
 }
 
 impl Manifest {
@@ -169,6 +171,66 @@ impl Manifest {
             wasm: wasm.into(),
             ..Default::default()
         }
+    }
+
+    /// Disallow HTTP requests to all hosts
+    pub fn disallow_all_hosts(mut self) -> Self {
+        self.allowed_hosts = Some(vec![]);
+        self
+    }
+
+    /// Set memory options
+    pub fn with_memory_options(mut self, memory: MemoryOptions) -> Self {
+        self.memory = memory;
+        self
+    }
+
+    /// Add a hostname to `allowed_hosts`
+    pub fn with_allowed_host(mut self, host: impl Into<String>) -> Self {
+        match &mut self.allowed_hosts {
+            Some(h) => {
+                h.push(host.into());
+            }
+            None => self.allowed_hosts = Some(vec![host.into()]),
+        }
+
+        self
+    }
+
+    /// Set `allowed_hosts`
+    pub fn with_allowed_hosts(mut self, hosts: impl Iterator<Item = String>) -> Self {
+        self.allowed_hosts = Some(hosts.collect());
+        self
+    }
+
+    /// Add a path to `allowed_paths`
+    pub fn with_allowed_path(mut self, src: impl AsRef<Path>, dest: impl AsRef<Path>) -> Self {
+        let src = src.as_ref().to_path_buf();
+        let dest = dest.as_ref().to_path_buf();
+        match &mut self.allowed_paths {
+            Some(p) => {
+                p.insert(src, dest);
+            }
+            None => {
+                let mut p = BTreeMap::new();
+                p.insert(src, dest);
+                self.allowed_paths = Some(p);
+            }
+        }
+
+        self
+    }
+
+    /// Set `allowed_paths`
+    pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (PathBuf, PathBuf)>) -> Self {
+        self.allowed_paths = Some(paths.collect());
+        self
+    }
+
+    /// Set `config`
+    pub fn with_config(mut self, c: impl Iterator<Item = (String, String)>) -> Self {
+        self.config = c.collect();
+        self
     }
 }
 
