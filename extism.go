@@ -69,6 +69,7 @@ type Manifest struct {
 	} `json:"memory,omitempty"`
 	Config       map[string]string `json:"config,omitempty"`
 	AllowedHosts []string          `json:"allowed_hosts,omitempty"`
+	AllowedPaths map[string]string `json:"allowed_paths,omitempty"`
 }
 
 func makePointer(data []byte) unsafe.Pointer {
