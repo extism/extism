@@ -3,9 +3,11 @@ pub use extism_runtime::{sdk as bindings, Function};
 
 mod context;
 mod plugin;
+mod plugin_builder;
 
 pub use context::Context;
 pub use plugin::Plugin;
+pub use plugin_builder::PluginBuilder;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -148,7 +150,7 @@ mod tests {
 
         std::thread::spawn(|| {
             let context = Context::new();
-            let mut plugin = Plugin::new(&context, WASM, false).unwrap();
+            let mut plugin = PluginBuilder::new_with_data(WASM).build(&context).unwrap();
             let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
             std::io::stdout().write_all(output).unwrap();
         });
