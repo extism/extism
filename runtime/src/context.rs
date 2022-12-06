@@ -31,7 +31,12 @@ pub struct Function(
 );
 
 impl Function {
-    pub fn new<F>(name: impl Into<String>, t: wasmtime::FuncType, f: F) -> Function
+    pub fn new<F>(
+        name: impl Into<String>,
+        returns: impl IntoIterator<Item = wasmtime::ValType>,
+        args: impl IntoIterator<Item = wasmtime::ValType>,
+        f: F,
+    ) -> Function
     where
         F: 'static
             + Fn(
@@ -42,7 +47,11 @@ impl Function {
             + Sync
             + Send,
     {
-        Function(name.into(), t, Box::new(f))
+        Function(
+            name.into(),
+            wasmtime::FuncType::new(returns, args),
+            Box::new(f),
+        )
     }
 
     pub fn name(&self) -> &str {
