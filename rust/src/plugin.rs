@@ -21,7 +21,7 @@ impl<'a> Plugin<'a> {
 
     /// Create a new plugin from the given manifest
     pub fn new_with_manifest(
-        ctx: &'a mut Context,
+        ctx: &'a Context,
         manifest: &Manifest,
         wasi: bool,
     ) -> Result<Plugin<'a>, Error> {
@@ -29,9 +29,42 @@ impl<'a> Plugin<'a> {
         Self::new(ctx, data, wasi)
     }
 
+    /// Create a new plugin from the given manifest and import functions
+    pub fn new_with_manifest_and_functions(
+        ctx: &'a Context,
+        manifest: &Manifest,
+        imports: impl IntoIterator<Item = extism_runtime::Function>,
+        wasi: bool,
+    ) -> Result<Plugin<'a>, Error> {
+        let data = serde_json::to_vec(manifest)?;
+        Self::new_with_functions(ctx, data, imports, wasi)
+    }
+
     /// Create a new plugin from a WASM module
     pub fn new(ctx: &'a Context, data: impl AsRef<[u8]>, wasi: bool) -> Result<Plugin, Error> {
         let plugin = ctx.lock().new_plugin(data, wasi);
+
+        if plugin < 0 {
+            let err = unsafe { bindings::extism_error(&mut *ctx.lock(), -1) };
+            let buf = unsafe { std::ffi::CStr::from_ptr(err) };
+            let buf = buf.to_str().unwrap().to_string();
+            return Err(Error::UnableToLoadPlugin(buf));
+        }
+
+        Ok(Plugin {
+            id: plugin,
+            context: ctx,
+        })
+    }
+
+    /// Create a new plugin from a WASM module with imported functions
+    pub fn new_with_functions(
+        ctx: &'a Context,
+        data: impl AsRef<[u8]>,
+        imports: impl IntoIterator<Item = extism_runtime::Function>,
+        wasi: bool,
+    ) -> Result<Plugin, Error> {
+        let plugin = ctx.lock().new_plugin_with_functions(data, imports, wasi);
 
         if plugin < 0 {
             let err = unsafe { bindings::extism_error(&mut *ctx.lock(), -1) };

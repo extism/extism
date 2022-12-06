@@ -9,7 +9,7 @@ mod plugin;
 mod plugin_ref;
 pub mod sdk;
 
-pub use context::Context;
+pub use context::{Context, Function};
 pub use manifest::Manifest;
 pub use memory::{MemoryBlock, PluginMemory};
 pub use plugin::{Internal, Plugin, Wasi};

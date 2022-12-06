@@ -96,7 +96,17 @@ const EXPORT_MODULE_NAME: &str = "env";
 impl Plugin {
     /// Create a new plugin from the given WASM code
     pub fn new(wasm: impl AsRef<[u8]>, with_wasi: bool) -> Result<Plugin, Error> {
+        Self::new_with_functions(wasm, [], with_wasi)
+    }
+
+    /// Create a new plugin from the given WASM code and imported functions
+    pub fn new_with_functions(
+        wasm: impl AsRef<[u8]>,
+        imports: impl IntoIterator<Item = Function>,
+        with_wasi: bool,
+    ) -> Result<Plugin, Error> {
         let engine = Engine::default();
+        let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
         let memory = Memory::new(
@@ -171,6 +181,12 @@ impl Plugin {
                         log_debug(I64);
                         log_error(I64);
                     });
+
+                    for f in &mut imports {
+                        let name = f.name().to_string();
+                        let func = Func::new(&mut memory.store, f.ty().clone(), f.2);
+                        linker.define(EXPORT_MODULE_NAME, &name, func)?;
+                    }
                 }
             }
         }

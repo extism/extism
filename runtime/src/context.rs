@@ -16,6 +16,44 @@ pub struct Context {
 
 const START_REUSING_IDS: usize = 25;
 
+pub struct Function(
+    pub(crate) String,
+    pub(crate) wasmtime::FuncType,
+    pub(crate)  Box<
+        dyn Fn(
+                wasmtime::Caller<Internal>,
+                &[wasmtime::Val],
+                &mut [wasmtime::Val],
+            ) -> Result<(), Error>
+            + Sync
+            + Send,
+    >,
+);
+
+impl Function {
+    pub fn new<F>(name: impl Into<String>, t: wasmtime::FuncType, f: F) -> Function
+    where
+        F: 'static
+            + Fn(
+                wasmtime::Caller<Internal>,
+                &[wasmtime::Val],
+                &mut [wasmtime::Val],
+            ) -> Result<(), Error>
+            + Sync
+            + Send,
+    {
+        Function(name.into(), t, Box::new(f))
+    }
+
+    pub fn name(&self) -> &str {
+        &self.0
+    }
+
+    pub fn ty(&self) -> &wasmtime::FuncType {
+        &self.1
+    }
+}
+
 impl Context {
     /// Create a new context
     pub fn new() -> Context {
@@ -71,6 +109,23 @@ impl Context {
 
     pub fn new_plugin(&mut self, data: impl AsRef<[u8]>, with_wasi: bool) -> PluginIndex {
         let plugin = match Plugin::new(data, with_wasi) {
+            Ok(x) => x,
+            Err(e) => {
+                error!("Error creating Plugin: {:?}", e);
+                self.set_error(e);
+                return -1;
+            }
+        };
+        self.insert(plugin)
+    }
+
+    pub fn new_plugin_with_functions(
+        &mut self,
+        data: impl AsRef<[u8]>,
+        imports: impl IntoIterator<Item = Function>,
+        with_wasi: bool,
+    ) -> PluginIndex {
+        let plugin = match Plugin::new_with_functions(data, imports, with_wasi) {
             Ok(x) => x,
             Err(e) => {
                 error!("Error creating Plugin: {:?}", e);
