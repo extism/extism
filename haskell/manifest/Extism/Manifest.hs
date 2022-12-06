@@ -27,7 +27,7 @@ newtype Memory = Memory
 
 class JSONValue a where
   toJSONValue :: a -> JSValue
-  
+
 instance {-# OVERLAPS #-} (JSON a) => (JSONValue a) where
   toJSONValue = showJSON
 
@@ -150,16 +150,18 @@ data Manifest = Manifest
   , memory :: Maybe Memory
   , config :: Maybe [(String, String)]
   , allowedHosts :: Maybe [String]
+  , allowedPaths :: Maybe [(String, String)]
   }
 
--- | Create a new 'Manifest' from a list of 'Wasm' 
+-- | Create a new 'Manifest' from a list of 'Wasm'
 manifest :: [Wasm] -> Manifest
 manifest wasm =
   Manifest {
     wasm = wasm,
     memory = Nothing,
     config = Nothing,
-    allowedHosts = Nothing
+    allowedHosts = Nothing,
+    allowedPaths = Nothing
   }
 
 -- | Update the config values
@@ -173,14 +175,21 @@ withHosts :: Manifest -> [String] -> Manifest
 withHosts m hosts =
   m { allowedHosts = Just hosts }
 
+
+-- | Update allowed paths
+withPaths :: Manifest -> [(String, String)] -> Manifest
+withPaths m p =
+  m { allowedPaths = Just p }
+
 instance JSONValue Manifest where
-  toJSONValue (Manifest wasm memory config hosts) =
+  toJSONValue (Manifest wasm memory config hosts paths) =
     let w = makeArray wasm in
     object [
       "wasm" .= w,
       "memory" .= memory,
       "config" .= config,
-      "allowed_hosts" .= hosts
+      "allowed_hosts" .= hosts,
+      "allowed_paths" .= paths
     ]
 
 toString :: (JSONValue a) => a -> String
