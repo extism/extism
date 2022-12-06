@@ -11,6 +11,7 @@ pub struct Plugin {
     pub memory: PluginMemory,
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
+    pub should_reinstantiate: bool,
 }
 
 pub struct Internal {
@@ -184,6 +185,7 @@ impl Plugin {
             last_error: std::cell::RefCell::new(None),
             manifest,
             vars: BTreeMap::new(),
+            should_reinstantiate: false,
         })
     }
 
@@ -223,5 +225,17 @@ impl Plugin {
 
     pub fn dump_memory(&self) {
         self.memory.dump();
+    }
+
+    pub fn reinstantiate(&mut self) -> Result<(), Error> {
+        let instance = self
+            .linker
+            .instantiate(&mut self.memory.store, &self.module)?;
+        self.instance = instance;
+        Ok(())
+    }
+
+    pub fn has_wasi(&self) -> bool {
+        self.memory.store.data().wasi.is_some()
     }
 }

@@ -231,13 +231,19 @@ pub unsafe extern "C" fn extism_plugin_call(
     }
 
     let mut results = vec![Val::null(); n_results];
-    match func.call(&mut plugin.memory.store, &[], results.as_mut_slice()) {
-        Ok(r) => r,
-        Err(e) => {
-            plugin.dump_memory();
+    let res = func.call(&mut plugin.memory.store, &[], results.as_mut_slice());
 
+    plugin.dump_memory();
+
+    if plugin.has_wasi() && name == "_start" {
+        plugin.should_reinstantiate = true;
+    }
+
+    match res {
+        Ok(()) => (),
+        Err(e) => {
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
-                error!("WASI return code: {}", exit.0);
+                trace!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
                     return plugin.error(&e, exit.0);
                 }
@@ -249,10 +255,8 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     };
 
-    plugin.dump_memory();
-
-    // If `results` is empty then the return value is expected to be returned
-    // in the error block of the func call above using `I32Exit`
+    // If `results` is empty and the return value wasn't a WASI exit code then
+    // the call succeeded
     if results.is_empty() {
         return 0;
     }
