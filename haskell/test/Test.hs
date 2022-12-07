@@ -52,7 +52,7 @@ pluginConfig = do
     assertBool "set config" b)
 
 testSetLogFile = do
-  b <- setLogFile "stderr" Error
+  b <- setLogFile "stderr" Extism.Error
   assertBool "set log file" b
 
 t name f = TestLabel name (TestCase f)

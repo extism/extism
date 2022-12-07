@@ -1,17 +1,11 @@
 {-# LANGUAGE FlexibleInstances, UndecidableInstances, DeriveDataTypeable, DeriveAnyClass #-}
 
-module Extism.Manifest where
+module Extism.Manifest(module Extism.Manifest, module Text.JSON) where
 
 import Text.JSON
-  (
-    JSON,
-    JSValue(JSNull, JSObject, JSString, JSArray),
-    toJSString, showJSON, makeObj, encode, fromJSObject, valFromObj
-  )
 import qualified Data.ByteString as B
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as BS (unpack)
-import Text.JSON.Generic
 
 data Nullable a = Null | NotNull a
 
@@ -28,7 +22,7 @@ toNullable Nothing = Null
 fromNullable (NotNull x) = Just x
 fromNullable Null = Nothing
 
-(.?) a k = 
+(.?) a k =
   case valFromObj k a of
     Ok x -> NotNull x
     Error _ -> Null
@@ -53,7 +47,7 @@ instance JSON Memory where
     ]
   readJSON (JSObject obj) =
     valFromObj "max_pages" obj
-  
+
 -- | HTTP request
 data HTTPRequest = HTTPRequest
   {
@@ -61,14 +55,14 @@ data HTTPRequest = HTTPRequest
   , headers :: Nullable [(String, String)]
   , method :: Nullable String
   }
-  
-requestObj (HTTPRequest url headers method) = 
+
+requestObj (HTTPRequest url headers method) =
   [
-    "url" .= url, 
+    "url" .= url,
     "headers" .= headers,
     "method" .= method
   ]
-  
+
 instance JSON HTTPRequest where
   showJSON req =  object $ requestObj req
   readJSON (JSObject x) =
@@ -102,7 +96,7 @@ instance JSON WasmFile where
     case path of
       Null -> Error "Missing 'path' field"
       NotNull path -> Ok (WasmFile path name hash)
-      
+
 -- | WASM from raw bytes
 data WasmData = WasmData
   {
@@ -139,7 +133,7 @@ data WasmURL = WasmURL
   , urlName :: Nullable String
   , urlHash :: Nullable String
   }
-  
+
 
 instance JSON WasmURL where
   showJSON (WasmURL req name hash) =
@@ -166,9 +160,9 @@ instance JSON Wasm where
       URL u -> showJSON u
   readJSON x =
     let file = (readJSON x :: Result WasmFile) in
-    case file of 
+    case file of
       Ok x -> Ok (File x)
-      Error _ -> 
+      Error _ ->
         let data' = (readJSON x :: Result WasmData) in
         case data' of
         Ok x -> Ok (Data x)
@@ -212,8 +206,8 @@ data Manifest = Manifest
   , allowedHosts :: Nullable [String]
   , allowedPaths :: Nullable [(String, String)]
   }
-  
-  
+
+
 instance JSON Manifest where
   showJSON (Manifest wasm memory config hosts paths) =
     let w = makeArray wasm in
