@@ -19,9 +19,6 @@ public class BasicTests
         using var plugin = context.CreatePlugin(wasm, withWasi: true);
 
         var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
-        Assert.Equal(0, response);
-
-        var output = Encoding.UTF8.GetString(plugin.OutputData());
-        Assert.Equal("{\"count\": 3}", output);
+        Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
     }
 }
