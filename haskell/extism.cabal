@@ -22,18 +22,7 @@ library
         base              >= 4.16.1 && < 4.18.0,
         bytestring        >= 0.11.3 && < 0.12,
         json              >= 0.10 && < 0.11,
-        manifest
-
-library manifest
-    exposed-modules:  Extism.Manifest
-    visibility:       public
-    hs-source-dirs:   manifest
-    default-language: Haskell2010
-    build-depends:
-        base              >= 4.16.1 && < 4.18.0,
-        bytestring        >= 0.11.3 && < 0.12,
-        json              >= 0.10 && < 0.11,
-        base64-bytestring >= 1.2.1 && < 1.3,
+        extism-manifest   >= 0.0.0 && < 0.1.0
 
 test-suite extism-example
     type:             exitcode-stdio-1.0
