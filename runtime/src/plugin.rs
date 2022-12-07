@@ -185,7 +185,7 @@ impl Plugin {
 
         let instance = linker.instantiate(&mut memory.store, main)?;
 
-        Ok(Plugin {
+        let mut plugin = Plugin {
             module: main.clone(),
             linker,
             memory,
@@ -194,7 +194,11 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
-        })
+        };
+
+        plugin.initialize_runtime()?;
+
+        Ok(plugin)
     }
 
     /// Get a function by name
@@ -240,10 +244,35 @@ impl Plugin {
             .linker
             .instantiate(&mut self.memory.store, &self.module)?;
         self.instance = instance;
+        self.initialize_runtime()?;
         Ok(())
     }
 
     pub fn has_wasi(&self) -> bool {
         self.memory.store.data().wasi.is_some()
+    }
+
+    pub fn initialize_runtime(&mut self) -> Result<(), Error> {
+        // Initialize Haskell runtime if `hs_init` is present
+        if let Some(init) = self.get_func("hs_init") {
+            let mut results = vec![Val::null(); init.ty(&self.memory.store).results().len()];
+            init.call(
+                &mut self.memory.store,
+                &[Val::I32(0), Val::I32(0)],
+                results.as_mut_slice(),
+            )?;
+        }
+
+        Ok(())
+    }
+}
+
+impl Drop for Plugin {
+    fn drop(&mut self) {
+        // Cleanup haskell runtime if `hs_exit` is present
+        if let Some(cleanup) = self.get_func("hs_exit") {
+            let mut results = vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
+            let _ = cleanup.call(&mut self.memory.store, &[], results.as_mut_slice());
+        }
     }
 }
