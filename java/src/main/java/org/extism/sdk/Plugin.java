@@ -110,7 +110,6 @@ public class Plugin implements AutoCloseable {
      * @return {@literal true} if update was successful
      */
     public boolean update(Manifest manifest, boolean withWASI) {
-        Objects.requireNonNull(manifest, "manifest");
         return update(serialize(manifest), withWASI);
     }
 
