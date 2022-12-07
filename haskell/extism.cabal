@@ -19,9 +19,9 @@ library
     extra-libraries:    extism
     extra-lib-dirs:     /usr/local/lib
     build-depends:
-        base >=4 && <5,
-        bytestring,
-        json,
+        base              >= 4.16.1 && <= 4.17,
+        bytestring        >= 0.11.3 && < 0.12,
+        json              >= 0.10 && < 0.11,
         manifest
 
 library manifest
@@ -30,10 +30,10 @@ library manifest
     hs-source-dirs:   manifest
     default-language: Haskell2010
     build-depends:
-        base,
-        bytestring,
-        base64-bytestring,
-        json
+        base              >= 4.16.1 && <= 4.17,
+        bytestring        >= 0.11.3 && < 0.12,
+        json              >= 0.10 && < 0.11,
+        base64-bytestring >= 1.2.1 && < 1.3,
 
 test-suite extism-example
     type:             exitcode-stdio-1.0
