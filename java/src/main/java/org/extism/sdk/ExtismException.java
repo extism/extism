@@ -1,5 +1,8 @@
 package org.extism.sdk;
 
+/**
+ * Thrown when an exceptional condition has occurred.
+ */
 public class ExtismException extends RuntimeException {
 
     public ExtismException() {

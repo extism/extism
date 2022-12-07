@@ -5,5 +5,15 @@ package org.extism.sdk.wasm;
  */
 public interface WasmSource {
 
+    /**
+     * Logical name of the WASM source
+     * @return
+     */
     String name();
+
+    /**
+     * Hash of the WASM source
+     * @return
+     */
+    String hash();
 }
