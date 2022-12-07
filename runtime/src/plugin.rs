@@ -258,7 +258,7 @@ impl Plugin {
         if let Some(init) = self.get_func("hs_init") {
             if self.get_func("hs_exit").is_some() {
                 // as a final check, ensure that the `hs_init` signature meets the exepectation
-                if init.typed::<(i32, i32), (), _>(self.memory.store).is_err() {
+                if init.typed::<(i32, i32), (), _>(&self.memory.store).is_err() {
                     return Ok(());
                 }
 
@@ -283,7 +283,7 @@ impl Drop for Plugin {
         if let Some(cleanup) = self.get_func("hs_exit") {
             if self.get_func("hs_init").is_some() {
                 // as a final check, ensure that the `hs_init` signature meets the exepectation
-                if cleanup.typed::<(), (), _>(self.memory.store).is_err() {
+                if cleanup.typed::<(), (), _>(&self.memory.store).is_err() {
                     return;
                 }
 
