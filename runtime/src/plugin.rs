@@ -155,7 +155,7 @@ impl Plugin {
             for import in module.imports() {
                 let module_name = import.module();
                 let name = import.name();
-                use ValType::*;
+                use wasmtime::ValType::*;
 
                 if module_name == EXPORT_MODULE_NAME {
                     define_funcs!(name,  {

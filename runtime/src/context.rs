@@ -16,53 +16,6 @@ pub struct Context {
 
 const START_REUSING_IDS: usize = 25;
 
-pub struct Function(
-    pub(crate) String,
-    pub(crate) wasmtime::FuncType,
-    pub(crate)  Box<
-        dyn Fn(
-                wasmtime::Caller<Internal>,
-                &[wasmtime::Val],
-                &mut [wasmtime::Val],
-            ) -> Result<(), Error>
-            + Sync
-            + Send,
-    >,
-);
-
-impl Function {
-    pub fn new<F>(
-        name: impl Into<String>,
-        returns: impl IntoIterator<Item = wasmtime::ValType>,
-        args: impl IntoIterator<Item = wasmtime::ValType>,
-        f: F,
-    ) -> Function
-    where
-        F: 'static
-            + Fn(
-                wasmtime::Caller<Internal>,
-                &[wasmtime::Val],
-                &mut [wasmtime::Val],
-            ) -> Result<(), Error>
-            + Sync
-            + Send,
-    {
-        Function(
-            name.into(),
-            wasmtime::FuncType::new(returns, args),
-            Box::new(f),
-        )
-    }
-
-    pub fn name(&self) -> &str {
-        &self.0
-    }
-
-    pub fn ty(&self) -> &wasmtime::FuncType {
-        &self.1
-    }
-}
-
 impl Context {
     /// Create a new context
     pub fn new() -> Context {

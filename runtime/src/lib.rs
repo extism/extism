@@ -2,6 +2,7 @@ pub use anyhow::Error;
 pub(crate) use wasmtime::*;
 
 mod context;
+mod function;
 pub mod manifest;
 mod memory;
 pub(crate) mod pdk;
@@ -9,7 +10,8 @@ mod plugin;
 mod plugin_ref;
 pub mod sdk;
 
-pub use context::{Context, Function};
+pub use context::Context;
+pub use function::{Function, ValType};
 pub use manifest::Manifest;
 pub use memory::{MemoryBlock, PluginMemory};
 pub use plugin::{Internal, Plugin, Wasi};
