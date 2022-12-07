@@ -8,7 +8,7 @@ bug-reports:        https://github.com/extism/extism
 synopsis:           Extism manifest bindings
 description:        Bindings to Extism WebAssembly manifest
 category:           Plugins, WebAssembly
-extra-source-files: CHANGELOG.md
+extra-source-files: ../CHANGELOG.md
 
 library
     exposed-modules:    Extism.Manifest
