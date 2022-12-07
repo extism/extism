@@ -252,23 +252,63 @@ impl Plugin {
         self.memory.store.data().wasi.is_some()
     }
 
-    pub fn initialize_runtime(&mut self) -> Result<(), Error> {
+    fn detect_runtime(&mut self) -> Option<Runtime> {
+        // Check for Haskell runtime initialization functions
         // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
-            if self.get_func("hs_exit").is_some() {
-                // as a final check, ensure that the `hs_init` signature meets the exepectation
+            if let Some(cleanup) = self.get_func("hs_exit") {
                 if init.typed::<(i32, i32), (), _>(&self.memory.store).is_err() {
-                    return Ok(());
+                    trace!("hs_init found, but has the incorrect type");
+                    return None;
                 }
+                return Some(Runtime::Haskell { init, cleanup });
+            }
+        }
 
-                let mut results = vec![Val::null(); init.ty(&self.memory.store).results().len()];
+        trace!("No runtime detected");
+        None
+    }
+
+    fn initialize_runtime(&mut self) -> Result<(), Error> {
+        if let Some(runtime) = self.detect_runtime() {
+            return runtime.init(self);
+        }
+
+        Ok(())
+    }
+}
+
+// Enumerates the supported PDK language runtimes
+enum Runtime {
+    Haskell { init: Func, cleanup: Func },
+}
+
+impl Runtime {
+    fn init(&self, plugin: &mut Plugin) -> Result<(), Error> {
+        match self {
+            Runtime::Haskell { init, cleanup: _ } => {
+                let mut results = vec![Val::null(); init.ty(&plugin.memory.store).results().len()];
                 init.call(
-                    &mut self.memory.store,
+                    &mut plugin.memory.store,
                     &[Val::I32(0), Val::I32(0)],
                     results.as_mut_slice(),
                 )?;
                 info!("Initialized Haskell language runtime");
+            }
+        }
+        Ok(())
+    }
+
+    fn cleanup(&self, plugin: &mut Plugin) -> Result<(), Error> {
+        match self {
+            // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
+            // by calling the `hs_exit` export
+            Runtime::Haskell { init: _, cleanup } => {
+                let mut results =
+                    vec![Val::null(); cleanup.ty(&plugin.memory.store).results().len()];
+                cleanup.call(&mut plugin.memory.store, &[], results.as_mut_slice())?;
+                info!("Cleaned up Haskell language runtime");
             }
         }
 
@@ -278,18 +318,9 @@ impl Plugin {
 
 impl Drop for Plugin {
     fn drop(&mut self) {
-        // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
-        // by calling the `hs_exit` export
-        if let Some(cleanup) = self.get_func("hs_exit") {
-            if self.get_func("hs_init").is_some() {
-                // as a final check, ensure that the `hs_init` signature meets the exepectation
-                if cleanup.typed::<(), (), _>(&self.memory.store).is_err() {
-                    return;
-                }
-
-                let mut results = vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
-                let _ = cleanup.call(&mut self.memory.store, &[], results.as_mut_slice());
-                info!("Cleaned up Haskell language runtime");
+        if let Some(runtime) = self.detect_runtime() {
+            if let Err(e) = runtime.cleanup(self) {
+                error!("Unable to cleanup runtime: {e:?}");
             }
         }
     }
