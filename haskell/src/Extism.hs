@@ -9,8 +9,8 @@ import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
 import Data.Bifunctor (second)
-import Text.JSON (encode, toJSObject)
-import Extism.Manifest (Manifest, toString, toJSONValue)
+import Text.JSON (encode, toJSObject, showJSON)
+import Extism.Manifest (Manifest, toString)
 import Extism.Bindings
 
 -- | Context for managing plugins
@@ -116,7 +116,7 @@ setConfig (Plugin (Context ctx) plugin) x =
   if plugin < 0
     then return False
   else
-    let obj = toJSObject [(k, toJSONValue v) | (k, v) <- x] in
+    let obj = toJSObject [(k, showJSON v) | (k, v) <- x] in
     let bs = toByteString (encode obj) in
     let length = fromIntegral (B.length bs) in
     unsafeUseAsCString bs (\s -> do
