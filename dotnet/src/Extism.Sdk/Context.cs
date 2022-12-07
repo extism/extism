@@ -58,7 +58,7 @@ public class Context : IDisposable
     /// Get this this <see cref="Context"/>'s last error.
     /// </summary>
     /// <returns></returns>
-    public string? GetError()
+    internal string? GetError()
     {
         CheckNotDisposed();
 

@@ -15,15 +15,5 @@ using var plugin = context.CreatePlugin(wasm, withWasi: true);
 Console.Write("Input: ");
 var input = Console.ReadLine() ?? "";
 
-var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes(input));
-if (response == 0)
-{
-    var output = Encoding.UTF8.GetString(plugin.OutputData());
-    Console.WriteLine(output);
-}
-else
-{
-    Console.WriteLine($"Status code: {response}");
-    Console.WriteLine($"Context error: {context.GetError()}");
-    Console.WriteLine($"Plugin error: {plugin.GetError()}");
-}
+var output = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes(input));
+Console.WriteLine(Encoding.UTF8.GetString((output)));
