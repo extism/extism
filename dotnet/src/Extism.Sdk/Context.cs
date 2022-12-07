@@ -84,6 +84,7 @@ public class Context : IDisposable
     /// <summary>
     /// Throw an appropriate exception if the plugin has been disposed.
     /// </summary>
+    /// <exception cref="ObjectDisposedException"></exception>
     protected void CheckNotDisposed()
     {
         Interlocked.MemoryBarrier();

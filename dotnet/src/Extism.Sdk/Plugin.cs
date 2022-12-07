@@ -71,7 +71,8 @@ public class Plugin : IDisposable
     /// <param name="functionName">Name of the function in the plugin to invoke.</param>
     /// <param name="data">A buffer to provide as input to the function.</param>
     /// <returns>The exit code of the function.</returns>
-    unsafe public ReadOnlySpan<byte> CallFunction(string functionName, Span<byte> data)
+    /// <exception cref="ExtismException"></exception>
+    unsafe public ReadOnlySpan<byte> CallFunction(string functionName, ReadOnlySpan<byte> data)
     {
         CheckNotDisposed();
 
@@ -148,6 +149,7 @@ public class Plugin : IDisposable
     /// <summary>
     /// Throw an appropriate exception if the plugin has been disposed.
     /// </summary>
+    /// <exception cref="ObjectDisposedException"></exception>
     protected void CheckNotDisposed()
     {
         Interlocked.MemoryBarrier();
