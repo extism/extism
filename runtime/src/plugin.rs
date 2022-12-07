@@ -253,14 +253,23 @@ impl Plugin {
     }
 
     pub fn initialize_runtime(&mut self) -> Result<(), Error> {
-        // Initialize Haskell runtime if `hs_init` is present
+        // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
+        // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
-            let mut results = vec![Val::null(); init.ty(&self.memory.store).results().len()];
-            init.call(
-                &mut self.memory.store,
-                &[Val::I32(0), Val::I32(0)],
-                results.as_mut_slice(),
-            )?;
+            if self.get_func("hs_exit").is_some() {
+                // as a final check, ensure that the `hs_init` signature meets the exepectation
+                if init.typed::<(i32, i32), (), _>(self.memory.store).is_err() {
+                    return Ok(());
+                }
+
+                let mut results = vec![Val::null(); init.ty(&self.memory.store).results().len()];
+                init.call(
+                    &mut self.memory.store,
+                    &[Val::I32(0), Val::I32(0)],
+                    results.as_mut_slice(),
+                )?;
+                info!("Initialized Haskell language runtime");
+            }
         }
 
         Ok(())
@@ -269,10 +278,19 @@ impl Plugin {
 
 impl Drop for Plugin {
     fn drop(&mut self) {
-        // Cleanup haskell runtime if `hs_exit` is present
+        // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
+        // by calling the `hs_exit` export
         if let Some(cleanup) = self.get_func("hs_exit") {
-            let mut results = vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
-            let _ = cleanup.call(&mut self.memory.store, &[], results.as_mut_slice());
+            if self.get_func("hs_init").is_some() {
+                // as a final check, ensure that the `hs_init` signature meets the exepectation
+                if cleanup.typed::<(), (), _>(self.memory.store).is_err() {
+                    return;
+                }
+
+                let mut results = vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
+                let _ = cleanup.call(&mut self.memory.store, &[], results.as_mut_slice());
+                info!("Cleaned up Haskell language runtime");
+            }
         }
     }
 }
