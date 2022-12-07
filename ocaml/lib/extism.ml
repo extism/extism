@@ -114,25 +114,17 @@ module Manifest = struct
   }
   [@@deriving yojson]
 
+  type dict = (string * string) list
+  type config = (string * string option) list
 
-  type dict = (string * string option) list
-  type config = (string * string) list
-    
   let is_null = function `Null -> true | _ -> false
 
   let dict_of_yojson j =
     let assoc = Yojson.Safe.Util.to_assoc j in
-    List.map
-      (fun (k, v) ->
-        (k, Yojson.Safe.Util.to_string v))
-      assoc
+    List.map (fun (k, v) -> (k, Yojson.Safe.Util.to_string v)) assoc
 
-  let yojson_of_dict c =
-    `Assoc
-      (List.map
-         (fun (k, v) -> (k, `String v))
-         c)
-  
+  let yojson_of_dict c = `Assoc (List.map (fun (k, v) -> (k, `String v)) c)
+
   let config_of_yojson j =
     let assoc = Yojson.Safe.Util.to_assoc j in
     List.map
@@ -145,7 +137,7 @@ module Manifest = struct
       (List.map
          (fun (k, v) -> (k, match v with None -> `Null | Some v -> `String v))
          c)
-    
+
   type wasm_url = {
     url : string;
     headers : dict option; [@yojson.option]
@@ -172,13 +164,15 @@ module Manifest = struct
     memory : memory option; [@yojson.option]
     config : config option; [@yojson.option]
     allowed_hosts : string list option; [@yojson.option]
-    allowed_paths: dict option; [@yojson.option]
+    allowed_paths : dict option; [@yojson.option]
   }
   [@@deriving yojson]
 
   let file ?name ?hash path = File { path; name; hash }
   let data ?name ?hash data = Data { data; name; hash }
-  let url ?headers ?name ?meth ?hash url = Url { headers; name; meth; hash; url }
+
+  let url ?headers ?name ?meth ?hash url =
+    Url { headers; name; meth; hash; url }
 
   let v ?config ?memory ?allowed_hosts ?allowed_paths wasm =
     { config; wasm; memory; allowed_hosts; allowed_paths }
@@ -225,7 +219,7 @@ let with_context f =
 let set_config plugin = function
   | None -> true
   | Some config ->
-      let config = Manifest.yojson_of_dict config |> Yojson.Safe.to_string in
+      let config = Manifest.yojson_of_config config |> Yojson.Safe.to_string in
       Bindings.extism_plugin_config plugin.ctx.pointer plugin.id config
         (Unsigned.UInt64.of_int (String.length config))
 

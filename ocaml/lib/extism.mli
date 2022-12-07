@@ -54,6 +54,7 @@ module Manifest : sig
     ?config:config ->
     ?memory:memory ->
     ?allowed_hosts:string list ->
+    ?allowed_paths:dict ->
     wasm list ->
     t
 
@@ -75,7 +76,7 @@ val set_log_file :
   ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
 val plugin :
-  ?config:(string * string option) list ->
+  ?config:Manifest.config ->
   ?wasi:bool ->
   Context.t ->
   string ->
