@@ -1,9 +1,10 @@
-{-# LANGUAGE FlexibleInstances, UndecidableInstances, DeriveDataTypeable, DeriveAnyClass #-}
+{-# LANGUAGE AllowAmbiguousTypes #-}
 
 module Extism.Manifest(module Extism.Manifest, module Text.JSON) where
 
 import Text.JSON
 import qualified Data.ByteString as B
+import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as BS (unpack)
 
@@ -14,6 +15,7 @@ isNull JSNull = True
 isNull _ = False
 filterNulls obj = [(a, b) | (a, b) <- obj, not (isNull b)]
 object x = makeObj $ filterNulls x
+objectWithNulls x = makeObj x
 nonNull x = NotNull x
 null' = Null
 (.=) a b = (a, showJSON b)
@@ -22,11 +24,18 @@ toNullable Nothing = Null
 fromNullable (NotNull x) = Just x
 fromNullable Null = Nothing
 
-(.?) a k =
+(.?) (JSObject a) k =
   case valFromObj k a of
     Ok x -> NotNull x
     Error _ -> Null
+(.?) _ _ = Null
 (.??) a k = toNullable $ lookup k a
+
+find :: JSON a => String -> JSValue -> Nullable JSValue
+find k obj = obj .? k
+
+update :: JSON a => String -> a -> JSValue -> JSValue
+update k v (JSObject obj) = object $ (fromJSObject obj) ++ [k .= v]
 
 instance JSON a => JSON (Nullable a) where
   showJSON (NotNull x) = showJSON x
@@ -45,8 +54,9 @@ instance JSON Memory where
     object [
       "max_pages" .= max
     ]
-  readJSON (JSObject obj) =
-    valFromObj "max_pages" obj
+  readJSON obj =
+    let max = obj .? "max_pages" in
+    Ok (Memory max)
 
 -- | HTTP request
 data HTTPRequest = HTTPRequest
@@ -65,7 +75,7 @@ requestObj (HTTPRequest url headers method) =
 
 instance JSON HTTPRequest where
   showJSON req =  object $ requestObj req
-  readJSON (JSObject x) =
+  readJSON x =
     let url = x .? "url" in
     let headers =  x .? "headers" in
     let method =  x .? "method" in
@@ -89,7 +99,7 @@ instance JSON WasmFile where
       "name" .= name,
       "hash" .= hash
     ]
-  readJSON (JSObject x) =
+  readJSON x =
     let path = x .? "url" in
     let name = x .? "name" in
     let hash = x .? "hash" in
@@ -97,33 +107,45 @@ instance JSON WasmFile where
       Null -> Error "Missing 'path' field"
       NotNull path -> Ok (WasmFile path name hash)
 
+
+newtype Base64 = Base64 B.ByteString
+
 -- | WASM from raw bytes
 data WasmData = WasmData
   {
-    dataBytes :: B.ByteString
+    dataBytes :: Base64
   , dataName :: Nullable String
   , dataHash :: Nullable String
   }
 
+  
+instance JSON Base64 where
+  showJSON (Base64 bs) = showJSON (BS.unpack $ B64.encode bs)
+  readJSON (JSString s) =
+    let toByteString x = B.pack (Prelude.map c2w x) in
+    case B64.decode (toByteString (fromJSString s)) of
+    Left msg -> Error msg
+    Right d -> Ok (Base64 d)
+  
 
 instance JSON WasmData where
-  showJSON (WasmData x name hash) =
+  showJSON (WasmData (Base64 x) name hash) =
     let bytes = BS.unpack $ B64.encode x in
     object [
       "data" .= bytes,
       "name" .= name,
       "hash" .= hash
     ]
-  readJSON (JSObject x) =
+  readJSON x =
     let d = x .? "data" in
     let name = x .? "name" in
     let hash = x .? "hash" in
     case d of
       Null -> Error "Missing 'path' field"
       NotNull d ->
-        case B64.decode d of
-          Left msg -> Error msg
-          Right d' -> Ok (WasmData d' name hash)
+        case readJSON d of
+          Error msg -> Error msg
+          Ok d' -> Ok (WasmData d' name hash)
 
 
 -- | WASM from a URL
@@ -141,7 +163,7 @@ instance JSON WasmURL where
       "name" .= name :
       "hash" .= hash :
       requestObj req)
-  readJSON (JSObject x) =
+  readJSON x =
     let req = x .? "req" in
     let name = x .? "name" in
     let hash = x .? "hash" in
@@ -183,7 +205,7 @@ wasmURL method url =
 
 wasmData :: B.ByteString -> Wasm
 wasmData d =
-  Data WasmData { dataBytes = d, dataName = null', dataHash = null' }
+  Data WasmData { dataBytes = Base64 d, dataName = null', dataHash = null' }
 
 withName :: Wasm -> String -> Wasm
 withName (Data d) name = Data d { dataName = nonNull name }
@@ -218,7 +240,7 @@ instance JSON Manifest where
       "allowed_hosts" .= hosts,
       "allowed_paths" .= paths
     ]
-  readJSON (JSObject x) =
+  readJSON x =
     let wasm = x .? "wasm" in
     let memory = x .? "memory" in
     let config = x .? "config" in
