@@ -169,6 +169,7 @@ export type Manifest = {
   memory?: ManifestMemory;
   config?: PluginConfig;
   allowed_hosts?: Array<string>;
+  allowed_paths?: Record<string, string>;
 };
 
 /**

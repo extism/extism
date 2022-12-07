@@ -53,6 +53,7 @@ public:
   Config config;
   std::vector<Wasm> wasm;
   std::vector<std::string> allowed_hosts;
+  std::map<std::string, std::string> allowed_paths;
 
   static Manifest path(std::string s, std::string hash = std::string()) {
     Manifest m;
@@ -92,6 +93,14 @@ public:
         h.append(s);
       }
       doc["allowed_hosts"] = h;
+    }
+
+    if (!this->allowed_paths.empty()) {
+      Json::Value h;
+      for (auto k : this->allowed_paths) {
+        h[k.first] = k.second;
+      }
+      doc["allowed_paths"] = h;
     }
 
     Json::FastWriter writer;
