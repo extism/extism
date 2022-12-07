@@ -49,7 +49,7 @@ public class Plugin implements AutoCloseable {
 
     private static byte[] serialize(Manifest manifest) {
         Objects.requireNonNull(manifest, "manifest");
-        return JsonSerde.toJson(manifest).getBytes();
+        return JsonSerde.toJson(manifest).getBytes(StandardCharsets.UTF_8);
     }
 
     /**
@@ -110,11 +110,8 @@ public class Plugin implements AutoCloseable {
      * @return {@literal true} if update was successful
      */
     public boolean update(Manifest manifest, boolean withWASI) {
-
         Objects.requireNonNull(manifest, "manifest");
-
-        byte[] manifestBytes = JsonSerde.toJson(manifest).getBytes(StandardCharsets.UTF_8);
-        return update(manifestBytes, withWASI);
+        return update(serialize(manifest), withWASI);
     }
 
     /**
@@ -125,9 +122,7 @@ public class Plugin implements AutoCloseable {
      * @return {@literal true} if update was successful
      */
     public boolean update(byte[] manifestBytes, boolean withWASI) {
-
         Objects.requireNonNull(manifestBytes, "manifestBytes");
-
         return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length, withWASI);
     }
 
@@ -146,9 +141,7 @@ public class Plugin implements AutoCloseable {
      * @return
      */
     public boolean updateConfig(String json) {
-
         Objects.requireNonNull(json, "json");
-
         return updateConfig(json.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -159,9 +152,7 @@ public class Plugin implements AutoCloseable {
      * @return {@literal true} if update was successful
      */
     public boolean updateConfig(byte[] jsonBytes) {
-
         Objects.requireNonNull(jsonBytes, "jsonBytes");
-
         return LibExtism.INSTANCE.extism_plugin_config(context.getPointer(), index, jsonBytes, jsonBytes.length);
     }
 
