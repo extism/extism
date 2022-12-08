@@ -1,5 +1,3 @@
-{-# LANGUAGE AllowAmbiguousTypes #-}
-
 module Extism.JSON (
   module Extism.JSON,
   module Text.JSON
@@ -34,7 +32,7 @@ fromNullable Null = Nothing
 (.?) _ _ = Null
 (.??) a k = toNullable $ lookup k a
 
-find :: JSON a => String -> JSValue -> Nullable JSValue
+find :: JSON a => String -> JSValue -> Nullable a
 find k obj = obj .? k
 
 update :: JSON a => String -> a -> JSValue -> JSValue

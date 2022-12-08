@@ -1,4 +1,4 @@
-module Extism.Manifest(module Extism.Manifest) where
+module Extism.Manifest where
 
 import Extism.JSON
 import qualified Data.ByteString as B
