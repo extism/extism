@@ -171,7 +171,7 @@ jobs:
         run: |
           cd python
           cp ../README.md .
-          poetry install
+          poetry install --no-dev
           poetry run python example.py
           poetry run python -m unittest discover
 
