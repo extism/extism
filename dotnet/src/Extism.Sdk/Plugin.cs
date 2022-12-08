@@ -71,20 +71,32 @@ public class Plugin : IDisposable
     /// <param name="functionName">Name of the function in the plugin to invoke.</param>
     /// <param name="data">A buffer to provide as input to the function.</param>
     /// <returns>The exit code of the function.</returns>
-    unsafe public int CallFunction(string functionName, Span<byte> data)
+    /// <exception cref="ExtismException"></exception>
+    unsafe public ReadOnlySpan<byte> CallFunction(string functionName, ReadOnlySpan<byte> data)
     {
         CheckNotDisposed();
 
         fixed (byte* dataPtr = data)
         {
-            return LibExtism.extism_plugin_call(_context.NativeHandle, NativeHandle, functionName, dataPtr, data.Length);
+            int response = LibExtism.extism_plugin_call(_context.NativeHandle, NativeHandle, functionName, dataPtr, data.Length);
+            if (response == 0) {
+                return OutputData();
+            } else {
+                var errorMsg = GetError();
+                if (errorMsg != null) {
+                    throw new ExtismException(errorMsg);
+                } else {
+                    throw new ExtismException("Call to Extism failed");
+                }
+            }
         }
     }
 
     /// <summary>
     /// Get the length of a plugin's output data.
     /// </summary>
-    public int OutputLength()
+    /// <returns></returns>
+    internal int OutputLength()
     {
         CheckNotDisposed();
 
@@ -94,7 +106,7 @@ public class Plugin : IDisposable
     /// <summary>
     /// Get the plugin's output data.
     /// </summary>
-    public ReadOnlySpan<byte> OutputData()
+    internal ReadOnlySpan<byte> OutputData()
     {
         CheckNotDisposed();
 
@@ -111,7 +123,7 @@ public class Plugin : IDisposable
     /// Get the error associated with the current plugin.
     /// </summary>
     /// <returns></returns>
-    public string? GetError()
+    internal string? GetError()
     {
         CheckNotDisposed();
 
@@ -137,6 +149,7 @@ public class Plugin : IDisposable
     /// <summary>
     /// Throw an appropriate exception if the plugin has been disposed.
     /// </summary>
+    /// <exception cref="ObjectDisposedException"></exception>
     protected void CheckNotDisposed()
     {
         Interlocked.MemoryBarrier();

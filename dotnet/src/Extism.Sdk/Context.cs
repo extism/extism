@@ -58,7 +58,7 @@ public class Context : IDisposable
     /// Get this this <see cref="Context"/>'s last error.
     /// </summary>
     /// <returns></returns>
-    public string? GetError()
+    internal string? GetError()
     {
         CheckNotDisposed();
 
@@ -84,6 +84,7 @@ public class Context : IDisposable
     /// <summary>
     /// Throw an appropriate exception if the plugin has been disposed.
     /// </summary>
+    /// <exception cref="ObjectDisposedException"></exception>
     protected void CheckNotDisposed()
     {
         Interlocked.MemoryBarrier();
