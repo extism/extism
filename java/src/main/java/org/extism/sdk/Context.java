@@ -10,7 +10,7 @@ import com.sun.jna.Pointer;
 public class Context implements AutoCloseable {
 
     /**
-     * Holds a pointer to the ExtismContext struct.
+     * Holds a pointer to the native ExtismContext struct.
      */
     private final Pointer contextPointer;
 
@@ -29,7 +29,7 @@ public class Context implements AutoCloseable {
      *
      * @param manifest The manifest for the plugin
      * @param withWASI Set to true to enable WASI
-     * @return
+     * @return the plugin instance
      */
     public Plugin newPlugin(Manifest manifest, boolean withWASI) {
         return new Plugin(this, manifest, withWASI);
@@ -64,15 +64,15 @@ public class Context implements AutoCloseable {
     /**
      * Get the error associated with a context, if plugin is {@literal null} then the context error will be returned.
      * @param plugin
-     * @return
+     * @return the error message
      */
-    public String error(Plugin plugin) {
+    protected String error(Plugin plugin) {
         return LibExtism.INSTANCE.extism_error(this.contextPointer, plugin == null ? -1 : plugin.getIndex());
     }
 
     /**
      * Return the raw pointer to this context.
-     * @return
+     * @return the pointer
      */
     public Pointer getPointer() {
         return this.contextPointer;

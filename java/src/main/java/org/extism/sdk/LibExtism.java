@@ -78,7 +78,7 @@ public interface LibExtism extends Library {
      * @param function_name  is the function to call
      * @param data           is the data input data
      * @param dataLength     is the data input data length
-     * @return the result code of the plugin call.
+     * @return the result code of the plugin call. {@literal -1} in case of error, {@literal 0} otherwise.
      */
     int extism_plugin_call(Pointer contextPointer, int pluginIndex, String function_name, byte[] data, int dataLength);
 
@@ -87,7 +87,7 @@ public interface LibExtism extends Library {
      *
      * @param contextPointer
      * @param pluginIndex
-     * @return
+     * @return the length of the output data in bytes.
      */
     int extism_plugin_output_length(Pointer contextPointer, int pluginIndex);
 
@@ -110,7 +110,7 @@ public interface LibExtism extends Library {
      * @param wasm
      * @param length
      * @param withWASI
-     * @return
+     * @return {@literal true} if update was successful
      */
     boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, boolean withWASI);
 
@@ -129,7 +129,7 @@ public interface LibExtism extends Library {
      * @param pluginIndex
      * @param json
      * @param jsonLength
-     * @return
+     * @return {@literal true} if update was successful
      */
     boolean extism_plugin_config(Pointer contextPointer, int pluginIndex, byte[] json, int jsonLength);
 }

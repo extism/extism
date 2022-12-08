@@ -1,5 +1,6 @@
 package org.extism.sdk.manifest;
 
+import com.google.gson.annotations.SerializedName;
 import org.extism.sdk.wasm.WasmSource;
 
 import java.util.ArrayList;
@@ -9,43 +10,56 @@ import java.util.Map;
 
 public class Manifest {
 
-    private final List<WasmSource> wasm;
+    @SerializedName("wasm")
+    private final List<WasmSource> sources;
 
-    private final ManifestMemory memory;
+    @SerializedName("memory")
+    private final MemoryOptions memoryOptions;
 
+    // FIXME remove this and related stuff if not supported in java-sdk
+    @SerializedName("allowed_hosts")
     private final List<String> allowedHosts;
 
+    @SerializedName("config")
     private final Map<String, String> config;
 
     public Manifest() {
         this(new ArrayList<>(), null, null, null);
     }
 
+    public Manifest(WasmSource source) {
+        this(List.of(source));
+    }
+
     public Manifest(List<WasmSource> sources) {
         this(sources, null, null, null);
     }
 
-    public Manifest(List<WasmSource> sources, ManifestMemory memory) {
-        this(sources, memory, null, null);
+    public Manifest(List<WasmSource> sources, MemoryOptions memoryOptions) {
+        this(sources, memoryOptions, null, null);
     }
 
-    public Manifest(List<WasmSource> sources, ManifestMemory memory, Map<String, String> config, List<String> allowedHosts) {
-        this.wasm = sources;
-        this.memory = memory;
+    public Manifest(List<WasmSource> sources, MemoryOptions memoryOptions, Map<String, String> config) {
+        this(sources, memoryOptions, config, null);
+    }
+
+    public Manifest(List<WasmSource> sources, MemoryOptions memoryOptions, Map<String, String> config, List<String> allowedHosts) {
+        this.sources = sources;
+        this.memoryOptions = memoryOptions;
         this.config = config;
         this.allowedHosts = allowedHosts;
     }
 
     public void addSource(WasmSource source) {
-        this.wasm.add(source);
+        this.sources.add(source);
     }
 
     public List<WasmSource> getSources() {
-        return Collections.unmodifiableList(wasm);
+        return Collections.unmodifiableList(sources);
     }
 
-    public ManifestMemory getMemory() {
-        return memory;
+    public MemoryOptions getMemoryOptions() {
+        return memoryOptions;
     }
 
     public Map<String, String> getConfig() {
