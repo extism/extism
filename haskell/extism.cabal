@@ -1,73 +1,45 @@
 cabal-version:      3.0
 name:               extism
 version:            0.0.1
-
--- A short (one-line) description of the package.
-synopsis: Extism bindings
-
--- A longer description of the package.
-description: Bindings to Extism, the universal plugin system
-
--- A URL where users can report bugs.
-bug-reports: https://github.com/extism/extism
-
--- The license under which the package is released.
-license: BSD-3-Clause
-
-author:             Extism authors
+license:            BSD-3-Clause
 maintainer:         oss@extism.org
-
--- A copyright notice.
--- copyright:
-category: Plugins, WebAssembly
+author:             Extism authors
+bug-reports:        https://github.com/extism/extism
+synopsis:           Extism bindings
+description:        Bindings to Extism, the universal plugin system
+category:           Plugins, WebAssembly
 extra-source-files: CHANGELOG.md
 
 library
-    exposed-modules: Extism
+    exposed-modules:    Extism
     reexported-modules: Extism.Manifest
+    hs-source-dirs:     src
+    other-modules:      Extism.Bindings
+    default-language:   Haskell2010
+    extra-libraries:    extism
+    extra-lib-dirs:     /usr/local/lib
+    build-depends:
+        base              >= 4.16.1 && < 4.18.0,
+        bytestring        >= 0.11.3 && < 0.12,
+        json              >= 0.10 && < 0.11,
+        extism-manifest   >= 0.0.0 && < 0.1.0
 
-    -- Modules included in this library but not exported.
-    other-modules: Extism.Bindings
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:    
-          base >= 1.6.0
-        , bytestring
-        , json
-        , manifest
-    hs-source-dirs:   src
+test-suite extism-example
+    type:             exitcode-stdio-1.0
+    main-is:          Example.hs
     default-language: Haskell2010
-    extra-libraries: extism
-    extra-lib-dirs: /usr/local/lib
+    build-depends:
+        base,
+        extism,
+        bytestring
 
-library manifest
-    exposed-modules: Extism.Manifest
-    
-    visibility: public
-    
-    -- Modules included in this library but not exported.
-    other-modules:
-
-    -- LANGUAGE extensions used by modules in this package.
-    -- other-extensions:
-    build-depends:    
-          base
-        , bytestring
-        , base64-bytestring
-        , json
-    hs-source-dirs:   manifest
-    default-language: Haskell2010
-    
-Test-Suite extism-example
-    type:       exitcode-stdio-1.0
-    main-is:    Example.hs
-    build-depends: base, extism, bytestring
-    default-language: Haskell2010
-        
-Test-Suite extism-test
-    type:       exitcode-stdio-1.0
-    main-is:    Test.hs
+test-suite extism-test
+    type:             exitcode-stdio-1.0
+    main-is:          Test.hs
     hs-source-dirs:   test
-    build-depends: base, extism, bytestring, HUnit
     default-language: Haskell2010
+    build-depends:
+        base,
+        extism,
+        bytestring,
+        HUnit

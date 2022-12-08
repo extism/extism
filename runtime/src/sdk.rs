@@ -230,6 +230,18 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
+    if name != "_start" {
+        // Initialize Haskell runtime if `hs_init` is present
+        if let Some(init) = plugin.get_func("hs_init") {
+            let mut results = vec![Val::null(); init.ty(&plugin.memory.store).results().len()];
+            let _ = init.call(
+                &mut plugin.memory.store,
+                &[Val::I32(0), Val::I32(0)],
+                results.as_mut_slice(),
+            );
+        }
+    }
+
     let mut results = vec![Val::null(); n_results];
     let res = func.call(&mut plugin.memory.store, &[], results.as_mut_slice());
 
