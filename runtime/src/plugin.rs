@@ -260,7 +260,7 @@ impl Plugin {
             if let Some(cleanup) = self.get_func("hs_exit") {
                 if init.typed::<(i32, i32), (), _>(&self.memory.store).is_err() {
                     trace!(
-                        "hs_init found with type {:?}, which doesn't match the type exported by the Haskell runtime", 
+                        "hs_init function found with type {:?}",
                         init.ty(&self.memory.store)
                     );
                     return None;
