@@ -23,8 +23,8 @@
 
     <developers>
         <developer>
-            <name>Benjamin Eckel</name>
-            <email>Benjamin.Eckel@youremailhere.org</email> <!-- FIXME add proper email -->
+            <name>The Extism Authors</name>
+            <email>oss@extism.org</email>
             <roles>
                 <role>Maintainer</role>
             </roles>
