@@ -61,18 +61,15 @@ fn check_hash(hash: &Option<String>, data: &[u8]) -> Result<(), Error> {
 }
 
 /// Convert from manifest to a wasmtime Module
-fn to_module(
-    engine: &Engine,
-    wasm: &extism_manifest::ManifestWasm,
-) -> Result<(String, Module), Error> {
+fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, Module), Error> {
     match wasm {
-        extism_manifest::ManifestWasm::File { path, name, hash } => {
+        extism_manifest::Wasm::File { path, meta } => {
             if cfg!(not(feature = "register-filesystem")) {
                 return Err(anyhow::format_err!("File-based registration is disabled"));
             }
 
             // Figure out a good name for the file
-            let name = match name {
+            let name = match &meta.name {
                 None => {
                     let name = path.with_extension("");
                     name.file_name().unwrap().to_string_lossy().to_string()
@@ -85,31 +82,30 @@ fn to_module(
             let mut file = std::fs::File::open(path)?;
             file.read_to_end(&mut buf)?;
 
-            check_hash(hash, &buf)?;
+            check_hash(&meta.hash, &buf)?;
 
             Ok((name, Module::new(engine, buf)?))
         }
-        extism_manifest::ManifestWasm::Data { name, data, hash } => {
-            check_hash(hash, data)?;
+        extism_manifest::Wasm::Data { meta, data } => {
+            check_hash(&meta.hash, data)?;
             Ok((
-                name.as_deref().unwrap_or("main").to_string(),
+                meta.name.as_deref().unwrap_or("main").to_string(),
                 Module::new(engine, data)?,
             ))
         }
         #[allow(unused)]
-        extism_manifest::ManifestWasm::Url {
-            name,
+        extism_manifest::Wasm::Url {
             req:
                 extism_manifest::HttpRequest {
                     url,
-                    header,
+                    headers,
                     method,
                 },
-            hash,
+            meta,
         } => {
             // Get the file name
             let file_name = url.split('/').last().unwrap_or_default();
-            let name = match name {
+            let name = match &meta.name {
                 Some(name) => name.as_str(),
                 None => {
                     let mut name = "main";
@@ -124,9 +120,9 @@ fn to_module(
                 }
             };
 
-            if let Some(h) = hash {
+            if let Some(h) = &meta.hash {
                 if let Ok(Some(data)) = cache_get_file(h) {
-                    check_hash(hash, &data)?;
+                    check_hash(&meta.hash, &data)?;
                     let module = Module::new(engine, data)?;
                     return Ok((name.to_string(), module));
                 }
@@ -142,7 +138,7 @@ fn to_module(
                 // Setup request
                 let mut req = ureq::request(method.as_deref().unwrap_or("GET"), url);
 
-                for (k, v) in header.iter() {
+                for (k, v) in headers.iter() {
                     req = req.set(k, v);
                 }
 
@@ -152,11 +148,11 @@ fn to_module(
                 r.read_to_end(&mut data)?;
 
                 // Try to cache file
-                if let Some(hash) = hash {
+                if let Some(hash) = &meta.hash {
                     cache_add_file(hash, &data);
                 }
 
-                check_hash(hash, &data)?;
+                check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
                 let module = Module::new(engine, data)?;

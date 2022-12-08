@@ -324,7 +324,7 @@ pub(crate) fn http_request(
 
                 pat.matches(host_str)
             });
-            if !allowed_hosts.is_empty() && !host_matches_allowed {
+            if !host_matches_allowed {
                 return Err(Error::msg(format!(
                     "HTTP request to {} is not allowed",
                     req.url
@@ -334,7 +334,7 @@ pub(crate) fn http_request(
 
         let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
 
-        for (k, v) in req.header.iter() {
+        for (k, v) in req.headers.iter() {
             r = r.set(k, v);
         }
 

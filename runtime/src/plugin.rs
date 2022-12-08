@@ -11,6 +11,7 @@ pub struct Plugin {
     pub memory: PluginMemory,
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
+    pub should_reinstantiate: bool,
 }
 
 pub struct Internal {
@@ -34,9 +35,17 @@ pub struct Wasi {
 impl Internal {
     fn new(manifest: &Manifest, wasi: bool) -> Result<Self, Error> {
         let wasi = if wasi {
+            let auth = wasmtime_wasi::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
             for (k, v) in manifest.as_ref().config.iter() {
                 ctx = ctx.env(k, v)?;
+            }
+
+            if let Some(a) = &manifest.as_ref().allowed_paths {
+                for (k, v) in a.iter() {
+                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
+                    ctx = ctx.preopened_dir(d, v)?;
+                }
             }
 
             #[cfg(feature = "nn")]
@@ -90,7 +99,10 @@ impl Plugin {
         let engine = Engine::default();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
-        let memory = Memory::new(&mut store, MemoryType::new(4, manifest.as_ref().memory.max))?;
+        let memory = Memory::new(
+            &mut store,
+            MemoryType::new(4, manifest.as_ref().memory.max_pages),
+        )?;
         let mut memory = PluginMemory::new(store, memory);
 
         let mut linker = Linker::new(&engine);
@@ -181,6 +193,7 @@ impl Plugin {
             last_error: std::cell::RefCell::new(None),
             manifest,
             vars: BTreeMap::new(),
+            should_reinstantiate: false,
         })
     }
 
@@ -220,5 +233,17 @@ impl Plugin {
 
     pub fn dump_memory(&self) {
         self.memory.dump();
+    }
+
+    pub fn reinstantiate(&mut self) -> Result<(), Error> {
+        let instance = self
+            .linker
+            .instantiate(&mut self.memory.store, &self.module)?;
+        self.instance = instance;
+        Ok(())
+    }
+
+    pub fn has_wasi(&self) -> bool {
+        self.memory.store.data().wasi.is_some()
     }
 }

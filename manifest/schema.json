@@ -13,6 +13,16 @@
         "type": "string"
       }
     },
+    "allowed_paths": {
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
     "config": {
       "default": {},
       "type": "object",
@@ -22,11 +32,11 @@
     },
     "memory": {
       "default": {
-        "max": null
+        "max_pages": null
       },
       "allOf": [
         {
-          "$ref": "#/definitions/ManifestMemory"
+          "$ref": "#/definitions/MemoryOptions"
         }
       ]
     },
@@ -34,15 +44,15 @@
       "default": [],
       "type": "array",
       "items": {
-        "$ref": "#/definitions/ManifestWasm"
+        "$ref": "#/definitions/Wasm"
       }
     }
   },
   "definitions": {
-    "ManifestMemory": {
+    "MemoryOptions": {
       "type": "object",
       "properties": {
-        "max": {
+        "max_pages": {
           "type": [
             "integer",
             "null"
@@ -52,7 +62,7 @@
         }
       }
     },
-    "ManifestWasm": {
+    "Wasm": {
       "anyOf": [
         {
           "type": "object",
@@ -113,7 +123,7 @@
                 "null"
               ]
             },
-            "header": {
+            "headers": {
               "default": {},
               "type": "object",
               "additionalProperties": {

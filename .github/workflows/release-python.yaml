@@ -24,7 +24,7 @@ jobs:
           cd python
           cp ../LICENSE .
           make clean
-          make prepare
+          poetry install --no-dev
           poetry build
 
       - name: Release Python Host SDK

@@ -145,7 +145,7 @@ export type ManifestWasmData = {
  * Memory options for the {@link Plugin}
  */
 export type ManifestMemory = {
-  max?: number;
+  max_pages?: number;
 };
 
 /**
@@ -169,6 +169,7 @@ export type Manifest = {
   memory?: ManifestMemory;
   config?: PluginConfig;
   allowed_hosts?: Array<string>;
+  allowed_paths?: Record<string, string>;
 };
 
 /**

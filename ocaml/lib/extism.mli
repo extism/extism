@@ -4,7 +4,10 @@ type error = [ `Msg of string ]
 val extism_version : unit -> string
 
 module Manifest : sig
-  type memory = { max : int option } [@@deriving yojson]
+  type memory = { max_pages : int option } [@@deriving yojson]
+
+  type dict = (string * string) list
+  type config = (string * (string option)) list
 
   type wasm_file = {
     path : string;
@@ -20,27 +23,27 @@ module Manifest : sig
 
   type wasm_url = {
     url : string;
-    header : (string * string) list option; [@yojson.option]
+    headers : dict option; [@yojson.option]
     name : string option; [@yojson.option]
     meth : string option; [@yojson.option] [@key "method"]
     hash : string option; [@yojson.option]
   }
 
   type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url
-  type config = (string * (string option)) list
 
   type t = {
     wasm : wasm list;
     memory : memory option;
     config : config option;
     allowed_hosts : string list option;
+    allowed_paths : dict option;
   }
 
   val file : ?name:string -> ?hash:string -> string -> wasm
   val data : ?name:string -> ?hash:string -> string -> wasm
 
   val url :
-    ?header:(string * string) list ->
+    ?headers:(string * string) list ->
     ?name:string ->
     ?meth:string ->
     ?hash:string ->
@@ -51,6 +54,7 @@ module Manifest : sig
     ?config:config ->
     ?memory:memory ->
     ?allowed_hosts:string list ->
+    ?allowed_paths:dict ->
     wasm list ->
     t
 
@@ -72,7 +76,7 @@ val set_log_file :
   ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
 val plugin :
-  ?config:(string * string option) list ->
+  ?config:Manifest.config ->
   ?wasi:bool ->
   Context.t ->
   string ->

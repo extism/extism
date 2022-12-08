@@ -53,11 +53,11 @@ type WasmFile struct {
 }
 
 type WasmUrl struct {
-	Url    string            `json:"url"`
-	Hash   string            `json:"hash,omitempty"`
-	Header map[string]string `json:"header,omitempty"`
-	Name   string            `json:"name,omitempty"`
-	Method string            `json:"method,omitempty"`
+	Url     string            `json:"url"`
+	Hash    string            `json:"hash,omitempty"`
+	Headers map[string]string `json:"headers,omitempty"`
+	Name    string            `json:"name,omitempty"`
+	Method  string            `json:"method,omitempty"`
 }
 
 type Wasm interface{}
@@ -65,10 +65,11 @@ type Wasm interface{}
 type Manifest struct {
 	Wasm   []Wasm `json:"wasm"`
 	Memory struct {
-		Max uint32 `json:"max,omitempty"`
+		MaxPages uint32 `json:"max_pages,omitempty"`
 	} `json:"memory,omitempty"`
 	Config       map[string]string `json:"config,omitempty"`
 	AllowedHosts []string          `json:"allowed_hosts,omitempty"`
+	AllowedPaths map[string]string `json:"allowed_paths,omitempty"`
 }
 
 func makePointer(data []byte) unsafe.Pointer {
