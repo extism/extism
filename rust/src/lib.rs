@@ -150,7 +150,9 @@ mod tests {
 
         std::thread::spawn(|| {
             let context = Context::new();
-            let mut plugin = PluginBuilder::new_with_data(WASM).build(&context).unwrap();
+            let mut plugin = PluginBuilder::new_with_module(WASM)
+                .build(&context)
+                .unwrap();
             let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
             std::io::stdout().write_all(output).unwrap();
         });
