@@ -343,7 +343,7 @@ pub(crate) fn http_request(
         let global_timeout = data.plugin().manifest.as_ref().http_timeout_ms;
         let req_timeout = req.timeout_ms;
 
-        r = r.timeout(std::time::Duration::from_micros(
+        r = r.timeout(std::time::Duration::from_millis(
             match (global_timeout, req_timeout) {
                 (Some(g), None) => g,
                 (None, Some(r)) => r,

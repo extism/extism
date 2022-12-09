@@ -143,7 +143,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                     req = req.set(k, v);
                 }
 
-                req = req.timeout(std::time::Duration::from_micros(
+                req = req.timeout(std::time::Duration::from_millis(
                     timeout_ms.unwrap_or(30000),
                 ));
 
