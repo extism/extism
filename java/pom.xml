@@ -31,15 +31,6 @@
             <organization>Dylibso, Inc.</organization>
             <organizationUrl>https://dylib.so</organizationUrl>
         </developer>
-        <developer>
-            <name>The Extism Authors</name>
-            <email>oss@extism.org</email>
-            <roles>
-                <role>Maintainer</role>
-            </roles>
-            <organization>Dylibso, Inc.</organization>
-            <organizationUrl>https://dylib.so</organizationUrl>
-        </developer>
     </developers>
 
     <scm>
