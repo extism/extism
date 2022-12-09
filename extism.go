@@ -58,6 +58,7 @@ type WasmUrl struct {
 	Headers map[string]string `json:"headers,omitempty"`
 	Name    string            `json:"name,omitempty"`
 	Method  string            `json:"method,omitempty"`
+	Timeout uint64            `json:"timeout_ms,omitempty"`
 }
 
 type Wasm interface{}
@@ -70,6 +71,7 @@ type Manifest struct {
 	Config       map[string]string `json:"config,omitempty"`
 	AllowedHosts []string          `json:"allowed_hosts,omitempty"`
 	AllowedPaths map[string]string `json:"allowed_paths,omitempty"`
+	Timeout      uint64            `json:"http_timeout_ms,omitempty"`
 }
 
 func makePointer(data []byte) unsafe.Pointer {

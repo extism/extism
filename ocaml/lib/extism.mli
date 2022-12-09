@@ -24,6 +24,7 @@ module Manifest : sig
   type wasm_url = {
     url : string;
     headers : dict option; [@yojson.option]
+    timeout_ms: int option; [@yojson.option]
     name : string option; [@yojson.option]
     meth : string option; [@yojson.option] [@key "method"]
     hash : string option; [@yojson.option]
@@ -37,6 +38,7 @@ module Manifest : sig
     config : config option;
     allowed_hosts : string list option;
     allowed_paths : dict option;
+    http_timeout_ms: int option;
   }
 
   val file : ?name:string -> ?hash:string -> string -> wasm
@@ -47,6 +49,7 @@ module Manifest : sig
     ?name:string ->
     ?meth:string ->
     ?hash:string ->
+    ?timeout_ms:int ->
     string ->
     wasm
 
@@ -55,6 +58,7 @@ module Manifest : sig
     ?memory:memory ->
     ?allowed_hosts:string list ->
     ?allowed_paths:dict ->
+    ?http_timeout_ms:int ->
     wasm list ->
     t
 

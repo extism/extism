@@ -25,13 +25,15 @@ data HTTPRequest = HTTPRequest
     url :: String
   , headers :: Nullable [(String, String)]
   , method :: Nullable String
+  , timeout :: Nullable Int
   }
 
-requestObj (HTTPRequest url headers method) =
+requestObj (HTTPRequest url headers method timeout) =
   [
     "url" .= url,
     "headers" .= headers,
-    "method" .= method
+    "method" .= method,
+    "timeout_ms" .= timeout
   ]
 
 instance JSON HTTPRequest where
@@ -40,9 +42,10 @@ instance JSON HTTPRequest where
     let url = x .? "url" in
     let headers =  x .? "headers" in
     let method =  x .? "method" in
+    let timeout = x .? "timeout_ms" in
     case url of
       Null -> Error "Missing 'url' field"
-      NotNull url -> Ok (HTTPRequest url headers method)
+      NotNull url -> Ok (HTTPRequest url headers method timeout)
 
 
 -- | WASM from file
@@ -152,7 +155,7 @@ wasmFile path =
 
 wasmURL :: String -> String -> Wasm
 wasmURL method url =
-  let r = HTTPRequest { url = url, headers = null', method = nonNull method } in
+  let r = HTTPRequest { url = url, headers = null', timeout = null', method = nonNull method } in
   URL WasmURL { req = r, urlName = null', urlHash = null' }
 
 wasmData :: B.ByteString -> Wasm
@@ -179,18 +182,20 @@ data Manifest = Manifest
   , config :: Nullable [(String, String)]
   , allowedHosts :: Nullable [String]
   , allowedPaths :: Nullable [(String, String)]
+  , httpTimeout :: Nullable Int
   }
 
 
 instance JSON Manifest where
-  showJSON (Manifest wasm memory config hosts paths) =
+  showJSON (Manifest wasm memory config hosts paths httpTimeout) =
     let w = makeArray wasm in
     object [
       "wasm" .= w,
       "memory" .= memory,
       "config" .= config,
       "allowed_hosts" .= hosts,
-      "allowed_paths" .= paths
+      "allowed_paths" .= paths,
+      "http_timeout_ms" .= httpTimeout
     ]
   readJSON x =
     let wasm = x .? "wasm" in
@@ -198,9 +203,10 @@ instance JSON Manifest where
     let config = x .? "config" in
     let hosts = x .? "allowed_hosts" in
     let paths = x .? "allowed_paths" in
+    let timeout = x .? "http_timeout_ms" in
     case fromNullable wasm of
       Nothing -> Error "Missing 'wasm' field"
-      Just wasm -> Ok (Manifest wasm memory config hosts paths)
+      Just wasm -> Ok (Manifest wasm memory config hosts paths timeout)
 
 -- | Create a new 'Manifest' from a list of 'Wasm'
 manifest :: [Wasm] -> Manifest
@@ -210,7 +216,8 @@ manifest wasm =
     memory = null',
     config = null',
     allowedHosts = null',
-    allowedPaths = null'
+    allowedPaths = null',
+    httpTimeout = null'
   }
 
 -- | Update the config values
@@ -229,6 +236,11 @@ withHosts m hosts =
 withPaths :: Manifest -> [(String, String)] -> Manifest
 withPaths m p =
   m { allowedPaths = nonNull p }
+
+-- | Set global timeout for `extism_http_request`
+withHTTPTimeout :: Manifest -> Int -> Manifest
+withHTTPTimeout m t =
+  m { httpTimeout = nonNull t }
 
 toString :: (JSON a) => a -> String
 toString v =
