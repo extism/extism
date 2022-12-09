@@ -20,7 +20,7 @@ jobs:
           name: release-artifacts
       - name: Extract Archive
         run: |
-          tar -xvzf libextism-x86_64-pc-windows-msvc-v0.1.0.tar.gz --directory dotnet/nuget/runtimes
+          tar -xvzf libextism-x86_64-pc-windows-msvc-v*.tar.gz --directory dotnet/nuget/runtimes
           mv dotnet/nuget/runtimes/extism.dll dotnet/nuget/runtimes/win-x64.dll
       - name: Publish win-x64
         run: |
