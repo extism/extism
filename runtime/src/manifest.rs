@@ -100,6 +100,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                     url,
                     headers,
                     method,
+                    timeout_ms,
                 },
             meta,
         } => {
@@ -141,6 +142,10 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 for (k, v) in headers.iter() {
                     req = req.set(k, v);
                 }
+
+                req = req.timeout(std::time::Duration::from_micros(
+                    timeout_ms.unwrap_or(30000),
+                ));
 
                 // Fetch WASM code
                 let mut r = req.call()?.into_reader();

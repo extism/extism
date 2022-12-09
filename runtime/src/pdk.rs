@@ -339,6 +339,19 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
+        // Configure timeout
+        let global_timeout = data.plugin().manifest.as_ref().http_timeout_ms;
+        let req_timeout = req.timeout_ms;
+
+        r = r.timeout(std::time::Duration::from_micros(
+            match (global_timeout, req_timeout) {
+                (Some(g), None) => g,
+                (None, Some(r)) => r,
+                (Some(g), Some(r)) => g.min(r),
+                (None, None) => 30000, // Default to 30 seconds
+            },
+        ));
+
         let res = if body_offset > 0 {
             let buf = data.memory().get(body_offset)?;
             let res = r.send_bytes(buf)?;
