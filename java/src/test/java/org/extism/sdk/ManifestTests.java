@@ -33,6 +33,6 @@ public class ManifestTests {
 
         assertJson(json).at("/wasm").isArray();
         assertJson(json).at("/wasm").hasSize(1);
-        assertJson(json).at("/memory/max_pages").isEqualTo(4);
+        assertJson(json).at("/memory/max").isEqualTo(4);
     }
 }
