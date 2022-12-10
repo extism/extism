@@ -81,6 +81,23 @@ impl Context {
         self.insert(plugin)
     }
 
+    pub fn new_plugin_with_functions(
+        &mut self,
+        data: impl AsRef<[u8]>,
+        imports: impl IntoIterator<Item = Function>,
+        with_wasi: bool,
+    ) -> PluginIndex {
+        let plugin = match Plugin::new_with_functions(data, imports, with_wasi) {
+            Ok(x) => x,
+            Err(e) => {
+                error!("Error creating Plugin: {:?}", e);
+                self.set_error(e);
+                return -1;
+            }
+        };
+        self.insert(plugin)
+    }
+
     /// Set the context error
     pub fn set_error(&mut self, e: impl std::fmt::Debug) {
         trace!("Set context error: {:?}", e);
