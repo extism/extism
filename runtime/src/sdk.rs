@@ -40,6 +40,243 @@ pub unsafe extern "C" fn extism_plugin_new(
     ctx.new_plugin(data, with_wasi)
 }
 
+#[repr(C)]
+pub union ExtismValUnion {
+    i32: i32,
+    i64: i64,
+    f32: f32,
+    f64: f64,
+    // TODO: v128, ExternRef, FuncRef
+}
+
+#[repr(C)]
+pub struct ExtismVal {
+    t: ValType,
+    v: ExtismValUnion,
+}
+
+pub struct ExtismFunction(Function);
+
+impl From<&wasmtime::Val> for ExtismVal {
+    fn from(value: &wasmtime::Val) -> Self {
+        match value.ty() {
+            wasmtime::ValType::I32 => ExtismVal {
+                t: ValType::I32,
+                v: ExtismValUnion {
+                    i32: value.unwrap_i32(),
+                },
+            },
+            wasmtime::ValType::I64 => ExtismVal {
+                t: ValType::I64,
+                v: ExtismValUnion {
+                    i64: value.unwrap_i64(),
+                },
+            },
+            wasmtime::ValType::F32 => ExtismVal {
+                t: ValType::F32,
+                v: ExtismValUnion {
+                    f32: value.unwrap_f32(),
+                },
+            },
+            wasmtime::ValType::F64 => ExtismVal {
+                t: ValType::F64,
+                v: ExtismValUnion {
+                    f64: value.unwrap_f64(),
+                },
+            },
+            t => todo!("{}", t),
+        }
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_memory(ctx: *mut Context) -> *mut u8 {
+    if ctx.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let ctx = &mut *ctx;
+
+    let plugin = match ctx.current_plugin() {
+        None => return std::ptr::null_mut(),
+        Some(p) => p,
+    };
+
+    plugin.memory.data_mut().as_mut_ptr()
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_alloc(ctx: *mut Context, n: Size) -> u64 {
+    if ctx.is_null() {
+        return 0;
+    }
+
+    let ctx = &mut *ctx;
+
+    let plugin = match ctx.current_plugin() {
+        None => return 0,
+        Some(p) => p,
+    };
+
+    let mem = match plugin.memory.alloc(n as usize) {
+        Ok(x) => x,
+        Err(e) => return plugin.error(e, 0),
+    };
+
+    mem.offset as u64
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_length(ctx: *mut Context, n: u64) -> Size {
+    if ctx.is_null() {
+        return 0;
+    }
+
+    let ctx = &mut *ctx;
+
+    let plugin = match ctx.current_plugin() {
+        None => return 0,
+        Some(p) => p,
+    };
+
+    match plugin.memory.block_length(n as usize) {
+        Some(x) => x as Size,
+        None => 0,
+    }
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_free(ctx: *mut Context, ptr: u64) {
+    if ctx.is_null() {
+        return;
+    }
+
+    let ctx = &mut *ctx;
+
+    let plugin = match ctx.current_plugin() {
+        None => return,
+        Some(p) => p,
+    };
+
+    plugin.memory.free(ptr as usize);
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_function_new(
+    name: *const std::ffi::c_char,
+    inputs: *const ValType,
+    n_inputs: Size,
+    outputs: *const ValType,
+    n_outputs: Size,
+    func: extern "C" fn(
+        inputs: *const ExtismVal,
+        n_inputs: Size,
+        outputs: *mut ExtismVal,
+        n_outputs: Size,
+        data: *mut std::ffi::c_void,
+    ),
+    user_data: *mut std::ffi::c_void,
+    free_user_data: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
+) -> *mut ExtismFunction {
+    let name = match std::ffi::CStr::from_ptr(name).to_str() {
+        Ok(x) => x.to_string(),
+        Err(_) => {
+            return std::ptr::null_mut();
+        }
+    };
+
+    let inputs = if inputs.is_null() || n_inputs == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(inputs, n_inputs as usize)
+    }
+    .to_vec();
+
+    let output_types = if outputs.is_null() || n_outputs == 0 {
+        &[]
+    } else {
+        std::slice::from_raw_parts(outputs, n_outputs as usize)
+    }
+    .to_vec();
+
+    let u = UserData::new(user_data, None);
+    let user_data = UserData::new(user_data, free_user_data);
+    let f = Function::new(
+        name,
+        inputs,
+        output_types.clone(),
+        move |_caller, inputs, outputs| {
+            let inputs: Vec<_> = inputs.into_iter().map(ExtismVal::from).collect();
+            let mut output_tmp: Vec<_> = output_types
+                .iter()
+                .map(|t| ExtismVal {
+                    t: t.clone(),
+                    v: ExtismValUnion { i32: 0 },
+                })
+                .collect();
+
+            func(
+                inputs.as_ptr(),
+                inputs.len() as Size,
+                output_tmp.as_mut_ptr(),
+                output_tmp.len() as Size,
+                u.as_ptr(),
+            );
+
+            for (tmp, out) in output_tmp.iter().zip(outputs.iter_mut()) {
+                match tmp.t {
+                    ValType::I32 => *out = Val::I32(tmp.v.i32),
+                    ValType::I64 => *out = Val::I64(tmp.v.i64),
+                    ValType::F32 => *out = Val::F32(tmp.v.f32 as u32),
+                    ValType::F64 => *out = Val::F64(tmp.v.f64 as u64),
+                    _ => todo!(),
+                }
+            }
+            Ok(())
+        },
+    );
+    Box::into_raw(Box::new(ExtismFunction(f.with_user_data(user_data))))
+}
+
+#[no_mangle]
+pub unsafe extern "C" fn extism_function_free(ptr: *mut ExtismFunction) {
+    drop(Box::from_raw(ptr))
+}
+
+/// Create a new plugin with additional host functions
+///
+/// `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
+/// `wasm_size`: the length of the `wasm` parameter
+/// `with_wasi`: enables/disables WASI
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_new_with_functions(
+    ctx: *mut Context,
+    wasm: *const u8,
+    wasm_size: Size,
+    functions: *const *const ExtismFunction,
+    nfunctions: u32,
+    with_wasi: bool,
+) -> PluginIndex {
+    trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
+    let ctx = &mut *ctx;
+    let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
+    let mut funcs = vec![];
+
+    if !functions.is_null() {
+        for i in 0..nfunctions {
+            unsafe {
+                let f = *functions.add(i as usize);
+                if f.is_null() {
+                    continue;
+                }
+                let f = &*f;
+                funcs.push(&f.0);
+            }
+        }
+    }
+    ctx.new_plugin_with_functions(data, funcs, with_wasi)
+}
+
 /// Update a plugin, keeping the existing ID
 ///
 /// Similar to `extism_plugin_new` but takes an `index` argument to specify
@@ -54,11 +291,49 @@ pub unsafe extern "C" fn extism_plugin_update(
     wasm_size: Size,
     with_wasi: bool,
 ) -> bool {
-    trace!("Call to extism_plugin_update with wasm pointer {:?}", wasm);
+    extism_plugin_update_with_functions(ctx, index, wasm, wasm_size, std::ptr::null(), 0, with_wasi)
+}
+
+/// Update a plugin including host functions, keeping the existing ID
+///
+/// Similar to `extism_plugin_new` but takes an `index` argument to specify
+/// which plugin to update
+///
+/// Memory for this plugin will be reset upon update
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_update_with_functions(
+    ctx: *mut Context,
+    index: PluginIndex,
+    wasm: *const u8,
+    wasm_size: Size,
+    functions: *const *const ExtismFunction,
+    nfunctions: u32,
+    with_wasi: bool,
+) -> bool {
+    trace!(
+        "Call to extism_plugin_update_with_functions with wasm pointer {:?}",
+        wasm
+    );
     let ctx = &mut *ctx;
 
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
-    let plugin = match Plugin::new(data, with_wasi) {
+
+    let mut funcs = vec![];
+
+    if !functions.is_null() {
+        for i in 0..nfunctions {
+            unsafe {
+                let f = *functions.add(i as usize);
+                if f.is_null() {
+                    continue;
+                }
+                let f = &*f;
+                funcs.push(&f.0);
+            }
+        }
+    }
+
+    let plugin = match Plugin::new_with_functions(data, funcs, with_wasi) {
         Ok(x) => x,
         Err(e) => {
             error!("Error creating Plugin: {:?}", e);
@@ -72,7 +347,8 @@ pub unsafe extern "C" fn extism_plugin_update(
         return false;
     }
 
-    ctx.plugins.insert(index, plugin);
+    ctx.plugins
+        .insert(index, std::cell::UnsafeCell::new(plugin));
 
     info!("Plugin updated: {index}");
     true
@@ -88,6 +364,7 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
     trace!("Freeing plugin {plugin}");
 
     let ctx = &mut *ctx;
+    ctx.current_plugin = None;
     ctx.remove(plugin);
 }
 
@@ -101,6 +378,7 @@ pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
         ctx.plugins.keys().collect::<Vec<&i32>>()
     );
 
+    ctx.current_plugin = None;
     ctx.plugins.clear();
 }
 

@@ -33,7 +33,7 @@ impl<'a> Plugin<'a> {
     pub fn new_with_manifest_and_functions(
         ctx: &'a Context,
         manifest: &Manifest,
-        imports: impl IntoIterator<Item = extism_runtime::Function>,
+        imports: impl IntoIterator<Item = &'static extism_runtime::Function>,
         wasi: bool,
     ) -> Result<Plugin<'a>, Error> {
         let data = serde_json::to_vec(manifest)?;
@@ -61,7 +61,7 @@ impl<'a> Plugin<'a> {
     pub fn new_with_functions(
         ctx: &'a Context,
         data: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = extism_runtime::Function>,
+        imports: impl IntoIterator<Item = &'static Function>,
         wasi: bool,
     ) -> Result<Plugin, Error> {
         let plugin = ctx.lock().new_plugin_with_functions(data, imports, wasi);

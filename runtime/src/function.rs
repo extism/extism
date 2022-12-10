@@ -2,6 +2,7 @@ use crate::{Error, Internal};
 
 /// A list of all possible value types in WebAssembly.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
+#[repr(C)]
 pub enum ValType {
     // NB: the ordering here is intended to match the ordering in
     // `wasmtime_types::WasmType` to help improve codegen when converting.
@@ -51,11 +52,55 @@ impl From<ValType> for wasmtime::ValType {
     }
 }
 
+pub struct UserData {
+    ptr: *mut std::ffi::c_void,
+    free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
+}
+
+impl UserData {
+    pub fn new(
+        ptr: *mut std::ffi::c_void,
+        free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
+    ) -> Self {
+        UserData { ptr, free }
+    }
+
+    pub fn as_ptr(&self) -> *mut std::ffi::c_void {
+        self.ptr
+    }
+}
+
+impl Default for UserData {
+    fn default() -> Self {
+        UserData {
+            ptr: std::ptr::null_mut(),
+            free: None,
+        }
+    }
+}
+
+impl Drop for UserData {
+    fn drop(&mut self) {
+        if self.ptr.is_null() {
+            return;
+        }
+
+        if let Some(free) = self.free {
+            free(self.ptr);
+        }
+
+        self.ptr = std::ptr::null_mut();
+    }
+}
+
+unsafe impl Send for UserData {}
+unsafe impl Sync for UserData {}
+
 #[allow(clippy::type_complexity)]
 pub struct Function(
     pub(crate) String,
     pub(crate) wasmtime::FuncType,
-    pub(crate)  Box<
+    pub(crate)  std::sync::Arc<
         dyn Fn(
                 wasmtime::Caller<Internal>,
                 &[wasmtime::Val],
@@ -64,6 +109,7 @@ pub struct Function(
             + Sync
             + Send,
     >,
+    pub(crate) UserData,
 );
 
 impl Function {
@@ -89,8 +135,15 @@ impl Function {
                 args.into_iter().map(wasmtime::ValType::from),
                 returns.into_iter().map(wasmtime::ValType::from),
             ),
-            Box::new(f),
+            std::sync::Arc::new(f),
+            UserData::default(),
         )
+    }
+
+    // Set associated user data pointer
+    pub fn with_user_data(mut self, user_data: UserData) -> Self {
+        self.3 = user_data;
+        self
     }
 
     pub fn name(&self) -> &str {

@@ -9,7 +9,7 @@ enum Source {
 pub struct PluginBuilder {
     source: Source,
     wasi: bool,
-    functions: Vec<Function>,
+    functions: Vec<&'static Function>,
 }
 
 impl PluginBuilder {
@@ -38,13 +38,13 @@ impl PluginBuilder {
     }
 
     /// Add a single host function
-    pub fn with_function(mut self, f: Function) -> Self {
+    pub fn with_function(mut self, f: &'static Function) -> Self {
         self.functions.push(f);
         self
     }
 
     /// Add multiple host functions
-    pub fn with_functions(mut self, f: impl IntoIterator<Item = Function>) -> Self {
+    pub fn with_functions(mut self, f: impl IntoIterator<Item = &'static Function>) -> Self {
         self.functions.extend(f);
         self
     }

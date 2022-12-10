@@ -103,7 +103,7 @@ impl Plugin {
     /// Create a new plugin from the given WASM code and imported functions
     pub fn new_with_functions(
         wasm: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = Function>,
+        imports: impl IntoIterator<Item = &'static Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
         let engine = Engine::new(
@@ -192,7 +192,9 @@ impl Plugin {
 
                     for f in &mut imports {
                         let name = f.name().to_string();
-                        let func = Func::new(&mut memory.store, f.ty().clone(), f.2);
+                        let func = Func::new(&mut memory.store, f.ty().clone(), unsafe {
+                            &*std::sync::Arc::as_ptr(&f.2)
+                        });
                         linker.define(EXPORT_MODULE_NAME, &name, func)?;
                     }
                 }

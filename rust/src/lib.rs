@@ -1,5 +1,5 @@
 pub use extism_manifest::{self as manifest, Manifest};
-pub use extism_runtime::{sdk as bindings, Function, ValType};
+pub use extism_runtime::{sdk as bindings, Function, MemoryBlock, ValType};
 
 mod context;
 mod plugin;

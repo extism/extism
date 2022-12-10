@@ -1,3 +1,4 @@
+use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::*;
@@ -7,12 +8,14 @@ static mut TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
 /// A `Context` is used to store and manage plugins
 pub struct Context {
     /// Plugin registry
-    pub plugins: BTreeMap<PluginIndex, Plugin>,
+    pub plugins: BTreeMap<PluginIndex, UnsafeCell<Plugin>>,
 
     /// Error message
     pub error: Option<std::ffi::CString>,
     next_id: std::sync::atomic::AtomicI32,
     reclaimed_ids: VecDeque<PluginIndex>,
+
+    pub(crate) current_plugin: Option<PluginIndex>,
 
     // Timeout thread
     pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
@@ -49,6 +52,7 @@ impl Context {
             next_id: std::sync::atomic::AtomicI32::new(0),
             reclaimed_ids: VecDeque::new(),
             epoch_timer_tx: tx,
+            current_plugin: None,
         }
     }
 
@@ -90,7 +94,7 @@ impl Context {
                 return -1;
             }
         };
-        self.plugins.insert(id, plugin);
+        self.plugins.insert(id, UnsafeCell::new(plugin));
         id
     }
 
@@ -106,10 +110,10 @@ impl Context {
         self.insert(plugin)
     }
 
-    pub fn new_plugin_with_functions(
-        &mut self,
+    pub fn new_plugin_with_functions<'a>(
+        &'a mut self,
         data: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = Function>,
+        imports: impl IntoIterator<Item = &'static Function>,
         with_wasi: bool,
     ) -> PluginIndex {
         let plugin = match Plugin::new_with_functions(data, imports, with_wasi) {
@@ -136,8 +140,22 @@ impl Context {
     }
 
     /// Get a plugin from the context
-    pub fn plugin(&mut self, id: PluginIndex) -> Option<&mut Plugin> {
-        self.plugins.get_mut(&id)
+    pub fn plugin(&mut self, id: PluginIndex) -> Option<*mut Plugin> {
+        match self.plugins.get_mut(&id) {
+            Some(x) => {
+                self.current_plugin = Some(id);
+                Some(x.get_mut())
+            }
+            None => None,
+        }
+    }
+
+    pub fn current_plugin(&mut self) -> Option<&mut Plugin> {
+        let index = match self.current_plugin {
+            Some(x) => x,
+            None => return None,
+        };
+        unsafe { self.plugin(index).map(|x| &mut *x) }
     }
 
     pub fn plugin_exists(&mut self, id: PluginIndex) -> bool {
