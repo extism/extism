@@ -85,8 +85,8 @@ impl Function {
         Function(
             name.into(),
             wasmtime::FuncType::new(
-                returns.into_iter().map(wasmtime::ValType::from),
                 args.into_iter().map(wasmtime::ValType::from),
+                returns.into_iter().map(wasmtime::ValType::from),
             ),
             Box::new(f),
         )
