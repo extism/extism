@@ -68,8 +68,8 @@ pub struct Function(
 impl Function {
     pub fn new<F>(
         name: impl Into<String>,
-        returns: impl IntoIterator<Item = ValType>,
         args: impl IntoIterator<Item = ValType>,
+        returns: impl IntoIterator<Item = ValType>,
         f: F,
     ) -> Function
     where
