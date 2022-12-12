@@ -205,7 +205,6 @@ pub unsafe extern "C" fn extism_plugin_call(
         None => return -1,
         Some(p) => p.init(data, data_len as usize),
     };
-    //let plugin = plugin_ref.as_mut();
 
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
