@@ -14,6 +14,14 @@ jobs:
         uses: actions/setup-dotnet@v3.0.3
         with:
            dotnet-version: 7.x
+      - uses: dawidd6/action-download-artifact@v2
+        with:
+          workflow: release.yml
+          name: release-artifacts
+      - name: Extract Archive
+        run: |
+          tar -xvzf libextism-x86_64-pc-windows-msvc-v*.tar.gz --directory dotnet/nuget/runtimes
+          mv dotnet/nuget/runtimes/extism.dll dotnet/nuget/runtimes/win-x64.dll
       - name: Publish win-x64
         run: |
           cd dotnet/nuget
