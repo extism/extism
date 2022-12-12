@@ -12,6 +12,7 @@ pub struct Plugin {
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
     pub should_reinstantiate: bool,
+    pub run_start: std::time::Instant,
 }
 
 pub struct Internal {
@@ -105,10 +106,11 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        let engine = Engine::default();
+        let engine = Engine::new(Config::new().epoch_interruption(true))?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
+
         let memory = Memory::new(
             &mut store,
             MemoryType::new(4, manifest.as_ref().memory.max_pages),
@@ -210,6 +212,7 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
+            run_start: std::time::Instant::now(),
         };
 
         plugin.initialize_runtime()?;

@@ -2,8 +2,12 @@ use std::collections::{BTreeMap, VecDeque};
 
 use crate::*;
 
+pub(crate) struct TimerInfo {
+    pub engine: Engine,
+    pub duration: std::time::Duration,
+}
+
 /// A `Context` is used to store and manage plugins
-#[derive(Default)]
 pub struct Context {
     /// Plugin registry
     pub plugins: BTreeMap<PluginIndex, Plugin>,
@@ -12,6 +16,14 @@ pub struct Context {
     pub error: Option<std::ffi::CString>,
     next_id: std::sync::atomic::AtomicI32,
     reclaimed_ids: VecDeque<PluginIndex>,
+    pub(crate) epoch_timer: Option<std::thread::JoinHandle<()>>,
+    pub(crate) epoch_timer_channel: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
+}
+
+impl Default for Context {
+    fn default() -> Self {
+        Context::new()
+    }
 }
 
 const START_REUSING_IDS: usize = 25;
@@ -19,11 +31,26 @@ const START_REUSING_IDS: usize = 25;
 impl Context {
     /// Create a new context
     pub fn new() -> Context {
+        let (send, recv) = std::sync::mpsc::sync_channel::<Option<TimerInfo>>(8);
+        let timer = std::thread::spawn(move || loop {
+            let info = recv.try_recv();
+            match info {
+                Ok(Some(info)) => {
+                    std::thread::sleep(info.duration);
+                    println!("INCREMENT");
+                    info.engine.increment_epoch();
+                }
+                Ok(None) => return,
+                Err(_) => continue,
+            }
+        });
         Context {
             plugins: BTreeMap::new(),
             error: None,
             next_id: std::sync::atomic::AtomicI32::new(0),
             reclaimed_ids: VecDeque::new(),
+            epoch_timer: Some(timer),
+            epoch_timer_channel: send,
         }
     }
 
@@ -124,6 +151,15 @@ impl Context {
         if self.plugins.remove(&id).is_some() {
             // Collect old IDs in case we need to re-use them
             self.reclaimed_ids.push_back(id);
+        }
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        let _ = self.epoch_timer_channel.try_send(None);
+        if let Some(timer) = self.epoch_timer.take() {
+            let _ = timer.join();
         }
     }
 }

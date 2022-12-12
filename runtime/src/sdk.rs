@@ -201,34 +201,54 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Get a `PluginRef` and call `init` to set up the plugin input and memory, this is only
     // needed before a new call
-    let mut plugin = match PluginRef::new(ctx, plugin_id, true) {
+    let mut plugin_ref = match PluginRef::new(ctx, plugin_id, true) {
         None => return -1,
         Some(p) => p.init(data, data_len as usize),
     };
-    let plugin = plugin.as_mut();
+    //let plugin = plugin_ref.as_mut();
 
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin.error(e, -1),
+        Err(e) => return plugin_ref.as_ref().error(e, -1),
     };
 
     debug!("Calling function: {name} in plugin {plugin_id}");
 
-    let func = match plugin.get_func(name) {
+    let func = match plugin_ref.as_mut().get_func(name) {
         Some(x) => x,
-        None => return plugin.error(format!("Function not found: {name}"), -1),
+        None => {
+            return plugin_ref
+                .as_ref()
+                .error(format!("Function not found: {name}"), -1)
+        }
     };
 
     // Check the number of results, reject functions with more than 1 result
-    let n_results = func.ty(&plugin.memory.store).results().len();
+    let n_results = func.ty(&plugin_ref.as_ref().memory.store).results().len();
     if n_results > 1 {
-        return plugin.error(
+        return plugin_ref.as_ref().error(
             format!("Function {name} has {n_results} results, expected 0 or 1"),
             -1,
         );
     }
+
+    plugin_ref.as_mut().memory.store.set_epoch_deadline(1);
+    if let Some(duration) = plugin_ref.as_ref().manifest.as_ref().timeout_ms {
+        let engine: Engine = plugin_ref.as_ref().memory.store.engine().clone();
+        let duration = std::time::Duration::from_millis(duration.saturating_add(100));
+        let res = plugin_ref
+            .epoch_timer_channel
+            .send(Some(TimerInfo { engine, duration }));
+        if let Err(_) = res {
+            return plugin_ref
+                .as_ref()
+                .error(format!("Unable to communcate with timeout manager"), -1);
+        }
+    }
+
+    let plugin = plugin_ref.as_mut();
 
     let mut results = vec![Val::null(); n_results];
     let res = func.call(&mut plugin.memory.store, &[], results.as_mut_slice());

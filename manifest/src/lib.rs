@@ -162,6 +162,7 @@ pub struct Manifest {
     pub allowed_hosts: Option<Vec<String>>,
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
+    pub timeout_ms: Option<u64>,
 }
 
 impl Manifest {
@@ -230,6 +231,12 @@ impl Manifest {
     /// Set `config`
     pub fn with_config(mut self, c: impl Iterator<Item = (String, String)>) -> Self {
         self.config = c.collect();
+        self
+    }
+
+    /// Set `timeout_ms`
+    pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout_ms = Some(timeout.as_millis() as u64);
         self
     }
 }
