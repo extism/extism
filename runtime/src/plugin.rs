@@ -12,7 +12,6 @@ pub struct Plugin {
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
     pub should_reinstantiate: bool,
-    pub run_start: std::time::Instant,
 }
 
 pub struct Internal {
@@ -212,7 +211,6 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
-            run_start: std::time::Instant::now(),
         };
 
         plugin.initialize_runtime()?;
