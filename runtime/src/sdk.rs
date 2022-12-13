@@ -236,7 +236,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     plugin_ref.as_mut().memory.store.set_epoch_deadline(1);
     if let Some(duration) = plugin_ref.as_ref().manifest.as_ref().timeout_ms {
         let engine: Engine = plugin_ref.as_ref().memory.store.engine().clone();
-        let duration = std::time::Duration::from_millis(duration.saturating_add(100));
+        let duration = std::time::Duration::from_millis(duration.saturating_add(1));
         let res = plugin_ref
             .epoch_timer_channel
             .send(Some(TimerInfo { engine, duration }));
