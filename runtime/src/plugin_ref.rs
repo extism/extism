@@ -4,7 +4,7 @@ use crate::*;
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
     plugin: &'a mut Plugin,
-    pub(crate) epoch_timer_channel: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
+    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
 }
 
 impl<'a> PluginRef<'a> {
@@ -26,7 +26,7 @@ impl<'a> PluginRef<'a> {
     pub fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Option<Self> {
         trace!("Loading plugin {plugin_id}");
 
-        let epoch_timer_channel = ctx.epoch_timer_channel.clone();
+        let epoch_timer_tx = ctx.epoch_timer_tx.clone();
 
         if !ctx.plugin_exists(plugin_id) {
             error!("Plugin does not exist: {plugin_id}");
@@ -59,7 +59,7 @@ impl<'a> PluginRef<'a> {
         Some(PluginRef {
             id: plugin_id,
             plugin,
-            epoch_timer_channel,
+            epoch_timer_tx,
         })
     }
 }

@@ -19,7 +19,7 @@ pub struct Context {
 
     // Timeout thread
     pub(crate) epoch_timer: Option<std::thread::JoinHandle<()>>,
-    pub(crate) epoch_timer_channel: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
+    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
 }
 
 impl Default for Context {
@@ -33,9 +33,9 @@ const START_REUSING_IDS: usize = 25;
 impl Context {
     /// Create a new context
     pub fn new() -> Context {
-        let (send, recv) = std::sync::mpsc::sync_channel::<Option<TimerInfo>>(8);
+        let (tx, rx) = std::sync::mpsc::sync_channel::<Option<TimerInfo>>(8);
         let timer = std::thread::spawn(move || loop {
-            let info = recv.try_recv();
+            let info = rx.try_recv();
             match info {
                 Ok(Some(info)) => {
                     std::thread::sleep(info.duration);
@@ -51,7 +51,7 @@ impl Context {
             next_id: std::sync::atomic::AtomicI32::new(0),
             reclaimed_ids: VecDeque::new(),
             epoch_timer: Some(timer),
-            epoch_timer_channel: send,
+            epoch_timer_tx: tx,
         }
     }
 
@@ -158,7 +158,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        let _ = self.epoch_timer_channel.try_send(None);
+        let _ = self.epoch_timer_tx.try_send(None);
         if let Some(timer) = self.epoch_timer.take() {
             let _ = timer.join();
         }

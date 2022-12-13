@@ -239,7 +239,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         let duration = std::time::Duration::from_millis(duration)
             .saturating_add(std::time::Duration::from_micros(5));
         let res = plugin_ref
-            .epoch_timer_channel
+            .epoch_timer_tx
             .send(Some(TimerInfo { engine, duration }));
         if let Err(_) = res {
             return plugin_ref

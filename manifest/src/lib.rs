@@ -239,7 +239,9 @@ impl Manifest {
         self
     }
 
-    /// Set `timeout_ms`
+    /// Set `timeout_ms`, which will interrupt a plugin function's execution if it meets or
+    /// exceeds this value. When an interrupt is made, the plugin will not be able to recover and
+    /// continue execution.
     pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
         self.timeout_ms = Some(timeout.as_millis() as u64);
         self
