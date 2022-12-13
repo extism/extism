@@ -3,18 +3,15 @@ import Extism
 import Extism.Manifest
 
 
-unwrap' (Right x) = return x
-unwrap' (Left (ErrorMessage msg)) =
+unwrap (Right x) = return x
+unwrap (Left (ExtismError msg)) =
   assertFailure msg
-
-unwrap io = do
-  x <- io
-  unwrap' x
 
 defaultManifest = manifest [wasmFile "test/code.wasm"]
 
+initPlugin :: Context -> IO Plugin
 initPlugin context =
-  unwrap (Extism.pluginFromManifest context defaultManifest False)
+  Extism.pluginFromManifest context defaultManifest False >>= unwrap
 
 pluginFunctionExists = do
   withContext (\ctx -> do
@@ -25,7 +22,7 @@ pluginFunctionExists = do
     assertBool "function doesn't exist" (not exists'))
 
 checkCallResult p = do
-    res <- unwrap (call p "count_vowels" (toByteString "this is a test"))
+    res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
     assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
 
 pluginCall = do
@@ -45,7 +42,7 @@ pluginMultiple = do
 pluginUpdate = do
   withContext (\ctx -> do
     p <- initPlugin ctx
-    unwrap (updateManifest p defaultManifest True)
+    updateManifest p defaultManifest True >>= unwrap
     checkCallResult p)
 
 pluginConfig = do
@@ -55,7 +52,7 @@ pluginConfig = do
     assertBool "set config" b)
 
 testSetLogFile = do
-  b <- setLogFile "stderr" Error
+  b <- setLogFile "stderr" Extism.Error
   assertBool "set log file" b
 
 t name f = TestLabel name (TestCase f)

@@ -166,9 +166,9 @@ pub struct Manifest {
 
 impl Manifest {
     /// Create a new manifest
-    pub fn new(wasm: impl Into<Vec<Wasm>>) -> Manifest {
+    pub fn new(wasm: impl IntoIterator<Item = impl Into<Wasm>>) -> Manifest {
         Manifest {
-            wasm: wasm.into(),
+            wasm: wasm.into_iter().map(|x| x.into()).collect(),
             ..Default::default()
         }
     }

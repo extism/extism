@@ -3,16 +3,17 @@ use crate::*;
 
 // This macro unwraps input arguments to prevent functions from panicking,
 // it should be used instead of `Val::unwrap_*` functions
+#[macro_export]
 macro_rules! args {
     ($input:expr, $index:expr, $ty:ident) => {
         match $input[$index].$ty() {
             Some(x) => x,
-            None => return Err(Error::msg("Invalid input type"))
+            None => return Err($crate::Error::msg("Invalid input type"))
         }
     };
     ($input:expr, $(($index:expr, $ty:ident)),*$(,)?) => {
         ($(
-            args!($input, $index, $ty),
+            $crate::args!($input, $index, $ty),
         )*)
     };
 }
