@@ -234,6 +234,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
+    // Start timer
     let tx = plugin_ref.epoch_timer_tx.clone();
     if let Err(_) = plugin_ref.as_mut().start_timer(&tx) {
         return plugin_ref
@@ -241,6 +242,7 @@ pub unsafe extern "C" fn extism_plugin_call(
             .error(format!("Unable to communcate with timeout manager"), -1);
     }
 
+    // Call the function
     let mut results = vec![Val::null(); n_results];
     let res = func.call(
         &mut plugin_ref.as_mut().memory.store,
@@ -248,6 +250,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         results.as_mut_slice(),
     );
 
+    // Stop timer
     let _ = plugin_ref.as_mut().stop_timer(&tx);
 
     plugin_ref.as_ref().dump_memory();
