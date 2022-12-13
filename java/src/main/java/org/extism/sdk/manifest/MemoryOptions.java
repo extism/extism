@@ -1,11 +1,12 @@
 package org.extism.sdk.manifest;
 
-public record MemoryOptions(
+import com.google.gson.annotations.SerializedName;
 
-        /**
-         * Max number of pages.
-         */
-        Integer max // Integer to allow `null` as max
-//
-) {
+/**
+ * Configures memory for the Wasm runtime.
+ * Memory is described in units of pages (64KB) and represent contiguous chunks of addressable memory.
+ *
+ * @param max Max number of pages.
+ */
+public record MemoryOptions(@SerializedName("max") Integer max) {
 }
