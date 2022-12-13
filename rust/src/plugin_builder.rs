@@ -49,7 +49,7 @@ impl PluginBuilder {
         self
     }
 
-    pub fn build<'a>(self, context: &'a Context) -> Result<Plugin<'a>, Error> {
+    pub fn build(self, context: &Context) -> Result<Plugin, Error> {
         match self.source {
             Source::Manifest(m) => {
                 Plugin::new_with_manifest_and_functions(context, &m, self.functions, self.wasi)

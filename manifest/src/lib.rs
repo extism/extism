@@ -126,9 +126,9 @@ impl Wasm {
 
     pub fn meta(&self) -> &WasmMetadata {
         match self {
-            Wasm::File { path: _, meta } => &meta,
-            Wasm::Data { data: _, meta } => &meta,
-            Wasm::Url { req: _, meta } => &meta,
+            Wasm::File { path: _, meta } => meta,
+            Wasm::Data { data: _, meta } => meta,
+            Wasm::Url { req: _, meta } => meta,
         }
     }
 

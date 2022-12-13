@@ -236,10 +236,10 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Start timer
     let tx = plugin_ref.epoch_timer_tx.clone();
-    if let Err(_) = plugin_ref.as_mut().start_timer(&tx) {
+    if plugin_ref.as_mut().start_timer(&tx).is_err() {
         return plugin_ref
             .as_ref()
-            .error(format!("Unable to communcate with timeout manager"), -1);
+            .error("Unable to communcate with timeout manager".to_string(), -1);
     }
 
     // Call the function
