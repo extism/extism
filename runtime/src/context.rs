@@ -2,15 +2,7 @@ use std::collections::{BTreeMap, VecDeque};
 
 use crate::*;
 
-pub(crate) enum TimerAction {
-    Start {
-        engine: Engine,
-        iterations: usize,
-        sleep_time: std::time::Duration,
-    },
-    Stop,
-    Shutdown,
-}
+static mut TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
 
 /// A `Context` is used to store and manage plugins
 pub struct Context {
@@ -23,7 +15,6 @@ pub struct Context {
     reclaimed_ids: VecDeque<PluginIndex>,
 
     // Timeout thread
-    pub(crate) epoch_timer: Option<std::thread::JoinHandle<()>>,
     pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
 }
 
@@ -36,39 +27,26 @@ impl Default for Context {
 const START_REUSING_IDS: usize = 25;
 
 impl Context {
+    fn timer() -> std::sync::MutexGuard<'static, Option<Timer>> {
+        match unsafe { TIMER.lock() } {
+            Ok(x) => x,
+            Err(e) => e.into_inner(),
+        }
+    }
+
     /// Create a new context
     pub fn new() -> Context {
-        let (tx, rx) = std::sync::mpsc::sync_channel::<TimerAction>(8);
-        let timer = std::thread::spawn(move || loop {
-            let info = rx.try_recv();
-            match info {
-                Ok(TimerAction::Start {
-                    iterations,
-                    sleep_time,
-                    engine,
-                }) => {
-                    for _ in 0..iterations {
-                        std::thread::sleep(sleep_time);
+        let timer = &mut *Self::timer();
+        let tx = match timer {
+            None => Timer::init(timer),
+            Some(t) => t.tx.clone(),
+        };
 
-                        match rx.try_recv() {
-                            Ok(TimerAction::Shutdown) => return,
-                            Ok(TimerAction::Stop) => break,
-                            _ => (),
-                        }
-
-                        engine.increment_epoch();
-                    }
-                }
-                Ok(TimerAction::Shutdown) => return,
-                Err(_) | Ok(TimerAction::Stop) => continue,
-            }
-        });
         Context {
             plugins: BTreeMap::new(),
             error: None,
             next_id: std::sync::atomic::AtomicI32::new(0),
             reclaimed_ids: VecDeque::new(),
-            epoch_timer: Some(timer),
             epoch_timer_tx: tx,
         }
     }
@@ -174,11 +152,12 @@ impl Context {
     }
 }
 
-impl Drop for Context {
+impl Drop for Timer {
     fn drop(&mut self) {
-        let _ = self.epoch_timer_tx.try_send(TimerAction::Shutdown);
-        if let Some(timer) = self.epoch_timer.take() {
-            let _ = timer.join();
+        let _ = self.tx.send(TimerAction::Shutdown);
+        if let Some(thread) = self.thread.take() {
+            let _ = thread.join();
         }
+        println!("BYE BYE");
     }
 }

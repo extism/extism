@@ -57,12 +57,6 @@ pub unsafe extern "C" fn extism_plugin_update(
     trace!("Call to extism_plugin_update with wasm pointer {:?}", wasm);
     let ctx = &mut *ctx;
 
-    let tx = if let Some(r) = PluginRef::new(ctx, index, false) {
-        Some(r.epoch_timer_tx.clone())
-    } else {
-        None
-    };
-
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let plugin = match Plugin::new(data, with_wasi) {
         Ok(x) => x,
@@ -76,10 +70,6 @@ pub unsafe extern "C" fn extism_plugin_update(
     if !ctx.plugins.contains_key(&index) {
         ctx.set_error("Plugin index does not exist");
         return false;
-    }
-
-    if let Some(tx) = tx {
-        let _ = tx.send(TimerAction::Stop);
     }
 
     ctx.plugins.insert(index, plugin);

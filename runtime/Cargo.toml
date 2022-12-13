@@ -24,6 +24,7 @@ glob = "0.3"
 ureq = {version = "2.5", optional=true}
 extism-manifest = { version = "0.1.0", path = "../manifest" }
 pretty-hex = { version = "0.3" }
+uuid = { version = "1", features = ["v4"] }
 
 [features]
 default = ["http", "register-http", "register-filesystem"]

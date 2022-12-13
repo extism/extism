@@ -12,6 +12,7 @@ pub struct Plugin {
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
     pub should_reinstantiate: bool,
+    pub timer_id: uuid::Uuid,
 }
 
 pub struct Internal {
@@ -213,6 +214,7 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
+            timer_id: uuid::Uuid::new_v4(),
         };
 
         plugin.initialize_runtime()?;
@@ -305,14 +307,12 @@ impl Plugin {
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
     ) -> Result<(), Error> {
         if let Some(duration) = self.manifest.as_ref().timeout_ms {
-            let sleep_time = if duration <= 100 { 1 } else { 10 };
-            let num_epochs = (duration as f64 / sleep_time as f64).ceil() as usize;
-            self.memory.store.set_epoch_deadline(num_epochs as u64);
+            self.memory.store.set_epoch_deadline(1);
             let engine: Engine = self.memory.store.engine().clone();
             tx.send(TimerAction::Start {
+                id: self.timer_id,
+                duration: std::time::Duration::from_millis(duration),
                 engine,
-                sleep_time: std::time::Duration::from_millis(sleep_time),
-                iterations: num_epochs,
             })?;
         } else {
             self.memory.store.set_epoch_deadline(1);
@@ -326,7 +326,7 @@ impl Plugin {
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
     ) -> Result<(), Error> {
         if self.manifest.as_ref().timeout_ms.is_some() {
-            tx.send(TimerAction::Stop)?;
+            tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
 
         Ok(())

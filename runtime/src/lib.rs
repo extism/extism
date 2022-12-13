@@ -9,14 +9,15 @@ pub(crate) mod pdk;
 mod plugin;
 mod plugin_ref;
 pub mod sdk;
+mod timer;
 
 pub use context::Context;
-pub(crate) use context::TimerAction;
 pub use function::{Function, ValType};
 pub use manifest::Manifest;
 pub use memory::{MemoryBlock, PluginMemory};
 pub use plugin::{Internal, Plugin, Wasi};
 pub use plugin_ref::PluginRef;
+pub(crate) use timer::{Timer, TimerAction};
 
 pub type Size = u64;
 pub type PluginIndex = i32;
