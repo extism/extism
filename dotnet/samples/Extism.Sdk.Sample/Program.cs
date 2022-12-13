@@ -1,6 +1,4 @@
-﻿using Extism.Sdk.Native;
-
-using System.Reflection;
+using Extism.Sdk.Native;
 using System.Text;
 
 Console.WriteLine($"Extism version {Context.GetExtismVersion()}");
