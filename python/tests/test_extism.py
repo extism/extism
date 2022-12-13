@@ -2,6 +2,7 @@ import unittest
 import extism
 import hashlib
 import json
+from datetime import datetime, timedelta
 from os.path import join, dirname
 
 
@@ -63,6 +64,18 @@ class TestExtism(unittest.TestCase):
     def test_extism_version(self):
         self.assertIsNotNone(extism.extism_version())
 
+    def test_extism_plugin_timeout(self):
+        with extism.Context() as ctx:
+            start = datetime.now()
+            plugin = ctx.plugin(self._loop_manifest())
+            self.assertRaises(extism.Error,
+                              lambda: plugin.call("infinite_loop", b""))
+            end = datetime.now()
+            self.assertLess(
+                end, 
+                start + timedelta(seconds=1.1), 
+                "plugin timeout exceeded 1000ms expectation")
+        
     def _manifest(self):
         wasm = self._count_vowels_wasm()
         hash = hashlib.sha256(wasm).hexdigest()
@@ -76,7 +89,28 @@ class TestExtism(unittest.TestCase):
             }
         }
 
+    def _loop_manifest(self):
+        wasm = self._infinite_loop_wasm()
+        hash = hashlib.sha256(wasm).hexdigest()
+        return {
+            "wasm": [{
+                "data": wasm,
+                "hash": hash
+            }],
+            "memory": {
+                "max_pages": 5
+            },
+            "timeout_ms": 1000,
+        }
+
     def _count_vowels_wasm(self):
-        path = join(dirname(__file__), "code.wasm")
-        with open(path, "rb") as wasm_file:
-            return wasm_file.read()
+        return read_test_wasm("code.wasm")
+
+    def _infinite_loop_wasm(self):
+        return read_test_wasm("loop.wasm")
+
+
+def read_test_wasm(p):
+    path = join(dirname(__file__), p)
+    with open(path, "rb") as wasm_file:
+        return wasm_file.read()
