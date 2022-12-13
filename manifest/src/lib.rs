@@ -126,9 +126,9 @@ impl Wasm {
 
     pub fn meta(&self) -> &WasmMetadata {
         match self {
-            Wasm::File { path: _, meta } => &meta,
-            Wasm::Data { data: _, meta } => &meta,
-            Wasm::Url { req: _, meta } => &meta,
+            Wasm::File { path: _, meta } => meta,
+            Wasm::Data { data: _, meta } => meta,
+            Wasm::Url { req: _, meta } => meta,
         }
     }
 
@@ -162,6 +162,12 @@ pub struct Manifest {
     pub allowed_hosts: Option<Vec<String>>,
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
+    #[serde(default = "default_timeout")]
+    pub timeout_ms: Option<u64>,
+}
+
+fn default_timeout() -> Option<u64> {
+    Some(30000)
 }
 
 impl Manifest {
@@ -169,6 +175,7 @@ impl Manifest {
     pub fn new(wasm: impl IntoIterator<Item = impl Into<Wasm>>) -> Manifest {
         Manifest {
             wasm: wasm.into_iter().map(|x| x.into()).collect(),
+            timeout_ms: default_timeout(),
             ..Default::default()
         }
     }
@@ -230,6 +237,14 @@ impl Manifest {
     /// Set `config`
     pub fn with_config(mut self, c: impl Iterator<Item = (String, String)>) -> Self {
         self.config = c.collect();
+        self
+    }
+
+    /// Set `timeout_ms`, which will interrupt a plugin function's execution if it meets or
+    /// exceeds this value. When an interrupt is made, the plugin will not be able to recover and
+    /// continue execution.
+    pub fn with_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.timeout_ms = Some(timeout.as_millis() as u64);
         self
     }
 }

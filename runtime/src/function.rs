@@ -51,6 +51,7 @@ impl From<ValType> for wasmtime::ValType {
     }
 }
 
+#[allow(clippy::type_complexity)]
 pub struct Function(
     pub(crate) String,
     pub(crate) wasmtime::FuncType,
