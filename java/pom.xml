@@ -4,7 +4,7 @@
     <groupId>org.extism.sdk</groupId>
     <artifactId>extism</artifactId>
     <packaging>jar</packaging>
-    <version>0.0.1</version>
+    <version>0.0.2</version>
     <name>extism</name>
     <url>https://github.com/extism/extism</url>
     <description>Java-SDK for Extism to use webassembly from Java</description>
@@ -117,8 +117,10 @@
                         <maven-central>
                           <active>ALWAYS</active>
                           <url>https://s01.oss.sonatype.org/service/local</url>;
+                          <!--
                           <closeRepository>false</closeRepository>
                           <releaseRepository>false</releaseRepository>
+                          -->
                           <stagingRepositories>target/staging-deploy</stagingRepositories>
                         </maven-central>
                       </nexus2>
