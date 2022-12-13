@@ -16,6 +16,8 @@ pub struct Context {
     pub error: Option<std::ffi::CString>,
     next_id: std::sync::atomic::AtomicI32,
     reclaimed_ids: VecDeque<PluginIndex>,
+
+    // Timeout thread
     pub(crate) epoch_timer: Option<std::thread::JoinHandle<()>>,
     pub(crate) epoch_timer_channel: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
 }
@@ -37,7 +39,6 @@ impl Context {
             match info {
                 Ok(Some(info)) => {
                     std::thread::sleep(info.duration);
-                    println!("INCREMENT");
                     info.engine.increment_epoch();
                 }
                 Ok(None) => return,
