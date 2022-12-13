@@ -162,7 +162,12 @@ pub struct Manifest {
     pub allowed_hosts: Option<Vec<String>>,
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
+    #[serde(default = "default_timeout")]
     pub timeout_ms: Option<u64>,
+}
+
+fn default_timeout() -> Option<u64> {
+    Some(30000)
 }
 
 impl Manifest {
