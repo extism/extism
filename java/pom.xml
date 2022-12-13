@@ -4,7 +4,7 @@
     <groupId>org.extism.sdk</groupId>
     <artifactId>extism</artifactId>
     <packaging>jar</packaging>
-    <version>1.0.0-SNAPSHOT</version>
+    <version>0.0.1-SNAPSHOT</version>
     <name>extism</name>
     <url>https://github.com/extism/extism</url>
     <description>Java-SDK for Extism to use webassembly from Java</description>
@@ -22,15 +22,6 @@
     </organization>
 
     <developers>
-        <developer>
-            <name>The Extism Authors</name>
-            <email>oss@extism.org</email>
-            <roles>
-                <role>Maintainer</role>
-            </roles>
-            <organization>Dylibso, Inc.</organization>
-            <organizationUrl>https://dylib.so</organizationUrl>
-        </developer>
         <developer>
             <name>The Extism Authors</name>
             <email>oss@extism.org</email>
@@ -69,7 +60,78 @@
         <!-- maven plugins -->
         <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+
+        <!-- jreleaser -->
+        <jreleaser.git.root.search>true</jreleaser.git.root.search>
     </properties>
+
+    <profiles>
+      <profile>
+        <id>release</id>
+        <build>
+          <plugins>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-javadoc-plugin</artifactId>
+              <version>3.4.1</version>
+              <executions>
+                <execution>
+                  <id>attach-javadoc</id>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.apache.maven.plugins</groupId>
+              <artifactId>maven-source-plugin</artifactId>
+              <version>3.2.1</version>
+              <executions>
+                <execution>
+                  <id>attach-source</id>
+                  <goals>
+                    <goal>jar</goal>
+                  </goals>
+                </execution>
+              </executions>
+            </plugin>
+            <plugin>
+              <groupId>org.jreleaser</groupId>
+              <artifactId>jreleaser-maven-plugin</artifactId>
+              <version>1.3.1</version>
+              <configuration>
+                <jreleaser>
+                  <release>
+                    <github>
+                      <enabled>false</enabled>
+                    </github>
+                  </release>
+                  <signing>
+                    <active>ALWAYS</active>
+                    <armored>true</armored>
+                  </signing>
+                  <deploy>
+                    <maven>
+                      <nexus2>
+                        <maven-central>
+                          <active>ALWAYS</active>
+                          <url>https://s01.oss.sonatype.org/service/local</url>;
+                          <closeRepository>false</closeRepository>
+                          <releaseRepository>false</releaseRepository>
+                          <stagingRepositories>target/staging-deploy</stagingRepositories>
+                        </maven-central>
+                      </nexus2>
+                    </maven>
+                  </deploy>
+                </jreleaser>
+              </configuration>
+            </plugin>
+          </plugins>
+        </build>
+      </profile>
+    </profiles>
+
     <build>
         <plugins>
             <plugin>
