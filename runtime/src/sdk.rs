@@ -233,41 +233,42 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
-    plugin_ref.as_mut().memory.store.set_epoch_deadline(1);
-    if let Some(duration) = plugin_ref.as_ref().manifest.as_ref().timeout_ms {
-        let engine: Engine = plugin_ref.as_ref().memory.store.engine().clone();
-        let duration = std::time::Duration::from_millis(duration)
-            .saturating_add(std::time::Duration::from_micros(5));
-        let res = plugin_ref
-            .epoch_timer_tx
-            .send(Some(TimerInfo { engine, duration }));
-        if let Err(_) = res {
-            return plugin_ref
-                .as_ref()
-                .error(format!("Unable to communcate with timeout manager"), -1);
-        }
+    let tx = plugin_ref.epoch_timer_tx.clone();
+    if let Err(_) = plugin_ref.as_mut().start_timer(&tx) {
+        return plugin_ref
+            .as_ref()
+            .error(format!("Unable to communcate with timeout manager"), -1);
     }
 
-    let plugin = plugin_ref.as_mut();
-
     let mut results = vec![Val::null(); n_results];
-    let res = func.call(&mut plugin.memory.store, &[], results.as_mut_slice());
+    let res = func.call(
+        &mut plugin_ref.as_mut().memory.store,
+        &[],
+        results.as_mut_slice(),
+    );
 
-    plugin.dump_memory();
+    let _ = plugin_ref.as_mut().stop_timer(&tx);
 
-    if plugin.has_wasi() && name == "_start" {
-        plugin.should_reinstantiate = true;
+    plugin_ref.as_ref().dump_memory();
+
+    if plugin_ref.as_ref().has_wasi() && name == "_start" {
+        plugin_ref.as_mut().should_reinstantiate = true;
     }
 
     match res {
         Ok(()) => (),
         Err(e) => {
+            let plugin = plugin_ref.as_ref();
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
                 trace!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
                     return plugin.error(&e, exit.0);
                 }
                 return exit.0;
+            }
+
+            if e.root_cause().to_string() == "timeout" {
+                return plugin.error("timeout", -1);
             }
 
             error!("Call: {e:?}");

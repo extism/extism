@@ -110,6 +110,8 @@ impl Plugin {
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
 
+        store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
+
         let memory = Memory::new(
             &mut store,
             MemoryType::new(4, manifest.as_ref().memory.max_pages),
@@ -295,6 +297,33 @@ impl Plugin {
             return runtime.init(self);
         }
 
+        Ok(())
+    }
+
+    pub(crate) fn start_timer(
+        &mut self,
+        tx: &std::sync::mpsc::SyncSender<TimerAction>,
+    ) -> Result<(), Error> {
+        if let Some(duration) = self.manifest.as_ref().timeout_ms {
+            let sleep_time = if duration <= 100 { 1 } else { 10 };
+            let num_epochs = (duration as f64 / sleep_time as f64).ceil() as usize;
+            self.memory.store.set_epoch_deadline(num_epochs as u64);
+            let engine: Engine = self.memory.store.engine().clone();
+            tx.send(TimerAction::Start {
+                engine,
+                sleep_time: std::time::Duration::from_millis(sleep_time),
+                iterations: num_epochs,
+            })?;
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn stop_timer(
+        &mut self,
+        tx: &std::sync::mpsc::SyncSender<TimerAction>,
+    ) -> Result<(), Error> {
+        tx.send(TimerAction::Stop)?;
         Ok(())
     }
 }

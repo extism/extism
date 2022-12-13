@@ -2,9 +2,14 @@ use std::collections::{BTreeMap, VecDeque};
 
 use crate::*;
 
-pub(crate) struct TimerInfo {
-    pub engine: Engine,
-    pub duration: std::time::Duration,
+pub(crate) enum TimerAction {
+    Start {
+        engine: Engine,
+        iterations: usize,
+        sleep_time: std::time::Duration,
+    },
+    Stop,
+    Shutdown,
 }
 
 /// A `Context` is used to store and manage plugins
@@ -19,7 +24,7 @@ pub struct Context {
 
     // Timeout thread
     pub(crate) epoch_timer: Option<std::thread::JoinHandle<()>>,
-    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
+    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
 }
 
 impl Default for Context {
@@ -33,16 +38,28 @@ const START_REUSING_IDS: usize = 25;
 impl Context {
     /// Create a new context
     pub fn new() -> Context {
-        let (tx, rx) = std::sync::mpsc::sync_channel::<Option<TimerInfo>>(8);
+        let (tx, rx) = std::sync::mpsc::sync_channel::<TimerAction>(8);
         let timer = std::thread::spawn(move || loop {
             let info = rx.try_recv();
             match info {
-                Ok(Some(info)) => {
-                    std::thread::sleep(info.duration);
-                    info.engine.increment_epoch();
+                Ok(TimerAction::Start {
+                    iterations,
+                    sleep_time,
+                    engine,
+                }) => {
+                    for _ in 0..iterations {
+                        std::thread::sleep(sleep_time);
+                        engine.increment_epoch();
+
+                        match rx.try_recv() {
+                            Ok(TimerAction::Shutdown) => return,
+                            Ok(TimerAction::Stop) => break,
+                            _ => unreachable!(),
+                        }
+                    }
                 }
-                Ok(None) => return,
-                Err(_) => continue,
+                Ok(TimerAction::Shutdown) => return,
+                Err(_) | Ok(TimerAction::Stop) => continue,
             }
         });
         Context {
@@ -158,7 +175,7 @@ impl Context {
 
 impl Drop for Context {
     fn drop(&mut self) {
-        let _ = self.epoch_timer_tx.try_send(None);
+        let _ = self.epoch_timer_tx.try_send(TimerAction::Shutdown);
         if let Some(timer) = self.epoch_timer.take() {
             let _ = timer.join();
         }

@@ -4,7 +4,7 @@ use crate::*;
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
     plugin: &'a mut Plugin,
-    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<Option<TimerInfo>>,
+    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
 }
 
 impl<'a> PluginRef<'a> {

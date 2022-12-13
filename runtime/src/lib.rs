@@ -11,7 +11,7 @@ mod plugin_ref;
 pub mod sdk;
 
 pub use context::Context;
-pub(crate) use context::TimerInfo;
+pub(crate) use context::TimerAction;
 pub use function::{Function, ValType};
 pub use manifest::Manifest;
 pub use memory::{MemoryBlock, PluginMemory};
