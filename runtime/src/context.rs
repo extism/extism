@@ -152,12 +152,3 @@ impl Context {
     }
 }
 
-impl Drop for Timer {
-    fn drop(&mut self) {
-        let _ = self.tx.send(TimerAction::Shutdown);
-        if let Some(thread) = self.thread.take() {
-            let _ = thread.join();
-        }
-        println!("BYE BYE");
-    }
-}
