@@ -356,12 +356,20 @@ pub(crate) fn http_request(
         ));
 
         let res = {
-            if body_offset > 0 {
-                let buf = data.memory().get(body_offset)?.to_vec();
-                r = r.body(buf);
+            let res = if body_offset > 0 {
+                if let Some(body_len) = data.memory().block_length(body_offset) {
+                    let ptr = data.memory().ptr(body_offset)?;
+                    let buf = unsafe { std::slice::from_raw_parts(ptr, body_len) };
+                    r = r.body(buf);
+                    r.send()
+                } else {
+                    r.send()
+                }
+            } else {
+                r.send()
             };
 
-            match r.send() {
+            match res {
                 Ok(x) => x,
                 Err(e) => {
                     if e.is_timeout() {
