@@ -236,10 +236,12 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Start timer
     let tx = plugin_ref.epoch_timer_tx.clone();
-    if plugin_ref.as_mut().start_timer(&tx).is_err() {
-        return plugin_ref
-            .as_ref()
-            .error("Unable to communcate with timeout manager".to_string(), -1);
+    if let Err(e) = plugin_ref.as_mut().start_timer(&tx) {
+        let id = plugin_ref.as_ref().timer_id;
+        return plugin_ref.as_ref().error(
+            format!("Unable to start timeout manager for {id}: {e:?}"),
+            -1,
+        );
     }
 
     // Call the function
@@ -250,13 +252,19 @@ pub unsafe extern "C" fn extism_plugin_call(
         results.as_mut_slice(),
     );
 
-    // Stop timer
-    let _ = plugin_ref.as_mut().stop_timer(&tx);
-
     plugin_ref.as_ref().dump_memory();
 
     if plugin_ref.as_ref().has_wasi() && name == "_start" {
         plugin_ref.as_mut().should_reinstantiate = true;
+    }
+
+    // Stop timer
+    if let Err(e) = plugin_ref.as_mut().stop_timer(&tx) {
+        let id = plugin_ref.as_ref().timer_id;
+        return plugin_ref.as_ref().error(
+            format!("Failed to stop timeout manager for {id}: {e:?}"),
+            -1,
+        );
     }
 
     match res {

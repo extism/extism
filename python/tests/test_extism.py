@@ -66,16 +66,14 @@ class TestExtism(unittest.TestCase):
 
     def test_extism_plugin_timeout(self):
         with extism.Context() as ctx:
-            start = datetime.now()
             plugin = ctx.plugin(self._loop_manifest())
+            start = datetime.now()
             self.assertRaises(extism.Error,
                               lambda: plugin.call("infinite_loop", b""))
             end = datetime.now()
-            self.assertLess(
-                end, 
-                start + timedelta(seconds=1.2), 
-                "plugin timeout exceeded 1000ms expectation")
-        
+            self.assertLess(end, start + timedelta(seconds=1.01),
+                            "plugin timeout exceeded 1000ms expectation")
+
     def _manifest(self):
         wasm = self._count_vowels_wasm()
         hash = hashlib.sha256(wasm).hexdigest()

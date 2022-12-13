@@ -52,14 +52,6 @@ impl Timer {
                     }
                 }
 
-                for x in rx.try_iter() {
-                    handle!(x)
-                }
-
-                if plugins.is_empty() {
-                    continue;
-                }
-
                 plugins = plugins
                     .into_iter()
                     .filter(|(_k, (engine, end))| {
@@ -71,6 +63,10 @@ impl Timer {
                         true
                     })
                     .collect();
+
+                for x in rx.try_iter() {
+                    handle!(x)
+                }
             }
         });
         *timer = Some(Timer {
