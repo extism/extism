@@ -27,7 +27,7 @@ impl Default for Context {
 const START_REUSING_IDS: usize = 25;
 
 impl Context {
-    fn timer() -> std::sync::MutexGuard<'static, Option<Timer>> {
+    pub(crate) fn timer() -> std::sync::MutexGuard<'static, Option<Timer>> {
         match unsafe { TIMER.lock() } {
             Ok(x) => x,
             Err(e) => e.into_inner(),
@@ -151,4 +151,3 @@ impl Context {
         }
     }
 }
-

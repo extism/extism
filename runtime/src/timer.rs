@@ -17,6 +17,10 @@ pub(crate) struct Timer {
     pub thread: Option<std::thread::JoinHandle<()>>,
 }
 
+extern "C" fn cleanup_timer() {
+    drop(Context::timer().take())
+}
+
 impl Timer {
     pub fn init(timer: &mut Option<Timer>) -> std::sync::mpsc::SyncSender<TimerAction> {
         let (tx, rx) = std::sync::mpsc::sync_channel(128);
@@ -61,6 +65,11 @@ impl Timer {
             thread: Some(thread),
             tx: tx.clone(),
         });
+
+        unsafe {
+            libc::atexit(cleanup_timer);
+        }
+
         tx
     }
 }
