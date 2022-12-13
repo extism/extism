@@ -1,6 +1,7 @@
 use std::collections::BTreeMap;
 use std::fmt::Write as FmtWrite;
 use std::io::Read;
+use std::str::FromStr;
 
 use sha2::Digest;
 
@@ -137,18 +138,23 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             #[cfg(feature = "register-http")]
             {
                 // Setup request
-                let mut req = ureq::request(method.as_deref().unwrap_or("GET"), url);
+                let method =
+                    reqwest::Method::from_bytes(method.as_deref().unwrap_or("GET").as_bytes())?;
+                let url = url::Url::parse(url)?;
+                let mut req = reqwest::blocking::Request::new(method, url);
 
                 for (k, v) in headers.iter() {
-                    req = req.set(k, v);
+                    let k = reqwest::header::HeaderName::from_str(k)?;
+                    let v = reqwest::header::HeaderValue::from_str(v)?;
+                    req.headers_mut().insert(k, v);
                 }
 
-                req = req.timeout(std::time::Duration::from_millis(
+                req.timeout_mut().insert(std::time::Duration::from_millis(
                     timeout_ms.unwrap_or(30000),
                 ));
 
                 // Fetch WASM code
-                let mut r = req.call()?.into_reader();
+                let mut r = reqwest::blocking::Client::new().execute(req)?;
                 let mut data = Vec::new();
                 r.read_to_end(&mut data)?;
 
