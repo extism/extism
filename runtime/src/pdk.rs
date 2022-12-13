@@ -333,21 +333,55 @@ pub(crate) fn http_request(
             }
         }
 
-        let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
+        let method =
+            reqwest::Method::from_bytes(req.method.as_deref().unwrap_or("GET").as_bytes())?;
+        let url = url::Url::parse(&req.url)?;
+        let mut r = reqwest::blocking::Client::new().request(method, url);
 
         for (k, v) in req.headers.iter() {
-            r = r.set(k, v);
+            r = r.header(k, v);
         }
 
-        let res = if body_offset > 0 {
-            let buf = data.memory().get(body_offset)?;
-            let res = r.send_bytes(buf)?;
-            data.http_status = res.status();
-            res.into_reader()
-        } else {
-            let res = r.call()?;
-            data.http_status = res.status();
-            res.into_reader()
+        // Configure timeout
+        let global_timeout = data.plugin().manifest.as_ref().http_timeout_ms;
+        let req_timeout = req.timeout_ms;
+
+        r = r.timeout(std::time::Duration::from_millis(
+            match (global_timeout, req_timeout) {
+                (Some(g), None) => g,
+                (None, Some(r)) => r,
+                (Some(g), Some(r)) => g.min(r),
+                (None, None) => 30000, // Default to 30 seconds
+            },
+        ));
+
+        let res = {
+            let res = if body_offset > 0 {
+                if let Some(body_len) = data.memory().block_length(body_offset) {
+                    let ptr = data.memory().ptr(body_offset)?;
+                    let buf = unsafe { std::slice::from_raw_parts(ptr, body_len) };
+                    r = r.body(buf);
+                    r.send()
+                } else {
+                    r.send()
+                }
+            } else {
+                r.send()
+            };
+
+            match res {
+                Ok(x) => x,
+                Err(e) => {
+                    if e.is_timeout() {
+                        data.http_status = reqwest::StatusCode::REQUEST_TIMEOUT.as_u16();
+                    } else if let Some(status) = e.status() {
+                        data.http_status = status.as_u16();
+                    }
+
+                    output[0] = Val::I64(0);
+                    return Ok(());
+                }
+            }
         };
 
         let mut buf = Vec::new();

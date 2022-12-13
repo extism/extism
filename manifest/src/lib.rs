@@ -19,6 +19,8 @@ pub struct HttpRequest {
     #[serde(alias = "header")]
     pub headers: std::collections::BTreeMap<String, String>,
     pub method: Option<String>,
+    #[serde(default)]
+    pub timeout_ms: Option<u64>,
 }
 
 impl HttpRequest {
@@ -27,6 +29,7 @@ impl HttpRequest {
             url: url.into(),
             headers: Default::default(),
             method: None,
+            timeout_ms: None,
         }
     }
 
@@ -37,6 +40,11 @@ impl HttpRequest {
 
     pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> HttpRequest {
         self.headers.insert(key.into(), value.into());
+        self
+    }
+
+    pub fn with_timeout(mut self, timeout: std::time::Duration) -> HttpRequest {
+        self.timeout_ms = Some(timeout.as_millis() as u64);
         self
     }
 }
@@ -162,6 +170,8 @@ pub struct Manifest {
     pub allowed_hosts: Option<Vec<String>>,
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
+    #[serde(default)]
+    pub http_timeout_ms: Option<u64>,
 }
 
 impl Manifest {
@@ -230,6 +240,12 @@ impl Manifest {
     /// Set `config`
     pub fn with_config(mut self, c: impl Iterator<Item = (String, String)>) -> Self {
         self.config = c.collect();
+        self
+    }
+
+    /// Set global timeout for `extism_http_request`
+    pub fn with_http_timeout(mut self, timeout: std::time::Duration) -> Self {
+        self.http_timeout_ms = Some(timeout.as_millis() as u64);
         self
     }
 }

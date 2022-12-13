@@ -21,16 +21,16 @@ log = "0.4"
 log4rs = "1.1"
 url = "2"
 glob = "0.3"
-ureq = {version = "2.5", optional=true}
 extism-manifest = { version = "0.1.0", path = "../manifest" }
 pretty-hex = { version = "0.3" }
+reqwest = {version = "0.11", features = ["blocking"], optional=true}
 
 [features]
 default = ["http", "register-http", "register-filesystem"]
 nn = ["wasmtime-wasi-nn"]
-register-http = ["ureq"] # enables wasm to be downloaded using http
-register-filesystem = [] # enables wasm to be loaded from disk
-http = ["ureq"]          # enables extism_http_request
+register-http = ["reqwest"] # enables wasm to be downloaded using http
+register-filesystem = []    # enables wasm to be loaded from disk
+http = ["reqwest"]          # enables extism_http_request
 
 [build-dependencies]
 cbindgen = "0.24"
