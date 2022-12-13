@@ -323,7 +323,10 @@ impl Plugin {
         &mut self,
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
     ) -> Result<(), Error> {
-        tx.send(TimerAction::Stop)?;
+        if self.manifest.as_ref().timeout_ms.is_some() {
+            tx.send(TimerAction::Stop)?;
+        }
+
         Ok(())
     }
 }
