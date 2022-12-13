@@ -27,9 +27,9 @@ impl Timer {
         let thread = std::thread::spawn(move || {
             let mut plugins = std::collections::BTreeMap::new();
 
-            loop {
-                for x in rx.try_iter() {
-                    match x {
+            macro_rules! handle {
+                ($x:expr) => {
+                    match $x {
                         TimerAction::Start {
                             id,
                             engine,
@@ -42,6 +42,18 @@ impl Timer {
                         }
                         TimerAction::Shutdown => return,
                     }
+                };
+            }
+
+            loop {
+                if plugins.is_empty() {
+                    if let Ok(x) = rx.recv() {
+                        handle!(x)
+                    }
+                }
+
+                for x in rx.try_iter() {
+                    handle!(x)
                 }
 
                 if plugins.is_empty() {
