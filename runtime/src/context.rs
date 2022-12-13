@@ -49,13 +49,14 @@ impl Context {
                 }) => {
                     for _ in 0..iterations {
                         std::thread::sleep(sleep_time);
-                        engine.increment_epoch();
 
                         match rx.try_recv() {
                             Ok(TimerAction::Shutdown) => return,
                             Ok(TimerAction::Stop) => break,
-                            _ => unreachable!(),
+                            _ => (),
                         }
+
+                        engine.increment_epoch();
                     }
                 }
                 Ok(TimerAction::Shutdown) => return,

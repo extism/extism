@@ -314,6 +314,8 @@ impl Plugin {
                 sleep_time: std::time::Duration::from_millis(sleep_time),
                 iterations: num_epochs,
             })?;
+        } else {
+            self.memory.store.set_epoch_deadline(1);
         }
 
         Ok(())

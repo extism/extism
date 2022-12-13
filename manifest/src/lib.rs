@@ -175,6 +175,7 @@ impl Manifest {
     pub fn new(wasm: impl IntoIterator<Item = impl Into<Wasm>>) -> Manifest {
         Manifest {
             wasm: wasm.into_iter().map(|x| x.into()).collect(),
+            timeout_ms: default_timeout(),
             ..Default::default()
         }
     }
