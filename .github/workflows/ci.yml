@@ -377,7 +377,20 @@ jobs:
         id: coverage
         run: |
           python scripts/sdk_coverage.py
-          
+
+  java:
+    name: Java
+    steps:
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          java-version: '11'
+          distribution: 'adopt'
+      - name: Test Java
+        run: |
+          cd java
+          mvn clean test
+
   dotnet:
     name: .NET
     needs: lib
