@@ -54,6 +54,9 @@ public:
   std::vector<Wasm> wasm;
   std::vector<std::string> allowed_hosts;
   std::map<std::string, std::string> allowed_paths;
+  uint64_t timeout_ms;
+
+  Manifest() : timeout_ms(30000) {}
 
   static Manifest path(std::string s, std::string hash = std::string()) {
     Manifest m;
@@ -103,6 +106,8 @@ public:
       doc["allowed_paths"] = h;
     }
 
+    doc["timeout_ms"] = Json::Value(this->timeout_ms);
+
     Json::FastWriter writer;
     return writer.write(doc);
   }
@@ -123,6 +128,15 @@ public:
   }
 
   void allow_host(std::string host) { this->allowed_hosts.push_back(host); }
+
+  void allow_path(std::string src, std::string dest = std::string()) {
+    if (dest.empty()) {
+      dest = src;
+    }
+    this->allowed_paths[src] = dest;
+  }
+
+  void set_timeout_ms(uint64_t ms) { this->timeout_ms = ms; }
 
   void set_config(std::string k, std::string v) { this->config[k] = v; }
 };
@@ -275,6 +289,7 @@ public:
 class Context {
 public:
   std::shared_ptr<ExtismContext> pointer;
+
   Context() {
     this->pointer = std::shared_ptr<ExtismContext>(extism_context_new(),
                                                    extism_context_free);

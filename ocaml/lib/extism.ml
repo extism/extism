@@ -165,6 +165,7 @@ module Manifest = struct
     config : config option; [@yojson.option]
     allowed_hosts : string list option; [@yojson.option]
     allowed_paths : dict option; [@yojson.option]
+    timeout_ms : int option; [@yojson.option]
   }
   [@@deriving yojson]
 
@@ -174,8 +175,8 @@ module Manifest = struct
   let url ?headers ?name ?meth ?hash url =
     Url { headers; name; meth; hash; url }
 
-  let v ?config ?memory ?allowed_hosts ?allowed_paths wasm =
-    { config; wasm; memory; allowed_hosts; allowed_paths }
+  let v ?config ?memory ?allowed_hosts ?allowed_paths ?timeout_ms wasm =
+    { config; wasm; memory; allowed_hosts; allowed_paths; timeout_ms }
 
   let json t = yojson_of_t t |> Yojson.Safe.to_string
   let with_config t config = { t with config = Some config }

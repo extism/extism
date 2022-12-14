@@ -170,6 +170,7 @@ export type Manifest = {
   config?: PluginConfig;
   allowed_hosts?: Array<string>;
   allowed_paths?: Record<string, string>;
+  timeout_ms?: number;
 };
 
 /**
