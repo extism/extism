@@ -370,6 +370,7 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
+      - uses: ./.github/actions/extism
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -378,7 +379,7 @@ jobs:
       - name: Test Java
         run: |
           cd java
-          mvn verify
+          mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn verify
 
   dotnet:
     name: .NET
