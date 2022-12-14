@@ -362,6 +362,11 @@ jobs:
     name: Java
     needs: lib
     runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
     steps:
       - name: Set up Java
         uses: actions/setup-java@v3
