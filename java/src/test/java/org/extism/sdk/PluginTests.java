@@ -83,7 +83,6 @@ public class PluginTests {
 
     @Test
     public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimesByReusingContext() {
-
         var manifest = new Manifest(CODE.pathWasmSource());
         var functionName = "count_vowels";
         var input = "Hello World";
@@ -101,9 +100,8 @@ public class PluginTests {
 
     private String invokeFunction(Manifest manifest, String functionName, String input) {
         try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false)) {
-                return plugin.call(functionName, input);
-            }
+            var plugin = ctx.newPlugin(manifest, false);
+            return plugin.call(functionName, input);
         }
     }
 
