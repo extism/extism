@@ -2,20 +2,14 @@ package org.extism.sdk;
 
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
-import org.extism.sdk.wasm.ByteArrayWasmSource;
-import org.extism.sdk.wasm.PathWasmSource;
 import org.extism.sdk.wasm.WasmSourceResolver;
 import org.junit.jupiter.api.Test;
 
-import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.extism.sdk.TestWasmSources.CODE;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class PluginTests {
@@ -23,7 +17,7 @@ public class PluginTests {
     @Test
     public void shouldInvokeFunctionWithMemoryOptions() {
         //FIXME check whether memory options are effective
-        var manifest = new Manifest(List.of(exampleFileWasmSource()), new MemoryOptions(0));
+        var manifest = new Manifest(List.of(CODE.pathWasmSource()), new MemoryOptions(0));
         var output = invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
@@ -32,21 +26,21 @@ public class PluginTests {
     public void shouldInvokeFunctionWithConfig() {
         //FIXME check if config options are available in wasm call
         var config = Map.of("key1", "value1");
-        var manifest = new Manifest(List.of(exampleFileWasmSource()), null, config);
+        var manifest = new Manifest(List.of(CODE.pathWasmSource()), null, config);
         var output = invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
     @Test
     public void shouldInvokeFunctionFromFileWasmSource() {
-        var manifest = new Manifest(exampleFileWasmSource());
+        var manifest = new Manifest(CODE.pathWasmSource());
         var output = invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
     @Test
     public void shouldInvokeFunctionFromByteArrayWasmSource() {
-        var manifest = new Manifest(exampleByteArrayWasmSource());
+        var manifest = new Manifest(CODE.byteArrayWasmSource());
         var output = invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
@@ -54,14 +48,14 @@ public class PluginTests {
     @Test
     public void shouldFailToInvokeUnknownFunction() {
         assertThrows(ExtismException.class, () -> {
-            var manifest = new Manifest(exampleFileWasmSource());
+            var manifest = new Manifest(CODE.pathWasmSource());
             invokeFunction(manifest, "unknown", "dummy");
         }, "Function not found: unknown");
     }
 
     @Test
     public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimes() {
-        var wasmSource = exampleFileWasmSource();
+        var wasmSource = CODE.pathWasmSource();
         var manifest = new Manifest(wasmSource);
         var output = invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
@@ -74,7 +68,7 @@ public class PluginTests {
     public void shouldAllowInvokeFunctionFromFileWasmSourceApiUsageExample() {
 
         var wasmSourceResolver = new WasmSourceResolver();
-        var manifest = new Manifest(wasmSourceResolver.resolve(getExampleWasmFilePath()));
+        var manifest = new Manifest(wasmSourceResolver.resolve(CODE.getWasmFilePath()));
 
         var functionName = "count_vowels";
         var input = "Hello World";
@@ -90,7 +84,7 @@ public class PluginTests {
     @Test
     public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimesByReusingContext() {
 
-        var manifest = new Manifest(exampleFileWasmSource());
+        var manifest = new Manifest(CODE.pathWasmSource());
         var functionName = "count_vowels";
         var input = "Hello World";
 
@@ -111,27 +105,6 @@ public class PluginTests {
                 return plugin.call(functionName, input);
             }
         }
-    }
-
-    private Path getExampleWasmFilePath() {
-        return Paths.get("src", "test", "resources", "code.wasm");
-    }
-
-    private PathWasmSource exampleFileWasmSource() {
-        return resolveFileWasmSource(getExampleWasmFilePath());
-    }
-
-    private ByteArrayWasmSource exampleByteArrayWasmSource() {
-        try {
-            var wasmBytes = Files.readAllBytes(getExampleWasmFilePath());
-            return new WasmSourceResolver().resolve("wasm@" + Arrays.hashCode(wasmBytes), wasmBytes);
-        } catch (IOException ioe) {
-            throw new RuntimeException(ioe);
-        }
-    }
-
-    public static PathWasmSource resolveFileWasmSource(Path path) {
-        return new WasmSourceResolver().resolve(path);
     }
 
 }
