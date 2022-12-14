@@ -368,6 +368,8 @@ jobs:
         rust:
           - stable
     steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
       - name: Set up Java
         uses: actions/setup-java@v3
         with:
@@ -377,6 +379,7 @@ jobs:
         run: |
           cd java
           LD_LIBRARY_PATH=/usr/local/lib mvn clean test
+
 
   dotnet:
     name: .NET
