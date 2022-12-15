@@ -16,14 +16,14 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 public class PluginTests {
 
     static {
-        Extism.setLogger(Paths.get("/tmp/extism.log"), LogLevel.TRACE);
+        Extism.setLogFile(Paths.get("/tmp/extism.log"), Extism.LogLevel.TRACE);
     }
 
     @Test
     public void shouldInvokeFunctionWithMemoryOptions() {
         //FIXME check whether memory options are effective
         var manifest = new Manifest(List.of(CODE.pathWasmSource()), new MemoryOptions(0));
-        var output = invokeFunction(manifest, "count_vowels", "Hello World");
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
@@ -32,21 +32,21 @@ public class PluginTests {
         //FIXME check if config options are available in wasm call
         var config = Map.of("key1", "value1");
         var manifest = new Manifest(List.of(CODE.pathWasmSource()), null, config);
-        var output = invokeFunction(manifest, "count_vowels", "Hello World");
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
     @Test
     public void shouldInvokeFunctionFromFileWasmSource() {
         var manifest = new Manifest(CODE.pathWasmSource());
-        var output = invokeFunction(manifest, "count_vowels", "Hello World");
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
     @Test
     public void shouldInvokeFunctionFromByteArrayWasmSource() {
         var manifest = new Manifest(CODE.byteArrayWasmSource());
-        var output = invokeFunction(manifest, "count_vowels", "Hello World");
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
@@ -54,7 +54,7 @@ public class PluginTests {
     public void shouldFailToInvokeUnknownFunction() {
         assertThrows(ExtismException.class, () -> {
             var manifest = new Manifest(CODE.pathWasmSource());
-            invokeFunction(manifest, "unknown", "dummy");
+            Extism.invokeFunction(manifest, "unknown", "dummy");
         }, "Function not found: unknown");
     }
 
@@ -62,10 +62,10 @@ public class PluginTests {
     public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimes() {
         var wasmSource = CODE.pathWasmSource();
         var manifest = new Manifest(wasmSource);
-        var output = invokeFunction(manifest, "count_vowels", "Hello World");
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
 
-        output = invokeFunction(manifest, "count_vowels", "Hello World");
+        output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
@@ -100,13 +100,6 @@ public class PluginTests {
                 output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
             }
-        }
-    }
-
-    private String invokeFunction(Manifest manifest, String functionName, String input) {
-        try (var ctx = new Context()) {
-            var plugin = ctx.newPlugin(manifest, false);
-            return plugin.call(functionName, input);
         }
     }
 
