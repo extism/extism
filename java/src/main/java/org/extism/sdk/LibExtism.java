@@ -34,6 +34,15 @@ public interface LibExtism extends Library {
     void extism_context_reset(Pointer contextPointer);
 
     /**
+     * Sets the logger to the given path with the given level of verbosity
+     *
+     * @param path The file path of the logger
+     * @param logLevel The level of the logger
+     * @return true if successful
+     */
+    boolean extism_log_file(String path, String logLevel);
+
+    /**
      * Returns the error associated with a @{@link Context} or @{@link Plugin}, if {@code pluginId} is {@literal -1} then the context error will be returned
      *
      * @param contextPointer
