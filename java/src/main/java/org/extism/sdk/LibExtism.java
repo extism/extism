@@ -58,7 +58,7 @@ public interface LibExtism extends Library {
      * @param wasm           is a WASM module (wat or wasm) or a JSON encoded manifest
      * @param wasmSize       the length of the `wasm` parameter
      * @param withWASI       enables/disables WASI
-     * @return id of the plugin
+     * @return id of the plugin or {@literal -1} in case of error
      */
     int extism_plugin_new(long contextPointer, byte[] wasm, long wasmSize, boolean withWASI);
 
@@ -74,6 +74,7 @@ public interface LibExtism extends Library {
      * @param wasm           is a WASM module (wat or wasm) or a JSON encoded manifest
      * @param length         the length of the `wasm` parameter
      * @param withWASI       enables/disables WASI
+     * @return id of the plugin or {@literal -1} in case of error
      * @see #extism_plugin_new(long, byte[], long, boolean)
      */
     int extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI);

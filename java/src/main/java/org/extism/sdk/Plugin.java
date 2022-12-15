@@ -35,12 +35,14 @@ public class Plugin implements AutoCloseable {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(manifestBytes, "manifestBytes");
 
-        this.index = LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), manifestBytes, manifestBytes.length, withWASI);
-        if (this.index == -1) {
+        Pointer contextPointer = context.getPointer();
+        int index = LibExtism.INSTANCE.extism_plugin_new(contextPointer, manifestBytes, manifestBytes.length, withWASI);
+        if (index == -1) {
             String error = context.error(this);
             throw new ExtismException(error);
         }
 
+        this.index= index;
         this.context = context;
     }
 
@@ -76,8 +78,8 @@ public class Plugin implements AutoCloseable {
 
         Pointer contextPointer = context.getPointer();
         int inputDataLength = inputData == null ? 0 : inputData.length;
-        int callExitCode = LibExtism.INSTANCE.extism_plugin_call(contextPointer, index, functionName, inputData, inputDataLength);
-        if (callExitCode == -1) {
+        int exitCode = LibExtism.INSTANCE.extism_plugin_call(contextPointer, index, functionName, inputData, inputDataLength);
+        if (exitCode == -1) {
             String error = context.error(this);
             throw new ExtismException(error);
         }
