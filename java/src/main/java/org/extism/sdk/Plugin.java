@@ -1,7 +1,6 @@
 package org.extism.sdk;
 
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.support.JsonSerde;
 
@@ -36,10 +35,8 @@ public class Plugin implements AutoCloseable {
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(manifestBytes, "manifestBytes");
 
-        IntByReference pluginIndex = new IntByReference();
-        LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), manifestBytes, manifestBytes.length, withWASI, pluginIndex);
+        this.index = LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), manifestBytes, manifestBytes.length, withWASI);
 
-        this.index = pluginIndex.getValue();
         this.context = context;
     }
 
