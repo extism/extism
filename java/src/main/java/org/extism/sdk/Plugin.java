@@ -37,8 +37,8 @@ public class Plugin implements AutoCloseable {
 
         this.index = LibExtism.INSTANCE.extism_plugin_new(context.getPointer(), manifestBytes, manifestBytes.length, withWASI);
         if (this.index == -1) {
-            var errMsg = LibExtism.INSTANCE.extism_error(context.getPointer(), this.index);
-            throw new ExtismException(errMsg);
+            String error = context.error(this);
+            throw new ExtismException(error);
         }
 
         this.context = context;
