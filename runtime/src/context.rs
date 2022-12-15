@@ -37,6 +37,7 @@ impl Context {
     /// Create a new context
     pub fn new() -> Context {
         let timer = &mut *Self::timer();
+
         let tx = match timer {
             None => Timer::init(timer),
             Some(t) => t.tx.clone(),
