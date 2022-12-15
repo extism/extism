@@ -70,6 +70,7 @@ type Manifest struct {
 	Config       map[string]string `json:"config,omitempty"`
 	AllowedHosts []string          `json:"allowed_hosts,omitempty"`
 	AllowedPaths map[string]string `json:"allowed_paths,omitempty"`
+	Timeout      uint              `json:"timeout_ms,omitempty"`
 }
 
 func makePointer(data []byte) unsafe.Pointer {
