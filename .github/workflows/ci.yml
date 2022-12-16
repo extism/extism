@@ -248,7 +248,7 @@ jobs:
       - name: Setup OCaml env
         uses: ocaml/setup-ocaml@v2
         with:
-          ocaml-compiler: ocaml-base-compiler.5.0.0~beta1
+          ocaml-compiler: ocaml-base-compiler.5.0.0
       - name: Cache OCaml
         id: cache-ocaml
         uses: actions/cache@v3

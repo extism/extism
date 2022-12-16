@@ -10,7 +10,7 @@ homepage: "https://github.com/extism/extism"
 doc: "https://github.com/extism/extism"
 bug-reports: "https://github.com/extism/extism/issues"
 depends: [
-  "ocaml"
+  "ocaml" {>= "4.14.1"}
   "dune" {>= "3.2"}
   "ctypes-foreign"
   "bigstringaf"
