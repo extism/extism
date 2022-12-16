@@ -31,7 +31,7 @@ with Context() as context:
     functions = [
         Function("testing_123",
                  testing_123, [ValType.I64], [ValType.I64],
-                 user_data=context)
+                 context)
     ]
     plugin = context.plugin(config, wasi=True, functions=functions)
     # Call `count_vowels`

@@ -221,11 +221,11 @@ class Context:
 
 class Function:
 
-    def __init__(self, name: str, f, args, returns, user_data=None):
+    def __init__(self, name: str, f, args, returns, *user_data):
         self.pointer = None
         args = [a.value for a in args]
         returns = [r.value for r in returns]
-        if user_data is not None:
+        if len(user_data) > 0:
             self.user_data = _ffi.new_handle(user_data)
         else:
             self.user_data = _ffi.NULL
@@ -428,7 +428,7 @@ def host_fn(func):
             output = func(inp)
         else:
             udata = _ffi.from_handle(user_data)
-            output = func(inp, udata)
+            output = func(inp, *udata)
 
         if output is None:
             return
