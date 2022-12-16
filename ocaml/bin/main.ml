@@ -1,12 +1,27 @@
 open Extism
+open Cmdliner
 
-let () =
-  let input =
-    if Array.length Sys.argv > 1 then Sys.argv.(1) else "this is a test"
-  in
-  let ctx = Context.create () in
-  let manifest = Manifest.v [ Manifest.file "../wasm/code.wasm" ] in
-  let plugin = Extism.Plugin.of_manifest ctx manifest |> Result.get_ok in
-  let res = Extism.Plugin.call plugin ~name:"count_vowels" input |> Result.get_ok in
-  print_endline res;
-  Context.free ctx
+let main file func_name input =
+  with_context @@ fun ctx ->
+  let file = In_channel.with_open_bin file In_channel.input_all in
+  let plugin = Plugin.make ctx file ~wasi:true |> Result.get_ok in
+  let res = Plugin.call plugin ~name:func_name input |> Result.get_ok in
+  print_endline res
+
+let file =
+  let doc = "The WASM module or Extism manifest path." in
+  Arg.(value & pos 0 file "" & info [] ~docv:"FILE" ~doc)
+
+let func_name =
+  let doc = "The function to run." in
+  Arg.(value & pos 1 string "_start" & info [] ~docv:"NAME" ~doc)
+
+let input =
+  let doc = "Input data." in
+  Arg.(value & opt string "" & info ["input"; "i"] ~docv:"INPUT" ~doc)
+
+let main_t = Term.(const main $ file $ func_name $ input)
+  
+let cmd = Cmd.v (Cmd.info "extism-run") main_t
+
+let () = exit (Cmd.eval cmd)

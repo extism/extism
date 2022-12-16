@@ -1,3 +1,4 @@
 (executable
  (name main)
- (libraries extism))
+ (public_name extism-run)
+ (libraries extism cmdliner))
