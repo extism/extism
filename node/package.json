@@ -21,7 +21,7 @@
   },
   "scripts": {
     "prepare": "npm run build",
-    "example": "node example.js",
+    "example": "npm run build && node example.js",
     "build": "tsc",
     "test": "jest --coverage"
   },

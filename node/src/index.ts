@@ -337,12 +337,14 @@ export class Function {
 
   constructor(name: string, inputs: ValType[], outputs: ValType[], f: any, userData?: any) {
     this.callback = ffi.Callback("void", [ValArray, "uint64", ValArray, "uint64", "void*"],
-      (inputs: Buffer, n_inputs, outputs: Buffer, n_outputs, user_data) => {
+      (inputs: typeof ValArray, n_inputs, outputs: Buffer, n_outputs, user_data) => {
+        console.log(inputs);
         let inputArr = [];
         let outputArr = [];
 
         for (var i = 0; i < n_inputs; i++) {
           inputArr.push(Val.get(inputs, i));
+          console.log(inputArr);
         }
 
 

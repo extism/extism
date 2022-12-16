@@ -13,9 +13,11 @@ else:
 
 
 @host_fn
-def testing_123(input, context):
+def testing_123(input, context, a_string):
     mem = context.current_plugin_memory_from_offset(input[0])
     print("Hello from Python!")
+    print(a_string)
+    print(input)
     print(context.current_plugin_memory(mem)[:])
     print(requests.get("https://example.com").text)
     return input[0]
@@ -31,7 +33,7 @@ with Context() as context:
     functions = [
         Function("testing_123",
                  testing_123, [ValType.I64], [ValType.I64],
-                 context)
+                 context, "This is user data!")
     ]
     plugin = context.plugin(config, wasi=True, functions=functions)
     # Call `count_vowels`
