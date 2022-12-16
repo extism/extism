@@ -2,9 +2,11 @@ package org.extism.sdk;
 
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
+import org.extism.sdk.support.JsonSerde;
 import org.extism.sdk.wasm.WasmSourceResolver;
 import org.junit.jupiter.api.Test;
 
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +48,9 @@ public class PluginTests {
     @Test
     public void shouldInvokeFunctionFromByteArrayWasmSource() {
         var manifest = new Manifest(CODE.byteArrayWasmSource());
+        var manifestOut = JsonSerde.toJson(manifest).getBytes(StandardCharsets.UTF_8);
+        System.out.println("manifestOut");
+        System.out.println(new String(manifestOut, StandardCharsets.UTF_8));
         var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
