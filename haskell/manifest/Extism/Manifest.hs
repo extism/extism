@@ -27,10 +27,13 @@ data HTTPRequest = HTTPRequest
   , method :: Nullable String
   }
 
+makeKV x =
+  object [(k, showJSON v) | (k, v) <- x]
+
 requestObj (HTTPRequest url headers method) =
   [
     "url" .= url,
-    "headers" .= headers,
+    "headers" .= mapNullable makeKV headers,
     "method" .= method
   ]
 
@@ -78,8 +81,8 @@ data WasmData = WasmData
   , dataHash :: Nullable String
   }
 
-  
-  
+
+
 
 instance JSON WasmData where
   showJSON (WasmData bytes name hash) =
@@ -189,9 +192,9 @@ instance JSON Manifest where
     object [
       "wasm" .= w,
       "memory" .= memory,
-      "config" .= config,
+      "config" .= mapNullable makeKV config,
       "allowed_hosts" .= hosts,
-      "allowed_paths" .= paths,
+      "allowed_paths" .= mapNullable makeKV paths,
       "timeout_ms" .= timeout
     ]
   readJSON x =
