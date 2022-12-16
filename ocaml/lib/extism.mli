@@ -1,13 +1,11 @@
-type t
 type error = [ `Msg of string ]
 
 val extism_version : unit -> string
 
 module Manifest : sig
   type memory = { max_pages : int option } [@@deriving yojson]
-
   type dict = (string * string) list
-  type config = (string * (string option)) list
+  type config = (string * string option) list
 
   type wasm_file = {
     path : string;
@@ -37,7 +35,7 @@ module Manifest : sig
     config : config option;
     allowed_hosts : string list option;
     allowed_paths : dict option;
-    timeout_ms: int option;
+    timeout_ms : int option;
   }
 
   val file : ?name:string -> ?hash:string -> string -> wasm
@@ -77,35 +75,33 @@ val with_context : (Context.t -> 'a) -> 'a
 val set_log_file :
   ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
-val plugin :
-  ?config:Manifest.config ->
-  ?wasi:bool ->
-  Context.t ->
-  string ->
-  (t, [ `Msg of string ]) result
+module Plugin : sig
+  type t
 
-val of_manifest :
-  ?wasi:bool ->
-  Context.t ->
-  Manifest.t ->
-  (t, [ `Msg of string ]) result
+  val make :
+    ?config:Manifest.config ->
+    ?wasi:bool ->
+    Context.t ->
+    string ->
+    (t, [ `Msg of string ]) result
 
-val update :
-  t ->
-  ?config:(string * string option) list ->
-  ?wasi:bool ->
-  string ->
-  (unit, [ `Msg of string ]) result
+  val of_manifest :
+    ?wasi:bool -> Context.t -> Manifest.t -> (t, [ `Msg of string ]) result
 
-val update_manifest :
-  t ->
-  ?wasi:bool ->
-  Manifest.t ->
-  (unit, [ `Msg of string ]) result
+  val update :
+    t ->
+    ?config:(string * string option) list ->
+    ?wasi:bool ->
+    string ->
+    (unit, [ `Msg of string ]) result
 
-val call_bigstring :
-  t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result
+  val update_manifest :
+    t -> ?wasi:bool -> Manifest.t -> (unit, [ `Msg of string ]) result
 
-val call : t -> name:string -> string -> (string, error) result
-val free : t -> unit
-val function_exists : t -> string -> bool
+  val call_bigstring :
+    t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result
+
+  val call : t -> name:string -> string -> (string, error) result
+  val free : t -> unit
+  val function_exists : t -> string -> bool
+end
