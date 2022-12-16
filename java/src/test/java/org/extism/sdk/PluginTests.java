@@ -2,12 +2,9 @@ package org.extism.sdk;
 
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
-import org.extism.sdk.support.JsonSerde;
 import org.extism.sdk.wasm.WasmSourceResolver;
 import org.junit.jupiter.api.Test;
 
-import java.nio.charset.StandardCharsets;
-import java.nio.file.Paths;
 import java.util.List;
 import java.util.Map;
 
@@ -17,9 +14,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 
 public class PluginTests {
 
-    static {
-        Extism.setLogFile(Paths.get("/tmp/extism.log"), Extism.LogLevel.TRACE);
-    }
+    // static {
+    //     Extism.setLogFile(Paths.get("/tmp/extism.log"), Extism.LogLevel.TRACE);
+    // }
 
     @Test
     public void shouldInvokeFunctionWithMemoryOptions() {
