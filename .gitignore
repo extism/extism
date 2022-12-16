@@ -27,8 +27,8 @@ ruby/tmp/
 ruby/Gemfile.lock
 rust/target
 rust/test.log
-ocaml/duniverse
-ocaml/_build
+duniverse
+_build
 php/Extism.php
 dist-newstyle
 .stack-work
