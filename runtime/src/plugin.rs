@@ -296,7 +296,14 @@ impl Plugin {
 
     fn initialize_runtime(&mut self) -> Result<(), Error> {
         if let Some(runtime) = self.detect_runtime() {
-            return runtime.init(self);
+            if let Some(timer) = Context::timer().as_ref() {
+                self.memory.store.set_epoch_deadline(1);
+                self.start_timer(&timer.tx)?;
+                let x = runtime.init(self);
+                self.stop_timer(&timer.tx)?;
+                self.memory.store.set_epoch_deadline(0);
+                return x;
+            }
         }
 
         Ok(())
@@ -373,8 +380,17 @@ impl Runtime {
 impl Drop for Plugin {
     fn drop(&mut self) {
         if let Some(runtime) = self.detect_runtime() {
-            if let Err(e) = runtime.cleanup(self) {
-                error!("Unable to cleanup runtime: {e:?}");
+            self.memory.store.set_epoch_deadline(1);
+            if let Some(timer) = Context::timer().as_ref() {
+                if self.start_timer(&timer.tx).is_ok() {
+                    if let Err(e) = runtime.cleanup(self) {
+                        error!("Unable to cleanup runtime: {e:?}");
+                    }
+
+                    if let Err(e) = self.stop_timer(&timer.tx) {
+                        error!("Unable to stop timer in Plugin::drop: {e:?}");
+                    }
+                }
             }
         }
     }
