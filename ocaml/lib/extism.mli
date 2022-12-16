@@ -37,6 +37,7 @@ module Manifest : sig
     config : config option;
     allowed_hosts : string list option;
     allowed_paths : dict option;
+    timeout_ms: int option;
   }
 
   val file : ?name:string -> ?hash:string -> string -> wasm
@@ -55,6 +56,7 @@ module Manifest : sig
     ?memory:memory ->
     ?allowed_hosts:string list ->
     ?allowed_paths:dict ->
+    ?timeout_ms:int ->
     wasm list ->
     t
 

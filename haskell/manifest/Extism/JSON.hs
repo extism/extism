@@ -24,6 +24,8 @@ toNullable (Just x) = NotNull x
 toNullable Nothing = Null
 fromNullable (NotNull x) = Just x
 fromNullable Null = Nothing
+mapNullable f Null = Null
+mapNullable f (NotNull x) = NotNull (f x)
 
 (.?) (JSObject a) k =
   case valFromObj k a of

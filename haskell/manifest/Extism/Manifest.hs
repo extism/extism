@@ -27,10 +27,13 @@ data HTTPRequest = HTTPRequest
   , method :: Nullable String
   }
 
+makeKV x =
+  object [(k, showJSON v) | (k, v) <- x]
+
 requestObj (HTTPRequest url headers method) =
   [
     "url" .= url,
-    "headers" .= headers,
+    "headers" .= mapNullable makeKV headers,
     "method" .= method
   ]
 
@@ -78,8 +81,8 @@ data WasmData = WasmData
   , dataHash :: Nullable String
   }
 
-  
-  
+
+
 
 instance JSON WasmData where
   showJSON (WasmData bytes name hash) =
@@ -179,18 +182,20 @@ data Manifest = Manifest
   , config :: Nullable [(String, String)]
   , allowedHosts :: Nullable [String]
   , allowedPaths :: Nullable [(String, String)]
+  , timeout :: Nullable Int
   }
 
 
 instance JSON Manifest where
-  showJSON (Manifest wasm memory config hosts paths) =
+  showJSON (Manifest wasm memory config hosts paths timeout) =
     let w = makeArray wasm in
     object [
       "wasm" .= w,
       "memory" .= memory,
-      "config" .= config,
+      "config" .= mapNullable makeKV config,
       "allowed_hosts" .= hosts,
-      "allowed_paths" .= paths
+      "allowed_paths" .= mapNullable makeKV paths,
+      "timeout_ms" .= timeout
     ]
   readJSON x =
     let wasm = x .? "wasm" in
@@ -198,9 +203,10 @@ instance JSON Manifest where
     let config = x .? "config" in
     let hosts = x .? "allowed_hosts" in
     let paths = x .? "allowed_paths" in
+    let timeout = x .? "timeout_ms" in
     case fromNullable wasm of
       Nothing -> Error "Missing 'wasm' field"
-      Just wasm -> Ok (Manifest wasm memory config hosts paths)
+      Just wasm -> Ok (Manifest wasm memory config hosts paths timeout)
 
 -- | Create a new 'Manifest' from a list of 'Wasm'
 manifest :: [Wasm] -> Manifest
@@ -210,7 +216,8 @@ manifest wasm =
     memory = null',
     config = null',
     allowedHosts = null',
-    allowedPaths = null'
+    allowedPaths = null',
+    timeout = null'
   }
 
 -- | Update the config values
@@ -229,6 +236,11 @@ withHosts m hosts =
 withPaths :: Manifest -> [(String, String)] -> Manifest
 withPaths m p =
   m { allowedPaths = nonNull p }
+
+-- | Update plugin timeout (in milliseconds)
+withTimeout :: Manifest -> Int -> Manifest
+withTimeout m t =
+  m { timeout = nonNull t }
 
 toString :: (JSON a) => a -> String
 toString v =

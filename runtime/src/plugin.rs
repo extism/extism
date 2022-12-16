@@ -12,6 +12,7 @@ pub struct Plugin {
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
     pub should_reinstantiate: bool,
+    pub timer_id: uuid::Uuid,
 }
 
 pub struct Internal {
@@ -105,10 +106,13 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        let engine = Engine::default();
+        let engine = Engine::new(Config::new().epoch_interruption(true))?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
+
+        store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
+
         let memory = Memory::new(
             &mut store,
             MemoryType::new(4, manifest.as_ref().memory.max_pages),
@@ -210,6 +214,7 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
+            timer_id: uuid::Uuid::new_v4(),
         };
 
         plugin.initialize_runtime()?;
@@ -291,7 +296,44 @@ impl Plugin {
 
     fn initialize_runtime(&mut self) -> Result<(), Error> {
         if let Some(runtime) = self.detect_runtime() {
-            return runtime.init(self);
+            if let Some(timer) = Context::timer().as_ref() {
+                self.memory.store.set_epoch_deadline(1);
+                self.start_timer(&timer.tx)?;
+                let x = runtime.init(self);
+                self.stop_timer(&timer.tx)?;
+                self.memory.store.set_epoch_deadline(0);
+                return x;
+            }
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn start_timer(
+        &mut self,
+        tx: &std::sync::mpsc::SyncSender<TimerAction>,
+    ) -> Result<(), Error> {
+        if let Some(duration) = self.manifest.as_ref().timeout_ms {
+            self.memory.store.set_epoch_deadline(1);
+            let engine: Engine = self.memory.store.engine().clone();
+            tx.send(TimerAction::Start {
+                id: self.timer_id,
+                duration: std::time::Duration::from_millis(duration),
+                engine,
+            })?;
+        } else {
+            self.memory.store.set_epoch_deadline(1);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn stop_timer(
+        &mut self,
+        tx: &std::sync::mpsc::SyncSender<TimerAction>,
+    ) -> Result<(), Error> {
+        if self.manifest.as_ref().timeout_ms.is_some() {
+            tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
 
         Ok(())
@@ -338,8 +380,17 @@ impl Runtime {
 impl Drop for Plugin {
     fn drop(&mut self) {
         if let Some(runtime) = self.detect_runtime() {
-            if let Err(e) = runtime.cleanup(self) {
-                error!("Unable to cleanup runtime: {e:?}");
+            self.memory.store.set_epoch_deadline(1);
+            if let Some(timer) = Context::timer().as_ref() {
+                if self.start_timer(&timer.tx).is_ok() {
+                    if let Err(e) = runtime.cleanup(self) {
+                        error!("Unable to cleanup runtime: {e:?}");
+                    }
+
+                    if let Err(e) = self.stop_timer(&timer.tx) {
+                        error!("Unable to stop timer in Plugin::drop: {e:?}");
+                    }
+                }
             }
         }
     }
