@@ -1,8 +1,11 @@
 open Extism
 open Cmdliner
 
+let read_stdin () = In_channel.input_all stdin
+
 let main file func_name input =
   with_context @@ fun ctx ->
+  let input = if String.equal input "-" then read_stdin () else input in
   let file = In_channel.with_open_bin file In_channel.input_all in
   let plugin = Plugin.make ctx file ~wasi:true |> Result.get_ok in
   let res = Plugin.call plugin ~name:func_name input |> Result.get_ok in
