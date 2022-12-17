@@ -18,10 +18,8 @@ let func_name =
 
 let input =
   let doc = "Input data." in
-  Arg.(value & opt string "" & info ["input"; "i"] ~docv:"INPUT" ~doc)
+  Arg.(value & opt string "" & info [ "input"; "i" ] ~docv:"INPUT" ~doc)
 
 let main_t = Term.(const main $ file $ func_name $ input)
-  
 let cmd = Cmd.v (Cmd.info "extism-run") main_t
-
 let () = exit (Cmd.eval cmd)
