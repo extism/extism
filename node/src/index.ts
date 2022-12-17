@@ -283,7 +283,7 @@ export class Context {
    * @param config - Config details for the plugin
    * @returns A new Plugin scoped to this Context
    */
-  plugin(manifest: ManifestData, wasi: boolean = false, functions: Function[] = [], config?: PluginConfig) {
+  plugin(manifest: ManifestData, wasi: boolean = false, functions: HostFunction[] = [], config?: PluginConfig) {
     return new Plugin(this, manifest, wasi, functions, config);
   }
 
@@ -327,7 +327,7 @@ export async function withContext(f: (ctx: Context) => Promise<any>) {
 }
 
 
-export class Function {
+export class HostFunction {
   callback: any;
   ptr: Buffer;
   name: string;
@@ -399,7 +399,7 @@ export class Plugin {
     ctx: Context,
     manifest: ManifestData,
     wasi: boolean = false,
-    functions: Function[] = [],
+    functions: HostFunction[] = [],
     config?: PluginConfig
   ) {
     let dataRaw: string | Buffer;

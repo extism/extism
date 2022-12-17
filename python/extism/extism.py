@@ -221,7 +221,7 @@ class Context:
 
 class Function:
 
-    def __init__(self, name: str, f, args, returns, *user_data):
+    def __init__(self, name: str, args, returns, f, *user_data):
         self.pointer = None
         args = [a.value for a in args]
         returns = [r.value for r in returns]
