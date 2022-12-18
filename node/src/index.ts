@@ -336,8 +336,8 @@ export class HostFunction {
   outputs: typeof ValTypeArray;
 
   constructor(name: string, inputs: ValType[], outputs: ValType[], f: any, userData?: any) {
-    this.callback = ffi.Callback("void", [ValArray, "uint64", ValArray, "uint64", "void*"],
-      (inputs: typeof ValArray, n_inputs, outputs: Buffer, n_outputs, user_data) => {
+    this.callback = ffi.Callback("void", ["void*", ValArray, "uint64", ValArray, "uint64", "void*"],
+      (currentPlugin: Buffer, inputs: typeof ValArray, n_inputs, outputs: Buffer, n_outputs, user_data) => {
         console.log(inputs);
         let inputArr = [];
         let outputArr = [];

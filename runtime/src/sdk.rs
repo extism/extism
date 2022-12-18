@@ -90,33 +90,22 @@ impl From<&wasmtime::Val> for ExtismVal {
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory(ctx: *mut Context) -> *mut u8 {
-    if ctx.is_null() {
+pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Plugin) -> *mut u8 {
+    if plugin.is_null() {
         return std::ptr::null_mut();
     }
 
-    let ctx = &mut *ctx;
-
-    let plugin = match ctx.current_plugin() {
-        None => return std::ptr::null_mut(),
-        Some(p) => p,
-    };
-
+    let plugin = &mut *plugin;
     plugin.memory.data_mut().as_mut_ptr()
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_alloc(ctx: *mut Context, n: Size) -> u64 {
-    if ctx.is_null() {
+pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Plugin, n: Size) -> u64 {
+    if plugin.is_null() {
         return 0;
     }
 
-    let ctx = &mut *ctx;
-
-    let plugin = match ctx.current_plugin() {
-        None => return 0,
-        Some(p) => p,
-    };
+    let plugin = &mut *plugin;
 
     let mem = match plugin.memory.alloc(n as usize) {
         Ok(x) => x,
@@ -127,17 +116,12 @@ pub unsafe extern "C" fn extism_current_plugin_alloc(ctx: *mut Context, n: Size)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_length(ctx: *mut Context, n: u64) -> Size {
-    if ctx.is_null() {
+pub unsafe extern "C" fn extism_current_plugin_memory_length(plugin: *mut Plugin, n: Size) -> Size {
+    if plugin.is_null() {
         return 0;
     }
 
-    let ctx = &mut *ctx;
-
-    let plugin = match ctx.current_plugin() {
-        None => return 0,
-        Some(p) => p,
-    };
+    let plugin = &mut *plugin;
 
     match plugin.memory.block_length(n as usize) {
         Some(x) => x as Size,
@@ -146,17 +130,12 @@ pub unsafe extern "C" fn extism_current_plugin_length(ctx: *mut Context, n: u64)
 }
 
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_free(ctx: *mut Context, ptr: u64) {
-    if ctx.is_null() {
+pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Plugin, ptr: u64) {
+    if plugin.is_null() {
         return;
     }
 
-    let ctx = &mut *ctx;
-
-    let plugin = match ctx.current_plugin() {
-        None => return,
-        Some(p) => p,
-    };
+    let plugin = &mut *plugin;
 
     plugin.memory.free(ptr as usize);
 }
@@ -169,6 +148,7 @@ pub unsafe extern "C" fn extism_function_new(
     outputs: *const ValType,
     n_outputs: Size,
     func: extern "C" fn(
+        plugin: *mut Plugin,
         inputs: *const ExtismVal,
         n_inputs: Size,
         outputs: *mut ExtismVal,
@@ -205,7 +185,8 @@ pub unsafe extern "C" fn extism_function_new(
         name,
         inputs,
         output_types.clone(),
-        move |_caller, inputs, outputs| {
+        move |caller, inputs, outputs| {
+            let data = caller.data();
             let inputs: Vec<_> = inputs.into_iter().map(ExtismVal::from).collect();
             let mut output_tmp: Vec<_> = output_types
                 .iter()
@@ -216,6 +197,7 @@ pub unsafe extern "C" fn extism_function_new(
                 .collect();
 
             func(
+                data.plugin,
                 inputs.as_ptr(),
                 inputs.len() as Size,
                 output_tmp.as_mut_ptr(),
@@ -364,7 +346,6 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
     trace!("Freeing plugin {plugin}");
 
     let ctx = &mut *ctx;
-    ctx.current_plugin = None;
     ctx.remove(plugin);
 }
 
@@ -378,7 +359,6 @@ pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
         ctx.plugins.keys().collect::<Vec<&i32>>()
     );
 
-    ctx.current_plugin = None;
     ctx.plugins.clear();
 }
 

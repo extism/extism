@@ -9,21 +9,16 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-typedef struct {
-  ExtismContext *context;
-  void *userdata;
-} CurrentPlugin;
-
-void testing_123(const struct ExtismVal *inputs, uint64_t n_inputs,
-                 struct ExtismVal *outputs, uint64_t n_outputs, void *data) {
-  CurrentPlugin *plugin = data;
+void testing_123(ExtismCurrentPlugin *plugin, const struct ExtismVal *inputs,
+                 uint64_t n_inputs, struct ExtismVal *outputs,
+                 uint64_t n_outputs, void *data) {
   puts("Hello from C!");
-  puts(plugin->userdata);
+  puts(data);
 
   ExtismSize ptr_offs = inputs[0].v.i64;
 
-  uint8_t *buf = extism_current_plugin_memory(plugin->context) + ptr_offs;
-  uint64_t length = extism_current_plugin_length(plugin->context, ptr_offs);
+  uint8_t *buf = extism_current_plugin_memory(plugin) + ptr_offs;
+  uint64_t length = extism_current_plugin_memory_length(plugin, ptr_offs);
   fwrite(buf, length, 1, stdout);
   fputc('\n', stdout);
   outputs[0].v.i64 = inputs[0].v.i64;
@@ -64,9 +59,8 @@ int main(int argc, char *argv[]) {
   uint8_t *data = read_file("../wasm/code.wasm", &len);
   ExtismValType inputs[] = {I64};
   ExtismValType outputs[] = {I64};
-  CurrentPlugin p = {.context = ctx, .userdata = "Hello, again"};
   ExtismFunction *f = extism_function_new("testing_123", inputs, 1, outputs, 1,
-                                          testing_123, &p, NULL);
+                                          testing_123, "Hello, again!", NULL);
   const ExtismFunction *functions[] = {f};
   ExtismPlugin plugin =
       extism_plugin_new_with_functions(ctx, data, len, functions, 1, true);

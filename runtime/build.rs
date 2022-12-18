@@ -10,6 +10,7 @@ fn main() {
         .rename_item("PluginIndex", "ExtismPlugin")
         .rename_item("Context", "ExtismContext")
         .rename_item("ValType", "ExtismValType")
+        .rename_item("Plugin", "ExtismCurrentPlugin")
         .generate()
     {
         bindings.write_to_file("extism.h");

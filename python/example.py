@@ -13,12 +13,12 @@ else:
 
 
 @host_fn
-def testing_123(input, context, a_string):
-    mem = context.current_plugin_memory_from_offset(input[0])
+def testing_123(plugin, input, context, a_string):
+    mem = plugin.memory_block_at_offset(input[0])
     print("Hello from Python!")
     print(a_string)
     print(input)
-    print(context.current_plugin_memory(mem)[:])
+    print(plugin.memory(mem)[:])
     print(requests.get("https://example.com").text)
     return input[0]
 

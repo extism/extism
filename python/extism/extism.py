@@ -175,23 +175,6 @@ class Context:
         """Remove all registered plugins"""
         _lib.extism_context_reset(self.pointer)
 
-    def current_plugin_memory(self, mem: Memory):
-        p = _lib.extism_current_plugin_memory(self.pointer)
-        if p == 0:
-            return None
-        return _ffi.buffer(p + mem.offset, mem.length)
-
-    def current_plugin_alloc(self, n):
-        offs = _lib.extism_current_plugin_alloc(self.pointer, n)
-        return Memory(offs, n)
-
-    def current_plugin_free(self, mem):
-        return _lib.extism_current_plugin_free(self.pointer, mem.offset)
-
-    def current_plugin_memory_from_offset(self, offs):
-        len = _lib.extism_current_plugin_length(self.pointer, offs)
-        return Memory(offs, len)
-
     def plugin(self,
                manifest: Union[str, bytes, dict],
                wasi=False,
@@ -413,22 +396,43 @@ class ValType(Enum):
     FUNC_REF = 4
     EXTERN_REF = 5
 
+class CurrentPlugin:
+    def __init__(self, p):
+        self.pointer = p
+
+    def memory(self, mem: Memory):
+        p = _lib.extism_current_plugin_memory(self.pointer)
+        if p == 0:
+            return None
+        return _ffi.buffer(p + mem.offset, mem.length)
+
+    def alloc(self, n):
+        offs = _lib.extism_current_plugin_memory_alloc(self.pointer, n)
+        return Memory(offs, n)
+
+    def free(self, mem):
+        return _lib.extism_current_plugin_memory_free(self.pointer, mem.offset)
+
+    def memory_block_at_offset(self, offs):
+        len = _lib.extism_current_plugin_memory_length(self.pointer, offs)
+        return Memory(offs, len)
+
 
 def host_fn(func):
 
     @_ffi.callback(
-        "void(ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)")
-    def handle_args(inputs, n_inputs, outputs, n_outputs, user_data):
+        "void(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)")
+    def handle_args(current, inputs, n_inputs, outputs, n_outputs, user_data):
         inp = []
 
         for i in range(n_inputs):
             inp.append(_convert_input(inputs[i]))
 
         if user_data == _ffi.NULL:
-            output = func(inp)
+            output = func(CurrentPlugin(current), inp)
         else:
             udata = _ffi.from_handle(user_data)
-            output = func(inp, *udata)
+            output = func(CurrentPlugin(current), inp, *udata)
 
         if output is None:
             return
