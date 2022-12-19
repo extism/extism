@@ -358,26 +358,33 @@ jobs:
           LD_LIBRARY_PATH=/usr/local/lib make example
           LD_LIBRARY_PATH=/usr/local/lib make test
 
-  sdk_api_coverage:
-    name: SDK API Coverage Report
-    runs-on: ubuntu-latest
+  java:
+    name: Java
+    needs: lib
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust:
+          - stable
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-      - name: Setup Python env
-        uses: actions/setup-python@v4
+      - uses: ./.github/actions/extism
+      - name: Set up Java
+        uses: actions/setup-java@v3
         with:
-          python-version: "3.9"
-          check-latest: true
-      - name: Install dependencies
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Test Java
         run: |
-          sudo apt-get install ripgrep
-          pip3 install pycparser
-      - name: Run coverage script
-        id: coverage
-        run: |
-          python scripts/sdk_coverage.py
-          
+          cd java
+          mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn verify
+      #- name: Examine logs
+      #  if: success() || failure()
+      #  run: |
+      #    cat /tmp/extism.log
+
   dotnet:
     name: .NET
     needs: lib
@@ -399,3 +406,24 @@ jobs:
         run: |
           cd dotnet
           LD_LIBRARY_PATH=/usr/local/lib dotnet test ./Extism.sln
+
+  sdk_api_coverage:
+    name: SDK API Coverage Report
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Setup Python env
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.9"
+          check-latest: true
+      - name: Install dependencies
+        run: |
+          sudo apt-get install ripgrep
+          pip3 install pycparser
+      - name: Run coverage script
+        id: coverage
+        run: |
+          python scripts/sdk_coverage.py
+
