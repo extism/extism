@@ -18,14 +18,8 @@ runs:
       id: cache-libextism
       uses: actions/cache@v3
       with:
-        path: target/release/libextism.*
-        key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('libextism/**') }}
-    - name: Cache target
-      id: cache-target
-      uses: actions/cache@v3
-      with:
         path: target/**
-        key: ${{ runner.os }}-target-${{ env.GITHUB_SHA }}
+        key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('libextism/**') }}
     - name: Build
       if: steps.cache-libextism.outputs.cache-hit != 'true'
       shell: bash
