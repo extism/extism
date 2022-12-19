@@ -29,7 +29,7 @@ runs:
     - name: Build
       if: steps.cache-libextism.outputs.cache-hit != 'true'
       shell: bash
-      run: cargo build --release -p ${{ env.LIBEXTISM_CRATE }}
+      run: cargo build --release -p libextism
     - name: Install extism shared library
       shell: bash
       run: |
