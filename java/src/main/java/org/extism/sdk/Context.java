@@ -1,8 +1,7 @@
 package org.extism.sdk;
 
-import org.extism.sdk.manifest.Manifest;
-
 import com.sun.jna.Pointer;
+import org.extism.sdk.manifest.Manifest;
 
 /**
  * Extism Context is used to store and manage plugins.
@@ -63,6 +62,7 @@ public class Context implements AutoCloseable {
 
     /**
      * Get the error associated with a context, if plugin is {@literal null} then the context error will be returned.
+     *
      * @param plugin
      * @return the error message
      */
@@ -72,6 +72,7 @@ public class Context implements AutoCloseable {
 
     /**
      * Return the raw pointer to this context.
+     *
      * @return the pointer
      */
     public Pointer getPointer() {
