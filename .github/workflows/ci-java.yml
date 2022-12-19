@@ -1,6 +1,7 @@
 on: 
   pull_request:
     paths:
+      - .github/workflows/ci-java.yml
       - manifest/
       - runtime/
       - libextism/
