@@ -11,10 +11,14 @@ import java.util.Objects;
 public class Extism {
 
     /**
-     * Configure the
+     * Configure a log file with the given {@link Path} and configure the given {@link LogLevel}.
+     *
      * @param path
      * @param level
+     *
+     * @deprecated will be replaced with better logging API.
      */
+    @Deprecated(forRemoval = true)
     public static void setLogFile(Path path, LogLevel level) {
 
         Objects.requireNonNull(path, "path");

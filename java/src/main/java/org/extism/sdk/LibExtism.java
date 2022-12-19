@@ -3,7 +3,6 @@ package org.extism.sdk;
 import com.sun.jna.Library;
 import com.sun.jna.Native;
 import com.sun.jna.Pointer;
-import com.sun.jna.ptr.IntByReference;
 
 /**
  * Wrapper around the Extism library.
@@ -14,7 +13,7 @@ public interface LibExtism extends Library {
      * Holds the extism library instance.
      * Resolves the extism library based on the resolution algorithm defined in {@link com.sun.jna.NativeLibrary}.
      */
-    LibExtism INSTANCE = Native.loadLibrary("extism", LibExtism.class);
+    LibExtism INSTANCE = Native.load("extism", LibExtism.class);
 
     /**
      * Create a new context
@@ -36,7 +35,7 @@ public interface LibExtism extends Library {
     /**
      * Sets the logger to the given path with the given level of verbosity
      *
-     * @param path The file path of the logger
+     * @param path     The file path of the logger
      * @param logLevel The level of the logger
      * @return true if successful
      */
