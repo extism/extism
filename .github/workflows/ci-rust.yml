@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-rust.yml
-      - manifest/
-      - runtime/
-      - rust/
-      - libextism/
+      - manifest/**
+      - runtime/**
+      - rust/**
+      - libextism/**
   workflow_dispatch:
 
 name: Rust CI

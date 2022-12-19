@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-dotnet.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - dotnet/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - dotnet/**
   workflow_dispatch:
 
 name: .NET CI

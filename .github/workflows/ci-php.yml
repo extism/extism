@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-php.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - php/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - php/**
       - composer.json
       - composer.lock
   workflow_dispatch:

@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-python.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - python/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - python/**
   workflow_dispatch:
 
 name: Python CI

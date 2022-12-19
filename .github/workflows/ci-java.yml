@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-java.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - java/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - java/**
   workflow_dispatch:
 
 name: Java CI
