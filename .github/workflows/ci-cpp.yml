@@ -13,7 +13,6 @@ name: C++ CI
 jobs:
   cpp:
     name: C++
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

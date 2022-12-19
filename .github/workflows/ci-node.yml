@@ -13,7 +13,6 @@ name: Node CI
 jobs:
   node:
     name: Node
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

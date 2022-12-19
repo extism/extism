@@ -13,7 +13,6 @@ name: Java CI
 jobs:
   java:
     name: Java
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

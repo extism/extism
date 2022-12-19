@@ -13,7 +13,6 @@ name: .NET CI
 jobs:
   dotnet:
     name: .NET
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

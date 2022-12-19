@@ -15,7 +15,6 @@ name: PHP CI
 jobs:
   php:
     name: PHP
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

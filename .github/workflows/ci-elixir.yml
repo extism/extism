@@ -13,7 +13,6 @@ name: Elixir CI
 jobs:
   elixir:
     name: Elixir
-    needs: lib
     runs-on: ${{ matrix.os }}
     env:
       MIX_ENV: test

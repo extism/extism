@@ -15,7 +15,6 @@ name: OCaml CI
 jobs:
   ocaml:
     name: OCaml
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

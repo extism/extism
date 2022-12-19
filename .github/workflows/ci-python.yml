@@ -13,7 +13,6 @@ name: Python CI
 jobs:
   python:
     name: Python
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

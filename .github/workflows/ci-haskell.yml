@@ -13,7 +13,6 @@ name: Haskell CI
 jobs:
   haskell:
     name: Haskell
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

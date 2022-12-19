@@ -17,7 +17,6 @@ name: Go CI
 jobs:
   go:
     name: Go
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:

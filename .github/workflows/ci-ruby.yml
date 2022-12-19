@@ -13,7 +13,6 @@ name: Ruby CI
 jobs:
   ruby:
     name: Ruby
-    needs: lib
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
