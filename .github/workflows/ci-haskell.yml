@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-haskell.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - haskell/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - haskell/**
   workflow_dispatch:
 
 name: Haskell CI

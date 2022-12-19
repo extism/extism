@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-ocaml.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - ocaml/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - ocaml/**
       - dune-project
       - extism.opam
   workflow_dispatch:

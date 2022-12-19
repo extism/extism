@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-node.yml
-      - manifest/
-      - runtime/
-      - libextism/
-      - node/
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - node/**
   workflow_dispatch:
 
 name: Node CI

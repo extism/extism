@@ -1,12 +1,12 @@
 on: 
   pull_request:
     paths:
-      - .github/actions/extism
+      - .github/actions/extism/**
       - .github/workflows/ci-elixir.yml
-      - manifest/
-      - runtime/
-      - rust/
-      - elixir
+      - manifest/**
+      - runtime/**
+      - rust/**
+      - elixir/**
   workflow_dispatch:
 
 name: Elixir CI
