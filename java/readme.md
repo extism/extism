@@ -26,7 +26,7 @@ To use the extism java-sdk with maven you need to add the following dependency t
 <dependency>
     <groupId>org.extism.sdk</groupId>
     <artifactId>extism</artifactId>
-    <version>1.0.0</version>
+    <version>0.1.0</version>
 </dependency>
 ```
 
@@ -34,6 +34,6 @@ To use the extism java-sdk with maven you need to add the following dependency t
 To use the extism java-sdk with maven you need to add the following dependency to your `build.gradle` file:
 
 ```
-implementation 'org.extism.sdk:extism:1.0.0'
+implementation 'org.extism.sdk:extism:0.1.0'
 ```
 
