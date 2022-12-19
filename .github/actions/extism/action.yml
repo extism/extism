@@ -7,12 +7,24 @@ runs:
   steps:
     - name: Checkout sources
       uses: actions/checkout@v3
-    - name: Download libextism
-      uses: actions/download-artifact@v3
+    - name: Install Rust
+      uses: actions-rs/toolchain@v1
       with:
-        name: libextism-${{ matrix.os }}
+        toolchain: stable
+        override: true
+    - name: Cache Rust environment
+      uses: Swatinem/rust-cache@v1
+    - name: Cache libextism
+      id: cache-libextism
+      uses: actions/cache@v3
+      with:
+        path: target/**
+        key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('libextism/**') }}
+    - name: Build
+      if: steps.cache-libextism.outputs.cache-hit != 'true'
+      shell: bash
+      run: cargo build --release -p libextism
     - name: Install extism shared library
       shell: bash
       run: |
-        sudo cp libextism.* /usr/local/lib
-        sudo cp runtime/extism.h /usr/local/include
+        sudo make install

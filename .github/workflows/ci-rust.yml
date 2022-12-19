@@ -1,0 +1,105 @@
+on: 
+  pull_request:
+    paths:
+      - .github/actions/extism
+      - .github/workflows/ci-rust.yml
+      - manifest/
+      - runtime/
+      - rust/
+      - libextism/
+  workflow_dispatch:
+
+name: Rust CI
+
+env:
+  RUNTIME_CRATE: extism-runtime
+  LIBEXTISM_CRATE: libextism
+  RUST_SDK_CRATE: extism
+
+jobs:
+  lib:
+    name: Extism runtime lib
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
+      - name: Cache libextism
+        id: cache-libextism
+        uses: actions/cache@v3
+        with:
+          path: target/release/libextism.*
+          key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v3
+        with:
+          path: target/**
+          key: ${{ runner.os }}-target-${{ env.GITHUB_SHA }}
+      - name: Build
+        if: steps.cache-libextism.outputs.cache-hit != 'true'
+        shell: bash
+        run: cargo build --release -p ${{ env.LIBEXTISM_CRATE }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: libextism-${{ matrix.os }}
+          path: |
+              target/release/libextism.*
+  lint_and_test:
+    name: Extism runtime lint and test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v3
+        with:
+          path: target/**
+          key: ${{ runner.os }}-target-${{ env.GITHUB_SHA }}
+      - name: Format
+        run: cargo fmt --check -p ${{ env.RUNTIME_CRATE }}
+      - name: Lint
+        run: cargo clippy --release --all-features --no-deps -p ${{ env.RUNTIME_CRATE }}
+      - name: Test
+        run: cargo test --all-features --release -p ${{ env.RUNTIME_CRATE }}
+
+  rust:
+    name: Rust
+    needs: lib
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/extism
+      - name: Test Rust Host SDK
+        run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
