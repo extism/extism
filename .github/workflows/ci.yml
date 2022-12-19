@@ -358,32 +358,32 @@ jobs:
           LD_LIBRARY_PATH=/usr/local/lib make example
           LD_LIBRARY_PATH=/usr/local/lib make test
 
-  # java:
-  #   name: Java
-  #   needs: lib
-  #   runs-on: ${{ matrix.os }}
-  #   strategy:
-  #     matrix:
-  #       os: [ubuntu-latest]
-  #       rust:
-  #         - stable
-  #   steps:
-  #     - name: Checkout sources
-  #       uses: actions/checkout@v3
-  #     - uses: ./.github/actions/extism
-  #     - name: Set up Java
-  #       uses: actions/setup-java@v3
-  #       with:
-  #         distribution: 'temurin'
-  #         java-version: '17'
-  #     - name: Test Java
-  #       run: |
-  #         cd java
-  #         mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn verify
-  #     #- name: Examine logs
-  #     #  if: success() || failure()
-  #     #  run: |
-  #     #    cat /tmp/extism.log
+  java:
+    name: Java
+    needs: lib
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - uses: ./.github/actions/extism
+      - name: Set up Java
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+      - name: Test Java
+        run: |
+          cd java
+          mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn verify
+      #- name: Examine logs
+      #  if: success() || failure()
+      #  run: |
+      #    cat /tmp/extism.log
 
   dotnet:
     name: .NET
