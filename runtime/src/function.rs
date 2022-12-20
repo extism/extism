@@ -140,21 +140,16 @@ impl Drop for UserData {
 unsafe impl Send for UserData {}
 unsafe impl Sync for UserData {}
 
-#[allow(clippy::type_complexity)]
-pub struct Function(
-    pub(crate) String,
-    pub(crate) wasmtime::FuncType,
-    pub(crate)  std::sync::Arc<
-        dyn Fn(
-                wasmtime::Caller<Internal>,
-                &[wasmtime::Val],
-                &mut [wasmtime::Val],
-            ) -> Result<(), Error>
-            + Sync
-            + Send,
-    >,
-    pub(crate) UserData,
-);
+type FunctionInner = dyn Fn(wasmtime::Caller<Internal>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
+    + Sync
+    + Send;
+
+pub struct Function {
+    pub(crate) name: String,
+    pub(crate) ty: wasmtime::FuncType,
+    pub(crate) f: std::sync::Arc<FunctionInner>,
+    pub(crate) _user_data: UserData,
+}
 
 impl Function {
     pub fn new<F>(
@@ -177,24 +172,24 @@ impl Function {
     {
         let user_data = user_data.unwrap_or_default();
         let data = UserData::new_pointer(user_data.ptr, None);
-        Function(
-            name.into(),
-            wasmtime::FuncType::new(
+        Function {
+            name: name.into(),
+            ty: wasmtime::FuncType::new(
                 args.into_iter().map(wasmtime::ValType::from),
                 returns.into_iter().map(wasmtime::ValType::from),
             ),
-            std::sync::Arc::new(move |mut caller, inp, outp| {
+            f: std::sync::Arc::new(move |mut caller, inp, outp| {
                 f(caller.data_mut().plugin_mut(), inp, outp, data.make_copy())
             }),
-            UserData::default(),
-        )
+            _user_data: user_data,
+        }
     }
 
     pub fn name(&self) -> &str {
-        &self.0
+        &self.name
     }
 
     pub fn ty(&self) -> &wasmtime::FuncType {
-        &self.1
+        &self.ty
     }
 }

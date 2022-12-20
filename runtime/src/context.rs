@@ -107,8 +107,8 @@ impl Context {
         self.insert(plugin)
     }
 
-    pub fn new_plugin_with_functions<'a>(
-        &'a mut self,
+    pub fn new_plugin_with_functions(
+        &mut self,
         data: impl AsRef<[u8]>,
         imports: impl IntoIterator<Item = &'static Function>,
         with_wasi: bool,

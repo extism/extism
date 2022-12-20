@@ -14,7 +14,7 @@ mod timer;
 pub use context::Context;
 pub use function::{Function, UserData, ValType};
 pub use manifest::Manifest;
-pub use memory::{MemoryBlock, PluginMemory};
+pub use memory::{MemoryBlock, PluginMemory, ToMemoryBlock};
 pub use plugin::{Internal, Plugin, Wasi};
 pub use plugin_ref::PluginRef;
 pub(crate) use timer::{Timer, TimerAction};

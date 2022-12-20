@@ -193,7 +193,7 @@ impl Plugin {
                     for f in &mut imports {
                         let name = f.name().to_string();
                         let func = Func::new(&mut memory.store, f.ty().clone(), unsafe {
-                            &*std::sync::Arc::as_ptr(&f.2)
+                            &*std::sync::Arc::as_ptr(&f.f)
                         });
                         linker.define(EXPORT_MODULE_NAME, &name, func)?;
                     }
