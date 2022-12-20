@@ -84,6 +84,10 @@ impl UserData {
         }
     }
 
+    pub fn is_null(&self) -> bool {
+        self.ptr.is_null()
+    }
+
     pub fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.ptr
     }
@@ -97,7 +101,7 @@ impl UserData {
     }
 
     pub fn any(&self) -> Option<&dyn std::any::Any> {
-        if !self.is_any {
+        if !self.is_any || self.is_null() {
             return None;
         }
 
@@ -105,7 +109,7 @@ impl UserData {
     }
 
     pub fn any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
-        if !self.is_any {
+        if !self.is_any || self.is_null() {
             return None;
         }
 
