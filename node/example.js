@@ -1,13 +1,14 @@
 const { withContext, Context, HostFunction, ValType } = require('./dist/index.js');
 const { readFileSync } = require('fs');
 
-function f(inputs) {
+function f(inputs, userData) {
   console.log(inputs[0].t);
   console.log("Hello from Javascript!");
+  console.log(userData);
   return inputs;
 }
 
-let testing_123 = new HostFunction("testing_123", [ValType.I64], [ValType.I64], f);
+let testing_123 = new HostFunction("testing_123", [ValType.I64], [ValType.I64], f, "Hello again!");
 
 let functions = [testing_123];
 
