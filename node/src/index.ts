@@ -53,6 +53,9 @@ const _functions = {
   extism_version: ["string", []],
   extism_function_new: [function_t, ["string", ValTypeArray, "uint64", ValTypeArray, "uint64", "void*", "void*", "void*"]],
   extism_function_free: ["void", [function_t]],
+  extism_current_plugin_memory: ["uint8*", ["void*"]],
+  extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
+  extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
 };
 
 export enum ValType {
@@ -97,7 +100,7 @@ interface LibExtism {
     input_len: number
   ) => number;
   extism_plugin_output_length: (ctx: Buffer, plugin_id: number) => number;
-  extism_plugin_output_data: (ctx: Buffer, plugin_id: Number) => Uint8Array;
+  extism_plugin_output_data: (ctx: Buffer, plugin_id: number) => Uint8Array;
   extism_log_file: (file: string, level: string) => boolean;
   extism_plugin_function_exists: (
     ctx: Buffer,
@@ -124,6 +127,9 @@ interface LibExtism {
     free: Buffer | null
   ) => Buffer;
   extism_function_free: (f: Buffer) => void;
+  extism_current_plugin_memory: (p: Buffer) => Buffer;
+  extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
+  extism_current_plugin_memory_length: (p: Buffer, n: number) => number;
 }
 
 function locate(paths: string[]): LibExtism {
@@ -337,6 +343,15 @@ export class CurrentPlugin {
 
   constructor(pointer: Buffer) {
     this.pointer = pointer;
+  }
+
+  memory(offset: number): Buffer {
+    let length = lib.extism_current_plugin_memory_length(this.pointer, offset);
+    return Buffer.from(lib.extism_current_plugin_memory(this.pointer).buffer, offset, length);
+  }
+
+  alloc(n: number): number {
+    return lib.extism_current_plugin_memory_alloc(this.pointer, n);
   }
 }
 
