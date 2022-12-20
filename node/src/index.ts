@@ -173,12 +173,18 @@ export function extismVersion(): string {
 
 // @ts-ignore
 const pluginRegistry = new FinalizationRegistry(({ id, pointer }) => {
-  if (id && pointer) lib.extism_plugin_free(pointer, id);
+  if (id >= 0 && pointer) lib.extism_plugin_free(pointer, id);
 });
 
 // @ts-ignore
 const contextRegistry = new FinalizationRegistry((pointer) => {
   if (pointer) lib.extism_context_free(pointer);
+});
+
+
+// @ts-ignore
+const functionRegistry = new FinalizationRegistry((pointer) => {
+  if (pointer) lib.extism_function_free(pointer);
 });
 
 /**
@@ -292,10 +298,10 @@ export class Context {
    */
   free() {
     if (this.pointer) {
-      contextRegistry.unregister(this);
       lib.extism_context_free(this.pointer);
+      this.pointer = null;
+      contextRegistry.unregister(this);
     }
-    this.pointer = null;
   }
 
   /**
@@ -329,7 +335,7 @@ export async function withContext(f: (ctx: Context) => Promise<any>) {
 
 export class HostFunction {
   callback: any;
-  ptr: Buffer;
+  pointer: Buffer | null;
   name: string;
   userData: any[];
   inputs: typeof ValTypeArray;
@@ -338,18 +344,17 @@ export class HostFunction {
   constructor(name: string, inputs: ValType[], outputs: ValType[], f: any, ...userData: any) {
     this.userData = userData;
     this.callback = ffi.Callback("void", ["void*", ValArray, "uint64", ValArray, "uint64", "void*"],
-      (currentPlugin: Buffer, inputs: typeof ValArray, n_inputs, outputs: Buffer, n_outputs, user_data) => {
-        console.log(inputs);
+      (currentPlugin: Buffer, inputs: typeof ValArray, nInputs, outputs: typeof ValArray, nOutputs, user_data) => {
         let inputArr = [];
         let outputArr = [];
 
-        for (var i = 0; i < n_inputs; i++) {
+        for (var i = 0; i < nInputs; i++) {
           inputArr.push(Val.get(inputs, i));
-          console.log(inputArr);
+          console.log("AAA", Val.get(inputs, i).v.i64);
         }
 
 
-        for (var i = 0; i < n_outputs; i++) {
+        for (var i = 0; i < nOutputs; i++) {
           outputArr.push(Val.get(outputs, i));
         }
         
@@ -360,14 +365,14 @@ export class HostFunction {
           return;
         }
 
-        for (var i = 0; i < n_outputs; i++){
+        for (var i = 0; i < nOutputs; i++){
           outputs[i] = out[i];
         }  
       });
     this.name = name;
     this.inputs = new ValTypeArray(inputs);
     this.outputs = new ValTypeArray(outputs);
-    this.ptr = lib.extism_function_new(
+    this.pointer = lib.extism_function_new(
       this.name,
       this.inputs,
       this.inputs.length,
@@ -377,6 +382,17 @@ export class HostFunction {
       null, null
     );
     this.userData = userData;
+    functionRegistry.register(this, this.pointer, this);
+  }
+
+  free() {
+    if (this.pointer === null){
+      return;
+    }
+
+    lib.extism_function_free(this.pointer);
+    this.pointer = null;
+    functionRegistry.unregister(this);
   }
 }
 
@@ -414,7 +430,7 @@ export class Plugin {
     if (!ctx.pointer) throw Error("No Context set");
     this.functions = new PtrArray(functions.length);
     for (var i = 0; i < functions.length; i++) {
-      this.functions[i] = functions[i].ptr;
+      this.functions[i] = functions[i].pointer;
     }
     let plugin = lib.extism_plugin_new_with_functions(
       ctx.pointer,
@@ -548,9 +564,9 @@ export class Plugin {
    */
   free() {
     if (this.ctx.pointer && this.id !== -1) {
-      pluginRegistry.unregister(this);
       lib.extism_plugin_free(this.ctx.pointer, this.id);
       this.id = -1;
+      pluginRegistry.unregister(this);
     }
   }
 }
