@@ -332,6 +332,14 @@ export async function withContext(f: (ctx: Context) => Promise<any>) {
   }
 }
 
+export class CurrentPlugin {
+  pointer: Buffer;
+
+  constructor(pointer: Buffer) {
+    this.pointer = pointer;
+  }
+}
+
 
 export class HostFunction {
   callback: any;
@@ -343,22 +351,15 @@ export class HostFunction {
 
   constructor(name: string, inputs: ValType[], outputs: ValType[], f: any, ...userData: any) {
     this.userData = userData;
-    this.callback = ffi.Callback("void", ["void*", ValArray, "uint64", ValArray, "uint64", "void*"],
-      (currentPlugin: Buffer, inputs: typeof ValArray, nInputs, outputs: typeof ValArray, nOutputs, user_data) => {
+    this.callback = ffi.Callback("void", ["void*", ref.refType(Val), "uint64", ref.refType(Val), "uint64", "void*"],
+      (currentPlugin: Buffer, inputs: Buffer, nInputs: number, outputs: Buffer, nOutputs: number, user_data) => {
         let inputArr = [];
-        let outputArr = [];
 
         for (var i = 0; i < nInputs; i++) {
           inputArr.push(Val.get(inputs, i));
-          console.log("AAA", Val.get(inputs, i).v.i64);
         }
 
-
-        for (var i = 0; i < nOutputs; i++) {
-          outputArr.push(Val.get(outputs, i));
-        }
-        
-        let out = f(inputArr, ...this.userData);
+        let out = f(new CurrentPlugin(currentPlugin), inputArr, ...this.userData);
 
         if (!Array.isArray(out)){
           outputs[0] = out;
@@ -366,7 +367,7 @@ export class HostFunction {
         }
 
         for (var i = 0; i < nOutputs; i++){
-          outputs[i] = out[i];
+          Val.set(outputs, i, out[i]);
         }  
       });
     this.name = name;

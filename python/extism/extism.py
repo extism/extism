@@ -365,25 +365,28 @@ class Plugin:
 
 def _convert_input(x):
     if x.t == 0:
-        return x.v.i32
+        return Val(ValType.I32, x.v.i32)
     elif x.t == 1:
-        return x.v.i64
+        return Val(ValType.I64, x.v.i64)
     elif x.t == 2:
-        return x.v.f32
+        return Val(ValType.F32, x.v.f32)
     elif x.y == 3:
-        return x.v.f64
+        return Val(ValType.F64, x.v.f64)
     return None
 
 
 def _convert_output(x, v):
-    if x.t == 0:
-        x.v.i32 = int(v)
-    elif x.t == 1:
-        x.v.i64 = int(v)
-    elif x.t == 2:
-        x.v.f32 = float(v)
-    elif x.t == 3:
-        x.v.f64 = float(v)
+    if v.t.value != x.t:
+        raise Error(f"Output type mismatch, got {v.t} but expected {x.t}")
+    
+    if v.t == ValType.I32:
+        x.v.i32 = int(v.value)
+    elif v.t == ValType.I64:
+        x.v.i64 = int(v.value)
+    elif x.t == ValType.F32:
+        x.v.f32 = float(v.value)
+    elif x.t == ValType.F64:
+        x.v.f64 = float(v.value)
     else:
         raise Error("Unsupported return type: " + str(x.t))
 
@@ -395,6 +398,14 @@ class ValType(Enum):
     F64 = 3
     FUNC_REF = 4
     EXTERN_REF = 5
+
+class Val:
+    def __init__(self, t: ValType, v):
+        self.t = t
+        self.value = v
+
+    def __repr__(self):
+        return f"Val({self.t}, {self.value})"
 
 class CurrentPlugin:
     def __init__(self, p):
@@ -413,7 +424,9 @@ class CurrentPlugin:
     def free(self, mem):
         return _lib.extism_current_plugin_memory_free(self.pointer, mem.offset)
 
-    def memory_block_at_offset(self, offs):
+    def memory_at_offset(self, offs):
+        if isinstance(offs, Val):
+            offs = offs.value
         len = _lib.extism_current_plugin_memory_length(self.pointer, offs)
         return Memory(offs, len)
 

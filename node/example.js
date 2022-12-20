@@ -1,8 +1,8 @@
 const { withContext, Context, HostFunction, ValType } = require('./dist/index.js');
 const { readFileSync } = require('fs');
 
-function f(inputs, userData) {
-  console.log(inputs[0].t);
+function f(currentPlugin, inputs, userData) {
+  console.log(inputs[0].v.i64);
   console.log("Hello from Javascript!");
   console.log(userData);
   return inputs;

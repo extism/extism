@@ -14,7 +14,7 @@ else:
 
 @host_fn
 def testing_123(plugin, input, context, a_string):
-    mem = plugin.memory_block_at_offset(input[0])
+    mem = plugin.memory_at_offset(input[0])
     print("Hello from Python!")
     print(a_string)
     print(input)
