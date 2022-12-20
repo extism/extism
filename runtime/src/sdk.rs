@@ -179,14 +179,13 @@ pub unsafe extern "C" fn extism_function_new(
     }
     .to_vec();
 
-    let u = UserData::new(user_data, None);
-    let user_data = UserData::new(user_data, free_user_data);
+    let user_data = UserData::new_pointer(user_data, free_user_data);
     let f = Function::new(
         name,
         inputs,
         output_types.clone(),
-        move |caller, inputs, outputs| {
-            let data = caller.data();
+        Some(user_data),
+        move |plugin, inputs, outputs, user_data| {
             let inputs: Vec<_> = inputs.into_iter().map(ExtismVal::from).collect();
             let mut output_tmp: Vec<_> = output_types
                 .iter()
@@ -197,12 +196,12 @@ pub unsafe extern "C" fn extism_function_new(
                 .collect();
 
             func(
-                data.plugin,
+                plugin,
                 inputs.as_ptr(),
                 inputs.len() as Size,
                 output_tmp.as_mut_ptr(),
                 output_tmp.len() as Size,
-                u.as_ptr(),
+                user_data.as_ptr(),
             );
 
             for (tmp, out) in output_tmp.iter().zip(outputs.iter_mut()) {
@@ -217,7 +216,7 @@ pub unsafe extern "C" fn extism_function_new(
             Ok(())
         },
     );
-    Box::into_raw(Box::new(ExtismFunction(f.with_user_data(user_data))))
+    Box::into_raw(Box::new(ExtismFunction(f)))
 }
 
 #[no_mangle]
