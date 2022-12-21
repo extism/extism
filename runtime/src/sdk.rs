@@ -57,6 +57,15 @@ pub struct ExtismVal {
 
 pub struct ExtismFunction(Function);
 
+pub type ExtismFunctionType = extern "C" fn(
+    plugin: *mut Plugin,
+    inputs: *const ExtismVal,
+    n_inputs: Size,
+    outputs: *mut ExtismVal,
+    n_outputs: Size,
+    data: *mut std::ffi::c_void,
+);
+
 impl From<&wasmtime::Val> for ExtismVal {
     fn from(value: &wasmtime::Val) -> Self {
         match value.ty() {
@@ -147,14 +156,7 @@ pub unsafe extern "C" fn extism_function_new(
     n_inputs: Size,
     outputs: *const ValType,
     n_outputs: Size,
-    func: extern "C" fn(
-        plugin: *mut Plugin,
-        inputs: *const ExtismVal,
-        n_inputs: Size,
-        outputs: *mut ExtismVal,
-        n_outputs: Size,
-        data: *mut std::ffi::c_void,
-    ),
+    func: ExtismFunctionType,
     user_data: *mut std::ffi::c_void,
     free_user_data: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
 ) -> *mut ExtismFunction {

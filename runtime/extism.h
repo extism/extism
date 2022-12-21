@@ -65,6 +65,8 @@ typedef struct ExtismVal {
   union ExtismValUnion v;
 } ExtismVal;
 
+typedef void (*ExtismFunctionType)(struct ExtismCurrentPlugin *plugin, const struct ExtismVal *inputs, ExtismSize n_inputs, struct ExtismVal *outputs, ExtismSize n_outputs, void *data);
+
 /**
  * Create a new context
  */
@@ -100,7 +102,7 @@ struct ExtismFunction *extism_function_new(const char *name,
                                            ExtismSize n_inputs,
                                            const enum ExtismValType *outputs,
                                            ExtismSize n_outputs,
-                                           void (*func)(struct ExtismCurrentPlugin *plugin, const struct ExtismVal *inputs, ExtismSize n_inputs, struct ExtismVal *outputs, ExtismSize n_outputs, void *data),
+                                           ExtismFunctionType func,
                                            void *user_data,
                                            void (*free_user_data)(void *_));
 

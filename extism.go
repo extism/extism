@@ -9,7 +9,8 @@ import (
 )
 
 /*
-#cgo pkg-config: libextism.pc
+#cgo CFLAGS: -I/usr/local/include
+#cgo LDFLAGS: -L/usr/local/lib -lextism
 #include <extism.h>
 #include <stdlib.h>
 */
@@ -176,7 +177,7 @@ func register(ctx *Context, data []byte, functions []Function, wasi bool) (Plugi
 			(*C.uchar)(ptr),
 			C.uint64_t(len(data)),
 			&functionPointers[0],
-			C.uint32_t(len(functions)),
+			C.uint64_t(len(functions)),
 			C._Bool(wasi),
 		)
 	}
@@ -222,7 +223,7 @@ func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi 
 			(*C.uchar)(ptr),
 			C.uint64_t(len(data)),
 			&functionPointers[0],
-			C.uint32_t(len(functions)),
+			C.uint64_t(len(functions)),
 			C._Bool(wasi),
 		))
 
