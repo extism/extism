@@ -1,3 +1,5 @@
+module Manifest = Extism_manifest
+
 type t = { id : int32; ctx : Context.t }
 
 let with_context f =
@@ -14,7 +16,9 @@ let with_context f =
 let set_config plugin = function
   | None -> true
   | Some config ->
-      let config = Manifest.yojson_of_config config |> Yojson.Safe.to_string in
+      let config =
+        Extism_manifest.yojson_of_config config |> Yojson.Safe.to_string
+      in
       Bindings.extism_plugin_config plugin.ctx.pointer plugin.id config
         (Unsigned.UInt64.of_int (String.length config))
 

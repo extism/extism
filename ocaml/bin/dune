@@ -1,4 +1,5 @@
 (executable
  (name main)
+ (package extism)
  (public_name extism-run)
  (libraries extism cmdliner))

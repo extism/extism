@@ -1,0 +1,6 @@
+(library
+ (name extism_manifest)
+ (public_name extism-manifest)
+ (libraries base64)
+ (preprocess
+  (pps ppx_yojson_conv)))

@@ -3,6 +3,6 @@
  (public_name extism)
  (inline_tests
   (deps test/code.wasm))
- (libraries ctypes.foreign bigstringaf base64)
+ (libraries ctypes.foreign bigstringaf extism-manifest)
  (preprocess
   (pps ppx_yojson_conv ppx_inline_test)))

@@ -25,9 +25,22 @@
   ctypes-foreign
   bigstringaf
   ppx_yojson_conv
-  base64
+  extism-manifest
   ppx_inline_test
   (cmdliner (>= 1.1.1))
+ )
+ (tags
+  (topics wasm plugin)))
+
+(package
+ (name extism-manifest)
+ (synopsis "Extism manifest bindings")
+ (description "Bindings to Extism, the universal plugin system")
+ (depends 
+  (ocaml (>= 4.14.1)) 
+  dune
+  ppx_yojson_conv
+  base64
  )
  (tags
   (topics wasm plugin)))
