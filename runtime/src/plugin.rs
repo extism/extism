@@ -279,7 +279,7 @@ impl Plugin {
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
             if let Some(cleanup) = self.get_func("hs_exit") {
-                if init.typed::<(i32, i32), (), _>(&self.memory.store).is_err() {
+                if init.typed::<(i32, i32), ()>(&self.memory.store).is_err() {
                     trace!(
                         "hs_init function found with type {:?}",
                         init.ty(&self.memory.store)
