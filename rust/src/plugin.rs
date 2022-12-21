@@ -33,7 +33,7 @@ impl<'a> Plugin<'a> {
     pub fn new_with_manifest_and_functions(
         ctx: &'a Context,
         manifest: &Manifest,
-        imports: impl IntoIterator<Item = &'static extism_runtime::Function>,
+        imports: impl IntoIterator<Item = &'a extism_runtime::Function>,
         wasi: bool,
     ) -> Result<Plugin<'a>, Error> {
         let data = serde_json::to_vec(manifest)?;
@@ -47,8 +47,8 @@ impl<'a> Plugin<'a> {
         if plugin < 0 {
             let err = unsafe { bindings::extism_error(&mut *ctx.lock(), -1) };
             let buf = unsafe { std::ffi::CStr::from_ptr(err) };
-            let buf = buf.to_str().unwrap().to_string();
-            return Err(Error::UnableToLoadPlugin(buf));
+            let buf = buf.to_str().unwrap();
+            return Err(Error::msg(buf));
         }
 
         Ok(Plugin {
@@ -61,7 +61,7 @@ impl<'a> Plugin<'a> {
     pub fn new_with_functions(
         ctx: &'a Context,
         data: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = &'static Function>,
+        imports: impl IntoIterator<Item = &'a Function>,
         wasi: bool,
     ) -> Result<Plugin, Error> {
         let plugin = ctx.lock().new_plugin_with_functions(data, imports, wasi);
@@ -69,8 +69,8 @@ impl<'a> Plugin<'a> {
         if plugin < 0 {
             let err = unsafe { bindings::extism_error(&mut *ctx.lock(), -1) };
             let buf = unsafe { std::ffi::CStr::from_ptr(err) };
-            let buf = buf.to_str().unwrap().to_string();
-            return Err(Error::UnableToLoadPlugin(buf));
+            let buf = buf.to_str().unwrap();
+            return Err(Error::msg(buf));
         }
 
         Ok(Plugin {
@@ -97,10 +97,10 @@ impl<'a> Plugin<'a> {
         let err = unsafe { bindings::extism_error(&mut *self.context.lock(), -1) };
         if !err.is_null() {
             let s = unsafe { std::ffi::CStr::from_ptr(err) };
-            return Err(Error::Message(s.to_str().unwrap().to_string()));
+            return Err(Error::msg(s.to_str().unwrap()));
         }
 
-        Err(Error::Message("extism_plugin_update failed".to_string()))
+        Err(Error::msg("extism_plugin_update failed"))
     }
 
     /// Update a plugin with the given manifest
@@ -158,10 +158,10 @@ impl<'a> Plugin<'a> {
             let err = unsafe { bindings::extism_error(&mut *self.context.lock(), self.id) };
             if !err.is_null() {
                 let s = unsafe { std::ffi::CStr::from_ptr(err) };
-                return Err(Error::Message(s.to_str().unwrap().to_string()));
+                return Err(Error::msg(s.to_str().unwrap()));
             }
 
-            return Err(Error::Message("extism_call failed".to_string()));
+            return Err(Error::msg("extism_call failed"));
         }
 
         let out_len =

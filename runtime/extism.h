@@ -116,7 +116,7 @@ void extism_function_free(struct ExtismFunction *ptr);
 ExtismPlugin extism_plugin_new_with_functions(struct ExtismContext *ctx,
                                               const uint8_t *wasm,
                                               ExtismSize wasm_size,
-                                              const struct ExtismFunction *const *functions,
+                                              struct ExtismFunction **functions,
                                               ExtismSize nfunctions,
                                               bool with_wasi);
 
@@ -146,7 +146,7 @@ bool extism_plugin_update_with_functions(struct ExtismContext *ctx,
                                          ExtismPlugin index,
                                          const uint8_t *wasm,
                                          ExtismSize wasm_size,
-                                         const struct ExtismFunction *const *functions,
+                                         struct ExtismFunction *const *functions,
                                          ExtismSize nfunctions,
                                          bool with_wasi);
 

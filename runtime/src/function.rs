@@ -52,6 +52,8 @@ impl From<ValType> for wasmtime::ValType {
     }
 }
 
+pub type Val = wasmtime::Val;
+
 pub struct UserData {
     ptr: *mut std::ffi::c_void,
     free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
@@ -165,12 +167,7 @@ impl Function {
     ) -> Function
     where
         F: 'static
-            + Fn(
-                &mut crate::Plugin,
-                &[wasmtime::Val],
-                &mut [wasmtime::Val],
-                UserData,
-            ) -> Result<(), Error>
+            + Fn(&mut crate::Plugin, &[Val], &mut [Val], UserData) -> Result<(), Error>
             + Sync
             + Send,
     {
@@ -183,7 +180,7 @@ impl Function {
                 returns.into_iter().map(wasmtime::ValType::from),
             ),
             f: std::sync::Arc::new(move |mut caller, inp, outp| {
-                f(caller.data_mut().plugin_mut(), inp, outp, data.make_copy())
+                f(caller.data_mut().plugin_mut(), &inp, outp, data.make_copy())
             }),
             _user_data: user_data,
         }

@@ -186,7 +186,7 @@ pub unsafe extern "C" fn extism_function_new(
         output_types.clone(),
         Some(user_data),
         move |plugin, inputs, outputs, user_data| {
-            let inputs: Vec<_> = inputs.iter().map(ExtismVal::from).collect();
+            let inputs: Vec<_> = inputs.iter().map(|x| ExtismVal::from(x)).collect();
             let mut output_tmp: Vec<_> = output_types
                 .iter()
                 .map(|t| ExtismVal {
@@ -234,7 +234,7 @@ pub unsafe extern "C" fn extism_plugin_new_with_functions(
     ctx: *mut Context,
     wasm: *const u8,
     wasm_size: Size,
-    functions: *const *const ExtismFunction,
+    functions: *mut *mut ExtismFunction,
     nfunctions: Size,
     with_wasi: bool,
 ) -> PluginIndex {
@@ -287,7 +287,7 @@ pub unsafe extern "C" fn extism_plugin_update_with_functions(
     index: PluginIndex,
     wasm: *const u8,
     wasm_size: Size,
-    functions: *const *const ExtismFunction,
+    functions: *const *mut ExtismFunction,
     nfunctions: Size,
     with_wasi: bool,
 ) -> bool {
@@ -502,7 +502,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     }
 
     // Call the function
-    let mut results = vec![Val::null(); n_results];
+    let mut results = vec![wasmtime::Val::null(); n_results];
     let res = func.call(
         &mut plugin_ref.as_mut().memory.store,
         &[],

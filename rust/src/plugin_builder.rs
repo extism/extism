@@ -6,13 +6,13 @@ enum Source {
 }
 
 /// PluginBuilder is used to configure and create `Plugin` instances
-pub struct PluginBuilder {
+pub struct PluginBuilder<'a> {
     source: Source,
     wasi: bool,
-    functions: Vec<&'static Function>,
+    functions: Vec<&'a Function>,
 }
 
-impl PluginBuilder {
+impl<'a> PluginBuilder<'a> {
     /// Create a new `PluginBuilder` with the given WebAssembly module
     pub fn new_with_module(data: impl Into<Vec<u8>>) -> Self {
         PluginBuilder {
@@ -38,18 +38,18 @@ impl PluginBuilder {
     }
 
     /// Add a single host function
-    pub fn with_function(mut self, f: &'static Function) -> Self {
+    pub fn with_function(mut self, f: &'a Function) -> Self {
         self.functions.push(f);
         self
     }
 
     /// Add multiple host functions
-    pub fn with_functions(mut self, f: impl IntoIterator<Item = &'static Function>) -> Self {
+    pub fn with_functions(mut self, f: impl IntoIterator<Item = &'a Function>) -> Self {
         self.functions.extend(f);
         self
     }
 
-    pub fn build(self, context: &Context) -> Result<Plugin, Error> {
+    pub fn build(self, context: &'a Context) -> Result<Plugin<'a>, Error> {
         match self.source {
             Source::Manifest(m) => {
                 Plugin::new_with_manifest_and_functions(context, &m, self.functions, self.wasi)
