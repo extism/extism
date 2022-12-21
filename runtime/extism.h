@@ -117,7 +117,7 @@ ExtismPlugin extism_plugin_new_with_functions(struct ExtismContext *ctx,
                                               const uint8_t *wasm,
                                               ExtismSize wasm_size,
                                               const struct ExtismFunction *const *functions,
-                                              uint32_t nfunctions,
+                                              ExtismSize nfunctions,
                                               bool with_wasi);
 
 /**
@@ -147,7 +147,7 @@ bool extism_plugin_update_with_functions(struct ExtismContext *ctx,
                                          const uint8_t *wasm,
                                          ExtismSize wasm_size,
                                          const struct ExtismFunction *const *functions,
-                                         uint32_t nfunctions,
+                                         ExtismSize nfunctions,
                                          bool with_wasi);
 
 /**

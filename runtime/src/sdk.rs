@@ -235,7 +235,7 @@ pub unsafe extern "C" fn extism_plugin_new_with_functions(
     wasm: *const u8,
     wasm_size: Size,
     functions: *const *const ExtismFunction,
-    nfunctions: u32,
+    nfunctions: Size,
     with_wasi: bool,
 ) -> PluginIndex {
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
@@ -288,7 +288,7 @@ pub unsafe extern "C" fn extism_plugin_update_with_functions(
     wasm: *const u8,
     wasm_size: Size,
     functions: *const *const ExtismFunction,
-    nfunctions: u32,
+    nfunctions: Size,
     with_wasi: bool,
 ) -> bool {
     trace!(

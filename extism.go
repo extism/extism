@@ -24,6 +24,8 @@ type ValType = C.ExtismValType
 
 type Val = C.ExtismVal
 
+type Size = C.ExtismSize
+
 var (
 	I32       ValType = C.I32
 	I64       ValType = C.I64
@@ -44,7 +46,7 @@ func (f *Function) Free() {
 	f.pointer = nil
 }
 
-func NewFunction(name string, inputs []C.ExtismValType, outputs []C.ExtismValType, f unsafe.Pointer, userData interface{}) Function {
+func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Pointer, userData interface{}) Function {
 	var function Function
 	function.userData = userData
 	cname := C.CString(name)
@@ -66,9 +68,9 @@ type CurrentPlugin struct {
 	pointer *C.ExtismCurrentPlugin
 }
 
-func GetCurrentPlugin(ptr unsafe.Pointer) CurrentPlugin {
+func GetCurrentPlugin(ptr *C.ExtismCurrentPlugin) CurrentPlugin {
 	return CurrentPlugin{
-		pointer: (*C.ExtismCurrentPlugin)(ptr),
+		pointer: ptr,
 	}
 }
 

@@ -10,13 +10,20 @@ import (
 )
 
 /*
-	#include <stdint.h>
-	extern void testing_123(void *plugin, void *inputs, uint64_t nInputs, void *outputs, uint64_t nOutputs, void *userdata);
+#include <extism.h>
+extern void testing_123(
+	ExtismCurrentPlugin *plugin,
+	ExtismVal *inputs,
+	uint64_t nInputs,
+	ExtismVal *outputs,
+	uint64_t nOutputs,
+	void *userdata
+);
 */
 import "C"
 
 //export testing_123
-func testing_123(plugin unsafe.Pointer, inputs unsafe.Pointer, nInputs C.uint64_t, outputs unsafe.Pointer, nOutputs C.uint64_t, userData unsafe.Pointer) {
+func testing_123(plugin *C.ExtismCurrentPlugin, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData unsafe.Pointer) {
 	fmt.Println("Hello from Go!")
 	s := *(*interface{})(userData)
 	fmt.Println(s.(string))
