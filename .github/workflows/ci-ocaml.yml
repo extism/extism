@@ -35,7 +35,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: _build
-          key: ${{ runner.os }}-ocaml-${{ hashFiles('ocaml/**') }}-${{ hashFiles('dune-project') }}
+          key: ${{ runner.os }}-ocaml-${{ hashFiles('ocaml/**.ml') }}-${{ hashFiles('dune-project') }}
       - name: Build OCaml Host SDK
         if: steps.cache-ocaml.outputs.cache-hit != 'true'
         run: |
