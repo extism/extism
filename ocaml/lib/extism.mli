@@ -1,12 +1,17 @@
 (** Extism bindings for OCaml *)
 
-(** The error type used throughout this library *)
-type error = [ `Msg of string ]
 
 (** Returns the libextism version, not the version of the OCaml library *)
 val extism_version : unit -> string
 
 module Manifest = Extism_manifest
+
+module Error : sig
+  type t = [`Msg of string]
+
+  exception Error of t
+  val unwrap: ('a, t) result -> 'a
+end
 
 (** [Context] is used to group plugins *)
 module Context : sig
@@ -40,11 +45,11 @@ module Plugin : sig
     ?wasi:bool ->
     Context.t ->
     string ->
-    (t, [ `Msg of string ]) result
+    (t, Error.t) result
 
   (** Make a new plugin from a [Manifest] *)
   val of_manifest :
-    ?wasi:bool -> Context.t -> Manifest.t -> (t, [ `Msg of string ]) result
+    ?wasi:bool -> Context.t -> Manifest.t -> (t, Error.t) result
 
   (** Update a plugin from raw WebAssembly or JSON encoded manifest *)
   val update :
@@ -56,14 +61,14 @@ module Plugin : sig
 
   (** Update a plugin from a [Manifest] *)
   val update_manifest :
-    t -> ?wasi:bool -> Manifest.t -> (unit, [ `Msg of string ]) result
+    t -> ?wasi:bool -> Manifest.t -> (unit, Error.t) result
 
   (** Call a function, uses [Bigstringaf.t] for input/output *)
   val call_bigstring :
-    t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, error) result
+    t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, Error.t) result
 
   (** Call a function, uses [string] for input/output *)
-  val call : t -> name:string -> string -> (string, error) result
+  val call : t -> name:string -> string -> (string, Error.t) result
 
   (** Drop a plugin *)
   val free : t -> unit

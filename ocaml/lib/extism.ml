@@ -1,6 +1,5 @@
-type error = Error.t
-
 module Manifest = Extism_manifest
+module Error = Error
 module Context = Context
 module Plugin = Plugin
 
