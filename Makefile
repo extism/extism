@@ -18,14 +18,11 @@ else
 	FEATURE_FLAGS=--features $(FEATURES)
 endif
 
-
-.PHONY: build
+build:
+	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
 lint:
 	cargo clippy --release --no-deps --manifest-path runtime/Cargo.toml
-
-build:
-	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
 debug:
 	RUSTFLAGS=-g $(MAKE) build

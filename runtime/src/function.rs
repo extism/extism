@@ -180,7 +180,7 @@ impl Function {
                 returns.into_iter().map(wasmtime::ValType::from),
             ),
             f: std::sync::Arc::new(move |mut caller, inp, outp| {
-                f(caller.data_mut().plugin_mut(), &inp, outp, data.make_copy())
+                f(caller.data_mut().plugin_mut(), inp, outp, data.make_copy())
             }),
             _user_data: user_data,
         }

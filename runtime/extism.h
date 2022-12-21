@@ -2,6 +2,7 @@
 
 #include <stdint.h>
 #include <stdbool.h>
+#define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)
 
 /**
  * A list of all possible value types in WebAssembly.
