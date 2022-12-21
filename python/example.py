@@ -1,7 +1,6 @@
 import sys
 import json
 import hashlib
-import requests
 
 sys.path.append(".")
 from extism import Context, Function, host_fn, ValType
@@ -19,7 +18,6 @@ def testing_123(plugin, input, context, a_string):
     print(a_string)
     print(input)
     print(plugin.memory(mem)[:])
-    print(requests.get("https://example.com").text)
     return input[0]
 
 
