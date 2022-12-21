@@ -4,9 +4,23 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"unsafe"
 
 	"github.com/extism/extism"
 )
+
+/*
+	#include <stdint.h>
+	extern void testing_123(void *plugin, void *inputs, uint64_t nInputs, void *outputs, uint64_t nOutputs, void *userdata);
+*/
+import "C"
+
+//export testing_123
+func testing_123(plugin unsafe.Pointer, inputs unsafe.Pointer, nInputs C.uint64_t, outputs unsafe.Pointer, nOutputs C.uint64_t, userData unsafe.Pointer) {
+	fmt.Println("Hello from Go!")
+	s := *(*interface{})(userData)
+	fmt.Println(s.(string))
+}
 
 func main() {
 	version := extism.ExtismVersion()
@@ -22,9 +36,10 @@ func main() {
 	} else {
 		data = []byte("testing from go -> wasm shared memory...")
 	}
-
 	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code.wasm"}}}
-	plugin, err := ctx.PluginFromManifest(manifest, false)
+	f := extism.NewFunction("testing_123", []extism.ValType{extism.I64}, []extism.ValType{extism.I64}, unsafe.Pointer(C.testing_123), "Hello again!")
+	defer f.Free()
+	plugin, err := ctx.PluginFromManifest(manifest, []extism.Function{f}, true)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

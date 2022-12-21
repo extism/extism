@@ -20,6 +20,64 @@ type Context struct {
 	pointer *C.ExtismContext
 }
 
+type ValType = C.ExtismValType
+
+type Val = C.ExtismVal
+
+var (
+	I32       ValType = C.I32
+	I64       ValType = C.I64
+	F32       ValType = C.F32
+	F64       ValType = C.F64
+	FuncRef   ValType = C.FuncRef
+	ExternRef ValType = C.ExternRef
+)
+
+type Function struct {
+	pointer  *C.ExtismFunction
+	userData interface{}
+}
+
+// Free a function
+func (f *Function) Free() {
+	C.extism_function_free(f.pointer)
+	f.pointer = nil
+}
+
+func NewFunction(name string, inputs []C.ExtismValType, outputs []C.ExtismValType, f unsafe.Pointer, userData interface{}) Function {
+	var function Function
+	function.userData = userData
+	cname := C.CString(name)
+	function.pointer = C.extism_function_new(
+		cname,
+		(*uint32)(&inputs[0]),
+		C.uint64_t(len(inputs)),
+		(*uint32)(&outputs[0]),
+		C.uint64_t(len(outputs)),
+		(*[0]byte)(f),
+		unsafe.Pointer(&function.userData),
+		nil,
+	)
+	C.free(unsafe.Pointer(cname))
+	return function
+}
+
+type CurrentPlugin struct {
+	pointer *C.ExtismCurrentPlugin
+}
+
+func GetCurrentPlugin(ptr unsafe.Pointer) CurrentPlugin {
+	return CurrentPlugin{
+		pointer: (*C.ExtismCurrentPlugin)(ptr),
+	}
+}
+
+func (p *CurrentPlugin) Memory(offs uint) []byte {
+	length := C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs))
+	data := unsafe.Pointer(C.extism_current_plugin_memory(p.pointer))
+	return unsafe.Slice((*byte)(unsafe.Add(data, offs)), C.int(length))
+}
+
 // NewContext creates a new context, it should be freed using the `Free` method
 func NewContext() Context {
 	p := C.extism_context_new()
@@ -96,14 +154,30 @@ func ExtismVersion() string {
 	return C.GoString(C.extism_version())
 }
 
-func register(ctx *Context, data []byte, wasi bool) (Plugin, error) {
+func register(ctx *Context, data []byte, functions []Function, wasi bool) (Plugin, error) {
 	ptr := makePointer(data)
-	plugin := C.extism_plugin_new(
-		ctx.pointer,
-		(*C.uchar)(ptr),
-		C.uint64_t(len(data)),
-		C._Bool(wasi),
-	)
+	functionPointers := []*C.ExtismFunction{}
+	for _, f := range functions {
+		functionPointers = append(functionPointers, f.pointer)
+	}
+	plugin := C.int32_t(-1)
+
+	if len(functions) == 0 {
+		plugin = C.extism_plugin_new(
+			ctx.pointer,
+			(*C.uchar)(ptr),
+			C.uint64_t(len(data)),
+			C._Bool(wasi))
+	} else {
+		plugin = C.extism_plugin_new_with_functions(
+			ctx.pointer,
+			(*C.uchar)(ptr),
+			C.uint64_t(len(data)),
+			&functionPointers[0],
+			C.uint32_t(len(functions)),
+			C._Bool(wasi),
+		)
+	}
 
 	if plugin < 0 {
 		err := C.extism_error(ctx.pointer, C.int32_t(-1))
@@ -120,18 +194,39 @@ func register(ctx *Context, data []byte, wasi bool) (Plugin, error) {
 	return Plugin{id: int32(plugin), ctx: ctx}, nil
 }
 
-func update(ctx *Context, plugin int32, data []byte, wasi bool) error {
+func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi bool) error {
 	ptr := makePointer(data)
-	b := bool(C.extism_plugin_update(
-		ctx.pointer,
-		C.int32_t(plugin),
-		(*C.uchar)(ptr),
-		C.uint64_t(len(data)),
-		C._Bool(wasi),
-	))
+	functionPointers := []*C.ExtismFunction{}
+	for _, f := range functions {
+		functionPointers = append(functionPointers, f.pointer)
+	}
 
-	if b {
-		return nil
+	if len(functions) == 0 {
+		b := bool(C.extism_plugin_update(
+			ctx.pointer,
+			C.int32_t(plugin),
+			(*C.uchar)(ptr),
+			C.uint64_t(len(data)),
+			C._Bool(wasi),
+		))
+
+		if b {
+			return nil
+		}
+	} else {
+		b := bool(C.extism_plugin_update_with_functions(
+			ctx.pointer,
+			C.int32_t(plugin),
+			(*C.uchar)(ptr),
+			C.uint64_t(len(data)),
+			&functionPointers[0],
+			C.uint32_t(len(functions)),
+			C._Bool(wasi),
+		))
+
+		if b {
+			return nil
+		}
 	}
 
 	err := C.extism_error(ctx.pointer, C.int32_t(-1))
@@ -146,43 +241,43 @@ func update(ctx *Context, plugin int32, data []byte, wasi bool) error {
 }
 
 // PluginFromManifest creates a plugin from a `Manifest`
-func (ctx *Context) PluginFromManifest(manifest Manifest, wasi bool) (Plugin, error) {
+func (ctx *Context) PluginFromManifest(manifest Manifest, functions []Function, wasi bool) (Plugin, error) {
 	data, err := json.Marshal(manifest)
 	if err != nil {
 		return Plugin{id: -1}, err
 	}
 
-	return register(ctx, data, wasi)
+	return register(ctx, data, functions, wasi)
 }
 
 // Plugin creates a plugin from a WASM module
-func (ctx *Context) Plugin(module io.Reader, wasi bool) (Plugin, error) {
+func (ctx *Context) Plugin(module io.Reader, functions []Function, wasi bool) (Plugin, error) {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
 		return Plugin{id: -1}, err
 	}
 
-	return register(ctx, wasm, wasi)
+	return register(ctx, wasm, functions, wasi)
 }
 
 // Update a plugin with a new WASM module
-func (p *Plugin) Update(module io.Reader, wasi bool) error {
+func (p *Plugin) Update(module io.Reader, functions []Function, wasi bool) error {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
 		return err
 	}
 
-	return update(p.ctx, p.id, wasm, wasi)
+	return update(p.ctx, p.id, wasm, functions, wasi)
 }
 
 // Update a plugin with a new Manifest
-func (p *Plugin) UpdateManifest(manifest Manifest, wasi bool) error {
+func (p *Plugin) UpdateManifest(manifest Manifest, functions []Function, wasi bool) error {
 	data, err := json.Marshal(manifest)
 	if err != nil {
 		return err
 	}
 
-	return update(p.ctx, p.id, data, wasi)
+	return update(p.ctx, p.id, data, functions, wasi)
 }
 
 // Set configuration values
@@ -233,8 +328,7 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 
 	if length > 0 {
 		x := C.extism_plugin_output_data(plugin.ctx.pointer, C.int32_t(plugin.id))
-		y := (*[]byte)(unsafe.Pointer(&x))
-		return []byte((*y)[0:length]), nil
+		return unsafe.Slice((*byte)(x), C.int(length)), nil
 	}
 
 	return []byte{}, nil
