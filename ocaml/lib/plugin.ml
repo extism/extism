@@ -137,7 +137,6 @@ let%test "call_functions" =
   let testing_123 =
     Function.v "testing_123" [ I64 ] [ I64 ] ~user_data:"Hello again!"
       (fun _plugin inputs outputs user_data ->
-        let user_data = Option.get user_data in
         let () = print_endline "Hello from OCaml!" in
         let () = print_endline user_data in
         let open Types.Val_array in

@@ -67,7 +67,7 @@ module Function : sig
     string ->
     Val_type.t list ->
     Val_type.t list ->
-    ?user_data:'a ->
+    user_data:'a ->
     (Current_plugin.t -> Val_array.t -> Val_array.t -> 'a option -> unit) ->
     t
 end
