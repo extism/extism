@@ -1,6 +1,6 @@
 module Manifest = Extism_manifest
 
-type t = { id : int32; ctx : Context.t }
+type t = { id : int32; ctx : Context.t; mutable functions : Function.t list }
 
 let with_context f =
   let ctx = Context.create () in
@@ -26,10 +26,15 @@ let free t =
   if not (Ctypes.is_null t.ctx.pointer) then
     Bindings.extism_plugin_free t.ctx.pointer t.id
 
-let make ?config ?(wasi = false) ctx wasm =
+let make ?config ?(wasi = false) ?(functions = []) ctx wasm =
+  let func_ptrs = List.map (fun x -> x.Function.pointer) functions in
+  let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
+  let n_funcs = Ctypes.CArray.length arr in
   let id =
-    Bindings.extism_plugin_new ctx.Context.pointer wasm
+    Bindings.extism_plugin_new_with_functions ctx.Context.pointer wasm
       (Unsigned.UInt64.of_int (String.length wasm))
+      (Ctypes.CArray.start arr)
+      (Unsigned.UInt64.of_int n_funcs)
       wasi
   in
   if id < 0l then
@@ -37,28 +42,33 @@ let make ?config ?(wasi = false) ctx wasm =
     | None -> Error (`Msg "extism_plugin_call failed")
     | Some msg -> Error (`Msg msg)
   else
-    let t = { id; ctx } in
+    let t = { id; ctx; functions } in
     if not (set_config t config) then Error (`Msg "call to set_config failed")
     else
       let () = Gc.finalise free t in
       Ok t
 
-let of_manifest ?wasi ctx manifest =
+let of_manifest ?wasi ?functions ctx manifest =
   let data = Manifest.json manifest in
-  make ctx ?wasi data
+  make ctx ?wasi ?functions data
 
 let%test "free plugin" =
   let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
   with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      let plugin = of_manifest ctx manifest |> Error.unwrap in
       free plugin;
       true)
 
-let update plugin ?config ?(wasi = false) wasm =
-  let { id; ctx } = plugin in
+let update plugin ?config ?(wasi = false) ?(functions = []) wasm =
+  let { id; ctx; _ } = plugin in
+  let func_ptrs = List.map (fun x -> x.Function.pointer) functions in
+  let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
+  let n_funcs = Ctypes.CArray.length arr in
   let ok =
-    Bindings.extism_plugin_update ctx.pointer id wasm
+    Bindings.extism_plugin_update_with_functions ctx.pointer id wasm
       (Unsigned.UInt64.of_int (String.length wasm))
+      (Ctypes.CArray.start arr)
+      (Unsigned.UInt64.of_int n_funcs)
       wasi
   in
   if not ok then
@@ -77,11 +87,11 @@ let%test "update plugin manifest and config" =
   let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
   with_context (fun ctx ->
       let config = [ ("a", Some "1") ] in
-      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      let plugin = of_manifest ctx manifest |> Error.unwrap in
       let manifest = Manifest.with_config manifest config in
       update_manifest plugin manifest |> Result.is_ok)
 
-let call' f { id; ctx } ~name input len =
+let call' f { id; ctx; _ } ~name input len =
   let rc = f ctx.pointer id name input len in
   if rc <> 0l then
     match Bindings.extism_error ctx.pointer id with
@@ -105,10 +115,10 @@ let call_bigstring (t : t) ~name input =
 let%test "call_bigstring" =
   let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
   with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      let plugin = of_manifest ctx manifest |> Error.unwrap in
       call_bigstring plugin ~name:"count_vowels"
         (Bigstringaf.of_string ~off:0 ~len:14 "this is a test")
-      |> Result.get_ok |> Bigstringaf.to_string = "{\"count\": 4}")
+      |> Error.unwrap |> Bigstringaf.to_string = "{\"count\": 4}")
 
 let call (t : t) ~name input =
   let len = String.length input in
@@ -118,16 +128,36 @@ let call (t : t) ~name input =
 let%test "call" =
   let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
   with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      let plugin = of_manifest ctx manifest |> Error.unwrap in
       call plugin ~name:"count_vowels" "this is a test"
-      |> Result.get_ok = "{\"count\": 4}")
+      |> Error.unwrap = "{\"count\": 4}")
 
-let function_exists { id; ctx } name =
+let%test "call_functions" =
+  let open Types.Val_type in
+  let testing_123 =
+    Function.v "testing_123" [ I64 ] [ I64 ] ~user_data:"Hello again!"
+      (fun _plugin inputs outputs user_data ->
+        let user_data = Option.get user_data in
+        let () = print_endline "Hello from OCaml!" in
+        let () = print_endline user_data in
+        let open Types.Val_array in
+        outputs.$[0] <- inputs.$[0])
+  in
+  let functions = [ testing_123 ] in
+  let manifest = Manifest.v [ Manifest.file "test/code-functions.wasm" ] in
+  with_context (fun ctx ->
+      let plugin =
+        of_manifest ctx manifest ~functions ~wasi:true |> Error.unwrap
+      in
+      call plugin ~name:"count_vowels" "this is a test"
+      |> Error.unwrap = "{\"count\": 4}")
+
+let function_exists { id; ctx; _ } name =
   Bindings.extism_plugin_function_exists ctx.pointer id name
 
 let%test "function exists" =
   let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
   with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Result.get_ok in
+      let plugin = of_manifest ctx manifest |> Error.unwrap in
       function_exists plugin "count_vowels"
       && not (function_exists plugin "function_does_not_exist"))

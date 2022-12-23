@@ -2,7 +2,7 @@
  (name extism)
  (public_name extism)
  (inline_tests
-  (deps test/code.wasm))
+  (deps test/code.wasm test/code-functions.wasm))
  (libraries ctypes.foreign bigstringaf extism-manifest)
  (preprocess
   (pps ppx_yojson_conv ppx_inline_test)))
