@@ -16,6 +16,8 @@ let free t =
     let () = Bindings.extism_function_free t.pointer in
     t.pointer <- null
 
+let free_all l = List.iter free l
+
 let v name inputs outputs ~user_data f =
   let inputs = CArray.of_list Bindings.Extism_val_type.t inputs in
   let n_inputs = Unsigned.UInt64.of_int (CArray.length inputs) in

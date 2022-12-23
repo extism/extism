@@ -136,10 +136,15 @@ let%test "call_functions" =
   let open Types.Val_type in
   let testing_123 =
     Function.v "testing_123" [ I64 ] [ I64 ] ~user_data:"Hello again!"
-      (fun _plugin inputs outputs user_data ->
+      (fun plugin inputs outputs user_data ->
+        let open Types.Val_array in
+        let s =
+          Current_plugin.memory_string plugin
+            (Unsigned.UInt64.of_int64 @@ Types.Val.to_i64_exn inputs.$[0])
+        in
         let () = print_endline "Hello from OCaml!" in
         let () = print_endline user_data in
-        let open Types.Val_array in
+        let () = print_endline s in
         outputs.$[0] <- inputs.$[0])
   in
   let functions = [ testing_123 ] in

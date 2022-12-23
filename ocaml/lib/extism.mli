@@ -11,10 +11,13 @@ module Error : sig
   exception Error of t
 
   val unwrap : ('a, t) result -> 'a
+  val throw : t -> 'a
 end
 
+(** [Val_type] enumerates every possible argument/result type *)
 module Val_type : sig
   type t = I32 | I64 | F32 | F64 | FuncRef | ExternRef
+  (** Value type *)
 
   val t : t Ctypes.typ
   val of_int : int -> t
@@ -25,6 +28,7 @@ module Val : sig
   type t
 
   val t : t Ctypes.typ
+  val ty : t -> Val_type.t
   val of_i32 : int32 -> t
   val of_i64 : int64 -> t
   val of_f32 : float -> t
@@ -58,10 +62,15 @@ module Current_plugin : sig
   val length : t -> offs -> len
   val alloc : t -> len -> offs
   val free : t -> offs -> unit
+  val memory_string : t -> offs -> string
+  val memory_bigstring : t -> offs -> Bigstringaf.t
 end
 
+(** [Function] is used to create new a new function, which can be called 
+    from a WebAssembly plugin *)
 module Function : sig
   type t
+  (** Function type *)
 
   val v :
     string ->
@@ -70,6 +79,13 @@ module Function : sig
     user_data:'a ->
     (Current_plugin.t -> Val_array.t -> Val_array.t -> 'a option -> unit) ->
     t
+  (** Create a new function *)
+  
+  val free: t -> unit
+  (** Free a function *)
+  
+  val free_all: t list -> unit
+  (** Free a list of functions *)
 end
 
 (** [Context] is used to group plugins *)
