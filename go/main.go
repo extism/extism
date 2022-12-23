@@ -11,14 +11,7 @@ import (
 
 /*
 #include <extism.h>
-extern void testing_123(
-	ExtismCurrentPlugin *plugin,
-	ExtismVal *inputs,
-	uint64_t nInputs,
-	ExtismVal *outputs,
-	uint64_t nOutputs,
-	void *userdata
-);
+EXTISM_GO_FUNCTION(testing_123);
 */
 import "C"
 
