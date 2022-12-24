@@ -284,7 +284,7 @@ export class Context {
    */
   constructor() {
     this.pointer = lib.extism_context_new();
-    contextRegistry.register(this, this.pointer, this);
+    // contextRegistry.register(this, this.pointer, this);
   }
 
   /**
@@ -306,7 +306,7 @@ export class Context {
     if (this.pointer) {
       lib.extism_context_free(this.pointer);
       this.pointer = null;
-      contextRegistry.unregister(this);
+      // contextRegistry.unregister(this);
     }
   }
 
@@ -398,7 +398,7 @@ export class HostFunction {
       null, null
     );
     this.userData = userData;
-    functionRegistry.register(this, this.pointer, this);
+    // functionRegistry.register(this, this.pointer, this);
   }
 
   free() {
@@ -408,7 +408,7 @@ export class HostFunction {
 
     lib.extism_function_free(this.pointer);
     this.pointer = null;
-    functionRegistry.unregister(this);
+    // functionRegistry.unregister(this);
   }
 }
 
@@ -465,11 +465,11 @@ export class Plugin {
     }
     this.id = plugin;
     this.ctx = ctx;
-    pluginRegistry.register(
-      this,
-      { id: this.id, pointer: this.ctx.pointer },
-      this
-    );
+    // pluginRegistry.register(
+    //   this,
+    //   { id: this.id, pointer: this.ctx.pointer },
+    //   this
+    // );
 
     if (config != null) {
       let s = JSON.stringify(config);
@@ -582,7 +582,7 @@ export class Plugin {
     if (this.ctx.pointer && this.id !== -1) {
       lib.extism_plugin_free(this.ctx.pointer, this.id);
       this.id = -1;
-      pluginRegistry.unregister(this);
+      // pluginRegistry.unregister(this);
     }
   }
 }
