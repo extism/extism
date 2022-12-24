@@ -24,7 +24,7 @@ def testing_123(plugin, input, context, a_string):
 # a Context provides a scope for plugins to be managed within. creating multiple contexts
 # is expected and groups plugins based on source/tenant/lifetime etc.
 with Context() as context:
-    wasm = open("../wasm/code.wasm", "rb").read()
+    wasm = open("../wasm/code-functions.wasm", "rb").read()
     hash = hashlib.sha256(wasm).hexdigest()
     config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 

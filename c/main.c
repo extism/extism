@@ -56,7 +56,7 @@ int main(int argc, char *argv[]) {
   ExtismContext *ctx = extism_context_new();
 
   size_t len = 0;
-  uint8_t *data = read_file("../wasm/code.wasm", &len);
+  uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
   ExtismValType inputs[] = {I64};
   ExtismValType outputs[] = {I64};
   ExtismFunction *f = extism_function_new("testing_123", inputs, 1, outputs, 1,

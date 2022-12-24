@@ -35,7 +35,7 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
-    const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
+    const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
 
     fn testing_123(
         _plugin: &mut CurrentPlugin,

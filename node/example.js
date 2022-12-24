@@ -15,7 +15,7 @@ let testing_123 = new HostFunction("testing_123", [ValType.I64], [ValType.I64], 
 let functions = [testing_123];
 
 withContext(async function(context) {
-  let wasm = readFileSync("../wasm/code.wasm");
+  let wasm = readFileSync("../wasm/code-functions.wasm");
   let p = context.plugin(wasm, wasi = true, functions = functions);
 
   if (!p.functionExists("count_vowels")) {

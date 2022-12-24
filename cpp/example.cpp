@@ -22,7 +22,7 @@ std::vector<uint8_t> read(const char *filename) {
 }
 
 int main(int argc, char *argv[]) {
-  auto wasm = read("../wasm/code.wasm");
+  auto wasm = read("../wasm/code-functions.wasm");
   Context context = Context();
 
   std::vector<Function> functions = {
