@@ -62,8 +62,13 @@ module Current_plugin : sig
   val length : t -> offs -> len
   val alloc : t -> len -> offs
   val free : t -> offs -> unit
-  val memory_string : t -> offs -> string
-  val memory_bigstring : t -> offs -> Bigstringaf.t
+
+  module Memory : sig
+    val get_string : t -> offs -> string
+    val get_bigstring : t -> offs -> Bigstringaf.t
+    val set_string : t -> offs -> string -> unit
+    val set_bigstring : t -> offs -> Bigstringaf.t -> unit
+  end
 end
 
 (** [Function] is used to create new a new function, which can be called 
