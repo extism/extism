@@ -164,17 +164,19 @@ mod tests {
             std::io::stdout().write_all(output).unwrap();
         });
 
-        std::thread::spawn(|| {
+        let f = Function::new(
+            "testing_123",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            testing_123,
+        );
+
+        let g = f.clone();
+        std::thread::spawn(move || {
             let context = Context::new();
-            let f = Function::new(
-                "testing_123",
-                [ValType::I64],
-                [ValType::I64],
-                None,
-                testing_123,
-            );
             let mut plugin = PluginBuilder::new_with_module(WASM)
-                .with_function(&f)
+                .with_function(&g)
                 .with_wasi(true)
                 .build(&context)
                 .unwrap();
@@ -183,14 +185,6 @@ mod tests {
         });
 
         let context = Context::new();
-
-        let f = Function::new(
-            "testing_123",
-            [ValType::I64],
-            [ValType::I64],
-            None,
-            testing_123,
-        );
         let mut plugin = Plugin::new_with_functions(&context, WASM, [&f], true).unwrap();
         let output = plugin.call("count_vowels", "abc123").unwrap();
         std::io::stdout().write_all(output).unwrap();

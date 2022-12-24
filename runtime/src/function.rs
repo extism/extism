@@ -150,11 +150,12 @@ type FunctionInner = dyn Fn(wasmtime::Caller<Internal>, &[wasmtime::Val], &mut [
     + Sync
     + Send;
 
+#[derive(Clone)]
 pub struct Function {
     pub(crate) name: String,
     pub(crate) ty: wasmtime::FuncType,
     pub(crate) f: std::sync::Arc<FunctionInner>,
-    pub(crate) _user_data: UserData,
+    pub(crate) _user_data: std::sync::Arc<UserData>,
 }
 
 impl Function {
@@ -182,7 +183,7 @@ impl Function {
             f: std::sync::Arc::new(move |mut caller, inp, outp| {
                 f(caller.data_mut().plugin_mut(), inp, outp, data.make_copy())
             }),
-            _user_data: user_data,
+            _user_data: std::sync::Arc::new(user_data),
         }
     }
 
