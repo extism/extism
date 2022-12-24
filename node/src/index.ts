@@ -178,11 +178,6 @@ export function extismVersion(): string {
 }
 
 // @ts-ignore
-const pluginRegistry = new FinalizationRegistry(({ id, pointer }) => {
-  if (id >= 0 && pointer) lib.extism_plugin_free(pointer, id);
-});
-
-// @ts-ignore
 const contextRegistry = new FinalizationRegistry((pointer) => {
   if (pointer) lib.extism_context_free(pointer);
 });
@@ -284,7 +279,7 @@ export class Context {
    */
   constructor() {
     this.pointer = lib.extism_context_new();
-    contextRegistry.register(this, this.pointer, this);
+    contextRegistry.register(this, this.pointer, this.pointer);
   }
 
   /**
@@ -303,8 +298,8 @@ export class Context {
    * Frees the context. Should be called after the context is not needed to reclaim the memory.
    */
   free() {
+    contextRegistry.unregister(this.pointer);
     if (this.pointer) {
-      contextRegistry.unregister(this);
       lib.extism_context_free(this.pointer);
       this.pointer = null;
     }
@@ -398,15 +393,15 @@ export class HostFunction {
       null, null
     );
     this.userData = userData;
-    functionRegistry.register(this, this.pointer, this);
+    functionRegistry.register(this, this.pointer, this.pointer);
   }
 
   free() {
+    functionRegistry.unregister(this.pointer);
     if (this.pointer === null){
       return;
     }
 
-    functionRegistry.unregister(this);
     lib.extism_function_free(this.pointer);
     this.pointer = null;
   }
@@ -419,6 +414,7 @@ export class Plugin {
   id: number;
   ctx: Context;
   functions: typeof PtrArray;
+  token: {id: number, pointer: Buffer}
 
   /**
    * Constructor for a plugin. @see {@link Context#plugin}.
@@ -464,12 +460,8 @@ export class Plugin {
       throw `Unable to load plugin: ${err.toString()}`;
     }
     this.id = plugin;
+    this.token = {id: this.id, pointer: ctx.pointer};
     this.ctx = ctx;
-    pluginRegistry.register(
-      this,
-      { id: this.id, pointer: this.ctx.pointer },
-      this
-    );
 
     if (config != null) {
       let s = JSON.stringify(config);
@@ -545,7 +537,7 @@ export class Plugin {
    *
    * @param functionName - The name of the function
    * @param input - The input data
-   * @returns A Buffer repreesentation of the output
+   *@returns A Buffer repreesentation of the output
    */
   async call(functionName: string, input: string | Buffer): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
@@ -579,8 +571,7 @@ export class Plugin {
    * Free a plugin, this should be called when the plugin is no longer needed
    */
   free() {
-    if (this.ctx.pointer && this.id !== -1) {
-      pluginRegistry.unregister(this);
+    if (this.ctx.pointer && this.id >= 0) {
       lib.extism_plugin_free(this.ctx.pointer, this.id);
       this.id = -1;
     }
