@@ -6,18 +6,18 @@
 
 # [Extism](https://extism.org)
 
-The universal plug-in system. Run WebAssembly extensions inside your app. Use idiomatic Host SDKs for [Go](https://extism.org/docs/integrate-into-your-codebase/go-host-sdk), 
-[Ruby](https://extism.org/docs/integrate-into-your-codebase/ruby-host-sdk), [Python](https://extism.org/docs/integrate-into-your-codebase/python-host-sdk), 
-[Node](https://extism.org/docs/integrate-into-your-codebase/node-host-sdk), [Rust](https://extism.org/docs/integrate-into-your-codebase/rust-host-sdk), 
-[C](https://extism.org/docs/integrate-into-your-codebase/c-host-sdk), [C++](https://extism.org/docs/integrate-into-your-codebase/cpp-host-sdk), 
-[OCaml](https://extism.org/docs/integrate-into-your-codebase/ocaml-host-sdk), 
-[Haskell](https://extism.org/docs/integrate-into-your-codebase/haskell-host-sdk), 
-[PHP](https://extism.org/docs/integrate-into-your-codebase/php-host-sdk), 
-[Elixir/Erlang](https://extism.org/docs/integrate-into-your-codebase/elixir-or-erlang-host-sdk), 
-[.NET](https://extism.org/docs/integrate-into-your-codebase/dotnet-host-sdk),
-[Java](https://extism.org/docs/integrate-into-your-codebase/java-host-sdk) &amp; more (others coming soon). 
+The universal plug-in system. Run WebAssembly extensions inside your app. Use idiomatic Host SDKs for [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/go.svg" width="18" height="18" />  Go](https://extism.org/docs/integrate-into-your-codebase/go-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/ruby.svg" width="18" height="18" />  Ruby](https://extism.org/docs/integrate-into-your-codebase/ruby-host-sdk), [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/python.svg" width="18" height="18" />  Python](https://extism.org/docs/integrate-into-your-codebase/python-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/nodedotjs.svg" width="18" height="18" />  Node](https://extism.org/docs/integrate-into-your-codebase/node-host-sdk), [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/rust.svg" width="18" height="18" /> Rust](https://extism.org/docs/integrate-into-your-codebase/rust-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/c.svg" width="18" height="18" /> C](https://extism.org/docs/integrate-into-your-codebase/c-host-sdk), [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/cplusplus.svg" width="18" height="18" /> C++](https://extism.org/docs/integrate-into-your-codebase/cpp-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/ocaml.svg" width="18" height="18" /> OCaml](https://extism.org/docs/integrate-into-your-codebase/ocaml-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/haskell.svg" width="18" height="18" /> Haskell](https://extism.org/docs/integrate-into-your-codebase/haskell-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/php.svg" width="18" height="18" /> PHP](https://extism.org/docs/integrate-into-your-codebase/php-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/elixir.svg" width="18" height="18" /> Elixir / <img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/erlang.svg" width="18" height="18" /> Erlang](https://extism.org/docs/integrate-into-your-codebase/elixir-or-erlang-host-sdk), 
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/dotnet.svg" width="18" height="18" /> .NET](https://extism.org/docs/integrate-into-your-codebase/dotnet-host-sdk),
+[<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/java.svg" width="18" height="18" /> Java](https://extism.org/docs/integrate-into-your-codebase/java-host-sdk) &amp; more (others coming soon). 
 
-Plug-in development kits (PDK) for plug-in authors supported in [Rust](https://github.com/extism/rust-pdk), [AssemblyScript](https://github.com/extism/assemblyscript-pdk), [Go](https://github.com/extism/go-pdk), [C/C++](https://github.com/extism/c-pdk), and [Haskell](https://github.com/extism/haskell-pdk).
+Plug-in development kits (PDK) for plug-in authors supported in [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/rust.svg" width="18" height="18" /> Rust](https://github.com/extism/rust-pdk), [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/assemblyscript.svg" width="18" height="18" /> AssemblyScript](https://github.com/extism/assemblyscript-pdk), [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/go.svg" width="18" height="18" /> Go](https://github.com/extism/go-pdk), [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/c.svg" width="18" height="18" /> C / <img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/cplusplus.svg" width="18" height="18" /> C++](https://github.com/extism/c-pdk), and [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/haskell.svg" width="18" height="18" /> Haskell](https://github.com/extism/haskell-pdk).
 
 <p align="center">
   <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/208771403-940431e4-68df-449d-ae11-5cf6620174c1.png" alt="Extism embedded SDK language support"/>
