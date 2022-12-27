@@ -4,11 +4,6 @@ const c = @import("ffi.zig");
 const utils = @import("utils.zig");
 const toCstr = utils.toCstr;
 
-const PluginError = error {
-    LoadFailed,
-    CallFailed,
-};
-
 pub const Plugin = struct {
     ctx: *Context,
     id: i32,
@@ -16,7 +11,7 @@ pub const Plugin = struct {
     // We have to use this until ziglang/zig#2647 is resolved.
     error_info: ?[]const u8,
 
-    pub fn init(ctx: *Context, data: []const u8, wasi: bool) PluginError.LoadFailed!Plugin {
+    pub fn init(ctx: *Context, data: []const u8, wasi: bool) !Plugin {
         ctx.mutex.lock();
         defer ctx.mutex.unlock();
         const plugin = c.extism_plugin_new(ctx.ctx, toCstr(data), @as(u64, data.len), wasi);
@@ -27,7 +22,7 @@ pub const Plugin = struct {
                 ctx.error_info = err;
             }
             ctx.error_info = "Unknown";
-            return PluginError.LoadFailed;
+            return error.PluginLoadFailed;
         }
         return Plugin{
             .id = plugin,
@@ -43,7 +38,7 @@ pub const Plugin = struct {
     }
 
     /// Call a function with the given input
-    pub fn call(self: *Plugin, function_name: []const u8, input: []const u8) PluginError.CallFailed![]const u8 {
+    pub fn call(self: *Plugin, function_name: []const u8, input: []const u8) ![]const u8 {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
         const res = c.extism_plugin_call(self.ctx.ctx, self.id, toCstr(function_name), toCstr(input), @intCast(u64, input.len));
@@ -55,7 +50,7 @@ pub const Plugin = struct {
                 self.error_info = err;
             }
             self.error_info = "<unset by plugin>";
-            return PluginError.CallFailed;
+            return error.PluginCallFailed;
         }
 
         const len = c.extism_plugin_output_length(self.ctx.ctx, self.id);
@@ -80,7 +75,7 @@ pub const Plugin = struct {
             self.error_info = err;
         }
         self.error_info = "Unknown";
-        return error.PluginUpdateError;
+        return error.PluginUpdateFailed;
     }
 
     /// Set configuration values

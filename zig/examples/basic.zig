@@ -28,7 +28,7 @@ pub fn main() !void {
     if (plugin.call("count_vowels", input)) |data| {
         std.debug.print("plugin output: {s}", .{data});
     } else |err| switch (err) {
-        error.PluginCallError => {
+        error.PluginCallFailed => {
             std.debug.print("plugin returned error: {s}\n", .{plugin.error_info.?});
         },
     }
