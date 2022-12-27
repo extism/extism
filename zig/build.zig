@@ -5,7 +5,7 @@ pub fn build(b: *std.build.Builder) void {
     // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
     const mode = b.standardReleaseOptions();
 
-    const lib = b.addStaticLibrary("extism-zig-sdk", "src/main.zig");
+    const lib = b.addStaticLibrary("extism-sdk", "src/main.zig");
     lib.setBuildMode(mode);
     lib.install();
 
@@ -16,7 +16,7 @@ pub fn build(b: *std.build.Builder) void {
     test_step.dependOn(&main_tests.step);
 
     var example = b.addExecutable("Example", "examples/basic.zig");
-    example.addPackagePath("extism-zig-sdk", "src/main.zig");
+    example.addPackagePath("extism-sdk", "src/main.zig");
     example.linkLibC();
     example.linkSystemLibrary("extism");
     example.setBuildMode(mode);
