@@ -1,0 +1,17 @@
+pub const ExtismContext = opaque {};
+pub const ExtismPlugin = i32;
+pub const ExtismSize = u64;
+pub extern fn extism_context_new() *ExtismContext;
+pub extern fn extism_context_free(ctx: *ExtismContext) void;
+pub extern fn extism_plugin_new(ctx: *ExtismContext, wasm: [*c]const u8, wasm_size: ExtismSize, with_wasi: bool) ExtismPlugin;
+pub extern fn extism_plugin_update(ctx: *ExtismContext, index: ExtismPlugin, wasm: [*c]const u8, wasm_size: ExtismSize, with_wasi: bool) bool;
+pub extern fn extism_plugin_free(ctx: *ExtismContext, plugin: ExtismPlugin) void;
+pub extern fn extism_context_reset(ctx: *ExtismContext) void;
+pub extern fn extism_plugin_config(ctx: *ExtismContext, plugin: ExtismPlugin, json: [*c]const u8, json_size: ExtismSize) bool;
+pub extern fn extism_plugin_function_exists(ctx: *ExtismContext, plugin: ExtismPlugin, func_name: [*c]const u8) bool;
+pub extern fn extism_plugin_call(ctx: *ExtismContext, plugin_id: ExtismPlugin, func_name: [*c]const u8, data: [*c]const u8, data_len: ExtismSize) i32;
+pub extern fn extism_error(ctx: *ExtismContext, plugin: ExtismPlugin) [*c]const u8;
+pub extern fn extism_plugin_output_length(ctx: *ExtismContext, plugin: ExtismPlugin) ExtismSize;
+pub extern fn extism_plugin_output_data(ctx: *ExtismContext, plugin: ExtismPlugin) [*c]const u8;
+pub extern fn extism_log_file(filename: [*:0]const u8, log_level: [*c]const u8) bool;
+pub extern fn extism_version() [*c]const u8;
