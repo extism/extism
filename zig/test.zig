@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const sdk = @import("extism-sdk");
+const sdk = @import("extism");
 const Context = sdk.Context;
 const Plugin = sdk.Plugin;
 const manifest = sdk.manifest;
