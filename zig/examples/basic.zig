@@ -8,18 +8,13 @@ const manifest = sdk.manifest;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    // var dir = try std.fs.cwd().openDir("../wasm", .{});
-    // const wasm_file = try dir.openFile("code.wasm", .{});
-    const wasm_file = try std.fs.cwd().openFile("test.wasm", .{});
-    const wasm = try wasm_file.readToEndAlloc(allocator, (try wasm_file.stat()).size);
-    defer allocator.free(wasm);
     _ = sdk.setLogFile("extism.log", "debug");
     var context = Context.init();
     defer context.deinit();
 
-    const wasmfile_manifest = manifest.WasmFile{ .path = "test.wasm" };
-    const man = manifest.Manifest(manifest.WasmFile){ .wasm = &[_]manifest.WasmFile{wasmfile_manifest} };
-    var plugin = try Plugin.initFromManifest(allocator, &context, manifest.WasmFile, man, false);
+    const wasmfile_manifest = manifest.WasmFile{ .path = "../wasm/code.wasm" };
+    const man = .{ .wasm = &[_]manifest.Wasm{.{ .wasm_file = wasmfile_manifest }} };
+    var plugin = try Plugin.initFromManifest(allocator, &context, man, false);
     // var plugin = try Plugin.init(&context, wasm, false);
     defer plugin.deinit();
 
@@ -39,4 +34,3 @@ pub fn main() !void {
     std.debug.print("extism version: {s}\n", .{sdk.extismVersion()});
     std.debug.print("has count_vowels: {}\n", .{plugin.hasFunction("count_vowels")});
 }
-

@@ -16,15 +16,13 @@ pub const WasmUrl = struct {
     headers: ?std.StringHashMap([]const u8) = null,
 };
 
-/// Creates a new Manifest
-/// T must be one of `WasmData`, `WasmFile`, `WasmUrl`
-pub fn Manifest(comptime T: type) type {
-    return struct {
-        wasm: []const T,
-        memory: ?struct { max_pages: ?u32 } = null,
-        config: ?std.StringHashMap([]const u8) = null,
-        allowed_hosts: ?[][]const u8 = null,
-        allowed_paths: ?std.StringHashMap([]const u8) = null,
-        timeout: ?usize = null,
-    };
-}
+pub const Wasm = union(enum) { wasm_data: WasmData, wasm_file: WasmFile, wasm_url: WasmUrl };
+
+pub const Manifest = struct {
+    wasm: []const Wasm,
+    memory: ?struct { max_pages: ?u32 } = null,
+    config: ?std.StringHashMap([]const u8) = null,
+    allowed_hosts: ?[]const []const u8 = null,
+    allowed_paths: ?std.StringHashMap([]const u8) = null,
+    timeout: ?usize = null,
+};

@@ -34,7 +34,7 @@ pub const Plugin = struct {
     }
 
     /// Create a new plugin from the given manifest
-    pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, comptime T: type, manifest: Manifest(T), wasi: bool) !Plugin {
+    pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, manifest: Manifest, wasi: bool) !Plugin {
         const json = try utils.stringifyAlloc(allocator, manifest);
         defer allocator.free(json);
         return init(ctx, json, wasi);
@@ -88,7 +88,7 @@ pub const Plugin = struct {
     }
 
     /// Update a plugin with the given manifest
-    pub fn updateWithManifest(self: *Plugin, allocator: std.mem.Allocator, comptime T: type, manifest: Manifest(T), wasi: bool) !void {
+    pub fn updateWithManifest(self: *Plugin, allocator: std.mem.Allocator, manifest: Manifest, wasi: bool) !void {
         const json = try utils.stringifyAlloc(allocator, manifest);
         defer allocator.free(json);
         return self.update(json, wasi);
