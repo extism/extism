@@ -9,11 +9,15 @@ pub fn build(b: *std.build.Builder) void {
     lib.setBuildMode(mode);
     lib.install();
 
-    const main_tests = b.addTest("src/main.zig");
-    main_tests.setBuildMode(mode);
+    const tests = b.addTestExe("Library Tests","test.zig");
+    tests.addPackagePath("extism-sdk", "src/main.zig");
+    tests.linkLibC();
+    tests.linkSystemLibrary("extism");
+    tests.setBuildMode(mode);
+    tests.install();
 
     const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&main_tests.step);
+    test_step.dependOn(&tests.run().step);
 
     var example = b.addExecutable("Example", "examples/basic.zig");
     example.addPackagePath("extism-sdk", "src/main.zig");
@@ -24,7 +28,6 @@ pub fn build(b: *std.build.Builder) void {
     example.install();
 
     const example_run_cmd = example.run();
-    example_run_cmd.step.dependOn(b.getInstallStep());
 
     const example_run_step = b.step("run_example", "Build basic_example");
     example_run_step.dependOn(&example_run_cmd.step);

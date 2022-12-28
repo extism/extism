@@ -4,6 +4,7 @@ const sdk = @import("extism-sdk");
 const Context = sdk.Context;
 const Plugin = sdk.Plugin;
 const manifest = sdk.manifest;
+
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
@@ -37,5 +38,5 @@ pub fn main() !void {
     }
     std.debug.print("extism version: {s}\n", .{sdk.extismVersion()});
     std.debug.print("has count_vowels: {}\n", .{plugin.hasFunction("count_vowels")});
-    
 }
+
