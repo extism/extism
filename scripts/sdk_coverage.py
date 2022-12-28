@@ -59,6 +59,7 @@ if __name__ == '__main__':
         Lang('python', 'py'),
         Lang('ruby', 'rb'),
         Lang('rust', 'rs'),
+        Lang('zig', 'zig'),
     ]
 
     header = Header()
