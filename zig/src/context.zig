@@ -25,7 +25,9 @@ pub const Context = struct {
         c.extism_context_free(self.ctx);
     }
 
-    pub fn reset(self: Context) void {
+    pub fn reset(self: *Context) void {
+        self.mutex.lock();
+        defer self.mutex.unlock();
         c.extism_context_reset(self.ctx);
     }
 };

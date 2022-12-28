@@ -12,6 +12,7 @@ pub const Plugin = struct {
     // We have to use this until ziglang/zig#2647 is resolved.
     error_info: ?[]const u8,
 
+    /// Create a new plugin from a WASM module
     pub fn init(ctx: *Context, data: []const u8, wasi: bool) !Plugin {
         ctx.mutex.lock();
         defer ctx.mutex.unlock();
@@ -32,6 +33,7 @@ pub const Plugin = struct {
         };
     }
 
+    /// Create a new plugin from the given manifest
     pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, comptime T: type, manifest: Manifest(T), wasi: bool) !Plugin {
         const json = try utils.stringifyAlloc(allocator, manifest);
         defer allocator.free(json);
@@ -85,6 +87,12 @@ pub const Plugin = struct {
         return error.PluginUpdateFailed;
     }
 
+    /// Update a plugin with the given manifest
+    pub fn updateWithManifest(self: *Plugin, allocator: std.mem.Allocator, comptime T: type, manifest: Manifest(T), wasi: bool) !void {
+        const json = try utils.stringifyAlloc(allocator, manifest);
+        defer allocator.free(json);
+        return self.update(json, wasi);
+    }
     /// Set configuration values
     pub fn setConfig(self: *Plugin, allocator: std.mem.Allocator, config: std.StringHashMap([]const u8)) !void {
         self.ctx.mutex.lock();
