@@ -1,5 +1,6 @@
 const std = @import("std");
-const Context = @import("main.zig").Context;
+const Context = @import("context.zig").Context;
+const Manifest = @import("manifest.zig").Manifest;
 const c = @import("ffi.zig");
 const utils = @import("utils.zig");
 const toCstr = utils.toCstr;
@@ -29,6 +30,12 @@ pub const Plugin = struct {
             .ctx = ctx,
             .error_info = null,
         };
+    }
+
+    pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, comptime T: type, manifest: Manifest(T), wasi: bool) !Plugin {
+        const json = try utils.stringifyAlloc(allocator, manifest);
+        defer allocator.free(json);
+        return init(ctx, json, wasi);
     }
 
     pub fn deinit(self: *Plugin) void {
@@ -82,25 +89,9 @@ pub const Plugin = struct {
     pub fn setConfig(self: *Plugin, allocator: std.mem.Allocator, config: std.StringHashMap([]const u8)) !void {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
-        var output = std.ArrayList(u8).init(allocator);
-        var it = config.iterator();
-        try output.append('{');
-        var i: usize = 0;
-        while (it.next()) |entry| {
-            i += 1;
-            const name = entry.key_ptr.*;
-            const name_json = try std.json.stringifyAlloc(allocator, name, .{});
-            defer allocator.free(name_json);
-            const value = entry.value_ptr.*;
-            const value_json = try std.json.stringifyAlloc(allocator, value, .{});
-            defer allocator.free(value_json);
-            const json = try std.mem.concat(allocator, u8, &[_][]const u8{ name_json, ":", value_json, if (i < config.count()) "," else "" });
-            try output.appendSlice(json);
-        }
-        try output.append('}');
-        const output_str = try output.toOwnedSlice();
-        defer allocator.free(output_str);
-        _ = c.extism_plugin_config(self.ctx.ctx, self.id, toCstr(output_str), @intCast(u64, output_str.len));
+        const config_json = try utils.stringifyAlloc(allocator, config);
+        defer allocator.free(config_json);
+        _ = c.extism_plugin_config(self.ctx.ctx, self.id, toCstr(config_json), @intCast(u64, config_json.len));
     }
 
     /// Returns true if the plugin has a function matching `name`
