@@ -10,9 +10,9 @@ function f(currentPlugin, inputs, userData) {
   return inputs;
 }
 
-let testing_123 = new HostFunction("testing_123", [ValType.I64], [ValType.I64], f, "Hello again!");
+let hello_world = new HostFunction("hello_world", [ValType.I64], [ValType.I64], f, "Hello again!");
 
-let functions = [testing_123];
+let functions = [hello_world];
 
 withContext(async function(context) {
   let wasm = readFileSync("../wasm/code-functions.wasm");
@@ -31,5 +31,5 @@ withContext(async function(context) {
 // or, use a context like this:
 // let ctx = new Context();
 // let wasm = readFileSync("../wasm/code.wasm");
-// let p = ctx.plugin(wasm, wasi = true, functions = [testing_123]);
+// let p = ctx.plugin(wasm, wasi = true);
 // ... where the context can be passed around to various functions etc.

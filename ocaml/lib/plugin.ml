@@ -134,20 +134,20 @@ let%test "call" =
 
 let%test "call_functions" =
   let open Types.Val_type in
-  let testing_123 =
-    Function.v "testing_123" [ I64 ] [ I64 ] ~user_data:"Hello again!"
-      (fun plugin inputs outputs user_data ->
-        let open Types.Val_array in
-        let s =
-          Current_plugin.Memory.get_string plugin
-            (Unsigned.UInt64.of_int64 @@ Types.Val.to_i64_exn inputs.$[0])
-        in
-        let () = print_endline "Hello from OCaml!" in
-        let () = print_endline user_data in
-        let () = print_endline s in
-        outputs.$[0] <- inputs.$[0])
+  let hello_world =
+    Function.v "hello_world" [ I64 ] [ I64 ] ~user_data:"Hello again!"
+    @@ fun plugin inputs outputs user_data ->
+    let open Types.Val_array in
+    let s =
+      Current_plugin.Memory.get_string plugin
+        (Unsigned.UInt64.of_int64 @@ Types.Val.to_i64_exn inputs.$[0])
+    in
+    let () = print_endline "Hello from OCaml!" in
+    let () = print_endline user_data in
+    let () = print_endline s in
+    outputs.$[0] <- inputs.$[0]
   in
-  let functions = [ testing_123 ] in
+  let functions = [ hello_world ] in
   let manifest = Manifest.v [ Manifest.file "test/code-functions.wasm" ] in
   with_context (fun ctx ->
       let plugin =

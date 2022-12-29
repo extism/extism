@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-void testing_123(ExtismCurrentPlugin *plugin, const struct ExtismVal *inputs,
+void hello_world(ExtismCurrentPlugin *plugin, const struct ExtismVal *inputs,
                  uint64_t n_inputs, struct ExtismVal *outputs,
                  uint64_t n_outputs, void *data) {
   puts("Hello from C!");
@@ -59,16 +59,15 @@ int main(int argc, char *argv[]) {
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
   ExtismValType inputs[] = {I64};
   ExtismValType outputs[] = {I64};
-  ExtismFunction *f = extism_function_new("testing_123", inputs, 1, outputs, 1,
-                                          testing_123, "Hello, again!", NULL);
-  const ExtismFunction *functions[] = {f};
+  ExtismFunction *f = extism_function_new("hello_world", inputs, 1, outputs, 1,
+                                          hello_world, "Hello, again!", NULL);
   ExtismPlugin plugin =
-      extism_plugin_new_with_functions(ctx, data, len, functions, 1, true);
+      extism_plugin_new_with_functions(ctx, data, len, &f, 1, true);
   free(data);
   if (plugin < 0) {
+    puts(extism_error(ctx, -1));
     exit(1);
   }
-
   assert(extism_plugin_call(ctx, plugin, "count_vowels", (uint8_t *)argv[1],
                             strlen(argv[1])) == 0);
   ExtismSize out_len = extism_plugin_output_length(ctx, plugin);

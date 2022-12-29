@@ -11,15 +11,18 @@ import (
 
 /*
 #include <extism.h>
-EXTISM_GO_FUNCTION(testing_123);
+EXTISM_GO_FUNCTION(hello_world);
 */
 import "C"
 
-//export testing_123
-func testing_123(plugin *C.ExtismCurrentPlugin, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData unsafe.Pointer) {
+//export hello_world
+func hello_world(plugin *C.ExtismCurrentPlugin, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData unsafe.Pointer) {
 	fmt.Println("Hello from Go!")
 	s := *(*interface{})(userData)
 	fmt.Println(s.(string))
+	inputSlice := unsafe.Slice(inputs, nInputs)
+	outputSlice := unsafe.Slice(outputs, nOutputs)
+	outputSlice[0] = inputSlice[0]
 }
 
 func main() {
@@ -37,7 +40,7 @@ func main() {
 		data = []byte("testing from go -> wasm shared memory...")
 	}
 	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code-functions.wasm"}}}
-	f := extism.NewFunction("testing_123", []extism.ValType{extism.I64}, []extism.ValType{extism.I64}, unsafe.Pointer(C.testing_123), "Hello again!")
+	f := extism.NewFunction("hello_world", []extism.ValType{extism.I64}, []extism.ValType{extism.I64}, unsafe.Pointer(C.hello_world), "Hello again!")
 	defer f.Free()
 	plugin, err := ctx.PluginFromManifest(manifest, []extism.Function{f}, true)
 	if err != nil {

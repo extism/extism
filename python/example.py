@@ -12,7 +12,7 @@ else:
 
 
 @host_fn
-def testing_123(plugin, input, context, a_string):
+def hello_world(plugin, input, context, a_string):
     mem = plugin.memory_at_offset(input[0])
     print("Hello from Python!")
     print(a_string)
@@ -29,9 +29,9 @@ with Context() as context:
     config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
     functions = [
-        Function("testing_123",
-                 [ValType.I64], [ValType.I64], testing_123,
-                 context, "This is user data!")
+        Function("hello_world",
+                 [ValType.I64], [ValType.I64], hello_world,
+                 context, "Hello again!")
     ]
     plugin = context.plugin(config, wasi=True, functions=functions)
     # Call `count_vowels`

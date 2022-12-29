@@ -37,7 +37,7 @@ mod tests {
 
     const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
 
-    fn testing_123(
+    fn hello_world(
         _plugin: &mut CurrentPlugin,
         inputs: &[Val],
         outputs: &mut [Val],
@@ -53,11 +53,11 @@ mod tests {
         set_log_file("test.log", Some(log::Level::Info));
         let context = Context::new();
         let f = Function::new(
-            "testing_123",
+            "hello_world",
             [ValType::I64],
             [ValType::I64],
             None,
-            testing_123,
+            hello_world,
         );
         let functions = [&f];
         let mut plugin = Plugin::new_with_functions(&context, WASM, functions, true).unwrap();
@@ -153,11 +153,11 @@ mod tests {
         std::thread::spawn(|| {
             let context = Context::new();
             let f = Function::new(
-                "testing_123",
+                "hello_world",
                 [ValType::I64],
                 [ValType::I64],
                 None,
-                testing_123,
+                hello_world,
             );
             let mut plugin = Plugin::new_with_functions(&context, WASM, [&f], true).unwrap();
             let output = plugin.call("count_vowels", "this is a test").unwrap();
@@ -165,11 +165,11 @@ mod tests {
         });
 
         let f = Function::new(
-            "testing_123",
+            "hello_world",
             [ValType::I64],
             [ValType::I64],
             None,
-            testing_123,
+            hello_world,
         );
 
         let g = f.clone();

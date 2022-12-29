@@ -7,7 +7,7 @@
 
 using namespace extism;
 
-void testing_123(ExtismCurrentPlugin *plugin, const Val *inputs,
+void hello_world(ExtismCurrentPlugin *plugin, const Val *inputs,
                  ExtismSize nInputs, Val *outputs, ExtismSize nOutputs,
                  void *user_data) {
   std::cout << "Hello from C++" << std::endl;
@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
   Context context = Context();
 
   std::vector<Function> functions = {
-      Function("testing_123", {ValType::I64}, {ValType::I64}, testing_123,
+      Function("hello_world", {ValType::I64}, {ValType::I64}, hello_world,
                (void *)"Hello again!"),
   };
 
