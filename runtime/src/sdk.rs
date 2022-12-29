@@ -40,6 +40,7 @@ pub unsafe extern "C" fn extism_plugin_new(
     ctx.new_plugin(data, with_wasi)
 }
 
+/// A union type for host function argument/return values
 #[repr(C)]
 pub union ExtismValUnion {
     i32: i32,
@@ -49,14 +50,17 @@ pub union ExtismValUnion {
     // TODO: v128, ExternRef, FuncRef
 }
 
+/// `ExtismVal` holds the type and value of a function argument/return
 #[repr(C)]
 pub struct ExtismVal {
     t: ValType,
     v: ExtismValUnion,
 }
 
+/// Wraps host functions
 pub struct ExtismFunction(Function);
 
+/// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
     plugin: *mut Plugin,
     inputs: *const ExtismVal,
@@ -98,6 +102,8 @@ impl From<&wasmtime::Val> for ExtismVal {
     }
 }
 
+/// Returns a pointer to the memory of the currently running plugin
+/// NOTE: this should only be called from host functions.
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Plugin) -> *mut u8 {
     if plugin.is_null() {
@@ -108,6 +114,8 @@ pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Plugin) -> *m
     plugin.memory.data_mut().as_mut_ptr()
 }
 
+/// Allocate a memory block in the currently running plugin
+/// NOTE: this should only be called from host functions.
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Plugin, n: Size) -> u64 {
     if plugin.is_null() {
@@ -124,6 +132,8 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Plugin,
     mem.offset as u64
 }
 
+/// Get the length of an allocated block
+/// NOTE: this should only be called from host functions.
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory_length(plugin: *mut Plugin, n: Size) -> Size {
     if plugin.is_null() {
@@ -138,6 +148,8 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(plugin: *mut Plugin
     }
 }
 
+/// Free an allocated memory block
+/// NOTE: this should only be called from host functions.
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Plugin, ptr: u64) {
     if plugin.is_null() {
@@ -149,6 +161,21 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Plugin, 
     plugin.memory.free(ptr as usize);
 }
 
+/// Create a new host function
+///
+/// Arguments
+/// - `name`: function name, this should be valid UTF-8
+/// - `inputs`: argument types
+/// - `n_inputs`: number of argument types
+/// - `outputs`: return types
+/// - `n_outputs`: number of return types
+/// - `func`: the function to call
+/// - `user_data`: a pointer that will be passed to the function when it's called
+///    this value should live as long as the function exists
+/// - `free_user_data`: a callback to release the `user_data` value when the resulting
+///   `ExtismFunction` is freed.
+///
+/// Returns a new `ExtismFunction` or `null` if the `name` argument is invalid.
 #[no_mangle]
 pub unsafe extern "C" fn extism_function_new(
     name: *const std::ffi::c_char,
@@ -221,6 +248,7 @@ pub unsafe extern "C" fn extism_function_new(
     Box::into_raw(Box::new(ExtismFunction(f)))
 }
 
+/// Free an `ExtismFunction`
 #[no_mangle]
 pub unsafe extern "C" fn extism_function_free(ptr: *mut ExtismFunction) {
     drop(Box::from_raw(ptr))
@@ -230,6 +258,8 @@ pub unsafe extern "C" fn extism_function_free(ptr: *mut ExtismFunction) {
 ///
 /// `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
 /// `wasm_size`: the length of the `wasm` parameter
+/// `functions`: an array of `ExtismFunction*`
+/// `n_functions`: the number of functions provided
 /// `with_wasi`: enables/disables WASI
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_new_with_functions(
@@ -237,7 +267,7 @@ pub unsafe extern "C" fn extism_plugin_new_with_functions(
     wasm: *const u8,
     wasm_size: Size,
     functions: *mut *mut ExtismFunction,
-    nfunctions: Size,
+    n_functions: Size,
     with_wasi: bool,
 ) -> PluginIndex {
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
@@ -246,7 +276,7 @@ pub unsafe extern "C" fn extism_plugin_new_with_functions(
     let mut funcs = vec![];
 
     if !functions.is_null() {
-        for i in 0..nfunctions {
+        for i in 0..n_functions {
             unsafe {
                 let f = *functions.add(i as usize);
                 if f.is_null() {

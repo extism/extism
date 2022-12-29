@@ -43,6 +43,9 @@ typedef enum ExtismValType {
  */
 typedef struct ExtismContext ExtismContext;
 
+/**
+ * Wraps host functions
+ */
 typedef struct ExtismFunction ExtismFunction;
 
 /**
@@ -54,6 +57,9 @@ typedef int32_t ExtismPlugin;
 
 typedef uint64_t ExtismSize;
 
+/**
+ * A union type for host function argument/return values
+ */
 typedef union ExtismValUnion {
   int32_t i32;
   int64_t i64;
@@ -61,11 +67,17 @@ typedef union ExtismValUnion {
   double f64;
 } ExtismValUnion;
 
+/**
+ * `ExtismVal` holds the type and value of a function argument/return
+ */
 typedef struct ExtismVal {
   enum ExtismValType t;
   union ExtismValUnion v;
 } ExtismVal;
 
+/**
+ * Host function signature
+ */
 typedef void (*ExtismFunctionType)(struct ExtismCurrentPlugin *plugin, const struct ExtismVal *inputs, ExtismSize n_inputs, struct ExtismVal *outputs, ExtismSize n_outputs, void *data);
 
 /**
@@ -90,14 +102,47 @@ ExtismPlugin extism_plugin_new(struct ExtismContext *ctx,
                                ExtismSize wasm_size,
                                bool with_wasi);
 
+/**
+ * Returns a pointer to the memory of the currently running plugin
+ * NOTE: this should only be called from host functions.
+ */
 uint8_t *extism_current_plugin_memory(struct ExtismCurrentPlugin *plugin);
 
+/**
+ * Allocate a memory block in the currently running plugin
+ * NOTE: this should only be called from host functions.
+ */
 uint64_t extism_current_plugin_memory_alloc(struct ExtismCurrentPlugin *plugin, ExtismSize n);
 
+/**
+ * Get the length of an allocated block
+ * NOTE: this should only be called from host functions.
+ */
 ExtismSize extism_current_plugin_memory_length(struct ExtismCurrentPlugin *plugin, ExtismSize n);
 
+/**
+ * Free an allocated memory block
+ * NOTE: this should only be called from host functions.
+ */
 void extism_current_plugin_memory_free(struct ExtismCurrentPlugin *plugin, uint64_t ptr);
 
+/**
+ * Create a new host function
+ *
+ * Arguments
+ * - `name`: function name, this should be valid UTF-8
+ * - `inputs`: argument types
+ * - `n_inputs`: number of argument types
+ * - `outputs`: return types
+ * - `n_outputs`: number of return types
+ * - `func`: the function to call
+ * - `user_data`: a pointer that will be passed to the function when it's called
+ *    this value should live as long as the function exists
+ * - `free_user_data`: a callback to release the `user_data` value when the resulting
+ *   `ExtismFunction` is freed.
+ *
+ * Returns a new `ExtismFunction` or `null` if the `name` argument is invalid.
+ */
 struct ExtismFunction *extism_function_new(const char *name,
                                            const enum ExtismValType *inputs,
                                            ExtismSize n_inputs,
@@ -107,6 +152,9 @@ struct ExtismFunction *extism_function_new(const char *name,
                                            void *user_data,
                                            void (*free_user_data)(void *_));
 
+/**
+ * Free an `ExtismFunction`
+ */
 void extism_function_free(struct ExtismFunction *ptr);
 
 /**
@@ -114,13 +162,15 @@ void extism_function_free(struct ExtismFunction *ptr);
  *
  * `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
  * `wasm_size`: the length of the `wasm` parameter
+ * `functions`: an array of `ExtismFunction*`
+ * `n_functions`: the number of functions provided
  * `with_wasi`: enables/disables WASI
  */
 ExtismPlugin extism_plugin_new_with_functions(struct ExtismContext *ctx,
                                               const uint8_t *wasm,
                                               ExtismSize wasm_size,
                                               struct ExtismFunction **functions,
-                                              ExtismSize nfunctions,
+                                              ExtismSize n_functions,
                                               bool with_wasi);
 
 /**
