@@ -143,7 +143,7 @@ module Function : sig
     Val_type.t list ->
     Val_type.t list ->
     user_data:'a ->
-    (Current_plugin.t -> Val_array.t -> Val_array.t -> 'a option -> unit) ->
+    (Current_plugin.t -> Val_array.t -> Val_array.t -> 'a -> unit) ->
     t
   (** Create a new function, [Function.v name args returns ~user_data f] creates
       a new [Function] with the given [name], [args] specifies the argument types,
