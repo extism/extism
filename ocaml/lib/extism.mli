@@ -16,8 +16,7 @@ end
 
 (** [Val_type] enumerates every possible argument/result type *)
 module Val_type : sig
-  type t = I32 | I64 | F32 | F64 | FuncRef | ExternRef
-  (** Value type *)
+  type t = I32 | I64 | F32 | F64 | FuncRef | ExternRef  (** Value type *)
 
   val t : t Ctypes.typ
   val of_int : int -> t
@@ -33,10 +32,10 @@ module Val : sig
 
   val ty : t -> Val_type.t
   (** [ty v] returns the [Val_type.t] for the value [v] *)
-  
+
   val of_i32 : int32 -> t
   (** Create an i32 [Val] *)
-  
+
   val of_i64 : int64 -> t
   (** Create an i64 [Val] *)
 
@@ -48,7 +47,7 @@ module Val : sig
 
   val to_i32 : t -> int32 option
   (** Get an int32 from [Val] if the type matches *)
-  
+
   val to_i64 : t -> int64 option
   (** Get an int64 from [Val] if the type matches *)
 
@@ -60,13 +59,13 @@ module Val : sig
 
   val to_i32_exn : t -> int32
   (** Same as [to_i32] but raises an exception if the types don't match*)
-  
+
   val to_i64_exn : t -> int64
   (** Same as [to_i64] but raises an exception if the types don't match*)
 
   val to_f32_exn : t -> float
   (** Same as [to_f32] but raises an exception if the types don't match*)
-  
+
   val to_f64_exn : t -> float
   (** Same as [to_f64] but raises an exception if the types don't match*)
 end
@@ -78,13 +77,13 @@ module Val_array : sig
 
   val get : t -> int -> Val.t
   (** Get an index *)
-  
+
   val set : t -> int -> Val.t -> unit
   (** Set an index *)
 
   val length : t -> int
   (** Get the number of items in a [Val_array]*)
-  
+
   val ( .$[] ) : t -> int -> Val.t
   (** Syntax for [get] *)
 
@@ -97,10 +96,10 @@ end
 module Current_plugin : sig
   type t
   (** Opaque type, wraps [ExtismCurrentPlugin] *)
-  
+
   type offs = Unsigned.uint64
   (** Memory offset type *)
-  
+
   type len = Unsigned.uint64
   (** Memory length type *)
 
@@ -109,10 +108,10 @@ module Current_plugin : sig
 
   val length : t -> offs -> len
   (** Get the length of an allocated block of memory *)
-  
+
   val alloc : t -> len -> offs
   (** Allocate a new block of memory *)
-  
+
   val free : t -> offs -> unit
   (** Free an allocated block of memory *)
 
@@ -123,10 +122,10 @@ module Current_plugin : sig
 
     val get_bigstring : t -> offs -> Bigstringaf.t
     (** Get a bigstring from memory stored at the provided offset *)
-    
+
     val set_string : t -> offs -> string -> unit
     (** Store a string into memory at the provided offset *)
-    
+
     val set_bigstring : t -> offs -> Bigstringaf.t -> unit
     (** Store a bigstring into memory at the provided offset *)
   end
@@ -151,11 +150,11 @@ module Function : sig
       OCaml values into the function and [f] is the OCaml function that will be
       called.
   *)
-  
-  val free: t -> unit
+
+  val free : t -> unit
   (** Free a function *)
-  
-  val free_all: t list -> unit
+
+  val free_all : t list -> unit
   (** Free a list of functions *)
 end
 
