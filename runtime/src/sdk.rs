@@ -226,7 +226,7 @@ pub unsafe extern "C" fn extism_function_new(
                 .iter()
                 .map(|t| ExtismVal {
                     t: t.clone(),
-                    v: ExtismValUnion { i32: 0 },
+                    v: ExtismValUnion { i64: 0 },
                 })
                 .collect();
 

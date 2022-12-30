@@ -391,20 +391,20 @@ export class HostFunction {
     this.callback = ffi.Callback("void", ["void*", ref.refType(Val), "uint64", ref.refType(Val), "uint64", "void*"],
       (currentPlugin: Buffer, inputs: Buffer, nInputs: number, outputs: Buffer, nOutputs: number, user_data) => {
         let inputArr = [];
+        let outputArr = [];
 
         for (var i = 0; i < nInputs; i++) {
           inputArr.push(Val.get(inputs, i));
         }
 
-        let out = f(new CurrentPlugin(currentPlugin), inputArr, ...this.userData);
-
-        if (!Array.isArray(out)){
-          outputs[0] = out;
-          return;
+        for (var i = 0; i < nOutputs; i++) {
+          outputArr.push(Val.get(outputs, i));
         }
 
+        f(new CurrentPlugin(currentPlugin), inputArr, outputArr, ...this.userData);
+
         for (var i = 0; i < nOutputs; i++){
-          Val.set(outputs, i, out[i]);
+          Val.set(outputs, i, outputArr[i]);
         }  
       });
     this.name = name;

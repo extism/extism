@@ -1,13 +1,13 @@
 const { withContext, Context, HostFunction, ValType } = require('./dist/index.js');
 const { readFileSync } = require('fs');
 
-function f(currentPlugin, inputs, userData) {
+function f(currentPlugin, inputs, outputs, userData) {
   let mem = currentPlugin.memory(inputs[0].v.i64);
   console.log(mem.length);
   console.log(mem.toString());
   console.log("Hello from Javascript!");
   console.log(userData);
-  return inputs;
+  outputs[0] = inputs[0];
 }
 
 let hello_world = new HostFunction("hello_world", [ValType.I64], [ValType.I64], f, "Hello again!");

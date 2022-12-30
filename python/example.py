@@ -12,13 +12,13 @@ else:
 
 
 @host_fn
-def hello_world(plugin, input, context, a_string):
+def hello_world(plugin, input, output, context, a_string):
     mem = plugin.memory_at_offset(input[0])
     print("Hello from Python!")
     print(a_string)
     print(input)
     print(plugin.memory(mem)[:])
-    return input[0]
+    output[0] = input[0]
 
 
 # a Context provides a scope for plugins to be managed within. creating multiple contexts

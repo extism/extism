@@ -363,7 +363,7 @@ class Plugin:
         self.__del__()
 
 
-def _convert_input(x):
+def _convert_value(x):
     if x.t == 0:
         return Val(ValType.I32, x.v.i32)
     elif x.t == 1:
@@ -373,7 +373,6 @@ def _convert_input(x):
     elif x.y == 3:
         return Val(ValType.F64, x.v.f64)
     return None
-
 
 def _convert_output(x, v):
     if v.t.value != x.t:
@@ -454,27 +453,21 @@ def host_fn(func):
         "void(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)")
     def handle_args(current, inputs, n_inputs, outputs, n_outputs, user_data):
         inp = []
+        outp = []
 
         for i in range(n_inputs):
-            inp.append(_convert_input(inputs[i]))
+            inp.append(_convert_value(inputs[i]))
+            
+        for i in range(n_outputs):
+            outp.append(_convert_value(outputs[i]))
 
         if user_data == _ffi.NULL:
-            output = func(CurrentPlugin(current), inp)
+            output = func(CurrentPlugin(current), inp, outp)
         else:
             udata = _ffi.from_handle(user_data)
-            output = func(CurrentPlugin(current), inp, *udata)
-
-        if output is None:
-            return
-
-        if n_outputs > 1 and not isinstance(output, list):
-            raise Error("Invalid number of return values")
-
-        if n_outputs == 1 and not isinstance(output, list):
-            _convert_output(outputs[0], output)
-            return
+            func(CurrentPlugin(current), inp, outp, *udata)
 
         for i in range(n_outputs):
-            _convert_output(outputs[i], output[i])
+            _convert_output(outputs[i], outp[i])
 
     return handle_args
