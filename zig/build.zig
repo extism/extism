@@ -9,9 +9,10 @@ pub fn build(b: *std.build.Builder) void {
     lib.setBuildMode(mode);
     lib.install();
 
-    const tests = b.addTestExe("Library Tests","test.zig");
+    const tests = b.addTestExe("Library Tests", "test.zig");
     tests.addPackagePath("extism", "src/main.zig");
     tests.linkLibC();
+    tests.addLibraryPath("/usr/local/lib");
     tests.linkSystemLibrary("extism");
     tests.setBuildMode(mode);
     tests.install();
@@ -22,6 +23,7 @@ pub fn build(b: *std.build.Builder) void {
     var example = b.addExecutable("Example", "examples/basic.zig");
     example.addPackagePath("extism", "src/main.zig");
     example.linkLibC();
+    example.addLibraryPath("/usr/local/lib");
     example.linkSystemLibrary("extism");
     example.setBuildMode(mode);
     example.setOutputDir("example-out");
