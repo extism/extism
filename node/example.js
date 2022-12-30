@@ -1,5 +1,10 @@
-const { withContext, Context, HostFunction, ValType } = require('./dist/index.js');
-const { readFileSync } = require('fs');
+const {
+  withContext,
+  Context,
+  HostFunction,
+  ValType,
+} = require("./dist/index.js");
+const { readFileSync } = require("fs");
 
 function f(currentPlugin, inputs, outputs, userData) {
   let mem = currentPlugin.memory(inputs[0].v.i64);
@@ -10,13 +15,19 @@ function f(currentPlugin, inputs, outputs, userData) {
   outputs[0] = inputs[0];
 }
 
-let hello_world = new HostFunction("hello_world", [ValType.I64], [ValType.I64], f, "Hello again!");
+let hello_world = new HostFunction(
+  "hello_world",
+  [ValType.I64],
+  [ValType.I64],
+  f,
+  "Hello again!"
+);
 
 let functions = [hello_world];
 
-withContext(async function(context) {
+withContext(async function (context) {
   let wasm = readFileSync("../wasm/code-functions.wasm");
-  let p = context.plugin(wasm, wasi = true, functions = functions);
+  let p = context.plugin(wasm, (wasi = true), (functions = functions));
 
   if (!p.functionExists("count_vowels")) {
     console.log("no function 'count_vowels' in wasm");

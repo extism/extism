@@ -2,9 +2,9 @@ import ffi from "ffi-napi";
 import ref from "ref-napi";
 import path from "path";
 
-var ArrayType = require("ref-array-di")(ref)
-var StructType = require("ref-struct-di")(ref)
-var UnionType = require("ref-union-di")(ref)
+var ArrayType = require("ref-array-di")(ref);
+var StructType = require("ref-struct-di")(ref);
+var UnionType = require("ref-union-di")(ref);
 
 const opaque = ref.types.void;
 const context = ref.refType(opaque);
@@ -13,7 +13,7 @@ const function_t = ref.refType(opaque);
 const pluginIndex = ref.types.int32;
 
 let ValTypeArray = ArrayType(ref.types.int);
-let PtrArray = new ArrayType('void*');
+let PtrArray = new ArrayType("void*");
 
 let ValUnion = new UnionType({
   i32: ref.types.uint32,
@@ -39,7 +39,10 @@ const _functions = {
   extism_context_new: [context, []],
   extism_context_free: ["void", [context]],
   extism_plugin_new: [pluginIndex, [context, "string", "uint64", "bool"]],
-  extism_plugin_new_with_functions: [pluginIndex, [context, "string", "uint64", PtrArray, "uint64", "bool"]],
+  extism_plugin_new_with_functions: [
+    pluginIndex,
+    [context, "string", "uint64", PtrArray, "uint64", "bool"],
+  ],
   extism_plugin_update_with_functions: [
     "bool",
     [context, pluginIndex, "string", "uint64", PtrArray, "uint64", "bool"],
@@ -57,7 +60,19 @@ const _functions = {
   extism_plugin_free: ["void", [context, pluginIndex]],
   extism_context_reset: ["void", [context]],
   extism_version: ["string", []],
-  extism_function_new: [function_t, ["string", ValTypeArray, "uint64", ValTypeArray, "uint64", "void*", "void*", "void*"]],
+  extism_function_new: [
+    function_t,
+    [
+      "string",
+      ValTypeArray,
+      "uint64",
+      ValTypeArray,
+      "uint64",
+      "void*",
+      "void*",
+      "void*",
+    ],
+  ],
   extism_function_free: ["void", [function_t]],
   extism_current_plugin_memory: ["uint8*", ["void*"]],
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
@@ -74,7 +89,7 @@ export enum ValType {
   F32,
   F64,
   FuncRef,
-  ExternRef
+  ExternRef,
 }
 
 interface LibExtism {
@@ -195,7 +210,6 @@ const contextRegistry = new FinalizationRegistry((pointer) => {
   if (pointer) lib.extism_context_free(pointer);
 });
 
-
 // @ts-ignore
 const functionRegistry = new FinalizationRegistry((pointer) => {
   if (pointer) lib.extism_function_free(pointer);
@@ -239,7 +253,7 @@ export type ManifestWasm = ManifestWasmFile | ManifestWasmData;
 /**
  * The manifest which describes the {@link Plugin} code and
  * runtime constraints.
- * 
+ *
  * @see [Extism > Concepts > Manifest](https://extism.org/docs/concepts/manifest)
  */
 export type Manifest = {
@@ -303,7 +317,12 @@ export class Context {
    * @param config - Config details for the plugin
    * @returns A new Plugin scoped to this Context
    */
-  plugin(manifest: ManifestData, wasi: boolean = false, functions: HostFunction[] = [], config?: PluginConfig) {
+  plugin(
+    manifest: ManifestData,
+    wasi: boolean = false,
+    functions: HostFunction[] = [],
+    config?: PluginConfig
+  ) {
     return new Plugin(this, manifest, wasi, functions, config);
   }
 
@@ -347,7 +366,7 @@ export async function withContext(f: (ctx: Context) => Promise<any>) {
 }
 
 /**
- * Provides access to the plugin that is currently running from inside a {@link HostFunction} 
+ * Provides access to the plugin that is currently running from inside a {@link HostFunction}
  */
 export class CurrentPlugin {
   pointer: Buffer;
@@ -363,7 +382,11 @@ export class CurrentPlugin {
    */
   memory(offset: number): Buffer {
     let length = lib.extism_current_plugin_memory_length(this.pointer, offset);
-    return Buffer.from(lib.extism_current_plugin_memory(this.pointer).buffer, offset, length);
+    return Buffer.from(
+      lib.extism_current_plugin_memory(this.pointer).buffer,
+      offset,
+      length
+    );
   }
 
   /**
@@ -375,7 +398,6 @@ export class CurrentPlugin {
     return lib.extism_current_plugin_memory_alloc(this.pointer, n);
   }
 
-  
   /**
    * Free a memory block
    * @param offset - The offset of the block to free
@@ -388,12 +410,11 @@ export class CurrentPlugin {
    * Get the length of a memory block
    * @param offset - The offset of the block
    * @returns the length of the block specified by `offset`
-   */  
+   */
   memoryLength(offset: number): number {
     return lib.extism_current_plugin_memory_length(this.pointer, offset);
   }
 }
-
 
 /**
  * Allows for the host to define functions that can be called from WebAseembly
@@ -406,10 +427,32 @@ export class HostFunction {
   inputs: typeof ValTypeArray;
   outputs: typeof ValTypeArray;
 
-  constructor(name: string, inputs: ValType[], outputs: ValType[], f: any, ...userData: any) {
+  constructor(
+    name: string,
+    inputs: ValType[],
+    outputs: ValType[],
+    f: any,
+    ...userData: any
+  ) {
     this.userData = userData;
-    this.callback = ffi.Callback("void", ["void*", ref.refType(Val), "uint64", ref.refType(Val), "uint64", "void*"],
-      (currentPlugin: Buffer, inputs: Buffer, nInputs: number, outputs: Buffer, nOutputs: number, user_data) => {
+    this.callback = ffi.Callback(
+      "void",
+      [
+        "void*",
+        ref.refType(Val),
+        "uint64",
+        ref.refType(Val),
+        "uint64",
+        "void*",
+      ],
+      (
+        currentPlugin: Buffer,
+        inputs: Buffer,
+        nInputs: number,
+        outputs: Buffer,
+        nOutputs: number,
+        user_data
+      ) => {
         let inputArr = [];
         let outputArr = [];
 
@@ -421,12 +464,18 @@ export class HostFunction {
           outputArr.push(Val.get(outputs, i));
         }
 
-        f(new CurrentPlugin(currentPlugin), inputArr, outputArr, ...this.userData);
+        f(
+          new CurrentPlugin(currentPlugin),
+          inputArr,
+          outputArr,
+          ...this.userData
+        );
 
-        for (var i = 0; i < nOutputs; i++){
+        for (var i = 0; i < nOutputs; i++) {
           Val.set(outputs, i, outputArr[i]);
-        }  
-      });
+        }
+      }
+    );
     this.name = name;
     this.inputs = new ValTypeArray(inputs);
     this.outputs = new ValTypeArray(outputs);
@@ -437,18 +486,19 @@ export class HostFunction {
       this.outputs,
       this.outputs.length,
       this.callback,
-      null, null
+      null,
+      null
     );
     this.userData = userData;
     functionRegistry.register(this, this.pointer, this.pointer);
   }
 
-  /** 
+  /**
    *  Free a host function - this should be called to cleanup the associated resources
    */
   free() {
     functionRegistry.unregister(this.pointer);
-    if (this.pointer === null){
+    if (this.pointer === null) {
       return;
     }
 
@@ -464,7 +514,7 @@ export class Plugin {
   id: number;
   ctx: Context;
   functions: typeof PtrArray;
-  token: {id: number, pointer: Buffer}
+  token: { id: number; pointer: Buffer };
 
   /**
    * Constructor for a plugin. @see {@link Context#plugin}.
@@ -498,7 +548,7 @@ export class Plugin {
     let plugin = lib.extism_plugin_new_with_functions(
       ctx.pointer,
       dataRaw,
-      Buffer.byteLength(dataRaw, 'utf-8'),
+      Buffer.byteLength(dataRaw, "utf-8"),
       this.functions,
       functions.length,
       wasi
@@ -511,12 +561,17 @@ export class Plugin {
       throw `Unable to load plugin: ${err.toString()}`;
     }
     this.id = plugin;
-    this.token = {id: this.id, pointer: ctx.pointer};
+    this.token = { id: this.id, pointer: ctx.pointer };
     this.ctx = ctx;
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(ctx.pointer, this.id, s, Buffer.byteLength(s, 'utf-8'),);
+      lib.extism_plugin_config(
+        ctx.pointer,
+        this.id,
+        s,
+        Buffer.byteLength(s, "utf-8")
+      );
     }
   }
 
@@ -528,7 +583,12 @@ export class Plugin {
    * @param functions - An array of {@link HostFunction}
    * @param config - The new plugin config
    */
-  update(manifest: ManifestData, wasi: boolean = false, functions: HostFunction[] = [], config?: PluginConfig) {
+  update(
+    manifest: ManifestData,
+    wasi: boolean = false,
+    functions: HostFunction[] = [],
+    config?: PluginConfig
+  ) {
     let dataRaw: string | Buffer;
     if (Buffer.isBuffer(manifest) || typeof manifest === "string") {
       dataRaw = manifest;
@@ -546,7 +606,7 @@ export class Plugin {
       this.ctx.pointer,
       this.id,
       dataRaw,
-      Buffer.byteLength(dataRaw, 'utf-8'),
+      Buffer.byteLength(dataRaw, "utf-8"),
       this.functions,
       functions.length,
       wasi
@@ -561,7 +621,12 @@ export class Plugin {
 
     if (config != null) {
       let s = JSON.stringify(config);
-      lib.extism_plugin_config(this.ctx.pointer, this.id, s, Buffer.byteLength(s, 'utf-8'),);
+      lib.extism_plugin_config(
+        this.ctx.pointer,
+        this.id,
+        s,
+        Buffer.byteLength(s, "utf-8")
+      );
     }
   }
 
@@ -605,7 +670,7 @@ export class Plugin {
         this.id,
         functionName,
         input.toString(),
-        Buffer.byteLength(input, 'utf-8'),
+        Buffer.byteLength(input, "utf-8")
       );
       if (rc !== 0) {
         var err = lib.extism_error(this.ctx.pointer, this.id);
@@ -635,4 +700,3 @@ export class Plugin {
     }
   }
 }
-
