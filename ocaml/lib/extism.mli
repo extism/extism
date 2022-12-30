@@ -24,50 +24,111 @@ module Val_type : sig
   val to_int : t -> int
 end
 
+(** [Val] represents low-level WebAssembly values *)
 module Val : sig
   type t
+  (** Val *)
 
   val t : t Ctypes.typ
+
   val ty : t -> Val_type.t
+  (** [ty v] returns the [Val_type.t] for the value [v] *)
+  
   val of_i32 : int32 -> t
+  (** Create an i32 [Val] *)
+  
   val of_i64 : int64 -> t
+  (** Create an i64 [Val] *)
+
   val of_f32 : float -> t
+  (** Create an f32 [Val] *)
+
   val of_f64 : float -> t
+  (** Create an f64 [Val] *)
+
   val to_i32 : t -> int32 option
+  (** Get an int32 from [Val] if the type matches *)
+  
   val to_i64 : t -> int64 option
+  (** Get an int64 from [Val] if the type matches *)
+
   val to_f32 : t -> float option
+  (** Get a f32 from [Val] if the type matches *)
+
   val to_f64 : t -> float option
+  (** Get an f64 from [Val] if the type matches *)
+
   val to_i32_exn : t -> int32
+  (** Same as [to_i32] but raises an exception if the types don't match*)
+  
   val to_i64_exn : t -> int64
+  (** Same as [to_i64] but raises an exception if the types don't match*)
+
   val to_f32_exn : t -> float
+  (** Same as [to_f32] but raises an exception if the types don't match*)
+  
   val to_f64_exn : t -> float
+  (** Same as [to_f64] but raises an exception if the types don't match*)
 end
 
+(** [Val_array] is used for input/output parameters for host functions *)
 module Val_array : sig
   type t = Val.t Ctypes.CArray.t
+  (** [Val_array] type *)
 
   val get : t -> int -> Val.t
+  (** Get an index *)
+  
   val set : t -> int -> Val.t -> unit
+  (** Set an index *)
+
   val length : t -> int
+  (** Get the number of items in a [Val_array]*)
+  
   val ( .$[] ) : t -> int -> Val.t
+  (** Syntax for [get] *)
+
   val ( .$[]<- ) : t -> int -> Val.t -> unit
+  (** Syntax for [set] *)
 end
 
+(** [Current_plugin] represents the plugin that is currently running, it should
+    it should only be used from a host function *)
 module Current_plugin : sig
   type t
+  (** Opaque type, wraps [ExtismCurrentPlugin] *)
+  
   type offs = Unsigned.uint64
+  (** Memory offset type *)
+  
   type len = Unsigned.uint64
+  (** Memory length type *)
 
   val memory : t -> Unsigned.uint8 Ctypes.ptr
-  val length : t -> offs -> len
-  val alloc : t -> len -> offs
-  val free : t -> offs -> unit
+  (** Get pointer to entire plugin memory *)
 
+  val length : t -> offs -> len
+  (** Get the length of an allocated block of memory *)
+  
+  val alloc : t -> len -> offs
+  (** Allocate a new block of memory *)
+  
+  val free : t -> offs -> unit
+  (** Free an allocated block of memory *)
+
+  (** Some helpter functions for reading/writing memory *)
   module Memory : sig
     val get_string : t -> offs -> string
+    (** Get a string from memory stored at the provided offset *)
+
     val get_bigstring : t -> offs -> Bigstringaf.t
+    (** Get a bigstring from memory stored at the provided offset *)
+    
     val set_string : t -> offs -> string -> unit
+    (** Store a string into memory at the provided offset *)
+    
     val set_bigstring : t -> offs -> Bigstringaf.t -> unit
+    (** Store a bigstring into memory at the provided offset *)
   end
 end
 
@@ -84,7 +145,12 @@ module Function : sig
     user_data:'a ->
     (Current_plugin.t -> Val_array.t -> Val_array.t -> 'a option -> unit) ->
     t
-  (** Create a new function *)
+  (** Create a new function, [Function.v name args returns ~user_data f] creates
+      a new [Function] with the given [name], [args] specifies the argument types,
+      [returns] specifies the return types, [user_data] is used to pass arbitrary
+      OCaml values into the function and [f] is the OCaml function that will be
+      called.
+  *)
   
   val free: t -> unit
   (** Free a function *)

@@ -400,6 +400,9 @@ class ValType(Enum):
     EXTERN_REF = 5
 
 class Val:
+    '''
+    Low-level WebAssembly value
+    '''
     def __init__(self, t: ValType, v):
         self.t = t
         self.value = v
@@ -408,23 +411,30 @@ class Val:
         return f"Val({self.t}, {self.value})"
 
 class CurrentPlugin:
+    '''
+    Wraps the current plugin from inside a host function
+    '''
     def __init__(self, p):
         self.pointer = p
 
     def memory(self, mem: Memory):
+        '''Access a block of memory'''
         p = _lib.extism_current_plugin_memory(self.pointer)
         if p == 0:
             return None
         return _ffi.buffer(p + mem.offset, mem.length)
 
     def alloc(self, n):
+        '''Allocate a new block of memory of [n] bytes'''
         offs = _lib.extism_current_plugin_memory_alloc(self.pointer, n)
         return Memory(offs, n)
 
     def free(self, mem):
+        '''Free a block of memory'''
         return _lib.extism_current_plugin_memory_free(self.pointer, mem.offset)
 
     def memory_at_offset(self, offs):
+        '''Get a block of memory at the specified offset'''
         if isinstance(offs, Val):
             offs = offs.value
         len = _lib.extism_current_plugin_memory_length(self.pointer, offs)
@@ -432,7 +442,14 @@ class CurrentPlugin:
 
 
 def host_fn(func):
+    '''
+    A decorator for creating host functions, this decorator wraps a function that takes the following parameters:
+    - current plugin: `CurrentPlugin`
+    - inputs: `List[Val]`
+    - user_data: any number of values passed as user data
 
+    The function should return a list of `Val`
+    '''
     @_ffi.callback(
         "void(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)")
     def handle_args(current, inputs, n_inputs, outputs, n_outputs, user_data):

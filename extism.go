@@ -36,6 +36,7 @@ var (
 	ExternRef ValType = C.ExternRef
 )
 
+// Function is used to define host functions
 type Function struct {
 	pointer  *C.ExtismFunction
 	userData interface{}
@@ -47,6 +48,8 @@ func (f *Function) Free() {
 	f.pointer = nil
 }
 
+// NewFunction creates a new host function with the given name, input/outputs and optional user data, which can be an
+// arbitrary `interface{}`
 func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Pointer, userData interface{}) Function {
 	var function Function
 	function.userData = userData

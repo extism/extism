@@ -60,6 +60,12 @@ pub struct ExtismVal {
 /// Wraps host functions
 pub struct ExtismFunction(Function);
 
+impl From<Function> for ExtismFunction {
+    fn from(x: Function) -> Self {
+        ExtismFunction(x)
+    }
+}
+
 /// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
     plugin: *mut Plugin,

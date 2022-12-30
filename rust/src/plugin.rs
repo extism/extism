@@ -29,15 +29,15 @@ impl<'a> Plugin<'a> {
         Self::new(ctx, data, wasi)
     }
 
-    /// Create a new plugin from the given manifest and import functions
+    /// Create a new plugin from the given manifest and host functions
     pub fn new_with_manifest_and_functions(
         ctx: &'a Context,
         manifest: &Manifest,
-        imports: impl IntoIterator<Item = &'a extism_runtime::Function>,
+        functions: impl IntoIterator<Item = &'a extism_runtime::Function>,
         wasi: bool,
     ) -> Result<Plugin<'a>, Error> {
         let data = serde_json::to_vec(manifest)?;
-        Self::new_with_functions(ctx, data, imports, wasi)
+        Self::new_with_functions(ctx, data, functions, wasi)
     }
 
     /// Create a new plugin from a WASM module
@@ -57,14 +57,14 @@ impl<'a> Plugin<'a> {
         })
     }
 
-    /// Create a new plugin from a WASM module with imported functions
+    /// Create a new plugin from a WASM module with host functions
     pub fn new_with_functions(
         ctx: &'a Context,
         data: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = &'a Function>,
+        functions: impl IntoIterator<Item = &'a Function>,
         wasi: bool,
     ) -> Result<Plugin, Error> {
-        let plugin = ctx.lock().new_plugin_with_functions(data, imports, wasi);
+        let plugin = ctx.lock().new_plugin_with_functions(data, functions, wasi);
 
         if plugin < 0 {
             let err = unsafe { bindings::extism_error(&mut *ctx.lock(), -1) };
@@ -104,9 +104,59 @@ impl<'a> Plugin<'a> {
     }
 
     /// Update a plugin with the given manifest
-    pub fn update_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<(), Error> {
+    pub fn update_with_manifest(&mut self, manifest: &Manifest, wasi: bool) -> Result<(), Error> {
         let data = serde_json::to_vec(manifest)?;
         self.update(data, wasi)
+    }
+
+    /// Update a plugin with the given WASM module
+    pub fn update_with_functions(
+        &mut self,
+        data: impl AsRef<[u8]>,
+        functions: impl IntoIterator<Item = &'a Function>,
+        wasi: bool,
+    ) -> Result<(), Error> {
+        let functions = functions
+            .into_iter()
+            .map(|x| bindings::ExtismFunction::from(x.clone()))
+            .collect::<Vec<_>>();
+        let functions = functions
+            .into_iter()
+            .map(|mut x| &mut x as *mut _)
+            .collect::<Vec<_>>();
+        let b = unsafe {
+            bindings::extism_plugin_update_with_functions(
+                &mut *self.context.lock(),
+                self.id,
+                data.as_ref().as_ptr(),
+                data.as_ref().len() as u64,
+                functions.as_ptr(),
+                functions.len() as u64,
+                wasi,
+            )
+        };
+        if b {
+            return Ok(());
+        }
+
+        let err = unsafe { bindings::extism_error(&mut *self.context.lock(), -1) };
+        if !err.is_null() {
+            let s = unsafe { std::ffi::CStr::from_ptr(err) };
+            return Err(Error::msg(s.to_str().unwrap()));
+        }
+
+        Err(Error::msg("extism_plugin_update failed"))
+    }
+
+    /// Update a plugin with the given manifest and host functions
+    pub fn update_with_manifest_functions(
+        &mut self,
+        manifest: &Manifest,
+        functions: impl IntoIterator<Item = &'a Function>,
+        wasi: bool,
+    ) -> Result<(), Error> {
+        let data = serde_json::to_vec(manifest)?;
+        self.update_with_functions(data, functions, wasi)
     }
 
     /// Set configuration values

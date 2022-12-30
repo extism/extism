@@ -22,11 +22,17 @@ let ValUnion = new UnionType({
   f64: ref.types.double,
 });
 
+/**
+ * Val struct, low-level WebAssembly values
+ */
 let Val = new StructType({
   t: ref.types.int,
   v: ValUnion,
 });
 
+/**
+ * Array of `Val`
+ */
 let ValArray = ArrayType(Val);
 
 const _functions = {
@@ -34,9 +40,9 @@ const _functions = {
   extism_context_free: ["void", [context]],
   extism_plugin_new: [pluginIndex, [context, "string", "uint64", "bool"]],
   extism_plugin_new_with_functions: [pluginIndex, [context, "string", "uint64", PtrArray, "uint64", "bool"]],
-  extism_plugin_update: [
+  extism_plugin_update_with_functions: [
     "bool",
-    [context, pluginIndex, "string", "uint64", "bool"],
+    [context, pluginIndex, "string", "uint64", PtrArray, "uint64", "bool"],
   ],
   extism_error: ["string", [context, pluginIndex]],
   extism_plugin_call: [
@@ -58,6 +64,9 @@ const _functions = {
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
 };
 
+/**
+ * An enumeration of all possible `Val` types
+ */
 export enum ValType {
   I32 = 0,
   I64,
@@ -84,11 +93,13 @@ interface LibExtism {
     nfunctions: number,
     wasi: boolean
   ) => number;
-  extism_plugin_update: (
+  extism_plugin_update_with_functions: (
     ctx: Buffer,
     plugin_id: number,
     data: string | Buffer,
     data_len: number,
+    functions: Buffer,
+    nfunctions: number,
     wasi: boolean
   ) => boolean;
   extism_error: (ctx: Buffer, plugin_id: number) => string;
@@ -333,6 +344,9 @@ export async function withContext(f: (ctx: Context) => Promise<any>) {
   }
 }
 
+/**
+ * Provides access to the plugin that is currently running from inside a {@link HostFunction} 
+ */
 export class CurrentPlugin {
   pointer: Buffer;
 
@@ -340,17 +354,30 @@ export class CurrentPlugin {
     this.pointer = pointer;
   }
 
+  /**
+   * Access plugin's memory
+   * @param offset - The offset in memory
+   * @returns a pointer to the provided offset
+   */
   memory(offset: number): Buffer {
     let length = lib.extism_current_plugin_memory_length(this.pointer, offset);
     return Buffer.from(lib.extism_current_plugin_memory(this.pointer).buffer, offset, length);
   }
 
+  /**
+   * Allocate a new memory block
+   * @param n - The number of bytes to allocate
+   * @returns the offset to the newly allocated block
+   */
   alloc(n: number): number {
     return lib.extism_current_plugin_memory_alloc(this.pointer, n);
   }
 }
 
 
+/**
+ * Allows for the host to define functions that can be called from WebAseembly
+ */
 export class HostFunction {
   callback: any;
   pointer: Buffer | null;
@@ -396,6 +423,9 @@ export class HostFunction {
     functionRegistry.register(this, this.pointer, this.pointer);
   }
 
+  /** 
+   *  Free a host function - this should be called to cleanup the associated resources
+   */
   free() {
     functionRegistry.unregister(this.pointer);
     if (this.pointer === null){
@@ -422,6 +452,7 @@ export class Plugin {
    * @param ctx - The context to manage this plugin
    * @param manifest - The {@link Manifest}
    * @param wasi - Set to true to enable WASI support
+   * @param functions - An array of {@link HostFunction}
    * @param config - The plugin config
    */
   constructor(
@@ -474,9 +505,10 @@ export class Plugin {
    *
    * @param manifest - The new {@link Manifest} data
    * @param wasi - Set to true to enable WASI support
+   * @param functions - An array of {@link HostFunction}
    * @param config - The new plugin config
    */
-  update(manifest: ManifestData, wasi: boolean = false, config?: PluginConfig) {
+  update(manifest: ManifestData, wasi: boolean = false, functions: HostFunction[] = [], config?: PluginConfig) {
     let dataRaw: string | Buffer;
     if (Buffer.isBuffer(manifest) || typeof manifest === "string") {
       dataRaw = manifest;
@@ -486,11 +518,17 @@ export class Plugin {
       throw Error("Unknown manifest type type");
     }
     if (!this.ctx.pointer) throw Error("No Context set");
-    const ok = lib.extism_plugin_update(
+    this.functions = new PtrArray(functions.length);
+    for (var i = 0; i < functions.length; i++) {
+      this.functions[i] = functions[i].pointer;
+    }
+    const ok = lib.extism_plugin_update_with_functions(
       this.ctx.pointer,
       this.id,
       dataRaw,
       Buffer.byteLength(dataRaw, 'utf-8'),
+      this.functions,
+      functions.length,
       wasi
     );
     if (!ok) {

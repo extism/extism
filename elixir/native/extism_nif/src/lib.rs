@@ -27,12 +27,7 @@ fn load(env: Env, _: Term) -> bool {
 }
 
 fn to_rustler_error(extism_error: extism::Error) -> rustler::Error {
-    match extism_error {
-        extism::Error::UnableToLoadPlugin(msg) => rustler::Error::Term(Box::new(msg)),
-        extism::Error::Message(msg) => rustler::Error::Term(Box::new(msg)),
-        extism::Error::Json(json_err) => rustler::Error::Term(Box::new(json_err.to_string())),
-        extism::Error::Runtime(e) => rustler::Error::Term(Box::new(e.to_string())),
-    }
+    rustler::Error::Term(Box::new(extism_error.to_string()))
 }
 
 #[rustler::nif]
