@@ -29,9 +29,14 @@ with Context() as context:
     config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
     functions = [
-        Function("hello_world",
-                 [ValType.I64], [ValType.I64], hello_world,
-                 context, "Hello again!")
+        Function(
+            "hello_world",
+            [ValType.I64],
+            [ValType.I64],
+            hello_world,
+            context,
+            "Hello again!",
+        )
     ]
     plugin = context.plugin(config, wasi=True, functions=functions)
     # Call `count_vowels`

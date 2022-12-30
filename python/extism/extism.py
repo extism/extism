@@ -12,14 +12,10 @@ class Error(Exception):
     pass
 
 
-_search_dirs = [
-    "/usr/local", "/usr",
-    os.path.join(os.getenv("HOME"), ".local"), "."
-]
+_search_dirs = ["/usr/local", "/usr", os.path.join(os.getenv("HOME"), ".local"), "."]
 
 
 def _check_for_header_and_lib(p):
-
     def _exists(a, *b):
         return os.path.exists(os.path.join(a, *b))
 
@@ -28,17 +24,18 @@ def _check_for_header_and_lib(p):
             return os.path.join(p, "extism.h"), os.path.join(p, "libextism.so")
 
         if _exists(p, "libextism.dylib"):
-            return os.path.join(p, "extism.h"), os.path.join(
-                p, "libextism.dylib")
+            return os.path.join(p, "extism.h"), os.path.join(p, "libextism.dylib")
 
     if _exists(p, "include", "extism.h"):
         if _exists(p, "lib", "libextism.so"):
             return os.path.join(p, "include", "extism.h"), os.path.join(
-                p, "lib", "libextism.so")
+                p, "lib", "libextism.so"
+            )
 
         if _exists(p, "lib", "libextism.dylib"):
             return os.path.join(p, "include", "extism.h"), os.path.join(
-                p, "lib", "libextism.dylib")
+                p, "lib", "libextism.dylib"
+            )
 
 
 def _locate():
@@ -129,7 +126,6 @@ def _wasm(plugin):
 
 
 class Memory:
-
     def __init__(self, offs, length):
         self.offset = offs
         self.length = length
@@ -175,11 +171,9 @@ class Context:
         """Remove all registered plugins"""
         _lib.extism_context_reset(self.pointer)
 
-    def plugin(self,
-               manifest: Union[str, bytes, dict],
-               wasi=False,
-               config=None,
-               functions=None):
+    def plugin(
+        self, manifest: Union[str, bytes, dict], wasi=False, config=None, functions=None
+    ):
         """
         Register a new plugin from a WASM module or JSON encoded manifest
 
@@ -203,7 +197,6 @@ class Context:
 
 
 class Function:
-
     def __init__(self, name: str, args, returns, f, *user_data):
         self.pointer = None
         args = [a.value for a in args]
@@ -212,9 +205,16 @@ class Function:
             self.user_data = _ffi.new_handle(user_data)
         else:
             self.user_data = _ffi.NULL
-        self.pointer = _lib.extism_function_new(name.encode(), args, len(args),
-                                                returns, len(returns), f,
-                                                self.user_data, _ffi.NULL)
+        self.pointer = _lib.extism_function_new(
+            name.encode(),
+            args,
+            len(args),
+            returns,
+            len(returns),
+            f,
+            self.user_data,
+            _ffi.NULL,
+        )
 
     def __del__(self):
         if self.pointer is not None:
@@ -247,10 +247,10 @@ class Plugin:
             functions = [f.pointer for f in functions]
             ptr = _ffi.new("ExtismFunction*[]", functions)
             self.plugin = _lib.extism_plugin_new_with_functions(
-                context.pointer, wasm, len(wasm), ptr, len(functions), wasi)
+                context.pointer, wasm, len(wasm), ptr, len(functions), wasi
+            )
         else:
-            self.plugin = _lib.extism_plugin_new(context.pointer, wasm,
-                                                 len(wasm), wasi)
+            self.plugin = _lib.extism_plugin_new(context.pointer, wasm, len(wasm), wasi)
 
         self.ctx = context
 
@@ -264,10 +264,7 @@ class Plugin:
             s = json.dumps(config).encode()
             _lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
 
-    def update(self,
-               manifest: Union[str, bytes, dict],
-               wasi=False,
-               config=None):
+    def update(self, manifest: Union[str, bytes, dict], wasi=False, config=None):
         """
         Update a plugin with a new WASM module or manifest
 
@@ -281,8 +278,9 @@ class Plugin:
             The plugin config dictionary
         """
         wasm = _wasm(manifest)
-        ok = _lib.extism_plugin_update(self.ctx.pointer, self.plugin, wasm,
-                                       len(wasm), wasi)
+        ok = _lib.extism_plugin_update(
+            self.ctx.pointer, self.plugin, wasm, len(wasm), wasi
+        )
         if not ok:
             error = _lib.extism_error(self.ctx.pointer, -1)
             if error != _ffi.NULL:
@@ -313,8 +311,9 @@ class Plugin:
         -------
             True if the function exists in the plugin, False otherwise
         """
-        return _lib.extism_plugin_function_exists(self.ctx.pointer,
-                                                  self.plugin, name.encode())
+        return _lib.extism_plugin_function_exists(
+            self.ctx.pointer, self.plugin, name.encode()
+        )
 
     def call(self, function_name: str, data: Union[str, bytes], parse=bytes):
         """
@@ -338,10 +337,11 @@ class Plugin:
         if isinstance(data, str):
             data = data.encode()
         self._check_error(
-            _lib.extism_plugin_call(self.ctx.pointer, self.plugin,
-                                    function_name.encode(), data, len(data)))
-        out_len = _lib.extism_plugin_output_length(self.ctx.pointer,
-                                                   self.plugin)
+            _lib.extism_plugin_call(
+                self.ctx.pointer, self.plugin, function_name.encode(), data, len(data)
+            )
+        )
+        out_len = _lib.extism_plugin_output_length(self.ctx.pointer, self.plugin)
         out_buf = _lib.extism_plugin_output_data(self.ctx.pointer, self.plugin)
         buf = _ffi.buffer(out_buf, out_len)
         if parse is None:
@@ -374,10 +374,11 @@ def _convert_value(x):
         return Val(ValType.F64, x.v.f64)
     return None
 
+
 def _convert_output(x, v):
     if v.t.value != x.t:
         raise Error(f"Output type mismatch, got {v.t} but expected {x.t}")
-    
+
     if v.t == ValType.I32:
         x.v.i32 = int(v.value)
     elif v.t == ValType.I64:
@@ -398,10 +399,12 @@ class ValType(Enum):
     FUNC_REF = 4
     EXTERN_REF = 5
 
+
 class Val:
-    '''
+    """
     Low-level WebAssembly value
-    '''
+    """
+
     def __init__(self, t: ValType, v):
         self.t = t
         self.value = v
@@ -409,31 +412,33 @@ class Val:
     def __repr__(self):
         return f"Val({self.t}, {self.value})"
 
+
 class CurrentPlugin:
-    '''
+    """
     Wraps the current plugin from inside a host function
-    '''
+    """
+
     def __init__(self, p):
         self.pointer = p
 
     def memory(self, mem: Memory):
-        '''Access a block of memory'''
+        """Access a block of memory"""
         p = _lib.extism_current_plugin_memory(self.pointer)
         if p == 0:
             return None
         return _ffi.buffer(p + mem.offset, mem.length)
 
     def alloc(self, n):
-        '''Allocate a new block of memory of [n] bytes'''
+        """Allocate a new block of memory of [n] bytes"""
         offs = _lib.extism_current_plugin_memory_alloc(self.pointer, n)
         return Memory(offs, n)
 
     def free(self, mem):
-        '''Free a block of memory'''
+        """Free a block of memory"""
         return _lib.extism_current_plugin_memory_free(self.pointer, mem.offset)
 
     def memory_at_offset(self, offs):
-        '''Get a block of memory at the specified offset'''
+        """Get a block of memory at the specified offset"""
         if isinstance(offs, Val):
             offs = offs.value
         len = _lib.extism_current_plugin_memory_length(self.pointer, offs)
@@ -441,23 +446,25 @@ class CurrentPlugin:
 
 
 def host_fn(func):
-    '''
+    """
     A decorator for creating host functions, this decorator wraps a function that takes the following parameters:
     - current plugin: `CurrentPlugin`
     - inputs: `List[Val]`
     - user_data: any number of values passed as user data
 
     The function should return a list of `Val`
-    '''
+    """
+
     @_ffi.callback(
-        "void(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)")
+        "void(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)"
+    )
     def handle_args(current, inputs, n_inputs, outputs, n_outputs, user_data):
         inp = []
         outp = []
 
         for i in range(n_inputs):
             inp.append(_convert_value(inputs[i]))
-            
+
         for i in range(n_outputs):
             outp.append(_convert_value(outputs[i]))
 
