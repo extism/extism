@@ -62,6 +62,7 @@ const _functions = {
   extism_current_plugin_memory: ["uint8*", ["void*"]],
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
+  extism_current_plugin_memory_free: ["void", ["void*", "uint64"]],
 };
 
 /**
@@ -141,6 +142,7 @@ interface LibExtism {
   extism_current_plugin_memory: (p: Buffer) => Buffer;
   extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_length: (p: Buffer, n: number) => number;
+  extism_current_plugin_memory_free: (p: Buffer, n: number) => void;
 }
 
 function locate(paths: string[]): LibExtism {
@@ -369,8 +371,26 @@ export class CurrentPlugin {
    * @param n - The number of bytes to allocate
    * @returns the offset to the newly allocated block
    */
-  alloc(n: number): number {
+  memoryAlloc(n: number): number {
     return lib.extism_current_plugin_memory_alloc(this.pointer, n);
+  }
+
+  
+  /**
+   * Free a memory block
+   * @param offset - The offset of the block to free
+   */
+  memoryFree(offset: number) {
+    return lib.extism_current_plugin_memory_free(this.pointer, offset);
+  }
+
+  /**
+   * Get the length of a memory block
+   * @param offset - The offset of the block
+   * @returns the length of the block specified by `offset`
+   */  
+  memoryLength(offset: number): number {
+    return lib.extism_current_plugin_memory_length(this.pointer, offset);
   }
 }
 
