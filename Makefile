@@ -30,8 +30,9 @@ build:
 install:
 	install runtime/extism.h $(DEST)/include
 	install target/release/libextism.$(SOEXT) $(DEST)/lib
+	install libextism.pc $(DEST)/lib
 
 uninstall:
-	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT)
+	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT) $(DEST)/lib/libextism.pc
 
 
