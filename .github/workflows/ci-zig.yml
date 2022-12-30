@@ -31,10 +31,4 @@ jobs:
         run: |
           zig version
           cd zig
-          export PKG_CONFIG_PATH=/usr/local/lib
-          if [[ $(uname -s) == Linux ]]; then
-            export LD_LIBRARY_PATH=/usr/local/lib
-          else
-            export DYLD_LIBRARY_PATH=/usr/local/lib
-          fi
-          zig build test
+          LD_LIBRARY_PATH=/usr/local/lib zig build test
