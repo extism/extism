@@ -8,7 +8,7 @@ const manifest = sdk.manifest;
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
-    _ = sdk.setLogFile("extism.log", "debug");
+    _ = sdk.setLogFile("extism.log", .Debug);
     var context = Context.init();
     defer context.deinit();
 

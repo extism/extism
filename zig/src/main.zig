@@ -7,10 +7,26 @@ const toCstr = utils.toCstr;
 pub const Context = @import("context.zig").Context;
 pub const Plugin = @import("plugin.zig").Plugin;
 pub const manifest = @import("manifest.zig");
+pub const LogLevel = enum {
+    Error,
+    Warn,
+    Info,
+    Debug,
+    Trace,
 
+    fn toStr(self: LogLevel) []const u8 {
+        inline for (@typeInfo(LogLevel).Enum.fields) |field| {
+            if (@enumToInt(self) == field.value) {
+                const first_lower = std.ascii.toLower(field.name[0]);
+                return .{first_lower} ++  field.name[1..];
+            }
+        }
+        unreachable;
+    }
+};
 
-pub fn setLogFile(file_name: []const u8, level: []const u8) bool {
-    const res = c.extism_log_file(toCstr(file_name), toCstr(level));
+pub fn setLogFile(file_name: []const u8, level: LogLevel) bool {
+    const res = c.extism_log_file(toCstr(file_name), toCstr(level.toStr()));
     return res;
 }
 

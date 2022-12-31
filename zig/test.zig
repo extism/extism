@@ -12,7 +12,7 @@ test "Single threaded tests" {
     defer testing.allocator.free(wasm);
 
     var wasm_start = try std.time.Timer.start();
-    _ = sdk.setLogFile("test.log", "info");
+    _ = sdk.setLogFile("test.log", .Debug);
 
     var ctx = Context.init();
     var plugin = try Plugin.init(&ctx, wasm, false);
