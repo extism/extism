@@ -1,6 +1,0 @@
-id: z8fupjr3u0cik3qirnam78u5ihhzo7pqu243p1yw5bx7gii9
-name: extism
-main: src/main.zig
-license: BSD-3-Clause
-description: Extism Host SDK for Zig
-dependencies:
