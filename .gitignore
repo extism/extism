@@ -33,3 +33,6 @@ php/Extism.php
 dist-newstyle
 .stack-work
 vendor
+zig/zig-*
+zig/example-out/
+zig/*.log
