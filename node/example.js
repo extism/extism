@@ -27,7 +27,7 @@ let functions = [hello_world];
 
 withContext(async function (context) {
   let wasm = readFileSync("../wasm/code-functions.wasm");
-  let p = context.plugin(wasm, (wasi = true), (functions = functions));
+  let p = context.plugin(wasm, true, functions);
 
   if (!p.functionExists("count_vowels")) {
     console.log("no function 'count_vowels' in wasm");

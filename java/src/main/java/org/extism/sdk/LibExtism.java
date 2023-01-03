@@ -61,7 +61,7 @@ public interface LibExtism extends Library {
      * @param withWASI       enables/disables WASI
      * @return id of the plugin or {@literal -1} in case of error
      */
-    int extism_plugin_new(long contextPointer, byte[] wasm, long wasmSize, Pointer functions, int nFunctions, boolean withWASI);
+    int extism_plugin_new(Pointer contextPointer, byte[] wasm, long wasmSize, Pointer functions, int nFunctions, boolean withWASI);
 
     /**
      * Returns the Extism version string
