@@ -5,6 +5,74 @@ use std::str::FromStr;
 
 use crate::*;
 
+/// A union type for host function argument/return values
+#[repr(C)]
+pub union ValUnion {
+    i32: i32,
+    i64: i64,
+    f32: f32,
+    f64: f64,
+    // TODO: v128, ExternRef, FuncRef
+}
+
+/// `ExtismVal` holds the type and value of a function argument/return
+#[repr(C)]
+pub struct ExtismVal {
+    t: ValType,
+    v: ValUnion,
+}
+
+/// Wraps host functions
+pub struct ExtismFunction(Function);
+
+impl From<Function> for ExtismFunction {
+    fn from(x: Function) -> Self {
+        ExtismFunction(x)
+    }
+}
+
+/// Host function signature
+pub type ExtismFunctionType = extern "C" fn(
+    plugin: *mut Plugin,
+    inputs: *const ExtismVal,
+    n_inputs: Size,
+    outputs: *mut ExtismVal,
+    n_outputs: Size,
+    data: *mut std::ffi::c_void,
+);
+
+impl From<&wasmtime::Val> for ExtismVal {
+    fn from(value: &wasmtime::Val) -> Self {
+        match value.ty() {
+            wasmtime::ValType::I32 => ExtismVal {
+                t: ValType::I32,
+                v: ValUnion {
+                    i32: value.unwrap_i32(),
+                },
+            },
+            wasmtime::ValType::I64 => ExtismVal {
+                t: ValType::I64,
+                v: ValUnion {
+                    i64: value.unwrap_i64(),
+                },
+            },
+            wasmtime::ValType::F32 => ExtismVal {
+                t: ValType::F32,
+                v: ValUnion {
+                    f32: value.unwrap_f32(),
+                },
+            },
+            wasmtime::ValType::F64 => ExtismVal {
+                t: ValType::F64,
+                v: ValUnion {
+                    f64: value.unwrap_f64(),
+                },
+            },
+            t => todo!("{}", t),
+        }
+    }
+}
+
 /// Create a new context
 #[no_mangle]
 pub unsafe extern "C" fn extism_context_new() -> *mut Context {
@@ -38,76 +106,6 @@ pub unsafe extern "C" fn extism_plugin_new(
     let ctx = &mut *ctx;
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     ctx.new_plugin(data, with_wasi)
-}
-
-/// A union type for host function argument/return values
-#[repr(C)]
-pub union ExtismValUnion {
-    i32: i32,
-    i64: i64,
-    f32: f32,
-    f64: f64,
-    // TODO: v128, ExternRef, FuncRef
-}
-
-pub type ExtismValType = ValType;
-
-/// `ExtismVal` holds the type and value of a function argument/return
-#[repr(C)]
-pub struct ExtismVal {
-    t: ExtismValType,
-    v: ExtismValUnion,
-}
-
-/// Wraps host functions
-pub struct ExtismFunction(Function);
-
-impl From<Function> for ExtismFunction {
-    fn from(x: Function) -> Self {
-        ExtismFunction(x)
-    }
-}
-
-/// Host function signature
-pub type ExtismFunctionType = extern "C" fn(
-    plugin: *mut Plugin,
-    inputs: *const ExtismVal,
-    n_inputs: Size,
-    outputs: *mut ExtismVal,
-    n_outputs: Size,
-    data: *mut std::ffi::c_void,
-);
-
-impl From<&wasmtime::Val> for ExtismVal {
-    fn from(value: &wasmtime::Val) -> Self {
-        match value.ty() {
-            wasmtime::ValType::I32 => ExtismVal {
-                t: ValType::I32,
-                v: ExtismValUnion {
-                    i32: value.unwrap_i32(),
-                },
-            },
-            wasmtime::ValType::I64 => ExtismVal {
-                t: ValType::I64,
-                v: ExtismValUnion {
-                    i64: value.unwrap_i64(),
-                },
-            },
-            wasmtime::ValType::F32 => ExtismVal {
-                t: ValType::F32,
-                v: ExtismValUnion {
-                    f32: value.unwrap_f32(),
-                },
-            },
-            wasmtime::ValType::F64 => ExtismVal {
-                t: ValType::F64,
-                v: ExtismValUnion {
-                    f64: value.unwrap_f64(),
-                },
-            },
-            t => todo!("{}", t),
-        }
-    }
 }
 
 /// Returns a pointer to the memory of the currently running plugin
@@ -228,7 +226,7 @@ pub unsafe extern "C" fn extism_function_new(
                 .iter()
                 .map(|t| ExtismVal {
                     t: t.clone(),
-                    v: ExtismValUnion { i64: 0 },
+                    v: ValUnion { i64: 0 },
                 })
                 .collect();
 

@@ -14,7 +14,9 @@ fn main() {
         .rename_item("PluginIndex", "ExtismPlugin")
         .rename_item("Context", "ExtismContext")
         .rename_item("ValType", "ExtismValType")
+        .rename_item("ValUnion", "ExtismValUnion")
         .rename_item("Plugin", "ExtismCurrentPlugin")
+        .with_style(cbindgen::Style::Type)
         .generate()
     {
         bindings.write_to_file("extism.h");
