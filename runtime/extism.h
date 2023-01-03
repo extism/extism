@@ -57,6 +57,8 @@ typedef int32_t ExtismPlugin;
 
 typedef uint64_t ExtismSize;
 
+typedef enum ExtismValType ExtismValType;
+
 /**
  * A union type for host function argument/return values
  */
@@ -71,7 +73,7 @@ typedef union ExtismValUnion {
  * `ExtismVal` holds the type and value of a function argument/return
  */
 typedef struct ExtismVal {
-  enum ExtismValType t;
+  ExtismValType t;
   union ExtismValUnion v;
 } ExtismVal;
 

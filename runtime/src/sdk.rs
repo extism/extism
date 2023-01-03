@@ -50,10 +50,12 @@ pub union ExtismValUnion {
     // TODO: v128, ExternRef, FuncRef
 }
 
+pub type ExtismValType = ValType;
+
 /// `ExtismVal` holds the type and value of a function argument/return
 #[repr(C)]
 pub struct ExtismVal {
-    t: ValType,
+    t: ExtismValType,
     v: ExtismValUnion,
 }
 
