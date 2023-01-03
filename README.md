@@ -15,12 +15,13 @@ The universal plug-in system. Run WebAssembly extensions inside your app. Use id
 [PHP](https://extism.org/docs/integrate-into-your-codebase/php-host-sdk), 
 [Elixir/Erlang](https://extism.org/docs/integrate-into-your-codebase/elixir-or-erlang-host-sdk), 
 [.NET](https://extism.org/docs/integrate-into-your-codebase/dotnet-host-sdk),
-[Java](https://extism.org/docs/integrate-into-your-codebase/java-host-sdk) &amp; more (others coming soon). 
+[Java](https://extism.org/docs/integrate-into-your-codebase/java-host-sdk),
+[Zig](https://extism.org/docs/integrate-into-your-codebase/zig-host-sdk) &amp; more (others coming soon). 
 
-Plug-in development kits (PDK) for plug-in authors supported in [Rust](https://github.com/extism/rust-pdk), [AssemblyScript](https://github.com/extism/assemblyscript-pdk), [Go](https://github.com/extism/go-pdk), [C/C++](https://github.com/extism/c-pdk), and [Haskell](https://github.com/extism/haskell-pdk).
+Plug-in development kits (PDK) for plug-in authors supported in [Rust](https://github.com/extism/rust-pdk), [AssemblyScript](https://github.com/extism/assemblyscript-pdk), [Go](https://github.com/extism/go-pdk), [C/C++](https://github.com/extism/c-pdk), [Haskell](https://github.com/extism/haskell-pdk), and [Zig](https://github.com/extism/zig-pdk).
 
 <p align="center">
-  <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/208771403-940431e4-68df-449d-ae11-5cf6620174c1.png" alt="Extism embedded SDK language support"/>
+  <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/210286900-39b144fd-1b26-4dd0-b7a9-2b5755bc174d.png" alt="Extism embedded SDK language support"/>
 </p>
 
 
