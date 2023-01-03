@@ -56,7 +56,7 @@ fn plugin_new_with_manifest(
     wasi: bool,
 ) -> Result<i32, rustler::Error> {
     let context = &ctx.ctx.write().unwrap();
-    let result = match Plugin::new(context, manifest_payload, wasi) {
+    let result = match Plugin::new(context, manifest_payload, [], wasi) {
         Err(e) => Err(to_rustler_error(e)),
         Ok(plugin) => {
             let plugin_id = plugin.as_i32();
@@ -102,7 +102,7 @@ fn plugin_update_manifest(
 ) -> Result<(), rustler::Error> {
     let context = &ctx.ctx.read().unwrap();
     let mut plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    let result = match plugin.update(manifest_payload, wasi) {
+    let result = match plugin.update(manifest_payload, [], wasi) {
         Ok(()) => Ok(()),
         Err(e) => Err(to_rustler_error(e)),
     };

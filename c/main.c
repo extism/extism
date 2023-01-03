@@ -61,8 +61,7 @@ int main(int argc, char *argv[]) {
   ExtismValType outputs[] = {I64};
   ExtismFunction *f = extism_function_new("hello_world", inputs, 1, outputs, 1,
                                           hello_world, "Hello, again!", NULL);
-  ExtismPlugin plugin =
-      extism_plugin_new_with_functions(ctx, data, len, &f, 1, true);
+  ExtismPlugin plugin = extism_plugin_new(ctx, data, len, &f, 1, true);
   free(data);
   if (plugin < 0) {
     puts(extism_error(ctx, -1));

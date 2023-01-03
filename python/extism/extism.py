@@ -246,11 +246,11 @@ class Plugin:
         if functions is not None:
             functions = [f.pointer for f in functions]
             ptr = _ffi.new("ExtismFunction*[]", functions)
-            self.plugin = _lib.extism_plugin_new_with_functions(
+            self.plugin = _lib.extism_plugin_new(
                 context.pointer, wasm, len(wasm), ptr, len(functions), wasi
             )
         else:
-            self.plugin = _lib.extism_plugin_new(context.pointer, wasm, len(wasm), wasi)
+            self.plugin = _lib.extism_plugin_new(context.pointer, wasm, len(wasm), _ffi.NULL, 0, wasi)
 
         self.ctx = context
 
@@ -264,7 +264,7 @@ class Plugin:
             s = json.dumps(config).encode()
             _lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
 
-    def update(self, manifest: Union[str, bytes, dict], wasi=False, config=None):
+    def update(self, manifest: Union[str, bytes, dict], wasi=False, config=None, functions=None):
         """
         Update a plugin with a new WASM module or manifest
 
@@ -278,9 +278,16 @@ class Plugin:
             The plugin config dictionary
         """
         wasm = _wasm(manifest)
-        ok = _lib.extism_plugin_update(
-            self.ctx.pointer, self.plugin, wasm, len(wasm), wasi
-        )
+        if functions is not None:
+            functions = [f.pointer for f in functions]
+            ptr = _ffi.new("ExtismFunction*[]", functions)
+            ok = _lib.extism_plugin_update(
+                self.ctx.pointer, self.plugin, wasm, len(wasm), ptr, len(functions), wasi
+            )
+        else:
+            ok = _lib.extism_plugin_update(
+                self.ctx.pointer, self.plugin, wasm, len(wasm), wasi
+            )
         if not ok:
             error = _lib.extism_error(self.ctx.pointer, -1)
             if error != _ffi.NULL:

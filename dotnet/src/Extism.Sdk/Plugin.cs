@@ -35,7 +35,7 @@ public class Plugin : IDisposable
 
         fixed (byte* wasmPtr = wasm)
         {
-            return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, withWasi);
+            return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
         }
     }
 

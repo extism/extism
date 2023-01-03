@@ -173,9 +173,11 @@ func register(ctx *Context, data []byte, functions []Function, wasi bool) (Plugi
 			ctx.pointer,
 			(*C.uchar)(ptr),
 			C.uint64_t(len(data)),
+			nil,
+			0,
 			C._Bool(wasi))
 	} else {
-		plugin = C.extism_plugin_new_with_functions(
+		plugin = C.extism_plugin_new(
 			ctx.pointer,
 			(*C.uchar)(ptr),
 			C.uint64_t(len(data)),
@@ -213,6 +215,8 @@ func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi 
 			C.int32_t(plugin),
 			(*C.uchar)(ptr),
 			C.uint64_t(len(data)),
+			nil, 
+			0,
 			C._Bool(wasi),
 		))
 
@@ -220,7 +224,7 @@ func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi 
 			return nil
 		}
 	} else {
-		b := bool(C.extism_plugin_update_with_functions(
+		b := bool(C.extism_plugin_update(
 			ctx.pointer,
 			C.int32_t(plugin),
 			(*C.uchar)(ptr),

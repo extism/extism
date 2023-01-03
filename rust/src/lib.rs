@@ -60,7 +60,7 @@ mod tests {
             hello_world,
         );
         let functions = [&f];
-        let mut plugin = Plugin::new_with_functions(&context, WASM, functions, true).unwrap();
+        let mut plugin = Plugin::new(&context, WASM, functions, true).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -159,7 +159,7 @@ mod tests {
                 None,
                 hello_world,
             );
-            let mut plugin = Plugin::new_with_functions(&context, WASM, [&f], true).unwrap();
+            let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
             let output = plugin.call("count_vowels", "this is a test").unwrap();
             std::io::stdout().write_all(output).unwrap();
         });
@@ -185,7 +185,7 @@ mod tests {
         });
 
         let context = Context::new();
-        let mut plugin = Plugin::new_with_functions(&context, WASM, [&f], true).unwrap();
+        let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
         let output = plugin.call("count_vowels", "abc123").unwrap();
         std::io::stdout().write_all(output).unwrap();
     }

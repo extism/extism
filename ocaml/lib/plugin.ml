@@ -31,7 +31,7 @@ let make ?config ?(wasi = false) ?(functions = []) ctx wasm =
   let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
   let n_funcs = Ctypes.CArray.length arr in
   let id =
-    Bindings.extism_plugin_new_with_functions ctx.Context.pointer wasm
+    Bindings.extism_plugin_new ctx.Context.pointer wasm
       (Unsigned.UInt64.of_int (String.length wasm))
       (Ctypes.CArray.start arr)
       (Unsigned.UInt64.of_int n_funcs)
@@ -65,7 +65,7 @@ let update plugin ?config ?(wasi = false) ?(functions = []) wasm =
   let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
   let n_funcs = Ctypes.CArray.length arr in
   let ok =
-    Bindings.extism_plugin_update_with_functions ctx.pointer id wasm
+    Bindings.extism_plugin_update ctx.pointer id wasm
       (Unsigned.UInt64.of_int (String.length wasm))
       (Ctypes.CArray.start arr)
       (Unsigned.UInt64.of_int n_funcs)

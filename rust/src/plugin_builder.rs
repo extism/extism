@@ -52,9 +52,9 @@ impl<'a> PluginBuilder<'a> {
     pub fn build(self, context: &'a Context) -> Result<Plugin<'a>, Error> {
         match self.source {
             Source::Manifest(m) => {
-                Plugin::new_with_manifest_and_functions(context, &m, self.functions, self.wasi)
+                Plugin::new_with_manifest(context, &m, self.functions, self.wasi)
             }
-            Source::Data(d) => Plugin::new_with_functions(context, &d, self.functions, self.wasi),
+            Source::Data(d) => Plugin::new(context, &d, self.functions, self.wasi),
         }
     }
 }

@@ -38,12 +38,11 @@ let ValArray = ArrayType(Val);
 const _functions = {
   extism_context_new: [context, []],
   extism_context_free: ["void", [context]],
-  extism_plugin_new: [pluginIndex, [context, "string", "uint64", "bool"]],
-  extism_plugin_new_with_functions: [
+  extism_plugin_new: [
     pluginIndex,
     [context, "string", "uint64", PtrArray, "uint64", "bool"],
   ],
-  extism_plugin_update_with_functions: [
+  extism_plugin_update: [
     "bool",
     [context, pluginIndex, "string", "uint64", PtrArray, "uint64", "bool"],
   ],
@@ -99,17 +98,11 @@ interface LibExtism {
     ctx: Buffer,
     data: string | Buffer,
     data_len: number,
-    wasi: boolean
-  ) => number;
-  extism_plugin_new_with_functions: (
-    ctx: Buffer,
-    data: string | Buffer,
-    data_len: number,
     functions: Buffer,
     nfunctions: number,
     wasi: boolean
   ) => number;
-  extism_plugin_update_with_functions: (
+  extism_plugin_update: (
     ctx: Buffer,
     plugin_id: number,
     data: string | Buffer,
@@ -545,7 +538,7 @@ export class Plugin {
     for (var i = 0; i < functions.length; i++) {
       this.functions[i] = functions[i].pointer;
     }
-    let plugin = lib.extism_plugin_new_with_functions(
+    let plugin = lib.extism_plugin_new(
       ctx.pointer,
       dataRaw,
       Buffer.byteLength(dataRaw, "utf-8"),
@@ -602,7 +595,7 @@ export class Plugin {
     for (var i = 0; i < functions.length; i++) {
       this.functions[i] = functions[i].pointer;
     }
-    const ok = lib.extism_plugin_update_with_functions(
+    const ok = lib.extism_plugin_update(
       this.ctx.pointer,
       this.id,
       dataRaw,

@@ -131,7 +131,7 @@ module Extism
       end
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
       code.put_bytes(0, wasm)
-      @plugin = C.extism_plugin_new(context.pointer, code, wasm.bytesize, wasi)
+      @plugin = C.extism_plugin_new(context.pointer, code, wasm.bytesize, nil, 0, wasi)
       if @plugin < 0
         err = C.extism_error(@context.pointer, -1)
         if err&.empty?
@@ -161,7 +161,7 @@ module Extism
       end
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
       code.put_bytes(0, wasm)
-      ok = C.extism_plugin_update(@context.pointer, @plugin, code, wasm.bytesize, wasi)
+      ok = C.extism_plugin_update(@context.pointer, @plugin, code, wasm.bytesize, nil, 0, wasi)
       if !ok
         err = C.extism_error(@context.pointer, @plugin)
         if err&.empty?
@@ -230,8 +230,8 @@ module Extism
     ffi_lib "extism"
     attach_function :extism_context_new, [], :pointer
     attach_function :extism_context_free, [:pointer], :void
-    attach_function :extism_plugin_new, [:pointer, :pointer, :uint64, :bool], :int32
-    attach_function :extism_plugin_update, [:pointer, :int32, :pointer, :uint64, :bool], :bool
+    attach_function :extism_plugin_new, [:pointer, :pointer, :uint64, :pointer, :uint64, :bool], :int32
+    attach_function :extism_plugin_update, [:pointer, :int32, :pointer, :uint64, :pointer, :uint64, :bool], :bool
     attach_function :extism_error, [:pointer, :int32], :string
     attach_function :extism_plugin_call, [:pointer, :int32, :string, :pointer, :uint64], :int32
     attach_function :extism_plugin_function_exists, [:pointer, :int32, :string], :bool

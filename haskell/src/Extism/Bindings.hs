@@ -9,11 +9,12 @@ import Data.Int
 import Data.Word
 
 newtype ExtismContext = ExtismContext () deriving Show
+newtype ExtismFunction = ExtismFunction () deriving Show
 
 foreign import ccall safe "extism.h extism_context_new" extism_context_new :: IO (Ptr ExtismContext)
 foreign import ccall safe "extism.h &extism_context_free" extism_context_free :: FunPtr (Ptr ExtismContext -> IO ())
-foreign import ccall safe "extism.h extism_plugin_new" extism_plugin_new :: Ptr ExtismContext -> Ptr Word8 -> Word64 -> CBool -> IO Int32
-foreign import ccall safe "extism.h extism_plugin_update" extism_plugin_update :: Ptr ExtismContext -> Int32 -> Ptr Word8 -> Word64 -> CBool -> IO CBool
+foreign import ccall safe "extism.h extism_plugin_new" extism_plugin_new :: Ptr ExtismContext -> Ptr Word8 -> Word64 -> Ptr (Ptr ExtismFunction) -> Word64 -> CBool -> IO Int32
+foreign import ccall safe "extism.h extism_plugin_update" extism_plugin_update :: Ptr ExtismContext -> Int32 -> Ptr Word8 -> Word64 -> Ptr (Ptr ExtismFunction) -> Word64 -> CBool -> IO CBool
 foreign import ccall safe "extism.h extism_plugin_call" extism_plugin_call :: Ptr ExtismContext -> Int32 -> CString -> Ptr Word8 -> Word64 -> IO Int32
 foreign import ccall safe "extism.h extism_plugin_function_exists" extism_plugin_function_exists :: Ptr ExtismContext -> Int32 -> CString -> IO CBool
 foreign import ccall safe "extism.h extism_error" extism_error :: Ptr ExtismContext -> Int32 -> IO CString

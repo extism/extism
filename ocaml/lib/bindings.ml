@@ -85,20 +85,12 @@ end
 
 let extism_plugin_new =
   fn "extism_plugin_new"
-    (context @-> string @-> uint64_t @-> bool @-> returning int32_t)
-
-let extism_plugin_new_with_functions =
-  fn "extism_plugin_new_with_functions"
     (context @-> string @-> uint64_t
     @-> ptr (ptr void)
     @-> uint64_t @-> bool @-> returning int32_t)
 
 let extism_plugin_update =
   fn "extism_plugin_update"
-    (context @-> int32_t @-> string @-> uint64_t @-> bool @-> returning bool)
-
-let extism_plugin_update_with_functions =
-  fn "extism_plugin_update_with_functions"
     (context @-> int32_t @-> string @-> uint64_t
     @-> ptr (ptr void)
     @-> uint64_t @-> bool @-> returning bool)

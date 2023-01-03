@@ -222,8 +222,8 @@ public:
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
     }
-    this->plugin = extism_plugin_new_with_functions(
-        ctx.get(), wasm, length, ptrs.data(), ptrs.size(), with_wasi);
+    this->plugin = extism_plugin_new(ctx.get(), wasm, length, ptrs.data(),
+                                     ptrs.size(), with_wasi);
     if (this->plugin < 0) {
       const char *err = extism_error(ctx.get(), -1);
       throw Error(err == nullptr ? "Unable to load plugin" : err);
@@ -240,9 +240,9 @@ public:
     }
 
     auto buffer = manifest.json();
-    this->plugin = extism_plugin_new_with_functions(
-        ctx.get(), (const uint8_t *)buffer.c_str(), buffer.size(), ptrs.data(),
-        ptrs.size(), with_wasi);
+    this->plugin =
+        extism_plugin_new(ctx.get(), (const uint8_t *)buffer.c_str(),
+                          buffer.size(), ptrs.data(), ptrs.size(), with_wasi);
     if (this->plugin < 0) {
       const char *err = extism_error(ctx.get(), -1);
       throw Error(err == nullptr ? "Unable to load plugin from manifest" : err);
@@ -267,9 +267,8 @@ public:
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
     }
-    bool b = extism_plugin_update_with_functions(
-        this->context.get(), this->plugin, wasm, length, ptrs.data(),
-        ptrs.size(), with_wasi);
+    bool b = extism_plugin_update(this->context.get(), this->plugin, wasm,
+                                  length, ptrs.data(), ptrs.size(), with_wasi);
     if (!b) {
       const char *err = extism_error(this->context.get(), -1);
       throw Error(err == nullptr ? "Unable to update plugin" : err);
@@ -285,7 +284,7 @@ public:
       ptrs.push_back(i.get());
     }
     auto buffer = manifest.json();
-    bool b = extism_plugin_update_with_functions(
+    bool b = extism_plugin_update(
         this->context.get(), this->plugin, (const uint8_t *)buffer.c_str(),
         buffer.size(), ptrs.data(), ptrs.size(), with_wasi);
     if (!b) {

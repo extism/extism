@@ -95,25 +95,13 @@ impl Context {
         id
     }
 
-    pub fn new_plugin(&mut self, data: impl AsRef<[u8]>, with_wasi: bool) -> PluginIndex {
-        let plugin = match Plugin::new(data, with_wasi) {
-            Ok(x) => x,
-            Err(e) => {
-                error!("Error creating Plugin: {:?}", e);
-                self.set_error(e);
-                return -1;
-            }
-        };
-        self.insert(plugin)
-    }
-
-    pub fn new_plugin_with_functions<'a>(
+    pub fn new_plugin<'a>(
         &mut self,
         data: impl AsRef<[u8]>,
         imports: impl IntoIterator<Item = &'a Function>,
         with_wasi: bool,
     ) -> PluginIndex {
-        let plugin = match Plugin::new_with_functions(data, imports, with_wasi) {
+        let plugin = match Plugin::new(data, imports, with_wasi) {
             Ok(x) => x,
             Err(e) => {
                 error!("Error creating Plugin: {:?}", e);

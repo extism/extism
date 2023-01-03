@@ -53,8 +53,6 @@ typedef struct ExtismFunction ExtismFunction;
  */
 typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 
-typedef int32_t ExtismPlugin;
-
 typedef uint64_t ExtismSize;
 
 /**
@@ -80,6 +78,8 @@ typedef struct {
  */
 typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin, const ExtismVal *inputs, ExtismSize n_inputs, ExtismVal *outputs, ExtismSize n_outputs, void *data);
 
+typedef int32_t ExtismPlugin;
+
 /**
  * Create a new context
  */
@@ -89,18 +89,6 @@ ExtismContext *extism_context_new(void);
  * Free a context
  */
 void extism_context_free(ExtismContext *ctx);
-
-/**
- * Create a new plugin
- *
- * `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
- * `wasm_size`: the length of the `wasm` parameter
- * `with_wasi`: enables/disables WASI
- */
-ExtismPlugin extism_plugin_new(ExtismContext *ctx,
-                               const uint8_t *wasm,
-                               ExtismSize wasm_size,
-                               bool with_wasi);
 
 /**
  * Returns a pointer to the memory of the currently running plugin
@@ -166,12 +154,12 @@ void extism_function_free(ExtismFunction *ptr);
  * `n_functions`: the number of functions provided
  * `with_wasi`: enables/disables WASI
  */
-ExtismPlugin extism_plugin_new_with_functions(ExtismContext *ctx,
-                                              const uint8_t *wasm,
-                                              ExtismSize wasm_size,
-                                              ExtismFunction **functions,
-                                              ExtismSize n_functions,
-                                              bool with_wasi);
+ExtismPlugin extism_plugin_new(ExtismContext *ctx,
+                               const uint8_t *wasm,
+                               ExtismSize wasm_size,
+                               ExtismFunction **functions,
+                               ExtismSize n_functions,
+                               bool with_wasi);
 
 /**
  * Update a plugin, keeping the existing ID
@@ -185,23 +173,9 @@ bool extism_plugin_update(ExtismContext *ctx,
                           ExtismPlugin index,
                           const uint8_t *wasm,
                           ExtismSize wasm_size,
+                          ExtismFunction *const *functions,
+                          ExtismSize nfunctions,
                           bool with_wasi);
-
-/**
- * Update a plugin including host functions, keeping the existing ID
- *
- * Similar to `extism_plugin_new` but takes an `index` argument to specify
- * which plugin to update
- *
- * Memory for this plugin will be reset upon update
- */
-bool extism_plugin_update_with_functions(ExtismContext *ctx,
-                                         ExtismPlugin index,
-                                         const uint8_t *wasm,
-                                         ExtismSize wasm_size,
-                                         ExtismFunction *const *functions,
-                                         ExtismSize nfunctions,
-                                         bool with_wasi);
 
 /**
  * Remove a plugin from the registry and free associated memory
