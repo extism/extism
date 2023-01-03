@@ -56,9 +56,9 @@ func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Poin
 	cname := C.CString(name)
 	function.pointer = C.extism_function_new(
 		cname,
-		(*uint32)(&inputs[0]),
+		(*C.ExtismValType)(&inputs[0]),
 		C.uint64_t(len(inputs)),
-		(*uint32)(&outputs[0]),
+		(*C.ExtismValType)(&outputs[0]),
 		C.uint64_t(len(outputs)),
 		(*[0]byte)(f),
 		unsafe.Pointer(&function.userData),
