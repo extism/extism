@@ -1,5 +1,9 @@
 import Allocator from './allocator';
 import { PluginConfig } from './manifest';
+//@ts-ignore
+import WASI from "@bjorn3/browser_wasi_shim/src/wasi";
+//@ts-ignore
+import { File } from "@bjorn3/browser_wasi_shim/src/fs_core";
 
 export default class ExtismPlugin {
   moduleData: ArrayBuffer;
@@ -61,7 +65,23 @@ export default class ExtismPlugin {
       return this.module;
     }
     const environment = this.makeEnv();
-    this.module = await WebAssembly.instantiate(this.moduleData, { env: environment });
+    const args: Array<string> = [];
+    const envVars: Array<string> = [];
+    let fds = [
+        new File([]), // stdin
+        new File([]), // stdout
+        new File([]), // stderr
+        // new PreopenDirectory(".", {
+        //     "example.c": new File(new TextEncoder("utf-8").encode(`#include "a"`)),
+        //     "hello.rs": new File(new TextEncoder("utf-8").encode(`fn main() { println!("Hello World!"); }`)),
+        // }),
+    ];
+    let wasi = new WASI(args, envVars, fds);
+    let env = {
+      wasi_snapshot_preview1: wasi.wasiImport,
+      env: environment
+    };
+    this.module = await WebAssembly.instantiate(this.moduleData, env);
     return this.module;
   }
 
