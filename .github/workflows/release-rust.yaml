@@ -23,13 +23,12 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
-          # order of crate publication matter: manifest, runtime, rust
+          # order of crate publication matter: manifest, rust
 
           cargo publish --manifest-path manifest/Cargo.toml
           # allow for crates.io to update so dependant crates can locate extism-manifest
           sleep 5 
 
-          cargo publish --manifest-path runtime/Cargo.toml --no-verify
           cargo publish --manifest-path rust/Cargo.toml
       
   
