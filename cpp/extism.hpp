@@ -205,6 +205,8 @@ public:
     this->func = std::shared_ptr<ExtismFunction>(ptr, extism_function_free);
   }
 
+  Function(const Function &f) { this->func = f.func; }
+
   ExtismFunction *get() { return this->func.get(); }
 };
 
@@ -218,7 +220,7 @@ public:
          ExtismSize length, bool with_wasi = false,
          std::vector<Function> functions = std::vector<Function>())
       : functions(functions) {
-    std::vector<ExtismFunction *> ptrs;
+    std::vector<const ExtismFunction *> ptrs;
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
     }
@@ -234,7 +236,7 @@ public:
 #ifndef EXTISM_NO_JSON
   Plugin(std::shared_ptr<ExtismContext> ctx, const Manifest &manifest,
          bool with_wasi = false, std::vector<Function> functions = {}) {
-    std::vector<ExtismFunction *> ptrs;
+    std::vector<const ExtismFunction *> ptrs;
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
     }
@@ -263,7 +265,7 @@ public:
   void update(const uint8_t *wasm, size_t length, bool with_wasi = false,
               std::vector<Function> functions = {}) {
     this->functions = functions;
-    std::vector<ExtismFunction *> ptrs;
+    std::vector<const ExtismFunction *> ptrs;
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
     }
@@ -279,7 +281,7 @@ public:
   void update(const Manifest &manifest, bool with_wasi = false,
               std::vector<Function> functions = {}) {
     this->functions = functions;
-    std::vector<ExtismFunction *> ptrs;
+    std::vector<const ExtismFunction *> ptrs;
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
     }
