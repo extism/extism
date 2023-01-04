@@ -254,7 +254,7 @@ pub unsafe extern "C" fn extism_plugin_new(
     ctx: *mut Context,
     wasm: *const u8,
     wasm_size: Size,
-    functions: *mut *mut ExtismFunction,
+    functions: *mut *const ExtismFunction,
     n_functions: Size,
     with_wasi: bool,
 ) -> PluginIndex {
@@ -290,7 +290,7 @@ pub unsafe extern "C" fn extism_plugin_update(
     index: PluginIndex,
     wasm: *const u8,
     wasm_size: Size,
-    functions: *const *mut ExtismFunction,
+    functions: *mut *const ExtismFunction,
     nfunctions: Size,
     with_wasi: bool,
 ) -> bool {

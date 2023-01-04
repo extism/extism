@@ -74,9 +74,9 @@ impl<'a> Plugin<'a> {
             .into_iter()
             .map(|x| bindings::ExtismFunction::from(x.clone()))
             .collect::<Vec<_>>();
-        let functions = functions
+        let mut functions = functions
             .into_iter()
-            .map(|mut x| &mut x as *mut _)
+            .map(|x| &x as *const _)
             .collect::<Vec<_>>();
         let b = unsafe {
             bindings::extism_plugin_update(
@@ -84,7 +84,7 @@ impl<'a> Plugin<'a> {
                 self.id,
                 data.as_ref().as_ptr(),
                 data.as_ref().len() as u64,
-                functions.as_ptr(),
+                functions.as_mut_ptr(),
                 functions.len() as u64,
                 wasi,
             )

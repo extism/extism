@@ -157,7 +157,7 @@ void extism_function_free(ExtismFunction *ptr);
 ExtismPlugin extism_plugin_new(ExtismContext *ctx,
                                const uint8_t *wasm,
                                ExtismSize wasm_size,
-                               ExtismFunction **functions,
+                               const ExtismFunction **functions,
                                ExtismSize n_functions,
                                bool with_wasi);
 
@@ -173,7 +173,7 @@ bool extism_plugin_update(ExtismContext *ctx,
                           ExtismPlugin index,
                           const uint8_t *wasm,
                           ExtismSize wasm_size,
-                          ExtismFunction *const *functions,
+                          const ExtismFunction **functions,
                           ExtismSize nfunctions,
                           bool with_wasi);
 
