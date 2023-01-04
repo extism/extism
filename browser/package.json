@@ -32,6 +32,6 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@bjorn3/browser_wasi_shim": "github:dylibso/browser_wasi_shim#change-from-main-to-exports"
+    "@bjorn3/browser_wasi_shim": "^0.2.1"
   }
 }
