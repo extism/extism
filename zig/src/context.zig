@@ -15,7 +15,7 @@ pub const Context = struct {
         const new_ctx = c.extism_context_new();
         return Context{
             .mutex = .{},
-            .ctx = new_ctx,
+            .ctx = new_ctx orelse unreachable,
             .error_info = null,
         };
     }

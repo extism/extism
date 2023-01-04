@@ -12,6 +12,7 @@ pub fn build(b: *std.build.Builder) void {
     const tests = b.addTestExe("Library Tests", "test.zig");
     tests.addPackagePath("extism", "src/main.zig");
     tests.linkLibC();
+    tests.addIncludePath("/usr/local/include");
     tests.addLibraryPath("/usr/local/lib");
     tests.linkSystemLibrary("extism");
     tests.setBuildMode(mode);
@@ -23,6 +24,7 @@ pub fn build(b: *std.build.Builder) void {
     var example = b.addExecutable("Example", "examples/basic.zig");
     example.addPackagePath("extism", "src/main.zig");
     example.linkLibC();
+    example.addIncludePath("/usr/local/include");
     example.addLibraryPath("/usr/local/lib");
     example.linkSystemLibrary("extism");
     example.setBuildMode(mode);
