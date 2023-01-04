@@ -6,7 +6,7 @@ const sharedConfig = {
     bundle: true,
     minify: false,
     drop: [], // preseve debugger statements
-    external: Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})),
+    external: Object.keys(peerDependencies || {}),
 };
 
 build({

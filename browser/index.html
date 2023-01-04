@@ -104,7 +104,7 @@
 
         async loadFunctions(url) {
             let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": url } ] }) 
-            let functions = await plugin.getExportedFunctions()
+            let functions = Object.keys(await plugin.getExports())
             console.log("funcs ", functions)
             this.setState({functions})
         }
