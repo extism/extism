@@ -1,5 +1,5 @@
 const { build } = require("esbuild");
-const { dependencies, peerDependencies } = require('./package.json')
+const { peerDependencies } = require('./package.json')
 
 const sharedConfig = {
     entryPoints: ["src/index.ts"],

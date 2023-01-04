@@ -1,6 +1,6 @@
 {
   "name": "@extism/runtime-browser",
-  "version": "0.2.0",
+  "version": "0.2.2",
   "description": "Extism runtime in the browser",
   "scripts": {
     "build": "node build.js && tsc --emitDeclarationOnly --outDir dist",
@@ -17,7 +17,7 @@
   ],
   "module": "dist/index.esm.js",
   "main": "dist/index.js",
-  "typings": "dist/index.d.ts",
+  "typings": "dist/src/index.d.ts",
   "author": "The Extism Authors <oss@extism.org>",
   "license": "BSD-3-Clause",
   "devDependencies": {
@@ -32,6 +32,6 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@bjorn3/browser_wasi_shim": "^0.2.0"
+    "@bjorn3/browser_wasi_shim": "github:dylibso/browser_wasi_shim#change-from-main-to-exports"
   }
 }
