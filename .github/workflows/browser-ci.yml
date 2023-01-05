@@ -6,18 +6,18 @@ on:
       - manifest/**
       - runtime/**
       - libextism/**
-      - node/**
+      - browser/**
   workflow_dispatch:
 
-name: Node CI
+name: Browser CI
 
 jobs:
   node:
-    name: Node
+    name: Browser
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
-        os: [ubuntu-latest, macos-latest]
+        os: [ubuntu-latest, macos-latest, windows-latest]
         rust:
           - stable
     steps:
@@ -29,10 +29,8 @@ jobs:
         with:
           node-version: 18
 
-      - name: Test Node Host SDK
+      - name: Test Browser Runtime
         run: |
-          cd node
+          cd browser
           npm i
-          LD_LIBRARY_PATH=/usr/local/lib npm run build
-          LD_LIBRARY_PATH=/usr/local/lib npm run example
-          LD_LIBRARY_PATH=/usr/local/lib npm run test
+          npm run test
