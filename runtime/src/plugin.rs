@@ -106,7 +106,11 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        let engine = Engine::new(Config::new().epoch_interruption(true))?;
+        let engine = Engine::new(
+            Config::new()
+                .epoch_interruption(true)
+                .debug_info(std::env::var("EXTISM_DEBUG").is_ok()),
+        )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
