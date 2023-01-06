@@ -27,6 +27,9 @@ lint:
 build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
+debug:
+	RUSTFLAGS=-g $(MAKE) build
+
 install:
 	install runtime/extism.h $(DEST)/include
 	install target/release/libextism.$(SOEXT) $(DEST)/lib

@@ -21,6 +21,7 @@ uint8_t *read_file(const char *filename, size_t *len) {
 
   uint8_t *data = malloc(length);
   if (data == NULL) {
+    fclose(fp);
     return NULL;
   }
 
