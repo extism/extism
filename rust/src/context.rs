@@ -1,7 +1,7 @@
 use extism_runtime::PluginIndex;
 
 use crate::{
-    plugin_builder::{PluginScheme, Source},
+    plugin_builder::{ Source},
     *,
 };
 
@@ -27,12 +27,17 @@ impl Context {
         todo!()
     }
 
-    pub fn insert(&self, scheme: PluginScheme) -> Result<Plugin, Error> {
-        match scheme.source {
+    pub fn insert(
+        &self,
+        source: Source,
+        functions: Vec<Function>,
+        wasi: bool,
+    ) -> Result<Plugin, Error> {
+        match source {
             Source::Manifest(m) => {
-                Plugin::new_with_manifest_and_functions(&self, &m, scheme.functions, scheme.wasi)
+                Plugin::new_with_manifest_and_functions(self, &m, functions, wasi)
             }
-            Source::Data(d) => Plugin::new_with_functions(&self, &d, scheme.functions, scheme.wasi),
+            Source::Data(d) => Plugin::new_with_functions(self, d, functions, wasi),
         }
     }
 

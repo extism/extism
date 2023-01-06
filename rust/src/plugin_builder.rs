@@ -5,32 +5,26 @@ pub enum Source {
     Data(Vec<u8>),
 }
 
-pub struct PluginScheme {
-    pub(crate) source: Source,
-    pub(crate) wasi: bool,
-    pub(crate) functions: Vec<Function>,
-}
-
-/// PluginSchemeBuilder is used to configure and create `Plugin` instances
-pub struct PluginSchemeBuilder {
+/// PluginBuilder is used to configure and create `Plugin` instances
+pub struct PluginBuilder {
     source: Source,
     wasi: bool,
     functions: Vec<Function>,
 }
 
-impl PluginSchemeBuilder {
-    /// Create a new `PluginSchemeBuilder` with the given WebAssembly module
+impl PluginBuilder {
+    /// Create a new `PluginBuilder` with the given WebAssembly module
     pub fn new_with_module(data: impl Into<Vec<u8>>) -> Self {
-        PluginSchemeBuilder {
+        PluginBuilder {
             source: Source::Data(data.into()),
             wasi: false,
             functions: vec![],
         }
     }
 
-    /// Create a new `PluginSchemeBuilder` from a `Manifest`
+    /// Create a new `PluginBuilder` from a `Manifest`
     pub fn new(manifest: Manifest) -> Self {
-        PluginSchemeBuilder {
+        PluginBuilder {
             source: Source::Manifest(manifest),
             wasi: false,
             functions: vec![],
@@ -55,11 +49,7 @@ impl PluginSchemeBuilder {
         self
     }
 
-    pub fn build(self, ) -> PluginScheme {
-        PluginScheme {
-            source: self.source,
-            wasi: self.wasi,
-            functions: self.functions
-        }
+    pub fn build(self, context: &Context) -> Result<Plugin, Error> {
+        context.insert(self.source, self.functions, self.wasi)
     }
 }
