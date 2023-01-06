@@ -2,7 +2,7 @@ use crate::*;
 use std::collections::BTreeMap;
 
 pub struct Plugin<'a> {
-    id: extism_runtime::PluginIndex,
+    pub(crate) id: extism_runtime::PluginIndex,
     context: &'a Context,
 }
 
@@ -20,7 +20,7 @@ impl<'a> Plugin<'a> {
     }
 
     /// Create a new plugin from the given manifest
-    pub fn new_with_manifest(
+    pub(crate) fn new_with_manifest(
         ctx: &'a Context,
         manifest: &Manifest,
         wasi: bool,
@@ -30,7 +30,7 @@ impl<'a> Plugin<'a> {
     }
 
     /// Create a new plugin from the given manifest and import functions
-    pub fn new_with_manifest_and_functions(
+    pub(crate) fn new_with_manifest_and_functions(
         ctx: &'a Context,
         manifest: &Manifest,
         imports: impl IntoIterator<Item = extism_runtime::Function>,
@@ -41,7 +41,7 @@ impl<'a> Plugin<'a> {
     }
 
     /// Create a new plugin from a WASM module
-    pub fn new(ctx: &'a Context, data: impl AsRef<[u8]>, wasi: bool) -> Result<Plugin, Error> {
+    pub(crate) fn new(ctx: &'a Context, data: impl AsRef<[u8]>, wasi: bool) -> Result<Plugin, Error> {
         let plugin = ctx.lock().new_plugin(data, wasi);
 
         if plugin < 0 {
@@ -58,7 +58,7 @@ impl<'a> Plugin<'a> {
     }
 
     /// Create a new plugin from a WASM module with imported functions
-    pub fn new_with_functions(
+    pub(crate) fn new_with_functions(
         ctx: &'a Context,
         data: impl AsRef<[u8]>,
         imports: impl IntoIterator<Item = extism_runtime::Function>,
@@ -170,11 +170,5 @@ impl<'a> Plugin<'a> {
             let ptr = bindings::extism_plugin_output_data(&mut *self.context.lock(), self.id);
             Ok(std::slice::from_raw_parts(ptr, out_len as usize))
         }
-    }
-}
-
-impl<'a> Drop for Plugin<'a> {
-    fn drop(&mut self) {
-        unsafe { bindings::extism_plugin_free(&mut *self.context.lock(), self.id) }
     }
 }

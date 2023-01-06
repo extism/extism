@@ -1,4 +1,9 @@
-use crate::*;
+use extism_runtime::PluginIndex;
+
+use crate::{
+    plugin_builder::{PluginScheme, Source},
+    *,
+};
 
 pub struct Context(pub(crate) std::sync::Arc<std::sync::Mutex<extism_runtime::Context>>);
 
@@ -16,6 +21,25 @@ impl Context {
         )))
     }
 
+    pub fn get(&self, id: PluginIndex) -> Option<&mut extism_runtime::Plugin> {
+        // TODO: an example impl
+        // self.lock().plugin(id)
+        todo!()
+    }
+
+    pub fn insert(&self, scheme: PluginScheme) -> Result<Plugin, Error> {
+        match scheme.source {
+            Source::Manifest(m) => {
+                Plugin::new_with_manifest_and_functions(&self, &m, scheme.functions, scheme.wasi)
+            }
+            Source::Data(d) => Plugin::new_with_functions(&self, &d, scheme.functions, scheme.wasi),
+        }
+    }
+
+    pub fn remove(&mut self, plugin: Plugin<'_>) {
+        unsafe { bindings::extism_plugin_free(&mut *self.lock(), plugin.id) }
+    }
+
     /// Remove all registered plugins
     pub fn reset(&mut self) {
         unsafe { bindings::extism_context_reset(&mut *self.lock()) }
@@ -26,5 +50,11 @@ impl Context {
             Ok(x) => x,
             Err(x) => x.into_inner(),
         }
+    }
+}
+
+impl Drop for Context {
+    fn drop(&mut self) {
+        self.reset();
     }
 }

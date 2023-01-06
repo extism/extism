@@ -7,7 +7,7 @@ mod plugin_builder;
 
 pub use context::Context;
 pub use plugin::Plugin;
-pub use plugin_builder::PluginBuilder;
+pub use plugin_builder::PluginSchemeBuilder;
 
 #[derive(Debug, thiserror::Error)]
 pub enum Error {
@@ -150,8 +150,9 @@ mod tests {
 
         std::thread::spawn(|| {
             let context = Context::new();
-            let mut plugin = PluginBuilder::new_with_module(WASM)
-                .build(&context)
+            let scheme = PluginSchemeBuilder::new_with_module(WASM)
+                .build();
+            let mut plugin = context.insert(scheme)
                 .unwrap();
             let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
             std::io::stdout().write_all(output).unwrap();
