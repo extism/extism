@@ -248,7 +248,7 @@ typedef std::function<void(CurrentPlugin, const std::vector<Val> &,
 struct UserData {
   FunctionType func;
   void *user_data = NULL;
-  void (*free_user_data)(void *);
+  std::function<void(void *)> free_user_data;
 };
 
 static void function_callback(ExtismCurrentPlugin *plugin,
@@ -280,11 +280,11 @@ class Function {
 public:
   Function(std::string name, const std::vector<ValType> inputs,
            const std::vector<ValType> outputs, FunctionType f,
-           void *userData = NULL, void (*freeUserData)(void *) = NULL)
+           void *user_data = NULL, std::function<void(void *)> free = nullptr)
       : name(name) {
     this->user_data.func = f;
-    this->user_data.user_data = userData;
-    this->user_data.free_user_data = freeUserData;
+    this->user_data.user_data = user_data;
+    this->user_data.free_user_data = free;
     auto ptr = extism_function_new(
         this->name.c_str(), inputs.data(), inputs.size(), outputs.data(),
         outputs.size(), function_callback, &this->user_data, free_user_data);
