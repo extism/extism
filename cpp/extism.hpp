@@ -1,7 +1,9 @@
 #pragma once
 
+#include <functional>
 #include <map>
 #include <memory>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
@@ -20,27 +22,60 @@ extern "C" {
 namespace extism {
 
 typedef std::map<std::string, std::string> Config;
-class Wasm {
+
+template <typename T> class ManifestKey {
+  bool is_set = false;
+
 public:
-  std::string path;
-  std::string url;
+  T value;
+  ManifestKey(T x, bool is_set = false) : is_set(is_set) { value = x; }
+
+  void set(T x) {
+    value = x;
+    is_set = true;
+  }
+
+  bool empty() const { return is_set == false; }
+};
+
+class Wasm {
+  std::string _path;
+  std::string _url;
   // TODO: add base64 encoded raw data
-  std::string hash;
+  ManifestKey<std::string> _hash =
+      ManifestKey<std::string>(std::string(), false);
+
+public:
+  static Wasm path(std::string s, std::string hash = std::string()) {
+    Wasm w;
+    w._path = s;
+    if (!hash.empty()) {
+      w._hash.set(hash);
+    }
+    return w;
+  }
+
+  static Wasm url(std::string s, std::string hash = std::string()) {
+    Wasm w;
+    w._url = s;
+    if (!hash.empty()) {
+      w._hash.set(hash);
+    }
+    return w;
+  }
 
 #ifndef EXTISM_NO_JSON
   Json::Value json() const {
     Json::Value doc;
 
-    if (!this->path.empty()) {
-      doc["path"] = this->path;
+    if (!this->_path.empty()) {
+      doc["path"] = this->_path;
+    } else if (!this->_url.empty()) {
+      doc["url"] = this->_url;
     }
 
-    if (!this->url.empty()) {
-      doc["url"] = this->url;
-    }
-
-    if (!this->hash.empty()) {
-      doc["hash"] = this->hash;
+    if (!this->_hash.empty()) {
+      doc["hash"] = this->_hash.value;
     }
 
     return doc;
@@ -52,11 +87,14 @@ class Manifest {
 public:
   Config config;
   std::vector<Wasm> wasm;
-  std::vector<std::string> allowed_hosts;
-  std::map<std::string, std::string> allowed_paths;
-  uint64_t timeout_ms;
+  ManifestKey<std::vector<std::string>> allowed_hosts;
+  ManifestKey<std::map<std::string, std::string>> allowed_paths;
+  ManifestKey<uint64_t> timeout_ms;
 
-  Manifest() : timeout_ms(30000) {}
+  Manifest()
+      : timeout_ms(30000, false),
+        allowed_hosts(std::vector<std::string>(), false),
+        allowed_paths(std::map<std::string, std::string>(), false) {}
 
   static Manifest path(std::string s, std::string hash = std::string()) {
     Manifest m;
@@ -92,7 +130,7 @@ public:
     if (!this->allowed_hosts.empty()) {
       Json::Value h;
 
-      for (auto s : this->allowed_hosts) {
+      for (auto s : this->allowed_hosts.value) {
         h.append(s);
       }
       doc["allowed_hosts"] = h;
@@ -100,13 +138,15 @@ public:
 
     if (!this->allowed_paths.empty()) {
       Json::Value h;
-      for (auto k : this->allowed_paths) {
+      for (auto k : this->allowed_paths.value) {
         h[k.first] = k.second;
       }
       doc["allowed_paths"] = h;
     }
 
-    doc["timeout_ms"] = Json::Value(this->timeout_ms);
+    if (!this->timeout_ms.empty()) {
+      doc["timeout_ms"] = Json::Value(this->timeout_ms.value);
+    }
 
     Json::FastWriter writer;
     return writer.write(doc);
@@ -114,26 +154,31 @@ public:
 #endif
 
   void add_wasm_path(std::string s, std::string hash = std::string()) {
-    Wasm w;
-    w.path = s;
-    w.hash = hash;
+    Wasm w = Wasm::path(s, hash);
     this->wasm.push_back(w);
   }
 
   void add_wasm_url(std::string u, std::string hash = std::string()) {
-    Wasm w;
-    w.url = u;
-    w.hash = hash;
+    Wasm w = Wasm::url(u, hash);
     this->wasm.push_back(w);
   }
 
-  void allow_host(std::string host) { this->allowed_hosts.push_back(host); }
+  void allow_host(std::string host) {
+    if (this->allowed_hosts.empty()) {
+      this->allowed_hosts.set(std::vector<std::string>{});
+    }
+    this->allowed_hosts.value.push_back(host);
+  }
 
   void allow_path(std::string src, std::string dest = std::string()) {
+    if (this->allowed_paths.empty()) {
+      this->allowed_paths.set(std::map<std::string, std::string>{});
+    }
+
     if (dest.empty()) {
       dest = src;
     }
-    this->allowed_paths[src] = dest;
+    this->allowed_paths.value[src] = dest;
   }
 
   void set_timeout_ms(uint64_t ms) { this->timeout_ms = ms; }
@@ -141,13 +186,9 @@ public:
   void set_config(std::string k, std::string v) { this->config[k] = v; }
 };
 
-class Error : public std::exception {
-private:
-  std::string message;
-
+class Error : public std::runtime_error {
 public:
-  Error(std::string msg) : message(msg) {}
-  const char *what() { return message.c_str(); }
+  Error(std::string msg) : std::runtime_error(msg) {}
 };
 
 class Buffer {
@@ -190,18 +231,53 @@ public:
   }
 };
 
+typedef std::function<void(CurrentPlugin, const std::vector<Val> &,
+                           std::vector<Val> &, void *user_data)>
+    FunctionType;
+
+struct UserData {
+  FunctionType func;
+  void *user_data = NULL;
+  void (*free_user_data)(void *);
+};
+
+static void function_callback(ExtismCurrentPlugin *plugin,
+                              const ExtismVal *inputs, ExtismSize n_inputs,
+                              ExtismVal *outputs, ExtismSize n_outputs,
+                              void *user_data) {
+  UserData *data = (UserData *)user_data;
+  const std::vector<Val> inp(inputs, inputs + n_inputs);
+  std::vector<Val> outp(outputs, outputs + n_outputs);
+  data->func(CurrentPlugin(plugin), inp, outp, data->user_data);
+
+  for (ExtismSize i = 0; i < n_outputs; i++) {
+    outputs[i] = outp[i];
+  }
+}
+
+static void free_user_data(void *user_data) {
+  UserData *data = (UserData *)user_data;
+  if (data->user_data != NULL && data->free_user_data != NULL) {
+    data->free_user_data(data->user_data);
+  }
+}
+
 class Function {
   std::shared_ptr<ExtismFunction> func;
   std::string name;
+  UserData user_data;
 
 public:
-  Function(std::string name, std::vector<ValType> inputs,
-           std::vector<ValType> outputs, ExtismFunctionType f,
+  Function(std::string name, const std::vector<ValType> inputs,
+           const std::vector<ValType> outputs, FunctionType f,
            void *userData = NULL, void (*freeUserData)(void *) = NULL)
       : name(name) {
-    auto ptr = extism_function_new(this->name.c_str(), inputs.data(),
-                                   inputs.size(), outputs.data(),
-                                   outputs.size(), f, userData, freeUserData);
+    this->user_data.func = f;
+    this->user_data.user_data = userData;
+    this->user_data.free_user_data = freeUserData;
+    auto ptr = extism_function_new(
+        this->name.c_str(), inputs.data(), inputs.size(), outputs.data(),
+        outputs.size(), function_callback, &this->user_data, free_user_data);
     this->func = std::shared_ptr<ExtismFunction>(ptr, extism_function_free);
   }
 
