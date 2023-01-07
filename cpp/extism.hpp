@@ -46,6 +46,7 @@ class Wasm {
       ManifestKey<std::string>(std::string(), false);
 
 public:
+  // Create Wasm pointing to a path
   static Wasm path(std::string s, std::string hash = std::string()) {
     Wasm w;
     w._path = s;
@@ -55,6 +56,7 @@ public:
     return w;
   }
 
+  // Create Wasm pointing to a URL
   static Wasm url(std::string s, std::string hash = std::string()) {
     Wasm w;
     w._url = s;
@@ -91,17 +93,19 @@ public:
   ManifestKey<std::map<std::string, std::string>> allowed_paths;
   ManifestKey<uint64_t> timeout_ms;
 
+  // Empty manifest
   Manifest()
-      : timeout_ms(30000, false),
-        allowed_hosts(std::vector<std::string>(), false),
+      : timeout_ms(0, false), allowed_hosts(std::vector<std::string>(), false),
         allowed_paths(std::map<std::string, std::string>(), false) {}
 
+  // Create manifest with a single Wasm from a path
   static Manifest path(std::string s, std::string hash = std::string()) {
     Manifest m;
     m.add_wasm_path(s, hash);
     return m;
   }
 
+  // Create manifest with a single Wasm from a URL
   static Manifest url(std::string s, std::string hash = std::string()) {
     Manifest m;
     m.add_wasm_url(s, hash);
@@ -153,16 +157,19 @@ public:
   }
 #endif
 
+  // Add Wasm from path
   void add_wasm_path(std::string s, std::string hash = std::string()) {
     Wasm w = Wasm::path(s, hash);
     this->wasm.push_back(w);
   }
 
+  // Add Wasm from URL
   void add_wasm_url(std::string u, std::string hash = std::string()) {
     Wasm w = Wasm::url(u, hash);
     this->wasm.push_back(w);
   }
 
+  // Add host to allowed hosts
   void allow_host(std::string host) {
     if (this->allowed_hosts.empty()) {
       this->allowed_hosts.set(std::vector<std::string>{});
@@ -170,6 +177,7 @@ public:
     this->allowed_hosts.value.push_back(host);
   }
 
+  // Add path to allowed paths
   void allow_path(std::string src, std::string dest = std::string()) {
     if (this->allowed_paths.empty()) {
       this->allowed_paths.set(std::map<std::string, std::string>{});
@@ -181,8 +189,10 @@ public:
     this->allowed_paths.value[src] = dest;
   }
 
+  // Set timeout
   void set_timeout_ms(uint64_t ms) { this->timeout_ms = ms; }
 
+  // Set config key/value
   void set_config(std::string k, std::string v) { this->config[k] = v; }
 };
 
@@ -292,6 +302,7 @@ class Plugin {
   std::vector<Function> functions;
 
 public:
+  // Create a new plugin
   Plugin(std::shared_ptr<ExtismContext> ctx, const uint8_t *wasm,
          ExtismSize length, bool with_wasi = false,
          std::vector<Function> functions = std::vector<Function>())
@@ -310,6 +321,7 @@ public:
   }
 
 #ifndef EXTISM_NO_JSON
+  // Create a new plugin from Manifest
   Plugin(std::shared_ptr<ExtismContext> ctx, const Manifest &manifest,
          bool with_wasi = false, std::vector<Function> functions = {}) {
     std::vector<const ExtismFunction *> ptrs;
@@ -397,6 +409,7 @@ public:
     this->config(json.c_str(), json.size());
   }
 
+  // Call a plugin
   Buffer call(const std::string &func, const uint8_t *input,
               ExtismSize input_length) const {
     int32_t rc = extism_plugin_call(this->context.get(), this->plugin,
@@ -417,15 +430,19 @@ public:
     return Buffer(ptr, length);
   }
 
+  // Call a plugin function with std::vector<uint8_t> input
   Buffer call(const std::string &func,
               const std::vector<uint8_t> &input) const {
     return this->call(func, input.data(), input.size());
   }
 
-  Buffer call(const std::string &func, const std::string &input) const {
+  // Call a plugin function with string input
+  Buffer call(const std::string &func,
+              const std::string &input = std::string()) const {
     return this->call(func, (const uint8_t *)input.c_str(), input.size());
   }
 
+  // Returns true if the specified function exists
   bool function_exists(const std::string &func) const {
     return extism_plugin_function_exists(this->context.get(), this->plugin,
                                          func.c_str());
@@ -436,22 +453,26 @@ class Context {
 public:
   std::shared_ptr<ExtismContext> pointer;
 
+  // Create a new context;
   Context() {
     this->pointer = std::shared_ptr<ExtismContext>(extism_context_new(),
                                                    extism_context_free);
   }
 
+  // Create plugin from uint8_t*
   Plugin plugin(const uint8_t *wasm, size_t length, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
     return Plugin(this->pointer, wasm, length, with_wasi, functions);
   }
 
+  // Create plugin from std::string
   Plugin plugin(const std::string &str, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
     return Plugin(this->pointer, (const uint8_t *)str.c_str(), str.size(),
                   with_wasi, functions);
   }
 
+  // Create plugin from uint8_t vector
   Plugin plugin(const std::vector<uint8_t> &data, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
     return Plugin(this->pointer, data.data(), data.size(), with_wasi,
@@ -459,18 +480,22 @@ public:
   }
 
 #ifndef EXTISM_NO_JSON
+  // Create plugin from Manifest
   Plugin plugin(const Manifest &manifest, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
     return Plugin(this->pointer, manifest, with_wasi, functions);
   }
 #endif
 
+  // Remove all plugins
   void reset() { extism_context_reset(this->pointer.get()); }
 };
 
+// Set global log file for plugins
 inline bool set_log_file(const char *filename, const char *level) {
   return extism_log_file(filename, level);
 }
 
+// Get libextism version
 inline std::string version() { return std::string(extism_version()); }
 } // namespace extism
