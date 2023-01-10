@@ -50,7 +50,7 @@ fn context_reset(ctx: ResourceArc<ExtismContext>) {
 
 #[rustler::nif]
 fn context_free(ctx: ResourceArc<ExtismContext>) {
-    let context = &ctx.ctx.read().unwrap();
+    let context = ctx.ctx.read().unwrap();
     std::mem::drop(context)
 }
 
@@ -85,7 +85,7 @@ fn plugin_call(
     let mut plugin = unsafe { Plugin::from_id(plugin_id, context) };
     let result = match plugin.call(name, input) {
         Err(e) => Err(to_rustler_error(e)),
-        Ok(result) => match str::from_utf8(&result) {
+        Ok(result) => match str::from_utf8(result) {
             Ok(output) => Ok(output.to_string()),
             Err(_e) => Err(rustler::Error::Term(Box::new(
                 "Could not read output from plugin",
