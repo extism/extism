@@ -1,39 +1,42 @@
-(** Memory options *)
 type memory = { max_pages : int option } [@@deriving yojson]
+(** Memory options *)
 
-(** Key/value dictionary *)
 type dict = (string * string) list [@@deriving yojson]
+(** Key/value dictionary *)
 
-(** Key/value dictionary with optional values *)
 type config = (string * string option) list [@@deriving yojson]
+(** Key/value dictionary with optional values *)
 
-(** WebAssembly file *)
 type wasm_file = {
   path : string;
   name : string option; [@yojson.option]
   hash : string option; [@yojson.option]
-} [@@deriving yojson]
+}
+[@@deriving yojson]
+(** WebAssembly file *)
 
-(** WebAssembly module data *)
 type wasm_data = {
   data : string;
   name : string option; [@yojson.option]
   hash : string option; [@yojson.option]
-} [@@deriving yojson]
+}
+[@@deriving yojson]
+(** WebAssembly module data *)
 
-(** WebAssembly URL *)
 type wasm_url = {
   url : string;
   headers : dict option; [@yojson.option]
   name : string option; [@yojson.option]
   meth : string option; [@yojson.option] [@key "method"]
   hash : string option; [@yojson.option]
-} [@@deriving yojson]
+}
+[@@deriving yojson]
+(** WebAssembly URL *)
 
 (** WebAssembly from a file, module data or URL *)
-type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url [@@deriving yojson]
+type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url
+[@@deriving yojson]
 
-(** Manifest type *)
 type t = {
   wasm : wasm list;
   memory : memory option;
@@ -41,15 +44,16 @@ type t = {
   allowed_hosts : string list option;
   allowed_paths : dict option;
   timeout_ms : int option;
-} [@@deriving yojson]
+}
+[@@deriving yojson]
+(** Manifest type *)
 
-(** Create [wasm] from filename *)
 val file : ?name:string -> ?hash:string -> string -> wasm
+(** Create [wasm] from filename *)
 
-(** Create [wasm] from WebAssembly module data *)
 val data : ?name:string -> ?hash:string -> string -> wasm
+(** Create [wasm] from WebAssembly module data *)
 
-(** Create [wasm] from URL *)
 val url :
   ?headers:(string * string) list ->
   ?name:string ->
@@ -57,8 +61,8 @@ val url :
   ?hash:string ->
   string ->
   wasm
+(** Create [wasm] from URL *)
 
-(** Create new manifest *)
 val v :
   ?config:config ->
   ?memory:memory ->
@@ -67,9 +71,10 @@ val v :
   ?timeout_ms:int ->
   wasm list ->
   t
+(** Create new manifest *)
 
-(** Convert manifest to JSON *)
 val json : t -> string
+(** Convert manifest to JSON *)
 
-(** Updates a manifest config *)
 val with_config : t -> config -> t
+(** Updates a manifest config *)

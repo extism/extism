@@ -27,12 +27,7 @@ fn load(env: Env, _: Term) -> bool {
 }
 
 fn to_rustler_error(extism_error: extism::Error) -> rustler::Error {
-    match extism_error {
-        extism::Error::UnableToLoadPlugin(msg) => rustler::Error::Term(Box::new(msg)),
-        extism::Error::Message(msg) => rustler::Error::Term(Box::new(msg)),
-        extism::Error::Json(json_err) => rustler::Error::Term(Box::new(json_err.to_string())),
-        extism::Error::Runtime(e) => rustler::Error::Term(Box::new(e.to_string())),
-    }
+    rustler::Error::Term(Box::new(extism_error.to_string()))
 }
 
 #[rustler::nif]
@@ -61,7 +56,7 @@ fn plugin_new_with_manifest(
     wasi: bool,
 ) -> Result<i32, rustler::Error> {
     let context = &ctx.ctx.write().unwrap();
-    let result = match Plugin::new(context, manifest_payload, wasi) {
+    let result = match Plugin::new(context, manifest_payload, [], wasi) {
         Err(e) => Err(to_rustler_error(e)),
         Ok(plugin) => {
             let plugin_id = plugin.as_i32();
@@ -107,7 +102,7 @@ fn plugin_update_manifest(
 ) -> Result<(), rustler::Error> {
     let context = &ctx.ctx.read().unwrap();
     let mut plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    let result = match plugin.update(manifest_payload, wasi) {
+    let result = match plugin.update(manifest_payload, [], wasi) {
         Ok(()) => Ok(()),
         Err(e) => Err(to_rustler_error(e)),
     };

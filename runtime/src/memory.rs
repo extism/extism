@@ -255,7 +255,7 @@ impl PluginMemory {
     }
 
     /// Get memory as a mutable slice of bytes
-    pub fn data_mut(&mut self) -> &[u8] {
+    pub fn data_mut(&mut self) -> &mut [u8] {
         self.memory.data_mut(&mut self.store)
     }
 

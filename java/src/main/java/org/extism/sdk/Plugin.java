@@ -36,7 +36,7 @@ public class Plugin implements AutoCloseable {
         Objects.requireNonNull(manifestBytes, "manifestBytes");
 
         Pointer contextPointer = context.getPointer();
-        int index = LibExtism.INSTANCE.extism_plugin_new(contextPointer, manifestBytes, manifestBytes.length, withWASI);
+        int index = LibExtism.INSTANCE.extism_plugin_new(contextPointer, manifestBytes, manifestBytes.length, null, 0, withWASI);
         if (index == -1) {
             String error = context.error(this);
             throw new ExtismException(error);
@@ -125,7 +125,7 @@ public class Plugin implements AutoCloseable {
      */
     public boolean update(byte[] manifestBytes, boolean withWASI) {
         Objects.requireNonNull(manifestBytes, "manifestBytes");
-        return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length, withWASI);
+        return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length, null, 0, withWASI);
     }
 
     /**

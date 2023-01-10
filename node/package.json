@@ -21,12 +21,17 @@
   },
   "scripts": {
     "prepare": "npm run build",
-    "example": "node example.js",
+    "example": "npm run build && node example.js",
     "build": "tsc",
     "test": "jest --coverage"
   },
   "dependencies": {
-    "ffi-napi": "^4.0.3"
+    "@types/ref-array-di": "^1.2.5",
+    "ffi-napi": "^4.0.3",
+    "ref-array-di": "^1.2.2",
+    "ref-napi": "^3.0.3",
+    "ref-struct-di": "^1.1.1",
+    "ref-union-di": "^1.0.1"
   },
   "publishConfig": {
     "access": "public"

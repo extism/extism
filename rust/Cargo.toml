@@ -13,4 +13,4 @@ extism-manifest = { version = "0.1.0", path = "../manifest" }
 extism-runtime = { version = "0.1.0", path = "../runtime"}
 serde_json = "1"
 log = "0.4"
-thiserror = "1"
+anyhow = "1"

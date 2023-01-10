@@ -16,7 +16,7 @@ pub const Plugin = struct {
     pub fn init(ctx: *Context, data: []const u8, wasi: bool) !Plugin {
         ctx.mutex.lock();
         defer ctx.mutex.unlock();
-        const plugin = c.extism_plugin_new(ctx.ctx, toCstr(data), @as(u64, data.len), wasi);
+        const plugin = c.extism_plugin_new(ctx.ctx, toCstr(data), @as(u64, data.len), null, 0, wasi);
         if (plugin < 0) {
             const err_c = c.extism_error(ctx.ctx, @as(i32, -1));
             const err = std.mem.span(err_c);
@@ -76,7 +76,7 @@ pub const Plugin = struct {
     pub fn update(self: *Plugin, data: []const u8, wasi: bool) !void {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
-        const res = c.extism_plugin_update(self.ctx.ctx, self.id, toCstr(data), @intCast(u64, data.len), wasi);
+        const res = c.extism_plugin_update(self.ctx.ctx, self.id, toCstr(data), @intCast(u64, data.len), null, 0, wasi);
         if (res) return;
         const err_c = c.extism_error(self.ctx.ctx, @as(i32, -1));
         const err = std.mem.span(err_c);

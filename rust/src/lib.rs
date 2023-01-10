@@ -1,5 +1,7 @@
 pub use extism_manifest::{self as manifest, Manifest};
-pub use extism_runtime::{sdk as bindings, Function, ValType};
+pub use extism_runtime::{
+    sdk as bindings, Function, MemoryBlock, Plugin as CurrentPlugin, UserData, Val, ValType,
+};
 
 mod context;
 mod plugin;
@@ -8,18 +10,7 @@ mod plugin_builder;
 pub use context::Context;
 pub use plugin::Plugin;
 pub use plugin_builder::PluginBuilder;
-
-#[derive(Debug, thiserror::Error)]
-pub enum Error {
-    #[error("Unable to load plugin: {0}")]
-    UnableToLoadPlugin(String),
-    #[error("{0}")]
-    Message(String),
-    #[error("JSON: {0}")]
-    Json(#[from] serde_json::Error),
-    #[error("Runtime: {0}")]
-    Runtime(#[from] extism_runtime::Error),
-}
+pub type Error = anyhow::Error;
 
 /// Gets the version of Extism
 pub fn extism_version() -> String {
@@ -44,14 +35,32 @@ mod tests {
     use super::*;
     use std::time::Instant;
 
-    const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
+    const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
+
+    fn hello_world(
+        _plugin: &mut CurrentPlugin,
+        inputs: &[Val],
+        outputs: &mut [Val],
+        _user_data: UserData,
+    ) -> Result<(), Error> {
+        outputs[0] = inputs[0].clone();
+        Ok(())
+    }
 
     #[test]
     fn it_works() {
         let wasm_start = Instant::now();
         set_log_file("test.log", Some(log::Level::Info));
         let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM, false).unwrap();
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+        let functions = [&f];
+        let mut plugin = Plugin::new(&context, WASM, functions, true).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -143,14 +152,32 @@ mod tests {
         use std::io::Write;
         std::thread::spawn(|| {
             let context = Context::new();
-            let mut plugin = Plugin::new(&context, WASM, false).unwrap();
+            let f = Function::new(
+                "hello_world",
+                [ValType::I64],
+                [ValType::I64],
+                None,
+                hello_world,
+            );
+            let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
             let output = plugin.call("count_vowels", "this is a test").unwrap();
             std::io::stdout().write_all(output).unwrap();
         });
 
-        std::thread::spawn(|| {
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+
+        let g = f.clone();
+        std::thread::spawn(move || {
             let context = Context::new();
             let mut plugin = PluginBuilder::new_with_module(WASM)
+                .with_function(&g)
+                .with_wasi(true)
                 .build(&context)
                 .unwrap();
             let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
@@ -158,7 +185,7 @@ mod tests {
         });
 
         let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM, false).unwrap();
+        let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
         let output = plugin.call("count_vowels", "abc123").unwrap();
         std::io::stdout().write_all(output).unwrap();
     }

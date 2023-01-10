@@ -3,21 +3,42 @@ import json
 import hashlib
 
 sys.path.append(".")
-from extism import Context
+from extism import Context, Function, host_fn, ValType
 
 if len(sys.argv) > 1:
     data = sys.argv[1].encode()
 else:
     data = b"some data from python!"
 
+
+@host_fn
+def hello_world(plugin, input, output, context, a_string):
+    mem = plugin.memory_at_offset(input[0])
+    print("Hello from Python!")
+    print(a_string)
+    print(input)
+    print(plugin.memory(mem)[:])
+    output[0] = input[0]
+
+
 # a Context provides a scope for plugins to be managed within. creating multiple contexts
 # is expected and groups plugins based on source/tenant/lifetime etc.
 with Context() as context:
-    wasm = open("../wasm/code.wasm", "rb").read()
+    wasm = open("../wasm/code-functions.wasm", "rb").read()
     hash = hashlib.sha256(wasm).hexdigest()
     config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
-    plugin = context.plugin(config)
+    functions = [
+        Function(
+            "hello_world",
+            [ValType.I64],
+            [ValType.I64],
+            hello_world,
+            context,
+            "Hello again!",
+        )
+    ]
+    plugin = context.plugin(config, wasi=True, functions=functions)
     # Call `count_vowels`
     j = json.loads(plugin.call("count_vowels", data))
     print("Number of vowels:", j["count"])
