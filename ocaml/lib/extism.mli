@@ -97,36 +97,43 @@ module Current_plugin : sig
   type t
   (** Opaque type, wraps [ExtismCurrentPlugin] *)
 
-  type offs = Unsigned.uint64
-  (** Memory offset type *)
+  type memory_block = { offs : Unsigned.UInt64.t; len : Unsigned.UInt64.t }
+  (** Represents a block of guest memory *)
 
-  type len = Unsigned.uint64
-  (** Memory length type *)
-
-  val memory : t -> Unsigned.uint8 Ctypes.ptr
+  val memory : ?offs:Unsigned.UInt64.t -> t -> Unsigned.uint8 Ctypes.ptr
   (** Get pointer to entire plugin memory *)
 
-  val length : t -> offs -> len
-  (** Get the length of an allocated block of memory *)
+  val find : t -> Unsigned.UInt64.t -> memory_block option
+  (** Find memory block *)
 
-  val alloc : t -> len -> offs
+  val alloc : t -> int -> memory_block
   (** Allocate a new block of memory *)
 
-  val free : t -> offs -> unit
+  val free : t -> memory_block -> unit
   (** Free an allocated block of memory *)
 
   (** Some helpter functions for reading/writing memory *)
-  module Memory : sig
-    val get_string : t -> offs -> string
+  module Memory_block : sig
+    val to_val : memory_block -> Val.t
+    (** Convert memory block to [Val] *)
+
+    val of_val : t -> Val.t -> memory_block option
+    (** Convert [Val] to memory block *)
+
+    val of_val_exn : t -> Val.t -> memory_block
+    (** Convert [Val] to memory block, raises [Invalid_argument] if the value is not a pointer
+        to a valid memory block *)
+
+    val get_string : t -> memory_block -> string
     (** Get a string from memory stored at the provided offset *)
 
-    val get_bigstring : t -> offs -> Bigstringaf.t
+    val get_bigstring : t -> memory_block -> Bigstringaf.t
     (** Get a bigstring from memory stored at the provided offset *)
 
-    val set_string : t -> offs -> string -> unit
+    val set_string : t -> memory_block -> string -> unit
     (** Store a string into memory at the provided offset *)
 
-    val set_bigstring : t -> offs -> Bigstringaf.t -> unit
+    val set_bigstring : t -> memory_block -> Bigstringaf.t -> unit
     (** Store a bigstring into memory at the provided offset *)
   end
 end

@@ -138,10 +138,8 @@ let%test "call_functions" =
     Function.v "hello_world" [ I64 ] [ I64 ] ~user_data:"Hello again!"
     @@ fun plugin inputs outputs user_data ->
     let open Types.Val_array in
-    let s =
-      Current_plugin.Memory.get_string plugin
-        (Unsigned.UInt64.of_int64 @@ Types.Val.to_i64_exn inputs.$[0])
-    in
+    let mem = Current_plugin.Memory_block.of_val_exn plugin inputs.$[0] in
+    let s = Current_plugin.Memory_block.get_string plugin mem in
     let () = print_endline "Hello from OCaml!" in
     let () = print_endline user_data in
     let () = print_endline s in
