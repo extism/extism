@@ -53,7 +53,7 @@ let of_manifest ?wasi ?functions ctx manifest =
   create ctx ?wasi ?functions data
 
 let%test "free plugin" =
-  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
   with_context (fun ctx ->
       let plugin = of_manifest ctx manifest |> Error.unwrap in
       free plugin;
@@ -84,7 +84,7 @@ let update_manifest plugin ?wasi manifest =
   update plugin ?wasi data
 
 let%test "update plugin manifest and config" =
-  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
   with_context (fun ctx ->
       let config = [ ("a", Some "1") ] in
       let plugin = of_manifest ctx manifest |> Error.unwrap in
@@ -113,7 +113,7 @@ let call_bigstring (t : t) ~name input =
   call' Bindings.extism_plugin_call t ~name ptr len
 
 let%test "call_bigstring" =
-  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
   with_context (fun ctx ->
       let plugin = of_manifest ctx manifest |> Error.unwrap in
       call_bigstring plugin ~name:"count_vowels"
@@ -126,7 +126,7 @@ let call (t : t) ~name input =
   |> Result.map Bigstringaf.to_string
 
 let%test "call" =
-  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
   with_context (fun ctx ->
       let plugin = of_manifest ctx manifest |> Error.unwrap in
       call plugin ~name:"count_vowels" "this is a test"
@@ -147,7 +147,7 @@ let%test "call_functions" =
     results.$[0] <- params.$[0]
   in
   let functions = [ hello_world ] in
-  let manifest = Manifest.v [ Manifest.file "test/code-functions.wasm" ] in
+  let manifest = Manifest.(create [ Wasm.file "test/code-functions.wasm" ]) in
   with_context (fun ctx ->
       let plugin =
         of_manifest ctx manifest ~functions ~wasi:true |> Error.unwrap
@@ -159,7 +159,7 @@ let function_exists { id; ctx; _ } name =
   Bindings.extism_plugin_function_exists ctx.pointer id name
 
 let%test "function exists" =
-  let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
+  let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
   with_context (fun ctx ->
       let plugin = of_manifest ctx manifest |> Error.unwrap in
       function_exists plugin "count_vowels"
