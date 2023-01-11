@@ -144,16 +144,16 @@ module Function : sig
   type t
   (** Function type *)
 
-  val v :
+  val create :
     string ->
-    Val_type.t list ->
-    Val_type.t list ->
+    params:Val_type.t list ->
+    results:Val_type.t list ->
     user_data:'a ->
     (Current_plugin.t -> Val_array.t -> Val_array.t -> 'a -> unit) ->
     t
-  (** Create a new function, [Function.v name args returns ~user_data f] creates
-      a new [Function] with the given [name], [args] specifies the argument types,
-      [returns] specifies the return types, [user_data] is used to pass arbitrary
+  (** Create a new function, [Function.v name ~params ~results ~user_data f] creates
+      a new [Function] with the given [name], [params] specifies the argument types,
+      [results] specifies the return types, [user_data] is used to pass arbitrary
       OCaml values into the function and [f] is the OCaml function that will be
       called.
   *)
@@ -191,7 +191,7 @@ val set_log_file :
 module Plugin : sig
   type t
 
-  val make :
+  val create :
     ?config:Manifest.config ->
     ?wasi:bool ->
     ?functions:Function.t list ->

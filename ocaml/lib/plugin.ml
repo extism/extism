@@ -26,7 +26,7 @@ let free t =
   if not (Ctypes.is_null t.ctx.pointer) then
     Bindings.extism_plugin_free t.ctx.pointer t.id
 
-let make ?config ?(wasi = false) ?(functions = []) ctx wasm =
+let create ?config ?(wasi = false) ?(functions = []) ctx wasm =
   let func_ptrs = List.map (fun x -> x.Function.pointer) functions in
   let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
   let n_funcs = Ctypes.CArray.length arr in
@@ -50,7 +50,7 @@ let make ?config ?(wasi = false) ?(functions = []) ctx wasm =
 
 let of_manifest ?wasi ?functions ctx manifest =
   let data = Manifest.json manifest in
-  make ctx ?wasi ?functions data
+  create ctx ?wasi ?functions data
 
 let%test "free plugin" =
   let manifest = Manifest.v [ Manifest.file "test/code.wasm" ] in
@@ -135,15 +135,16 @@ let%test "call" =
 let%test "call_functions" =
   let open Types.Val_type in
   let hello_world =
-    Function.v "hello_world" [ I64 ] [ I64 ] ~user_data:"Hello again!"
-    @@ fun plugin inputs outputs user_data ->
+    Function.create "hello_world" ~params:[ I64 ] ~results:[ I64 ]
+      ~user_data:"Hello again!"
+    @@ fun plugin params results user_data ->
     let open Types.Val_array in
-    let mem = Current_plugin.Memory_block.of_val_exn plugin inputs.$[0] in
+    let mem = Current_plugin.Memory_block.of_val_exn plugin params.$[0] in
     let s = Current_plugin.Memory_block.get_string plugin mem in
     let () = print_endline "Hello from OCaml!" in
     let () = print_endline user_data in
     let () = print_endline s in
-    outputs.$[0] <- inputs.$[0]
+    results.$[0] <- params.$[0]
   in
   let functions = [ hello_world ] in
   let manifest = Manifest.v [ Manifest.file "test/code-functions.wasm" ] in

@@ -18,10 +18,10 @@ let free t =
 
 let free_all l = List.iter free l
 
-let v name inputs outputs ~user_data f =
-  let inputs = CArray.of_list Bindings.Extism_val_type.t inputs in
+let create name ~params ~results ~user_data f =
+  let inputs = CArray.of_list Bindings.Extism_val_type.t params in
   let n_inputs = Unsigned.UInt64.of_int (CArray.length inputs) in
-  let outputs = CArray.of_list Bindings.Extism_val_type.t outputs in
+  let outputs = CArray.of_list Bindings.Extism_val_type.t results in
   let n_outputs = Unsigned.UInt64.of_int (CArray.length outputs) in
   let free' = Some Root.release in
   let user_data = Root.create user_data in
