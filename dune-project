@@ -13,7 +13,7 @@
 
 (license BSD-3-Clause)
 
-(documentation https://github.com/extism/extism)
+(documentation https://extism.org)
 
 (package
  (name extism)
