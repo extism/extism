@@ -8,5 +8,11 @@ import com.google.gson.annotations.SerializedName;
  *
  * @param max Max number of pages.
  */
-public record MemoryOptions(@SerializedName("max") Integer max) {
+public class MemoryOptions {
+
+    private @SerializedName("max") Integer max;
+
+    public MemoryOptions(Integer max) {
+        this.max = max;
+    }
 }

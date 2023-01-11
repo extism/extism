@@ -2,11 +2,35 @@ package org.extism.sdk.wasm;
 
 /**
  * WASM Source represented by a file referenced by a path.
- *
- * @param name
- * @param path
- * @param hash
  */
-public record PathWasmSource(String name, String path, String hash) implements WasmSource {
+public class PathWasmSource implements WasmSource {
+
+    private String name;
+
+    private String path;
+
+    private String hash;
+
+    /**
+     * Constructor
+     * @param name
+     * @param path
+     * @param hash
+     */
+    public PathWasmSource(String name, String path, String hash) {
+        this.name = name;
+        this.path = path;
+        this.hash = hash;
+    }
+
+    @Override
+    public String name() {
+        return name;
+    }
+
+    @Override
+    public String hash() {
+        return hash;
+    }
 }
 
