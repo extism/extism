@@ -7,7 +7,7 @@ prepare:
 	opam install .. --deps-only
 
 publish:
-	opam publish -v $(VERSION) -t $(VERSION) --dry-run ..
+	opam publish -v $(VERSION) -t $(VERSION) ..
 
 build:
 	dune build
