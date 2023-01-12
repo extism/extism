@@ -18,7 +18,6 @@ end
 module Val_type : sig
   type t = I32 | I64 | F32 | F64 | FuncRef | ExternRef  (** Value type *)
 
-  val t : t Ctypes.typ
   val of_int : int -> t
   val to_int : t -> int
 end
@@ -27,8 +26,6 @@ end
 module Val : sig
   type t
   (** Val *)
-
-  val t : t Ctypes.typ
 
   val ty : t -> Val_type.t
   (** [ty v] returns the [Val_type.t] for the value [v] *)
