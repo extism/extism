@@ -35,10 +35,8 @@ module Wasm : sig
   (** WebAssembly URL *)
 
   (** WebAssembly from a file, module data or URL *)
-  type t = File of file | Data of data | Url of url
-  [@@deriving yojson]
+  type t = File of file | Data of data | Url of url [@@deriving yojson]
 
-  
   val file : ?name:string -> ?hash:string -> string -> t
   (** Create [wasm] from filename *)
 
