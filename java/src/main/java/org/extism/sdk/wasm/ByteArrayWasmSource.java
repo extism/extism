@@ -5,11 +5,9 @@ package org.extism.sdk.wasm;
  */
 public class ByteArrayWasmSource implements WasmSource {
 
-    private String name;
-
-    private byte[] data;
-
-    private String hash;
+    private final String name;
+    private final byte[] data;
+    private final String hash;
 
 
     /**
@@ -32,5 +30,9 @@ public class ByteArrayWasmSource implements WasmSource {
     @Override
     public String hash() {
         return hash;
+    }
+
+    public byte[] data() {
+        return data;
     }
 }

@@ -5,11 +5,11 @@ package org.extism.sdk.wasm;
  */
 public class PathWasmSource implements WasmSource {
 
-    private String name;
+    private final String name;
 
-    private String path;
+    private final String path;
 
-    private String hash;
+    private final String hash;
 
     /**
      * Constructor
@@ -31,6 +31,10 @@ public class PathWasmSource implements WasmSource {
     @Override
     public String hash() {
         return hash;
+    }
+
+    public String path() {
+        return path;
     }
 }
 
