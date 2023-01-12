@@ -74,8 +74,14 @@ val create :
   t
 (** Create new manifest *)
 
-val json : t -> string
+val to_json : t -> string
 (** Convert manifest to JSON *)
+
+val of_json : string -> t
+(** Read manifest from JSON string *)
+
+val of_file : string -> t
+(** Read manifest from JSON file *)
 
 val with_config : t -> config -> t
 (** Updates a manifest config *)

@@ -49,7 +49,7 @@ let create ?config ?(wasi = false) ?(functions = []) ctx wasm =
       Ok t
 
 let of_manifest ?wasi ?functions ctx manifest =
-  let data = Manifest.json manifest in
+  let data = Manifest.to_json manifest in
   create ctx ?wasi ?functions data
 
 let%test "free plugin" =
@@ -80,7 +80,7 @@ let update plugin ?config ?(wasi = false) ?(functions = []) wasm =
   else Ok ()
 
 let update_manifest plugin ?wasi manifest =
-  let data = Manifest.json manifest in
+  let data = Manifest.to_json manifest in
   update plugin ?wasi data
 
 let%test "update plugin manifest and config" =

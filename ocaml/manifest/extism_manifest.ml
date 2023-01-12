@@ -85,5 +85,14 @@ type t = {
 let create ?config ?memory ?allowed_hosts ?allowed_paths ?timeout_ms wasm =
   { config; wasm; memory; allowed_hosts; allowed_paths; timeout_ms }
 
-let json t = yojson_of_t t |> Yojson.Safe.to_string
+let to_json t = yojson_of_t t |> Yojson.Safe.to_string
+
+let of_json s =
+  let j = Yojson.Safe.from_string s in
+  t_of_yojson j
+
+let of_file filename =
+  let j = Yojson.Safe.from_file filename in
+  t_of_yojson j
+
 let with_config t config = { t with config = Some config }
