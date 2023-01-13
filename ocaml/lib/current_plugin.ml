@@ -1,50 +1,61 @@
 open Ctypes
 
 type t = unit ptr
-type offs = Unsigned.uint64
-type len = Unsigned.uint64
+type memory_block = { offs : Unsigned.UInt64.t; len : Unsigned.UInt64.t }
 
-let memory t = Bindings.extism_current_plugin_memory t
-let length t offs = Bindings.extism_current_plugin_memory_length t offs
-let alloc t len = Bindings.extism_current_plugin_memory_alloc t len
-let free t offs = Bindings.extism_current_plugin_memory_free t offs
+let memory ?(offs = Unsigned.UInt64.zero) t =
+  Bindings.extism_current_plugin_memory t +@ Unsigned.UInt64.to_int offs
 
-module Memory = struct
-  let get_bigstring t offs : Bigstringaf.t =
-    let length = length t offs in
-    let p = memory t +@ Unsigned.UInt64.to_int offs in
+let find t offs =
+  let len = Bindings.extism_current_plugin_memory_length t offs in
+  if Unsigned.UInt64.(equal zero len) then None else Some { offs; len }
+
+let alloc t len =
+  let len = Unsigned.UInt64.of_int len in
+  let offs = Bindings.extism_current_plugin_memory_alloc t len in
+  { offs; len }
+
+let free t { offs; _ } = Bindings.extism_current_plugin_memory_free t offs
+
+module Memory_block = struct
+  let of_val t v =
+    match Types.Val.to_i64 v with
+    | None -> None
+    | Some v ->
+        let offs = Unsigned.UInt64.of_int64 v in
+        find t offs
+
+  let of_val_exn t v =
+    match of_val t v with
+    | None -> invalid_arg "Memory_block.of_val_exn"
+    | Some v -> v
+
+  let to_val { offs; len = _ } =
+    Types.Val.of_i64 (Unsigned.UInt64.to_int64 offs)
+
+  let get_bigstring t { offs; len } : Bigstringaf.t =
+    let p = memory t ~offs in
     bigarray_of_ptr array1
-      (Unsigned.UInt64.to_int length)
+      (Unsigned.UInt64.to_int len)
       Bigarray.Char
       (coerce (ptr uint8_t) (ptr char) p)
 
-  let get_string t offs =
-    let length = length t offs in
-    let p = memory t +@ Unsigned.UInt64.to_int offs in
+  let get_string t { offs; len } =
+    let p = memory t ~offs in
     Ctypes.string_from_ptr
       (coerce (ptr uint8_t) (ptr char) p)
-      ~length:(Unsigned.UInt64.to_int length)
+      ~length:(Unsigned.UInt64.to_int len)
 
-  let set_bigstring t offs bs =
-    let length =
-      min (Unsigned.UInt64.to_int @@ length t offs) (Bigstringaf.length bs)
-    in
-    let p =
-      coerce (ptr uint8_t) (ptr char)
-      @@ (memory t +@ Unsigned.UInt64.to_int offs)
-    in
+  let set_bigstring t { offs; len } bs =
+    let length = min (Unsigned.UInt64.to_int @@ len) (Bigstringaf.length bs) in
+    let p = coerce (ptr uint8_t) (ptr char) @@ memory t ~offs in
     for i = 0 to length - 1 do
       p +@ i <-@ Bigstringaf.unsafe_get bs i
     done
 
-  let set_string t offs s =
-    let length =
-      min (Unsigned.UInt64.to_int @@ length t offs) (String.length s)
-    in
-    let p =
-      coerce (ptr uint8_t) (ptr char)
-      @@ (memory t +@ Unsigned.UInt64.to_int offs)
-    in
+  let set_string t { offs; len } s =
+    let length = min (Unsigned.UInt64.to_int @@ len) (String.length s) in
+    let p = coerce (ptr uint8_t) (ptr char) @@ memory t ~offs in
     for i = 0 to length - 1 do
       p +@ i <-@ String.unsafe_get s i
     done
