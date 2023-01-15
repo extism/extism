@@ -1,2 +1,2 @@
 build:
-	clang -o main main.c -lextism -L .
+	clang -g -o main main.c -lextism -L .
