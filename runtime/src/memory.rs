@@ -173,7 +173,7 @@ impl PluginMemory {
                 pages_needed = 1
             }
 
-            info!("Requesting {pages_needed} more pages");
+            debug!("Requesting {pages_needed} more pages");
             // This will fail if we've already allocated the maximum amount of memory allowed
             self.memory.grow(&mut self.store, pages_needed)?;
         }
@@ -183,7 +183,7 @@ impl PluginMemory {
             length: n,
         };
 
-        info!(
+        debug!(
             "Allocated new block: {} bytes at offset {}",
             mem.length, mem.offset
         );
@@ -202,7 +202,7 @@ impl PluginMemory {
 
     /// Free the block allocated at `offset`
     pub fn free(&mut self, offset: usize) {
-        info!("Freeing block at {offset}");
+        debug!("Freeing block at {offset}");
         if let Some(length) = self.live_blocks.remove(&offset) {
             self.free.push(MemoryBlock { offset, length });
         } else {

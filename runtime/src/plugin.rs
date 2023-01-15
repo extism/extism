@@ -356,7 +356,7 @@ impl Runtime {
                     &[Val::I32(0), Val::I32(0)],
                     results.as_mut_slice(),
                 )?;
-                info!("Initialized Haskell language runtime");
+                debug!("Initialized Haskell language runtime");
             }
         }
         Ok(())
@@ -370,7 +370,7 @@ impl Runtime {
                 let mut results =
                     vec![Val::null(); cleanup.ty(&plugin.memory.store).results().len()];
                 cleanup.call(&mut plugin.memory.store, &[], results.as_mut_slice())?;
-                info!("Cleaned up Haskell language runtime");
+                debug!("Cleaned up Haskell language runtime");
             }
         }
 
