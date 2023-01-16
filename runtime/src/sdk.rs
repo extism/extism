@@ -331,7 +331,7 @@ pub unsafe extern "C" fn extism_plugin_update(
     ctx.plugins
         .insert(index, std::cell::UnsafeCell::new(plugin));
 
-    info!("Plugin updated: {index}");
+    debug!("Plugin updated: {index}");
     true
 }
 
