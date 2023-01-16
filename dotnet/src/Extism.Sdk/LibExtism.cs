@@ -27,10 +27,12 @@ internal static class LibExtism
     /// <param name="context">Pointer to the context the plugin will be associated with.</param>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
     /// <param name="wasmSize">The length of the `wasm` parameter.</param>
+    /// <param name="functions">Array of host function pointers.</param>
+    /// <param name="nFunctions">Number of host functions.</param>
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe public static extern IntPtr extism_plugin_new(IntPtr context, byte* wasm, int wasmSize, bool withWasi);
+    unsafe public static extern IntPtr extism_plugin_new(IntPtr context, byte* wasm, int wasmSize, IntPtr *functions, int nFunctions, bool withWasi);
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
@@ -41,10 +43,12 @@ internal static class LibExtism
     /// <param name="plugin">Pointer to the plugin you want to update.</param>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
     /// <param name="wasmLength">The length of the `wasm` parameter.</param>
+    /// <param name="functions">Array of host function pointers.</param>
+    /// <param name="nFunctions">Number of host functions.</param>
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe public static extern bool extism_plugin_update(IntPtr context, IntPtr plugin, byte* wasm, int wasmLength, bool withWasi);
+    unsafe public static extern bool extism_plugin_update(IntPtr context, IntPtr plugin, byte* wasm, int wasmLength, IntPtr *functions, int nFunctions, bool withWasi);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.

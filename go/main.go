@@ -4,9 +4,26 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"unsafe"
 
 	"github.com/extism/extism"
 )
+
+/*
+#include <extism.h>
+EXTISM_GO_FUNCTION(hello_world);
+*/
+import "C"
+
+//export hello_world
+func hello_world(plugin *C.ExtismCurrentPlugin, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData unsafe.Pointer) {
+	fmt.Println("Hello from Go!")
+	s := *(*interface{})(userData)
+	fmt.Println(s.(string))
+	inputSlice := unsafe.Slice(inputs, nInputs)
+	outputSlice := unsafe.Slice(outputs, nOutputs)
+	outputSlice[0] = inputSlice[0]
+}
 
 func main() {
 	version := extism.ExtismVersion()
@@ -22,9 +39,10 @@ func main() {
 	} else {
 		data = []byte("testing from go -> wasm shared memory...")
 	}
-
-	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code.wasm"}}}
-	plugin, err := ctx.PluginFromManifest(manifest, false)
+	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code-functions.wasm"}}}
+	f := extism.NewFunction("hello_world", []extism.ValType{extism.I64}, []extism.ValType{extism.I64}, C.hello_world, "Hello again!")
+	defer f.Free()
+	plugin, err := ctx.PluginFromManifest(manifest, []extism.Function{f}, true)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

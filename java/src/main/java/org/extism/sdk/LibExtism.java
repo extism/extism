@@ -56,10 +56,12 @@ public interface LibExtism extends Library {
      * @param contextPointer pointer to the {@link Context}.
      * @param wasm           is a WASM module (wat or wasm) or a JSON encoded manifest
      * @param wasmSize       the length of the `wasm` parameter
+     * @param functions      host functions
+     * @param nFunctions     the number of host functions
      * @param withWASI       enables/disables WASI
      * @return id of the plugin or {@literal -1} in case of error
      */
-    int extism_plugin_new(long contextPointer, byte[] wasm, long wasmSize, boolean withWASI);
+    int extism_plugin_new(Pointer contextPointer, byte[] wasm, long wasmSize, Pointer functions, int nFunctions, boolean withWASI);
 
     /**
      * Returns the Extism version string
@@ -117,10 +119,12 @@ public interface LibExtism extends Library {
      * @param pluginIndex
      * @param wasm
      * @param length
+     * @param functions      host functions
+     * @param nFunctions     the number of host functions
      * @param withWASI
      * @return {@literal true} if update was successful
      */
-    boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, boolean withWASI);
+    boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, Pointer functions, int nFunctions, boolean withWASI);
 
     /**
      * Remove a plugin from the registry and free associated memory.

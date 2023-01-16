@@ -1,22 +1,9 @@
-type memory = { max_pages : int option [@yojson.option] } [@@deriving yojson]
-
-type wasm_file = {
-  path : string;
-  name : string option; [@yojson.option]
-  hash : string option; [@yojson.option]
-}
-[@@deriving yojson]
-
 type base64 = string
 
 let yojson_of_base64 x = `String (Base64.encode_exn x)
 let base64_of_yojson j = Yojson.Safe.Util.to_string j
 
-type wasm_data = {
-  data : base64;
-  name : string option; [@yojson.option]
-  hash : string option; [@yojson.option]
-}
+type memory_options = { max_pages : int option [@yojson.option] }
 [@@deriving yojson]
 
 type dict = (string * string) list
@@ -43,30 +30,51 @@ let yojson_of_config c =
        (fun (k, v) -> (k, match v with None -> `Null | Some v -> `String v))
        c)
 
-type wasm_url = {
-  url : string;
-  headers : dict option; [@yojson.option]
-  name : string option; [@yojson.option]
-  meth : string option; [@yojson.option] [@key "method"]
-  hash : string option; [@yojson.option]
-}
-[@@deriving yojson]
+module Wasm = struct
+  type file = {
+    path : string;
+    name : string option; [@yojson.option]
+    hash : string option; [@yojson.option]
+  }
+  [@@deriving yojson]
 
-type wasm = File of wasm_file | Data of wasm_data | Url of wasm_url
+  type data = {
+    data : base64;
+    name : string option; [@yojson.option]
+    hash : string option; [@yojson.option]
+  }
+  [@@deriving yojson]
 
-let yojson_of_wasm = function
-  | File f -> yojson_of_wasm_file f
-  | Data d -> yojson_of_wasm_data d
-  | Url u -> yojson_of_wasm_url u
+  type url = {
+    url : string;
+    headers : dict option; [@yojson.option]
+    name : string option; [@yojson.option]
+    meth : string option; [@yojson.option] [@key "method"]
+    hash : string option; [@yojson.option]
+  }
+  [@@deriving yojson]
 
-let wasm_of_yojson x =
-  try File (wasm_file_of_yojson x)
-  with _ -> (
-    try Data (wasm_data_of_yojson x) with _ -> Url (wasm_url_of_yojson x))
+  type t = File of file | Data of data | Url of url
+
+  let yojson_of_t = function
+    | File f -> yojson_of_file f
+    | Data d -> yojson_of_data d
+    | Url u -> yojson_of_url u
+
+  let t_of_yojson x =
+    try File (file_of_yojson x)
+    with _ -> ( try Data (data_of_yojson x) with _ -> Url (url_of_yojson x))
+
+  let file ?name ?hash path = File { path; name; hash }
+  let data ?name ?hash data = Data { data; name; hash }
+
+  let url ?headers ?name ?meth ?hash url =
+    Url { headers; name; meth; hash; url }
+end
 
 type t = {
-  wasm : wasm list;
-  memory : memory option; [@yojson.option]
+  wasm : Wasm.t list;
+  memory : memory_options option; [@yojson.option]
   config : config option; [@yojson.option]
   allowed_hosts : string list option; [@yojson.option]
   allowed_paths : dict option; [@yojson.option]
@@ -74,12 +82,17 @@ type t = {
 }
 [@@deriving yojson]
 
-let file ?name ?hash path = File { path; name; hash }
-let data ?name ?hash data = Data { data; name; hash }
-let url ?headers ?name ?meth ?hash url = Url { headers; name; meth; hash; url }
-
-let v ?config ?memory ?allowed_hosts ?allowed_paths ?timeout_ms wasm =
+let create ?config ?memory ?allowed_hosts ?allowed_paths ?timeout_ms wasm =
   { config; wasm; memory; allowed_hosts; allowed_paths; timeout_ms }
 
-let json t = yojson_of_t t |> Yojson.Safe.to_string
+let to_json t = yojson_of_t t |> Yojson.Safe.to_string
+
+let of_json s =
+  let j = Yojson.Safe.from_string s in
+  t_of_yojson j
+
+let of_file filename =
+  let j = Yojson.Safe.from_file filename in
+  t_of_yojson j
+
 let with_config t config = { t with config = Some config }

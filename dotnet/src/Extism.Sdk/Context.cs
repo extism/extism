@@ -38,7 +38,7 @@ public class Context : IDisposable
         {
             fixed (byte* wasmPtr = wasm)
             {
-                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, withWasi);
+                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
                 return new Plugin(this, plugin);
             }
         }

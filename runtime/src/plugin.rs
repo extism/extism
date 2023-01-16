@@ -96,14 +96,9 @@ const EXPORT_MODULE_NAME: &str = "env";
 
 impl Plugin {
     /// Create a new plugin from the given WASM code
-    pub fn new(wasm: impl AsRef<[u8]>, with_wasi: bool) -> Result<Plugin, Error> {
-        Self::new_with_functions(wasm, [], with_wasi)
-    }
-
-    /// Create a new plugin from the given WASM code and imported functions
-    pub fn new_with_functions(
+    pub fn new<'a>(
         wasm: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = Function>,
+        imports: impl IntoIterator<Item = &'a Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
         let engine = Engine::new(
@@ -192,7 +187,9 @@ impl Plugin {
 
                     for f in &mut imports {
                         let name = f.name().to_string();
-                        let func = Func::new(&mut memory.store, f.ty().clone(), f.2);
+                        let func = Func::new(&mut memory.store, f.ty().clone(), unsafe {
+                            &*std::sync::Arc::as_ptr(&f.f)
+                        });
                         linker.define(EXPORT_MODULE_NAME, &name, func)?;
                     }
                 }
@@ -359,7 +356,7 @@ impl Runtime {
                     &[Val::I32(0), Val::I32(0)],
                     results.as_mut_slice(),
                 )?;
-                info!("Initialized Haskell language runtime");
+                debug!("Initialized Haskell language runtime");
             }
         }
         Ok(())
@@ -373,7 +370,7 @@ impl Runtime {
                 let mut results =
                     vec![Val::null(); cleanup.ty(&plugin.memory.store).results().len()];
                 cleanup.call(&mut plugin.memory.store, &[], results.as_mut_slice())?;
-                info!("Cleaned up Haskell language runtime");
+                debug!("Cleaned up Haskell language runtime");
             }
         }
 

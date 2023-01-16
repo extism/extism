@@ -35,7 +35,7 @@
 (package
  (name extism-manifest)
  (synopsis "Extism manifest bindings")
- (description "Bindings to Extism, the universal plugin system")
+ (description "Bindings to the Extism manifest format")
  (depends 
   (ocaml (>= 4.14.1)) 
   (dune (>= 3.2))

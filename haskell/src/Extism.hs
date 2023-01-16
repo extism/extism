@@ -70,7 +70,7 @@ plugin c wasm useWasi =
   do
     withForeignPtr ctx (\ctx -> do
       p <- unsafeUseAsCString wasm (\s ->
-        extism_plugin_new ctx (castPtr s) length wasi)
+        extism_plugin_new ctx (castPtr s) length nullPtr 0 wasi )
       if p < 0 then do
         err <- extism_error ctx (-1)
         e <- peekCString err
@@ -92,7 +92,7 @@ update (Plugin (Context ctx) id) wasm useWasi =
   do
     withForeignPtr ctx (\ctx -> do
       b <- unsafeUseAsCString wasm (\s ->
-        extism_plugin_update ctx id (castPtr s) length wasi)
+        extism_plugin_update ctx id (castPtr s) length nullPtr 0 wasi)
       if b <= 0 then do
         err <- extism_error ctx (-1)
         e <- peekCString err

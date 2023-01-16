@@ -8,3 +8,4 @@ let () =
     | _ -> None)
 
 let unwrap = function Ok x -> x | Error t -> raise (Error t)
+let throw e = raise (Error e)
