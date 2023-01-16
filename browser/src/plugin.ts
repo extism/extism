@@ -76,6 +76,9 @@ export default class ExtismPlugin {
       env: environment
     };
     this.module = await WebAssembly.instantiate(this.moduleData, env);
+    if (this.module.instance.exports._start) {
+      wasi.start(this.module.instance);
+    }
     return this.module;
   }
 
