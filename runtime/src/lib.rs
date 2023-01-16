@@ -22,7 +22,7 @@ pub(crate) use timer::{Timer, TimerAction};
 pub type Size = u64;
 pub type PluginIndex = i32;
 
-pub(crate) use log::{debug, error, info, trace};
+pub(crate) use log::{debug, error, trace};
 
 /// Converts any type implementing `std::fmt::Debug` into a suitable CString to use
 /// as an error message
