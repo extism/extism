@@ -36,4 +36,4 @@ jobs:
           go version
           LD_LIBRARY_PATH=/usr/local/lib go test
           cd go
-          LD_LIBRARY_PATH=/usr/local/lib go run main.go
+          LD_LIBRARY_PATH=/usr/local/lib go run main.go | grep "Hello from Go!"
