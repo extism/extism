@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"runtime/cgo"
 	"unsafe"
 )
 
@@ -39,21 +40,23 @@ var (
 // Function is used to define host functions
 type Function struct {
 	pointer  *C.ExtismFunction
-	userData interface{}
+	userData cgo.Handle
 }
 
 // Free a function
 func (f *Function) Free() {
 	C.extism_function_free(f.pointer)
 	f.pointer = nil
+	f.userData.Delete()
 }
 
 // NewFunction creates a new host function with the given name, input/outputs and optional user data, which can be an
 // arbitrary `interface{}`
 func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Pointer, userData interface{}) Function {
 	var function Function
-	function.userData = userData
+	function.userData = cgo.NewHandle(userData)
 	cname := C.CString(name)
+	ptr := unsafe.Pointer(function.userData)
 	function.pointer = C.extism_function_new(
 		cname,
 		(*C.ExtismValType)(&inputs[0]),
@@ -61,7 +64,7 @@ func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Poin
 		(*C.ExtismValType)(&outputs[0]),
 		C.uint64_t(len(outputs)),
 		(*[0]byte)(f),
-		unsafe.Pointer(&function.userData),
+		ptr,
 		nil,
 	)
 	C.free(unsafe.Pointer(cname))
@@ -215,7 +218,7 @@ func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi 
 			C.int32_t(plugin),
 			(*C.uchar)(ptr),
 			C.uint64_t(len(data)),
-			nil, 
+			nil,
 			0,
 			C._Bool(wasi),
 		))
