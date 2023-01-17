@@ -2,14 +2,14 @@ import * as extism from "../src/index";
 import { readFileSync } from "fs";
 import { join } from "path";
 
-function manifest(): extism.Manifest {
+function manifest(functions: boolean = false): extism.Manifest {
   return {
-    wasm: [{ path: join(__dirname, "/code.wasm") }],
+    wasm: [{ path: join(__dirname, functions ? "/../../wasm/code-functions.wasm" : "/../../wasm/code.wasm") }],
   };
 }
 
 function wasmBuffer(): Buffer {
-  return readFileSync(join(__dirname, "/code.wasm"));
+  return readFileSync(join(__dirname, "/../../wasm/code.wasm"));
 }
 
 describe("test extism", () => {
@@ -100,6 +100,23 @@ describe("test extism", () => {
       await expect(() =>
         plugin.call("i_dont_exist", "example-input")
       ).rejects.toMatch(/Plugin error/);
+    });
+  });
+
+  test("host functions work", async () => {
+    await extism.withContext(async (ctx: extism.Context) => {
+      const plugin = ctx.plugin(manifest(true), true, [
+        new extism.HostFunction("hello_world", [extism.ValType.I64], [extism.ValType.I64], (plugin: any, params: any, results: any, user_data: string) => {
+          const offs = plugin.memoryAlloc(user_data.length);
+          const mem = plugin.memory(offs);
+          mem.write(user_data);
+          results[0].v.i64 = offs;
+        }, "test")
+      ]);
+
+      const res = await plugin.call("count_vowels", "aaa");
+
+      expect(res.toString()).toBe("test");
     });
   });
 });
