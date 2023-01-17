@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/cgo"
 	"unsafe"
 
 	"github.com/extism/extism"
@@ -18,8 +19,8 @@ import "C"
 //export hello_world
 func hello_world(plugin *C.ExtismCurrentPlugin, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData unsafe.Pointer) {
 	fmt.Println("Hello from Go!")
-	s := *(*interface{})(userData)
-	fmt.Println(s.(string))
+	s := *(*cgo.Handle)(userData)
+	fmt.Println(s.Value().(string))
 	inputSlice := unsafe.Slice(inputs, nInputs)
 	outputSlice := unsafe.Slice(outputs, nOutputs)
 	outputSlice[0] = inputSlice[0]
