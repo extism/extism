@@ -7,7 +7,7 @@ unwrap (Right x) = return x
 unwrap (Left (ExtismError msg)) =
   assertFailure msg
 
-defaultManifest = manifest [wasmFile "test/code.wasm"]
+defaultManifest = manifest [wasmFile "../../wasm/code.wasm"]
 
 initPlugin :: Context -> IO Plugin
 initPlugin context =
