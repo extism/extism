@@ -217,6 +217,8 @@ class Function:
         )
 
     def __del__(self):
+        if not hasattr(self, "pointer"):
+            return
         if self.pointer is not None:
             _lib.extism_function_free(self.pointer)
 
