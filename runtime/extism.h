@@ -4,7 +4,7 @@
 #include <stdbool.h>
 
 #define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)
-#define EXTISM_GO_FUNCTION(N) extern void N(ExtismCurrentPlugin*, ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, uintptr_t)
+#define EXTISM_GO_FUNCTION(N) extern void N(void*, ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, uintptr_t)
 
 
 /**
