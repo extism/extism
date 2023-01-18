@@ -1,0 +1,1 @@
+build-env: [EXTISM_TEST_NO_LIB = ""]

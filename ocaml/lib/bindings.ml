@@ -27,7 +27,16 @@ let locate () =
     init paths
   |> function
   | Some x -> x
-  | None -> raise Not_found
+  | None -> (
+      let fail n =
+        Printf.fprintf stderr
+          "Unable to find Extism installation, see \
+           https://github.com/extism/extism for installation instructions\n";
+        exit n
+      in
+      match Sys.getenv_opt "EXTISM_TEST_NO_LIB" with
+      | None -> fail 1
+      | Some _ -> fail 0)
 
 let from =
   let filename = locate () in
