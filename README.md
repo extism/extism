@@ -25,7 +25,7 @@ Plug-in development kits (PDK) for plug-in authors supported in
 [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/c.svg" width="18" height="18" />
 C / <img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/cplusplus.svg" width="18" height="18" /> C++](https://github.com/extism/c-pdk),
 [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/haskell.svg" width="18" height="18" /> Haskell](https://github.com/extism/haskell-pdk),
-and [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/zig.svg" width="18" height="18" /> Haskell](https://github.com/extism/zig-pdk).
+and [<img src="https://cdn.rawgit.com/simple-icons/simple-icons/develop/icons/zig.svg" width="18" height="18" /> Zig](https://github.com/extism/zig-pdk).
 
 <p align="center">
   <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/210286900-39b144fd-1b26-4dd0-b7a9-2b5755bc174d.png" alt="Extism embedded SDK language support"/>
