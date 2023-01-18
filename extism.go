@@ -68,6 +68,7 @@ var (
 	I64       ValType = C.I64
 	F32       ValType = C.F32
 	F64       ValType = C.F64
+	V128      ValType = C.V128
 	FuncRef   ValType = C.FuncRef
 	ExternRef ValType = C.ExternRef
 )

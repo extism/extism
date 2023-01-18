@@ -87,6 +87,7 @@ export enum ValType {
   I64,
   F32,
   F64,
+  V128,
   FuncRef,
   ExternRef,
 }

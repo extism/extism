@@ -415,8 +415,9 @@ class ValType(Enum):
     I64 = 1
     F32 = 2
     F64 = 3
-    FUNC_REF = 4
-    EXTERN_REF = 5
+    V128 = 4
+    FUNC_REF = 5
+    EXTERN_REF = 6
 
 
 class Val:
