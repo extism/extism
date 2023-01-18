@@ -51,7 +51,11 @@ class Visitor(c_ast.NodeVisitor):
             if hasattr(t.type, 'name'):
                 type_name = t.type.name
             else:
-                type_name = t.type.names[0]
+                try:
+                    type_name = t.type.names[0]
+                except:
+                    continue
+
             const = hasattr(t.type, 'quals') and 'const' in t.type.quals
             t = Type(type_name, const=const, pointer=is_ptr)
             dest.append(Arg(name, t))

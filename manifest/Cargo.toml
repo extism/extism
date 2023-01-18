@@ -10,7 +10,7 @@ description = "Extism plug-in manifest crate"
 
 [dependencies]
 serde = {version = "1", features = ["derive"]}
-base64 = "0.20.0-alpha"
+base64 = "0.21.0"
 schemars = {version = "0.8", optional=true}
 
 [features]

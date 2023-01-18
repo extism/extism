@@ -12,9 +12,9 @@ pub mod sdk;
 mod timer;
 
 pub use context::Context;
-pub use function::{Function, ValType};
+pub use function::{Function, UserData, Val, ValType};
 pub use manifest::Manifest;
-pub use memory::{MemoryBlock, PluginMemory};
+pub use memory::{MemoryBlock, PluginMemory, ToMemoryBlock};
 pub use plugin::{Internal, Plugin, Wasi};
 pub use plugin_ref::PluginRef;
 pub(crate) use timer::{Timer, TimerAction};
@@ -22,7 +22,7 @@ pub(crate) use timer::{Timer, TimerAction};
 pub type Size = u64;
 pub type PluginIndex = i32;
 
-pub(crate) use log::{debug, error, info, trace};
+pub(crate) use log::{debug, error, trace};
 
 /// Converts any type implementing `std::fmt::Debug` into a suitable CString to use
 /// as an error message

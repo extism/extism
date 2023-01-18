@@ -7,7 +7,7 @@ authors: ["Extism Authors <oss@extism.org>"]
 license: "BSD-3-Clause"
 tags: ["topics" "wasm" "plugin"]
 homepage: "https://github.com/extism/extism"
-doc: "https://github.com/extism/extism"
+doc: "https://extism.org"
 bug-reports: "https://github.com/extism/extism/issues"
 depends: [
   "ocaml" {>= "4.14.1"}

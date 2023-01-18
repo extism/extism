@@ -3,13 +3,16 @@
 prepare:
 	npm install
 
+build:
+	npm run build
+
 test: prepare
 	npm run test
 
 clean:
 	echo "No clean implemented"
 
-publish: clean prepare
+publish: clean prepare build
 	npm publish
 
 format:

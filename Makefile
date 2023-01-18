@@ -18,18 +18,19 @@ else
 	FEATURE_FLAGS=--features $(FEATURES)
 endif
 
-
-.PHONY: build
+build:
+	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
 lint:
 	cargo clippy --release --no-deps --manifest-path runtime/Cargo.toml
 
-build:
-	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
+debug:
+	RUSTFLAGS=-g $(MAKE) build
 
 install:
-	install runtime/extism.h $(DEST)/include
-	install target/release/libextism.$(SOEXT) $(DEST)/lib
+	mkdir -p $(DEST)/lib $(DEST)/include
+	install runtime/extism.h $(DEST)/include/extism.h
+	install target/release/libextism.$(SOEXT) $(DEST)/lib/libextism.$(SOEXT)
 
 uninstall:
 	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT)

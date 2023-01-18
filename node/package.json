@@ -21,12 +21,17 @@
   },
   "scripts": {
     "prepare": "npm run build",
-    "example": "node example.js",
+    "example": "npm run build && node example.js",
     "build": "tsc",
     "test": "jest --coverage"
   },
   "dependencies": {
-    "ffi-napi": "^4.0.3"
+    "@types/ref-array-di": "^1.2.5",
+    "ffi-napi": "^4.0.3",
+    "ref-array-di": "^1.2.2",
+    "ref-napi": "^3.0.3",
+    "ref-struct-di": "^1.1.1",
+    "ref-union-di": "^1.0.1"
   },
   "publishConfig": {
     "access": "public"
@@ -36,7 +41,7 @@
     "@types/jest": "^29.2.0",
     "@types/node": "^18.11.4",
     "jest": "^29.2.2",
-    "prettier": "2.8.1",
+    "prettier": "2.8.3",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "typedoc": "^0.23.18",

@@ -24,6 +24,8 @@ toNullable (Just x) = NotNull x
 toNullable Nothing = Null
 fromNullable (NotNull x) = Just x
 fromNullable Null = Nothing
+fromNotNull (NotNull x) = x
+fromNotNull Null = error "Value is Null"
 mapNullable f Null = Null
 mapNullable f (NotNull x) = NotNull (f x)
 

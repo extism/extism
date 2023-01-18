@@ -29,7 +29,7 @@ class Plugin
             $data = string_to_bytes($data);
         }
 
-        $id = $this->lib->extism_plugin_new($ctx->pointer, $data, count($data), (int)$wasi);
+        $id = $this->lib->extism_plugin_new($ctx->pointer, $data, count($data), null, 0, (int)$wasi);
         if ($id < 0) {
             $err = $this->lib->extism_error($ctx->pointer, -1);
             throw new \Exception("Extism: unable to load plugin: " . $err);
@@ -96,7 +96,7 @@ class Plugin
             $data = string_to_bytes($data);
         }
 
-        $ok = $this->lib->extism_plugin_update($this->context->pointer, $this->id, $data, count($data), (int)$wasi);
+        $ok = $this->lib->extism_plugin_update($this->context->pointer, $this->id, $data, count($data), null, 0, (int)$wasi);
         if (!$ok) {
             $err = $this->lib->extism_error($this->context->pointer, -1);
             throw new \Exception("Extism: unable to update plugin: " . $err);

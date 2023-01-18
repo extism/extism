@@ -1,12 +1,12 @@
 const { build } = require("esbuild");
-const { dependencies, peerDependencies } = require('./package.json')
+const { peerDependencies } = require('./package.json')
 
 const sharedConfig = {
     entryPoints: ["src/index.ts"],
     bundle: true,
     minify: false,
     drop: [], // preseve debugger statements
-    external: Object.keys(dependencies || {}).concat(Object.keys(peerDependencies || {})),
+    external: Object.keys(peerDependencies || {}),
 };
 
 build({
