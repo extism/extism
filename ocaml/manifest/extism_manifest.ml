@@ -96,3 +96,16 @@ let of_file filename =
   t_of_yojson j
 
 let with_config t config = { t with config = Some config }
+
+let%test "rountrip" =
+  let config = [ ("a", Some "b"); ("b", Some "c") ] in
+  let memory = { max_pages = Some 5 } in
+  let t =
+    create ~config ~memory ~allowed_hosts:[ "example.com" ]
+      ~allowed_paths:[ ("a", "b") ]
+      ~timeout_ms:1000 []
+  in
+  let a = to_json t in
+  let b = of_json a in
+  let c = to_json b in
+  String.equal a c

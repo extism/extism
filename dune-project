@@ -40,6 +40,7 @@
   (ocaml (>= 4.14.1)) 
   (dune (>= 3.2))
   (ppx_yojson_conv (>= 0.15.0))
+  (ppx_inline_test (>= 0.15.0))
   (base64 (>= 3.5.0))
  )
  (tags
