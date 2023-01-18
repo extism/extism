@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest]
+        version: [11, 17]
         rust:
           - stable
     steps:
@@ -28,12 +29,9 @@ jobs:
         uses: actions/setup-java@v3
         with:
           distribution: 'temurin'
-          java-version: '11'
+          java-version: '${{ matrix.version }}'
       - name: Test Java
         run: |
           cd java
           mvn --batch-mode -Dorg.slf4j.simpleLogger.log.org.apache.maven.cli.transfer.Slf4jMavenTransferListener=warn verify
-      #- name: Examine logs
-      #  if: success() || failure()
-      #  run: |
-      #    cat /tmp/extism.log
+
