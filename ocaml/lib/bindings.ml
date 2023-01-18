@@ -31,7 +31,7 @@ let locate () =
       let fail n =
         Printf.fprintf stderr
           "Unable to find Extism installation, see \
-           https://github.com/extism/extism for installation instructions\n";
+           https://extism.org/docs/install/ for installation instructions\n";
         exit n
       in
       match Sys.getenv_opt "EXTISM_TEST_NO_LIB" with

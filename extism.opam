@@ -36,4 +36,4 @@ build: [
 ]
 dev-repo: "git+https://github.com/extism/extism.git"
 build-env: [EXTISM_TEST_NO_LIB = ""]
-post-messages: [ "See https://github.com/extism/extism for instructions on how to install libextism" ]
+post-messages: ["See https://extism.org/docs/install/ for information about installing libextism"]
