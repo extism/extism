@@ -87,6 +87,21 @@ func (p *CurrentPlugin) Memory(offs uint) []byte {
 	return unsafe.Slice((*byte)(unsafe.Add(data, offs)), C.int(length))
 }
 
+// Alloc a new memory block of the given length, returning its offset
+func (p *CurrentPlugin) Alloc(n uint) uint {
+	return uint(C.extism_current_plugin_memory_alloc(p.pointer, C.uint64_t(n)))
+}
+
+// Free the memory block specified by the given offset
+func (p *CurrentPlugin) Free(offs uint) {
+	C.extism_current_plugin_memory_free(p.pointer, C.uint64_t(offs))
+}
+
+// Length returns the number of bytes allocated at the specified offset
+func (p *CurrentPlugin) Length(offs uint) uint {
+	return uint(C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs)))
+}
+
 // NewContext creates a new context, it should be freed using the `Free` method
 func NewContext() Context {
 	p := C.extism_context_new()
