@@ -7,7 +7,7 @@ require "json"
 # If you do you can create a context with `Extism#new`, example: `ctx = Extism.new`
 Extism.with_context do |ctx|
   manifest = {
-    :wasm => [{ :path => "../wasm/code.wasm" }],
+    :wasm => [{ :path => "./code.wasm" }],
   }
 
   plugin = ctx.plugin(manifest)
