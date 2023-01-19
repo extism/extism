@@ -17,12 +17,18 @@ EXTISM_GO_FUNCTION(hello_world);
 import "C"
 
 //export hello_world
-func hello_world(plugin *C.ExtismCurrentPlugin, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData uintptr) {
+func hello_world(plugin unsafe.Pointer, inputs *C.ExtismVal, nInputs C.ExtismSize, outputs *C.ExtismVal, nOutputs C.ExtismSize, userData uintptr) {
 	fmt.Println("Hello from Go!")
 	s := cgo.Handle(userData)
 	fmt.Println(s.Value().(string))
 	inputSlice := unsafe.Slice(inputs, nInputs)
 	outputSlice := unsafe.Slice(outputs, nOutputs)
+
+	// Get memory pointed to by first element of input slice
+	p := extism.GetCurrentPlugin(plugin)
+	mem := p.Memory(extism.ValGetUInt(unsafe.Pointer(&inputSlice[0])))
+	fmt.Println(string(mem))
+
 	outputSlice[0] = inputSlice[0]
 }
 

@@ -76,8 +76,30 @@ class TestExtism(unittest.TestCase):
                 "plugin timeout exceeded 1000ms expectation",
             )
 
-    def _manifest(self):
-        wasm = self._count_vowels_wasm()
+    def test_extism_host_function(self):
+        @extism.host_fn
+        def hello_world(plugin, params, results, user_data):
+            offs = plugin.alloc(len(user_data))
+            mem = plugin.memory(offs)
+            mem[:] = user_data
+            results[0].value = offs.offset
+
+        with extism.Context() as ctx:
+            f = [
+                extism.Function(
+                    "hello_world",
+                    [extism.ValType.I64],
+                    [extism.ValType.I64],
+                    hello_world,
+                    b"test",
+                )
+            ]
+            plugin = ctx.plugin(self._manifest(functions=True), functions=f, wasi=True)
+            res = plugin.call("count_vowels", "aaa")
+            self.assertEqual(res, b"test")
+
+    def _manifest(self, functions=False):
+        wasm = self._count_vowels_wasm(functions)
         hash = hashlib.sha256(wasm).hexdigest()
         return {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max_pages": 5}}
 
@@ -90,14 +112,14 @@ class TestExtism(unittest.TestCase):
             "timeout_ms": 1000,
         }
 
-    def _count_vowels_wasm(self):
-        return read_test_wasm("code.wasm")
+    def _count_vowels_wasm(self, functions=False):
+        return read_test_wasm("code.wasm" if not functions else "code-functions.wasm")
 
     def _infinite_loop_wasm(self):
         return read_test_wasm("loop.wasm")
 
 
 def read_test_wasm(p):
-    path = join(dirname(__file__), p)
+    path = join(dirname(__file__), "..", "..", "wasm", p)
     with open(path, "rb") as wasm_file:
         return wasm_file.read()

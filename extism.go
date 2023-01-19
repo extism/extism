@@ -14,6 +14,41 @@ import (
 #cgo LDFLAGS: -L/usr/local/lib -lextism
 #include <extism.h>
 #include <stdlib.h>
+
+int64_t extism_val_i64(ExtismValUnion* x){
+	return x->i64;
+}
+
+int32_t extism_val_i32(ExtismValUnion* x){
+	return x->i32;
+}
+
+float extism_val_f32(ExtismValUnion* x){
+	return x->f32;
+}
+
+double extism_val_f64(ExtismValUnion* x){
+	return x->f64;
+}
+
+
+void extism_val_set_i64(ExtismValUnion* x, int64_t i){
+	x->i64 = i;
+}
+
+
+void extism_val_set_i32(ExtismValUnion* x, int32_t i){
+	x->i32 = i;
+}
+
+void extism_val_set_f32(ExtismValUnion* x, float f){
+	x->f32 = f;
+}
+
+void extism_val_set_f64(ExtismValUnion* x, double f){
+	x->f64 = f;
+}
+
 */
 import "C"
 
@@ -33,6 +68,7 @@ var (
 	I64       ValType = C.I64
 	F32       ValType = C.F32
 	F64       ValType = C.F64
+	V128      ValType = C.V128
 	FuncRef   ValType = C.FuncRef
 	ExternRef ValType = C.ExternRef
 )
@@ -75,9 +111,9 @@ type CurrentPlugin struct {
 	pointer *C.ExtismCurrentPlugin
 }
 
-func GetCurrentPlugin(ptr *C.ExtismCurrentPlugin) CurrentPlugin {
+func GetCurrentPlugin(ptr unsafe.Pointer) CurrentPlugin {
 	return CurrentPlugin{
-		pointer: ptr,
+		pointer: (*C.ExtismCurrentPlugin)(ptr),
 	}
 }
 
@@ -85,6 +121,21 @@ func (p *CurrentPlugin) Memory(offs uint) []byte {
 	length := C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs))
 	data := unsafe.Pointer(C.extism_current_plugin_memory(p.pointer))
 	return unsafe.Slice((*byte)(unsafe.Add(data, offs)), C.int(length))
+}
+
+// Alloc a new memory block of the given length, returning its offset
+func (p *CurrentPlugin) Alloc(n uint) uint {
+	return uint(C.extism_current_plugin_memory_alloc(p.pointer, C.uint64_t(n)))
+}
+
+// Free the memory block specified by the given offset
+func (p *CurrentPlugin) Free(offs uint) {
+	C.extism_current_plugin_memory_free(p.pointer, C.uint64_t(offs))
+}
+
+// Length returns the number of bytes allocated at the specified offset
+func (p *CurrentPlugin) Length(offs uint) uint {
+	return uint(C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs)))
 }
 
 // NewContext creates a new context, it should be freed using the `Free` method
@@ -359,4 +410,49 @@ func (plugin *Plugin) Free() {
 // Reset removes all registered plugins in a Context
 func (ctx Context) Reset() {
 	C.extism_context_reset(ctx.pointer)
+}
+
+// ValGetI64 returns an I64 from an ExtismVal, it accepts a pointer to a C.ExtismVal
+func ValGetI64(v unsafe.Pointer) int64 {
+	return int64(C.extism_val_i64(&(*Val)(v).v))
+}
+
+// ValGetUInt returns a uint from an ExtismVal, it accepts a pointer to a C.ExtismVal
+func ValGetUInt(v unsafe.Pointer) uint {
+	return uint(C.extism_val_i64(&(*Val)(v).v))
+}
+
+// ValGetI32 returns an int32 from an ExtismVal, it accepts a pointer to a C.ExtismVal
+func ValGetI32(v unsafe.Pointer) int32 {
+	return int32(C.extism_val_i32(&(*Val)(v).v))
+}
+
+// ValGetF32 returns a float32 from an ExtismVal, it accepts a pointer to a C.ExtismVal
+func ValGetF32(v unsafe.Pointer) float32 {
+	return float32(C.extism_val_f32(&(*Val)(v).v))
+}
+
+// ValGetF32 returns a float64 from an ExtismVal, it accepts a pointer to a C.ExtismVal
+func ValGetF64(v unsafe.Pointer) float64 {
+	return float64(C.extism_val_i64(&(*Val)(v).v))
+}
+
+// ValSetI64 stores an int64 in an ExtismVal, it accepts a pointer to a C.ExtismVal and the new value
+func ValSetI64(v unsafe.Pointer, i int64) {
+	C.extism_val_set_i64(&(*Val)(v).v, C.int64_t(i))
+}
+
+// ValSetI32 stores an int32 in an ExtismVal, it accepts a pointer to a C.ExtismVal and the new value
+func ValSetI32(v unsafe.Pointer, i int32) {
+	C.extism_val_set_i32(&(*Val)(v).v, C.int32_t(i))
+}
+
+// ValSetF32 stores a float32 in an ExtismVal, it accepts a pointer to a C.ExtismVal and the new value
+func ValSetF32(v unsafe.Pointer, i float32) {
+	C.extism_val_set_f32(&(*Val)(v).v, C.float(i))
+}
+
+// ValSetF64 stores a float64 in an ExtismVal, it accepts a pointer to a C.ExtismVal and the new value
+func ValSetF64(v unsafe.Pointer, f float64) {
+	C.extism_val_set_f64(&(*Val)(v).v, C.double(f))
 }

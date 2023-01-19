@@ -6,11 +6,16 @@ import (
 	"testing"
 )
 
-func manifest() Manifest {
+func manifest(functions bool) Manifest {
+	path := "./wasm/code.wasm"
+	if functions {
+		path = "./wasm/code-functions.wasm"
+	}
+
 	return Manifest{
 		Wasm: []Wasm{
 			WasmFile{
-				Path: "./wasm/code.wasm",
+				Path: path,
 			},
 		},
 	}
@@ -38,7 +43,7 @@ func TestCallPlugin(t *testing.T) {
 	ctx := NewContext()
 	defer ctx.Free()
 
-	plugin, err := ctx.PluginFromManifest(manifest(), false)
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -58,7 +63,7 @@ func TestFreePlugin(t *testing.T) {
 	ctx := NewContext()
 	defer ctx.Free()
 
-	plugin, err := ctx.PluginFromManifest(manifest(), false)
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -78,7 +83,7 @@ func TestContextReset(t *testing.T) {
 	ctx := NewContext()
 	defer ctx.Free()
 
-	plugin, err := ctx.PluginFromManifest(manifest(), false)
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -98,7 +103,7 @@ func TestCanUpdateAManifest(t *testing.T) {
 	ctx := NewContext()
 	defer ctx.Free()
 
-	plugin, err := ctx.PluginFromManifest(manifest(), false)
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -107,7 +112,7 @@ func TestCanUpdateAManifest(t *testing.T) {
 		t.Error(err)
 	}
 
-	plugin.UpdateManifest(manifest(), false)
+	plugin.UpdateManifest(manifest(false), []Function{}, false)
 
 	// can still call the plugin
 	if err := expectVowelCount(plugin, "this is a test", 4); err != nil {
@@ -119,7 +124,7 @@ func TestFunctionExists(t *testing.T) {
 	ctx := NewContext()
 	defer ctx.Free()
 
-	plugin, err := ctx.PluginFromManifest(manifest(), false)
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -136,7 +141,7 @@ func TestErrorsOnUnknownFunction(t *testing.T) {
 	ctx := NewContext()
 	defer ctx.Free()
 
-	plugin, err := ctx.PluginFromManifest(manifest(), false)
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}

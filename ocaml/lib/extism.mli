@@ -16,7 +16,14 @@ end
 
 (** [Val_type] enumerates every possible argument/result type *)
 module Val_type : sig
-  type t = I32 | I64 | F32 | F64 | FuncRef | ExternRef  (** Value type *)
+  type t =
+    | I32
+    | I64
+    | F32
+    | F64
+    | V128
+    | FuncRef
+    | ExternRef  (** Value type *)
 
   val of_int : int -> t
   val to_int : t -> int

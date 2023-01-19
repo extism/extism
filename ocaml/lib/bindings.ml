@@ -27,7 +27,16 @@ let locate () =
     init paths
   |> function
   | Some x -> x
-  | None -> raise Not_found
+  | None -> (
+      let fail n =
+        Printf.fprintf stderr
+          "Unable to find Extism installation, see \
+           https://extism.org/docs/install/ for installation instructions\n";
+        exit n
+      in
+      match Sys.getenv_opt "EXTISM_TEST_NO_LIB" with
+      | None -> fail 1
+      | Some _ -> fail 0)
 
 let from =
   let filename = locate () in
@@ -41,23 +50,25 @@ let extism_context_new = fn "extism_context_new" (void @-> returning context)
 let extism_context_free = fn "extism_context_free" (context @-> returning void)
 
 module Extism_val_type = struct
-  type t = I32 | I64 | F32 | F64 | FuncRef | ExternRef
+  type t = I32 | I64 | F32 | F64 | V128 | FuncRef | ExternRef
 
   let to_int = function
     | I32 -> 0
     | I64 -> 1
     | F32 -> 2
     | F64 -> 3
-    | FuncRef -> 4
-    | ExternRef -> 5
+    | V128 -> 4
+    | FuncRef -> 5
+    | ExternRef -> 6
 
   let of_int = function
     | 0 -> I32
     | 1 -> I64
     | 2 -> F32
     | 3 -> F64
-    | 4 -> FuncRef
-    | 5 -> ExternRef
+    | 4 -> V128
+    | 5 -> FuncRef
+    | 6 -> ExternRef
     | n -> invalid_arg ("Extism_val_type.of_int: " ^ string_of_int n)
 
   let t : t typ = view ~read:of_int ~write:to_int int

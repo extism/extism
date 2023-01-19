@@ -7,7 +7,7 @@ authors: ["Extism Authors <oss@extism.org>"]
 license: "BSD-3-Clause"
 tags: ["topics" "wasm" "plugin"]
 homepage: "https://github.com/extism/extism"
-doc: "https://extism.org"
+doc: "https://github.com/extism/extism"
 bug-reports: "https://github.com/extism/extism/issues"
 depends: [
   "ocaml" {>= "4.14.1"}
@@ -35,3 +35,5 @@ build: [
   ]
 ]
 dev-repo: "git+https://github.com/extism/extism.git"
+build-env: [EXTISM_TEST_NO_LIB = ""]
+post-messages: ["See https://extism.org/docs/install/ for information about installing libextism"]

@@ -83,7 +83,7 @@ class TestExtism < Minitest::Test
     {
       wasm: [
         {
-          path: File.join(__dir__, "code.wasm"),
+          path: File.join(__dir__, "../../wasm/code.wasm"),
         },
       ],
     }
