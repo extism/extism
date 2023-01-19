@@ -82,7 +82,7 @@ class TestExtism(unittest.TestCase):
             offs = plugin.alloc(len(user_data))
             mem = plugin.memory(offs)
             mem[:] = user_data
-            results[0].value = offs.offset 
+            results[0].value = offs.offset
 
         with extism.Context() as ctx:
             f = [

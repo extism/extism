@@ -7,5 +7,5 @@ from .extism import (
     host_fn,
     Function,
     ValType,
-    Val
+    Val,
 )

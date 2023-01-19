@@ -4,7 +4,16 @@ import { join } from "path";
 
 function manifest(functions: boolean = false): extism.Manifest {
   return {
-    wasm: [{ path: join(__dirname, functions ? "/../../wasm/code-functions.wasm" : "/../../wasm/code.wasm") }],
+    wasm: [
+      {
+        path: join(
+          __dirname,
+          functions
+            ? "/../../wasm/code-functions.wasm"
+            : "/../../wasm/code.wasm"
+        ),
+      },
+    ],
   };
 }
 
@@ -106,12 +115,18 @@ describe("test extism", () => {
   test("host functions work", async () => {
     await extism.withContext(async (ctx: extism.Context) => {
       const plugin = ctx.plugin(manifest(true), true, [
-        new extism.HostFunction("hello_world", [extism.ValType.I64], [extism.ValType.I64], (plugin: any, params: any, results: any, user_data: string) => {
-          const offs = plugin.memoryAlloc(user_data.length);
-          const mem = plugin.memory(offs);
-          mem.write(user_data);
-          results[0].v.i64 = offs;
-        }, "test")
+        new extism.HostFunction(
+          "hello_world",
+          [extism.ValType.I64],
+          [extism.ValType.I64],
+          (plugin: any, params: any, results: any, user_data: string) => {
+            const offs = plugin.memoryAlloc(user_data.length);
+            const mem = plugin.memory(offs);
+            mem.write(user_data);
+            results[0].v.i64 = offs;
+          },
+          "test"
+        ),
       ]);
 
       const res = await plugin.call("count_vowels", "aaa");
