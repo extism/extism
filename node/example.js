@@ -26,7 +26,7 @@ let hello_world = new HostFunction(
 let functions = [hello_world];
 
 withContext(async function (context) {
-  let wasm = readFileSync("../wasm/code-functions.wasm");
+  let wasm = readFileSync("code-functions.wasm");
   let p = context.plugin(wasm, true, functions);
 
   if (!p.functionExists("count_vowels")) {
@@ -41,6 +41,6 @@ withContext(async function (context) {
 
 // or, use a context like this:
 // let ctx = new Context();
-// let wasm = readFileSync("../wasm/code.wasm");
+// let wasm = readFileSync("code-functions.wasm");
 // let p = ctx.plugin(wasm);
 // ... where the context can be passed around to various functions etc.
