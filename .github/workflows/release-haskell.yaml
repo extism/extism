@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
 
-name: Release Rust SDK
+name: Release Haskell SDK
 
 jobs:
   release-sdks:
@@ -10,7 +10,6 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
       - uses: cachix/haskell-release-action@v1
         with:
           - hackage-token: "${{ secrets.HACKAGE_TOKEN }}"
