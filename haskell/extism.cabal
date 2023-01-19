@@ -22,7 +22,7 @@ library
         base              >= 4.16.1 && < 4.18.0,
         bytestring        >= 0.11.3 && < 0.12,
         json              >= 0.10 && < 0.11,
-        extism-manifest   >= 0.0.0 && < 0.1.0
+        extism-manifest   >= 0.0.0 && < 0.2.0
 
 test-suite extism-example
     type:             exitcode-stdio-1.0
