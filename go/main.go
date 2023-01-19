@@ -46,7 +46,7 @@ func main() {
 	} else {
 		data = []byte("testing from go -> wasm shared memory...")
 	}
-	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code-functions.wasm"}}}
+	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "code-functions.wasm"}}}
 	f := extism.NewFunction("hello_world", []extism.ValType{extism.I64}, []extism.ValType{extism.I64}, C.hello_world, "Hello again!")
 	defer f.Free()
 	plugin, err := ctx.PluginFromManifest(manifest, []extism.Function{f}, true)
