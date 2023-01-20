@@ -1,6 +1,6 @@
 ### _Welcome!_
 
-**Please note:** This project still under active development and things may change until we hit v1.0.
+**Please note:** This project still under active development and APIs may change until we hit v1.0.
 
 If you're interested in working on or building with Extism, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know - we are happy to help get you started.
 
