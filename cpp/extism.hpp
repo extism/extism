@@ -249,6 +249,22 @@ public:
     memcpy(this->memory() + offs, bytes, len);
     output.v.i64 = offs;
   }
+
+  uint8_t *inputBytes(Val &inp, size_t *length = nullptr) {
+    if (inp.t != ValType::I64) {
+      return nullptr;
+    }
+    if (length != nullptr) {
+      *length = this->memory_length(inp.v.i64);
+    }
+    return this->memory() + inp.v.i64;
+  }
+
+  std::string inputString(Val &inp) {
+    size_t length = 0;
+    char *buf = (char *)this->inputBytes(inp, &length);
+    return std::string(buf, length);
+  }
 };
 
 typedef std::function<void(CurrentPlugin, const std::vector<Val> &,

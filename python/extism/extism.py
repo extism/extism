@@ -471,6 +471,16 @@ class CurrentPlugin:
 
     def return_string(self, output, s: str):
         self.return_bytes(output, s.encode())
+
+    def input_buffer(self, input):
+        mem = self.memory_at_offset(input)
+        return self.memory(mem)
+
+    def input_bytes(self, input):
+        return self.input_buffer()[:]
+
+    def input_string(self, input):
+        return self.input_bytes().decode()
          
 
 def host_fn(func):

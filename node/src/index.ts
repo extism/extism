@@ -419,6 +419,10 @@ export class CurrentPlugin {
     this.memory(offs).write(s);
     output.v.i64 = offs;
   }
+
+  inputString(input: any): string {
+    return this.memory(input.v.i64).toString()
+  }
 }
 
 /**
