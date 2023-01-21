@@ -464,6 +464,14 @@ class CurrentPlugin:
         len = _lib.extism_current_plugin_memory_length(self.pointer, offs)
         return Memory(offs, len)
 
+    def return_bytes(self, output, b: bytes):
+        mem = self.alloc(len(b))
+        self.memory(mem)[:] = b
+        output.value = mem.offset
+
+    def return_string(self, output, s: str):
+        self.return_bytes(output, s.encode())
+         
 
 def host_fn(func):
     """

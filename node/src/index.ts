@@ -408,6 +408,17 @@ export class CurrentPlugin {
   memoryLength(offset: number): number {
     return lib.extism_current_plugin_memory_length(this.pointer, offset);
   }
+
+  /**
+   * Return a string from a host function
+   * @param output - The output to set
+   * @param s - The string to return
+   */
+  returnString(output: any, s: string) {
+    var offs = this.memoryAlloc(s.length);
+    this.memory(offs).write(s);
+    output.v.i64 = offs;
+  }
 }
 
 /**

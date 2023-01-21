@@ -239,6 +239,16 @@ public:
   void free(uint64_t offs) {
     extism_current_plugin_memory_free(this->pointer, offs);
   }
+
+  void returnString(Val &output, const std::string &s) {
+    this->returnBytes(output, (const uint8_t *)s.c_str(), s.size());
+  }
+
+  void returnBytes(Val &output, const uint8_t *bytes, size_t len) {
+    auto offs = this->alloc(len);
+    memcpy(this->memory() + offs, bytes, len);
+    output.v.i64 = offs;
+  }
 };
 
 typedef std::function<void(CurrentPlugin, const std::vector<Val> &,

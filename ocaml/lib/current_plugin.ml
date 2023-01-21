@@ -60,3 +60,15 @@ module Memory_block = struct
       p +@ i <-@ String.unsafe_get s i
     done
 end
+
+let return_string t (outputs : Types.Val_array.t) index s =
+  let mem = alloc t (String.length s) in
+  Memory_block.set_string t mem s;
+  Types.Val_array.(
+    outputs.$[index] <- Types.Val.of_i64 (Unsigned.UInt64.to_int64 mem.offs))
+
+let return_bigstring t (outputs : Types.Val_array.t) index s =
+  let mem = alloc t (Bigstringaf.length s) in
+  Memory_block.set_bigstring t mem s;
+  Types.Val_array.(
+    outputs.$[index] <- Types.Val.of_i64 (Unsigned.UInt64.to_int64 mem.offs))
