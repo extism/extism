@@ -36,7 +36,7 @@
     <scm>
         <connection>scm:git:git://github.com/extism/extism.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/extism/extism.git</developerConnection>
-        <url>https://github.com/extism/extism/java</url>
+        <url>https://github.com/extism/extism/tree/main/java</url>
         <tag>main</tag>
     </scm>
 
