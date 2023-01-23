@@ -26,8 +26,8 @@ func hello_world(plugin unsafe.Pointer, inputs *C.ExtismVal, nInputs C.ExtismSiz
 
 	// Get memory pointed to by first element of input slice
 	p := extism.GetCurrentPlugin(plugin)
-	mem := p.Memory(extism.ValGetUInt(unsafe.Pointer(&inputSlice[0])))
-	fmt.Println(string(mem))
+	str := p.InputString(unsafe.Pointer(&inputSlice[0]))
+	fmt.Println(str)
 
 	outputSlice[0] = inputSlice[0]
 }
