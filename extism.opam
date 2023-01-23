@@ -11,12 +11,13 @@ doc: "https://github.com/extism/extism"
 bug-reports: "https://github.com/extism/extism/issues"
 depends: [
   "ocaml" {>= "4.14.1"}
-  "dune" {>= "3.2" & >= "3.2"}
+  "dune" {>= "3.2"}
+  "ctypes" {>= "0.18.0"}
   "ctypes-foreign" {>= "0.18.0"}
   "bigstringaf" {>= "0.9.0"}
-  "ppx_yojson_conv" {>= "0.15.0"}
+  "ppx_yojson_conv" {>= "v0.15.0"}
   "extism-manifest"
-  "ppx_inline_test" {>= "0.15.0"}
+  "ppx_inline_test" {>= "v0.15.0"}
   "cmdliner" {>= "1.1.1"}
   "odoc" {with-doc}
 ]
