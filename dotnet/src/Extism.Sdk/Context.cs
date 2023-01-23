@@ -6,7 +6,7 @@ namespace Extism.Sdk.Native;
 /// <summary>
 /// Represents an Extism context through which you can load <see cref="Plugin"/>s.
 /// </summary>
-public class Context : IDisposable
+public unsafe class Context : IDisposable
 {
     private const int DisposedMarker = 1;
 
@@ -17,13 +17,16 @@ public class Context : IDisposable
     /// </summary>
     public Context()
     {
-        NativeHandle = LibExtism.extism_context_new();
+        unsafe
+        {
+            NativeHandle = LibExtism.extism_context_new();
+        }
     }
 
     /// <summary>
     /// Native pointer to the Extism Context.
     /// </summary>
-    internal IntPtr NativeHandle { get; }
+    internal LibExtism.ExtismContext* NativeHandle { get; }
 
     /// <summary>
     /// Loads an Extism <see cref="Plugin"/>.
@@ -62,7 +65,7 @@ public class Context : IDisposable
     {
         CheckNotDisposed();
 
-        var result = LibExtism.extism_error(NativeHandle, -1);
+        var result = LibExtism.extism_error(NativeHandle, (LibExtism.ExtismPlugin*)-1);
         return Marshal.PtrToStringUTF8(result);
     }
 

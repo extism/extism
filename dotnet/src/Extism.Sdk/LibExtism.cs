@@ -7,19 +7,121 @@ namespace Extism.Sdk.Native;
 /// </summary>
 internal static class LibExtism
 {
+    internal enum ExtismValType
+    {
+        /// <summary>
+        /// Signed 32 bit integer. Equivalent of <see cref="int"/> or <see cref="uint"/>
+        /// </summary>
+        I32,
+
+        /// <summary>
+        /// Signed 64 bit integer. Equivalent of <see cref="long"/> or <see cref="ulong"/>
+        /// </summary>
+        I64,
+
+        /// <summary>
+        /// Floating point 32 bit integer. Equivalent of <see cref="float"/>
+        /// </summary>
+        F32,
+
+        /// <summary>
+        /// Floating point 64 bit integer. Equivalent of <see cref="double"/>
+        /// </summary>
+        F64,
+
+        /// <summary>
+        /// A 128 bit number.
+        /// </summary>
+        V128,
+
+        /// <summary>
+        /// A reference to opaque data in the Wasm instance.
+        /// </summary>
+        FuncRef,
+
+        /// <summary>
+        /// A reference to opaque data in the Wasm instance.
+        /// </summary>
+        ExternRef
+    }
+
+    /// <summary>
+    /// A `Context` is used to store and manage plugins.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ExtismContext { }
+
+    /// <summary>
+    /// Wraps host functions
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ExtismFunction { }
+
+    /// <summary>
+    /// 
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ExtismPlugin { }
+
+    /// <summary>
+    /// Plugin contains everything needed to execute a WASM function.
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ExtismCurrentPlugin { }
+
+    /// <summary>
+    /// A union type for host function argument/return values.
+    /// </summary>
+    [StructLayout(LayoutKind.Explicit)]
+    internal struct ExtismValUnion
+    {
+        [FieldOffset(0)]
+        internal int i32;
+
+        [FieldOffset(0)]
+        internal long i64;
+
+        [FieldOffset(0)]
+        internal float f32;
+
+        [FieldOffset(0)]
+        internal double f64;
+    }
+
+    /// <summary>
+    /// `ExtismVal` holds the type and value of a function argument/return
+    /// </summary>
+    [StructLayout(LayoutKind.Sequential)]
+    internal struct ExtismVal
+    {
+        internal ExtismValType t;
+        internal ExtismValUnion v;
+    }
+
+    /// <summary>
+    /// Host function signature
+    /// </summary>
+    /// <param name="plugin"></param>
+    /// <param name="inputs"></param>
+    /// <param name="n_inputs"></param>
+    /// <param name="outputs"></param>
+    /// <param name="n_outputs"></param>
+    /// <param name="data"></param>
+    internal delegate void ExtismFunctionType(ref ExtismCurrentPlugin plugin, Span<ExtismVal> inputs, uint n_inputs, Span<ExtismVal> outputs, uint n_outputs, IntPtr data);
+
     /// <summary>
     /// Create a new context.
     /// </summary>
     /// <returns>A pointer to the newly created context.</returns>
     [DllImport("extism")]
-    public static extern IntPtr extism_context_new();
+    unsafe internal static extern ExtismContext* extism_context_new();
 
     /// <summary>
     /// Remove a context from the registry and free associated memory.
     /// </summary>
     /// <param name="context"></param>
     [DllImport("extism")]
-    public static extern void extism_context_free(IntPtr context);
+    unsafe internal static extern void extism_context_free(ExtismContext* context);
 
     /// <summary>
     /// Load a WASM plugin.
@@ -32,7 +134,7 @@ internal static class LibExtism
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe public static extern IntPtr extism_plugin_new(IntPtr context, byte* wasm, int wasmSize, IntPtr *functions, int nFunctions, bool withWasi);
+    unsafe internal static extern ExtismPlugin* extism_plugin_new(ExtismContext* context, byte* wasm, int wasmSize, IntPtr* functions, int nFunctions, bool withWasi);
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
@@ -48,7 +150,7 @@ internal static class LibExtism
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe public static extern bool extism_plugin_update(IntPtr context, IntPtr plugin, byte* wasm, int wasmLength, IntPtr *functions, int nFunctions, bool withWasi);
+    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, ExtismPlugin* plugin, byte* wasm, int wasmLength, IntPtr* functions, int nFunctions, bool withWasi);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.
@@ -56,14 +158,14 @@ internal static class LibExtism
     /// <param name="context">Pointer to the context the plugin is associated with.</param>
     /// <param name="plugin">Pointer to the plugin you want to free.</param>
     [DllImport("extism")]
-    public static extern void extism_plugin_free(IntPtr context, IntPtr plugin);
+    unsafe internal static extern void extism_plugin_free(ExtismContext* context, ExtismPlugin* plugin);
 
     /// <summary>
     /// Remove all plugins from the registry.
     /// </summary>
     /// <param name="context"></param>
     [DllImport("extism")]
-    public static extern void extism_context_reset(IntPtr context);
+    unsafe internal static extern void extism_context_reset(ExtismContext* context);
 
     /// <summary>
     /// Update plugin config values, this will merge with the existing values.
@@ -74,7 +176,7 @@ internal static class LibExtism
     /// <param name="jsonLength">The length of the `json` parameter.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe public static extern bool extism_plugin_config(IntPtr context, IntPtr plugin, byte* json, int jsonLength);
+    unsafe internal static extern bool extism_plugin_config(ExtismContext* context, ExtismPlugin* plugin, byte* json, int jsonLength);
 
     /// <summary>
     /// Returns true if funcName exists.
@@ -84,7 +186,7 @@ internal static class LibExtism
     /// <param name="funcName"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    public static extern bool extism_plugin_function_exists(IntPtr context, IntPtr plugin, string funcName);
+    unsafe internal static extern bool extism_plugin_function_exists(ExtismContext* context, ExtismPlugin* plugin, string funcName);
 
     /// <summary>
     /// Call a function.
@@ -96,7 +198,7 @@ internal static class LibExtism
     /// <param name="dataLen">The length of the `data` parameter.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe public static extern int extism_plugin_call(IntPtr context, IntPtr plugin, string funcName, byte* data, int dataLen);
+    unsafe internal static extern int extism_plugin_call(ExtismContext* context, ExtismPlugin* plugin, string funcName, byte* data, int dataLen);
 
     /// <summary>
     /// Get the error associated with a Context or Plugin, if plugin is -1 then the context error will be returned.
@@ -105,7 +207,7 @@ internal static class LibExtism
     /// <param name="plugin">A plugin pointer, or -1 for the context error.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    public static extern IntPtr extism_error(IntPtr context, nint plugin);
+    unsafe internal static extern IntPtr extism_error(ExtismContext* context, ExtismPlugin* plugin);
 
     /// <summary>
     /// Get the length of a plugin's output data.
@@ -114,7 +216,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    public static extern long extism_plugin_output_length(IntPtr context, IntPtr plugin);
+    unsafe internal static extern long extism_plugin_output_length(ExtismContext* context, ExtismPlugin* plugin);
 
     /// <summary>
     /// Get the plugin's output data.
@@ -123,7 +225,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    public static extern IntPtr extism_plugin_output_data(IntPtr context, IntPtr plugin);
+    unsafe internal static extern IntPtr extism_plugin_output_data(ExtismContext* context, ExtismPlugin* plugin);
 
     /// <summary>
     /// Set log file and level.
@@ -132,43 +234,43 @@ internal static class LibExtism
     /// <param name="logLevel"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    public static extern bool extism_log_file(string filename, string logLevel);
+    internal static extern bool extism_log_file(string filename, string logLevel);
 
     /// <summary>
     /// Get the Extism version string.
     /// </summary>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_version")]
-    public static extern IntPtr extism_version();
+    internal static extern IntPtr extism_version();
 
     /// <summary>
     /// Extism Log Levels
     /// </summary>
-    public static class LogLevels
+    internal static class LogLevels
     {
         /// <summary>
         /// Designates very serious errors.
         /// </summary>
-        public const string Error = "Error";
+        internal const string Error = "Error";
 
         /// <summary>
         /// Designates hazardous situations.
         /// </summary>
-        public const string Warn = "Warn";
+        internal const string Warn = "Warn";
 
         /// <summary>
         /// Designates useful information.
         /// </summary>
-        public const string Info = "Info";
+        internal const string Info = "Info";
 
         /// <summary>
         /// Designates lower priority information.
         /// </summary>
-        public const string Debug = "Debug";
+        internal const string Debug = "Debug";
 
         /// <summary>
         /// Designates very low priority, often extremely verbose, information.
         /// </summary>
-        public const string Trace = "Trace";
+        internal const string Trace = "Trace";
     }
 }

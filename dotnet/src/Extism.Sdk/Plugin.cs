@@ -6,14 +6,14 @@ namespace Extism.Sdk.Native;
 /// <summary>
 /// Represents a WASM Extism plugin.
 /// </summary>
-public class Plugin : IDisposable
+public unsafe class Plugin : IDisposable
 {
     private const int DisposedMarker = 1;
 
     private readonly Context _context;
     private int _disposed;
 
-    internal Plugin(Context context, IntPtr handle)
+    internal Plugin(Context context, LibExtism.ExtismPlugin* handle)
     {
         _context = context;
         NativeHandle = handle;
@@ -22,14 +22,14 @@ public class Plugin : IDisposable
     /// <summary>
     /// A pointer to the native Plugin struct.
     /// </summary>
-    internal IntPtr NativeHandle { get; }
+    internal LibExtism.ExtismPlugin* NativeHandle { get; }
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
     /// </summary>
     /// <param name="wasm">The plugin WASM bytes.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    unsafe public bool Update(ReadOnlySpan<byte> wasm, bool withWasi)
+    public bool Update(ReadOnlySpan<byte> wasm, bool withWasi)
     {
         CheckNotDisposed();
 
