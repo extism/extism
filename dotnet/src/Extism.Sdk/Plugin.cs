@@ -6,14 +6,14 @@ namespace Extism.Sdk.Native;
 /// <summary>
 /// Represents a WASM Extism plugin.
 /// </summary>
-public unsafe class Plugin : IDisposable
+public class Plugin : IDisposable
 {
     private const int DisposedMarker = 1;
 
     private readonly Context _context;
     private int _disposed;
 
-    internal Plugin(Context context, LibExtism.ExtismPlugin* handle)
+    internal Plugin(Context context, IntPtr handle)
     {
         _context = context;
         NativeHandle = handle;
@@ -22,14 +22,14 @@ public unsafe class Plugin : IDisposable
     /// <summary>
     /// A pointer to the native Plugin struct.
     /// </summary>
-    internal LibExtism.ExtismPlugin* NativeHandle { get; }
+    internal IntPtr NativeHandle { get; }
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
     /// </summary>
     /// <param name="wasm">The plugin WASM bytes.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    public bool Update(ReadOnlySpan<byte> wasm, bool withWasi)
+    unsafe public bool Update(ReadOnlySpan<byte> wasm, bool withWasi)
     {
         CheckNotDisposed();
 
@@ -56,7 +56,7 @@ public unsafe class Plugin : IDisposable
     /// <summary>
     /// Checks if a specific function exists in the current plugin.
     /// </summary>
-    public bool FunctionExists(string name)
+    unsafe public bool FunctionExists(string name)
     {
         CheckNotDisposed();
 
@@ -79,13 +79,19 @@ public unsafe class Plugin : IDisposable
         fixed (byte* dataPtr = data)
         {
             int response = LibExtism.extism_plugin_call(_context.NativeHandle, NativeHandle, functionName, dataPtr, data.Length);
-            if (response == 0) {
+            if (response == 0)
+            {
                 return OutputData();
-            } else {
+            }
+            else
+            {
                 var errorMsg = GetError();
-                if (errorMsg != null) {
+                if (errorMsg != null)
+                {
                     throw new ExtismException(errorMsg);
-                } else {
+                }
+                else
+                {
                     throw new ExtismException("Call to Extism failed");
                 }
             }
@@ -96,7 +102,7 @@ public unsafe class Plugin : IDisposable
     /// Get the length of a plugin's output data.
     /// </summary>
     /// <returns></returns>
-    internal int OutputLength()
+    unsafe internal int OutputLength()
     {
         CheckNotDisposed();
 
@@ -123,7 +129,7 @@ public unsafe class Plugin : IDisposable
     /// Get the error associated with the current plugin.
     /// </summary>
     /// <returns></returns>
-    internal string? GetError()
+    unsafe internal string? GetError()
     {
         CheckNotDisposed();
 
@@ -168,7 +174,7 @@ public unsafe class Plugin : IDisposable
     /// <summary>
     /// Frees all resources held by this Plugin.
     /// </summary>
-    protected virtual void Dispose(bool disposing)
+    unsafe protected virtual void Dispose(bool disposing)
     {
         if (disposing)
         {

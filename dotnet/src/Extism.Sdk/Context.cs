@@ -65,7 +65,7 @@ public unsafe class Context : IDisposable
     {
         CheckNotDisposed();
 
-        var result = LibExtism.extism_error(NativeHandle, (LibExtism.ExtismPlugin*)-1);
+        var result = LibExtism.extism_error(NativeHandle, -1);
         return Marshal.PtrToStringUTF8(result);
     }
 
