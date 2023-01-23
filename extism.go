@@ -456,3 +456,22 @@ func ValSetF32(v unsafe.Pointer, i float32) {
 func ValSetF64(v unsafe.Pointer, f float64) {
 	C.extism_val_set_f64(&(*Val)(v).v, C.double(f))
 }
+
+func (p *CurrentPlugin) ReturnBytes(v unsafe.Pointer, b []byte) {
+	mem := p.Alloc(uint(len(b)))
+	ptr := p.Memory(mem)
+	copy(ptr, b)
+	ValSetI64(v, int64(mem))
+}
+
+func (p *CurrentPlugin) ReturnString(v unsafe.Pointer, s string) {
+	p.ReturnBytes(v, []byte(s))
+}
+
+func (p *CurrentPlugin) InputBytes(v unsafe.Pointer) []byte {
+	return p.Memory(ValGetUInt(v))
+}
+
+func (p *CurrentPlugin) InputString(v unsafe.Pointer) string {
+	return string(p.InputBytes(v))
+}
