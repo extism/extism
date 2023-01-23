@@ -61,7 +61,7 @@ impl PluginMemory {
 
     /// Write byte to memory
     pub(crate) fn store_u8(&mut self, offs: usize, data: u8) -> Result<(), MemoryAccessError> {
-        trace!("store_u8: {data:x} at offset {offs}");
+        trace!("store_u8: offset={offs} data={data:#04x}");
         if offs >= self.size() {
             // This should raise MemoryAccessError
             let buf = &mut [0];
@@ -74,7 +74,7 @@ impl PluginMemory {
 
     /// Read byte from memory
     pub(crate) fn load_u8(&self, offs: usize) -> Result<u8, MemoryAccessError> {
-        trace!("load_u8: offset {offs}");
+        trace!("load_u8: offset={offs}");
         if offs >= self.size() {
             // This should raise MemoryAccessError
             let buf = &mut [0];
@@ -86,7 +86,7 @@ impl PluginMemory {
 
     /// Write u64 to memory
     pub(crate) fn store_u64(&mut self, offs: usize, data: u64) -> Result<(), Error> {
-        trace!("store_u64: {data:x} at offset {offs}");
+        trace!("store_u64: offset={offs} data={data:#18x}");
         let handle = MemoryBlock {
             offset: offs,
             length: 8,
@@ -97,7 +97,7 @@ impl PluginMemory {
 
     /// Read u64 from memory
     pub(crate) fn load_u64(&self, offs: usize) -> Result<u64, Error> {
-        trace!("load_u64: offset {offs}");
+        trace!("load_u64: offset={offs}");
         let mut buf = [0; 8];
         let handle = MemoryBlock {
             offset: offs,
