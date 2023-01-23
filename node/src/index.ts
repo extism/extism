@@ -415,9 +415,24 @@ export class CurrentPlugin {
    * @param s - The string to return
    */
   returnString(output: any, s: string) {
-    var offs = this.memoryAlloc(s.length);
+    var offs = this.memoryAlloc(Buffer.byteLength(s));
     this.memory(offs).write(s);
     output.v.i64 = offs;
+  }
+
+  /**
+   * Return bytes from a host function
+   * @param output - The output to set
+   * @param b - The buffer to return
+   */
+  returnBytes(output: any, s: Buffer) {
+    var offs = this.memoryAlloc(b.length);
+    this.memory(offs).write(s);
+    output.v.i64 = offs;
+  }
+
+  inputBytes(input: any): Buffer {
+    return this.memory(input.v.i64)
   }
 
   inputString(input: any): string {
