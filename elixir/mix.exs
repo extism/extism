@@ -23,7 +23,7 @@ defmodule Extism.MixProject do
 
   defp deps do
     [
-      {:rustler, "~> 0.26.0"},
+      {:rustler, "~> 0.27.0"},
       {:json, "~> 1.4"},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false}
     ]
