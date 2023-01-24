@@ -414,7 +414,7 @@ export class CurrentPlugin {
    * @param output - The output to set
    * @param s - The string to return
    */
-  returnString(output: any, s: string) {
+  returnString(output: typeof Val, s: string) {
     var offs = this.memoryAlloc(Buffer.byteLength(s));
     this.memory(offs).write(s);
     output.v.i64 = offs;
@@ -425,17 +425,17 @@ export class CurrentPlugin {
    * @param output - The output to set
    * @param b - The buffer to return
    */
-  returnBytes(output: any, s: Buffer) {
+  returnBytes(output: typeof Val, b: Buffer) {
     var offs = this.memoryAlloc(b.length);
-    this.memory(offs).write(s);
+    this.memory(offs).fill(b);
     output.v.i64 = offs;
   }
 
-  inputBytes(input: any): Buffer {
+  inputBytes(input: typeof Val): Buffer {
     return this.memory(input.v.i64)
   }
 
-  inputString(input: any): string {
+  inputString(input: typeof Val): string {
     return this.memory(input.v.i64).toString()
   }
 }
