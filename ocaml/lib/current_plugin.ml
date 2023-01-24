@@ -72,3 +72,13 @@ let return_bigstring t (outputs : Types.Val_array.t) index s =
   Memory_block.set_bigstring t mem s;
   Types.Val_array.(
     outputs.$[index] <- Types.Val.of_i64 (Unsigned.UInt64.to_int64 mem.offs))
+
+let input_string t inputs index =
+  let inp = Types.Val_array.(inputs.$[index]) in
+  let mem = Memory_block.of_val_exn t inp in
+  Memory_block.get_string t mem
+
+let input_bigstring t inputs index =
+  let inp = Types.Val_array.(inputs.$[index]) in
+  let mem = Memory_block.of_val_exn t inp in
+  Memory_block.get_bigstring t mem
