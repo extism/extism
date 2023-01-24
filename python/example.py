@@ -13,11 +13,10 @@ else:
 
 @host_fn
 def hello_world(plugin, input, output, context, a_string):
-    mem = plugin.memory_at_offset(input[0])
     print("Hello from Python!")
     print(a_string)
     print(input)
-    print(plugin.memory(mem)[:])
+    print(plugin.input_string(input[0]))
     output[0] = input[0]
 
 

@@ -477,10 +477,10 @@ class CurrentPlugin:
         return self.memory(mem)
 
     def input_bytes(self, input):
-        return self.input_buffer()[:]
+        return self.input_buffer(input)[:]
 
     def input_string(self, input):
-        return self.input_bytes().decode()
+        return self.input_bytes(input).decode()
          
 
 def host_fn(func):
