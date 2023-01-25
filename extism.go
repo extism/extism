@@ -93,11 +93,19 @@ func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Poin
 	function.userData = cgo.NewHandle(userData)
 	cname := C.CString(name)
 	ptr := unsafe.Pointer(function.userData)
+	var inputsPtr *C.ExtismValType = nil
+	if len(inputs) > 0 {
+		inputsPtr = (*C.ExtismValType)(&inputs[0])
+	}
+	var outputsPtr *C.ExtismValType = nil
+	if len(outputs) > 0 {
+		outputsPtr = (*C.ExtismValType)(&outputs[0])
+	}
 	function.pointer = C.extism_function_new(
 		cname,
-		(*C.ExtismValType)(&inputs[0]),
+		inputsPtr,
 		C.uint64_t(len(inputs)),
-		(*C.ExtismValType)(&outputs[0]),
+		outputsPtr,
 		C.uint64_t(len(outputs)),
 		(*[0]byte)(f),
 		ptr,
