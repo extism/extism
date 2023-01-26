@@ -5,12 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="24fbf7eb-9461-44e8-9634-e65656cbe417" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Extism.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Extism.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/LibExtism.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/LibExtism.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Plugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Plugin.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/org/extism/sdk/PluginTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/org/extism/sdk/PluginTests.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/org/extism/sdk/TestWasmSources.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/org/extism/sdk/TestWasmSources.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/ManifestHttpRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/ManifestHttpRequest.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/MemoryOptions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/MemoryOptions.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/ByteArrayWasmSource.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/ByteArrayWasmSource.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/PathWasmSource.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/PathWasmSource.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -112,11 +110,22 @@
       <workItem from="1674156645380" duration="1718000" />
       <workItem from="1674502059613" duration="1086000" />
       <workItem from="1674636904837" duration="60000" />
-      <workItem from="1674673587693" duration="12669000" />
+      <workItem from="1674673587693" duration="13029000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
+  </component>
+  <component name="XDebuggerManager">
+    <breakpoint-manager>
+      <breakpoints>
+        <line-breakpoint enabled="true" type="java-line">
+          <url>file://$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java</url>
+          <line>33</line>
+          <option name="timeStamp" value="3" />
+        </line-breakpoint>
+      </breakpoints>
+    </breakpoint-manager>
   </component>
 </project>
