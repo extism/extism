@@ -431,10 +431,18 @@ export class CurrentPlugin {
     output.v.i64 = offs;
   }
 
+  /**
+   * Get bytes from host function parameter
+   * @param input - The input to read
+   */
   inputBytes(input: typeof Val): Buffer {
     return this.memory(input.v.i64)
   }
 
+  /**
+   * Get string from host function parameter
+   * @param input - The input to read
+   */
   inputString(input: typeof Val): string {
     return this.memory(input.v.i64).toString()
   }
