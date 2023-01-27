@@ -116,6 +116,11 @@ module Current_plugin : sig
   val free : t -> memory_block -> unit
   (** Free an allocated block of memory *)
 
+  val return_string : t -> Val_array.t -> int -> string -> unit
+  val return_bigstring : t -> Val_array.t -> int -> Bigstringaf.t -> unit
+  val input_string : t -> Val_array.t -> int -> string
+  val input_bigstring : t -> Val_array.t -> int -> Bigstringaf.t
+
   (** Some helpter functions for reading/writing memory *)
   module Memory_block : sig
     val to_val : memory_block -> Val.t

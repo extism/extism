@@ -139,8 +139,7 @@ let%test "call_functions" =
       ~user_data:"Hello again!"
     @@ fun plugin params results user_data ->
     let open Types.Val_array in
-    let mem = Current_plugin.Memory_block.of_val_exn plugin params.$[0] in
-    let s = Current_plugin.Memory_block.get_string plugin mem in
+    let s = Current_plugin.input_string plugin params 0 in
     let () = print_endline "Hello from OCaml!" in
     let () = print_endline user_data in
     let () = print_endline s in
