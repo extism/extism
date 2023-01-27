@@ -12,7 +12,7 @@ def hello_world(plugin, input_, output, context, a_string):
     print("Hello from Python!")
     print(a_string)
     print(input_)
-    print(plugin.input_string(input[0]))
+    print(plugin.input_string(input_[0]))
     output[0] = input_[0]
 
 
