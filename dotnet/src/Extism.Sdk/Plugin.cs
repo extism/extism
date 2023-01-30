@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -93,6 +94,94 @@ public class Plugin : IDisposable
                     throw new ExtismException("Call to Extism failed");
                 }
             }
+        }
+    }
+
+    public async Task<byte[]> CallFunctionAsync(string functionName, byte[] data, int? timeoutMs = null, CancellationToken? cancellationToken = null)
+    {
+
+        // If we don't set a timeout or a cancellation token, our watcher thread will run forever even after it leaves scope.
+        // A task does not get automatically canceled or garbage collected if it leaves scope.
+        // we need to make our own internal cancellation to ensure that we cancel this thread when we're done with it before exiting the function.
+        CancellationTokenSource internalTokenSource = new CancellationTokenSource();
+
+
+        // Create an async function that will run forever or until timeoutMs,
+        // but will exit early if the external or internal cancellation tokens are canceled.
+        // Check token for cancellation every 10 ms to minimize CPU utilization.
+        // Even though the Task.Run gets a cancellation token, it doesn't continually check for cancellation,
+        // only checks once at the beginning to determine if it should run the task or not,
+        // so we must also check within this task to ensure the token hasn't been canceled.
+        var runUntilTimeoutOrCancelled = async () =>
+        {
+            // If no timeout is set, save the resources of having a stopwatch and just run forever until task is canceled.
+            if (timeoutMs == null)
+            {
+                while (true)
+                {
+                    if (internalTokenSource.IsCancellationRequested || (cancellationToken?.IsCancellationRequested ?? false))
+                    {
+                        break;
+                    }
+                    await Task.Delay(10);
+                }
+            }
+            else
+            {
+                var executionTime = Stopwatch.StartNew();
+                while (executionTime.ElapsedMilliseconds < timeoutMs)
+                {
+                    if (internalTokenSource.IsCancellationRequested || (cancellationToken?.IsCancellationRequested ?? false))
+                    {
+                        break;
+                    }
+                    await Task.Delay(10);
+                }
+            }
+        };
+
+        // Create tasks for invoking called function as well as for running a timeout / cancelled checker.
+        // Note, we are not awaiting the task here.  We will await the tasks later in parallel to determine when they are completed.
+
+        Task cancellableTimeoutTask;
+        Task<byte[]> executeFunctionInternalTask;
+
+        if (cancellationToken.HasValue)
+        {
+            // Pass cancellation token to the task so that it won't run the task if it's already canceled before we get here.
+            cancellableTimeoutTask = Task.Run(runUntilTimeoutOrCancelled, cancellationToken.Value);
+            executeFunctionInternalTask = Task.Run(() =>
+            {
+                return CallFunction(functionName, data).ToArray();
+            }, cancellationToken.Value);
+        }
+        else
+        {
+            cancellableTimeoutTask = Task.Run(runUntilTimeoutOrCancelled);
+            executeFunctionInternalTask = Task.Run(() =>
+            {
+                return CallFunction(functionName, data).ToArray();
+            });
+        }
+
+        // Race the 2 tasks.  When they're complete, either executeFunctionInternal
+        // will have completed with a result, or the cancellableTimeout will have run to completion
+        // meaning the task was either cancelled or timed out.
+        await Task.WhenAny(executeFunctionInternalTask, cancellableTimeoutTask);
+        if (executeFunctionInternalTask.IsCanceled || cancellableTimeoutTask.IsCanceled)
+        {
+            internalTokenSource.Cancel();
+            throw new TaskCanceledException();
+        }
+        else if (executeFunctionInternalTask.IsCompletedSuccessfully)
+        {
+            internalTokenSource.Cancel();
+            return await executeFunctionInternalTask;
+        }
+        else
+        {
+            internalTokenSource.Cancel();
+            throw new TaskCanceledException();
         }
     }
 
