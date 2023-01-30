@@ -64,13 +64,11 @@ public class Plugin : IDisposable
     }
 
     /// <summary>
-    /// Calls a function in the current plugin and returns a status.
-    /// If the status represents an error, call <see cref="GetError"/> to get the error.
-    /// Othewise, call <see cref="OutputData"/> to get the function's output data.
+    /// Calls a function in the current plugin and returns the plugin's output bytes.
     /// </summary>
     /// <param name="functionName">Name of the function in the plugin to invoke.</param>
     /// <param name="data">A buffer to provide as input to the function.</param>
-    /// <returns>The exit code of the function.</returns>
+    /// <returns>A buffer with the plugin's output bytes.</returns>
     /// <exception cref="ExtismException"></exception>
     unsafe public ReadOnlySpan<byte> CallFunction(string functionName, ReadOnlySpan<byte> data)
     {
