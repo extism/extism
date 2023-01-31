@@ -115,6 +115,17 @@ func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Poin
 	return function
 }
 
+func (f *Function) SetNamespace(s string) {
+	cstr := C.CString(s)
+	defer C.free(unsafe.Pointer(cstr))
+	C.extism_function_set_namespace(f.pointer, cstr)
+}
+
+func (f Function) WithNamespace(s string) Function {
+	f.SetNamespace(s)
+	return f
+}
+
 type CurrentPlugin struct {
 	pointer *C.ExtismCurrentPlugin
 }

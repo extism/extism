@@ -73,6 +73,7 @@ const _functions = {
     ],
   ],
   extism_function_free: ["void", [function_t]],
+  extism_function_set_namespace: ["void", [function_t, "string"]],
   extism_current_plugin_memory: ["uint8*", ["void*"]],
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
@@ -147,6 +148,7 @@ interface LibExtism {
     user_data: Buffer | null,
     free: Buffer | null
   ) => Buffer;
+  extism_function_set_namespace: (f: Buffer, s: string) => void;
   extism_function_free: (f: Buffer) => void;
   extism_current_plugin_memory: (p: Buffer) => Buffer;
   extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
@@ -523,6 +525,18 @@ export class HostFunction {
     );
     this.userData = userData;
     functionRegistry.register(this, this.pointer, this.pointer);
+  }
+
+  /** 
+   * Set function namespace
+   */
+  setNamespace(name: string) {
+    lib.extism_function_set_namespace(this.pointer, name)
+  }
+
+  withNamespace(name: string) : HostFunction {
+    this.setNamespace(name)
+    return this;
   }
 
   /**

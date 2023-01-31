@@ -155,6 +155,7 @@ module Function : sig
 
   val create :
     string ->
+    ?namespace:string ->
     params:Val_type.t list ->
     results:Val_type.t list ->
     user_data:'a ->
