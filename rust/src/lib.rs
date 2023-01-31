@@ -47,6 +47,15 @@ mod tests {
         Ok(())
     }
 
+    fn hello_world_panic(
+        _plugin: &mut CurrentPlugin,
+        _inputs: &[Val],
+        _outputs: &mut [Val],
+        _user_data: UserData,
+    ) -> Result<(), Error> {
+        panic!("This should not run");
+    }
+
     #[test]
     fn it_works() {
         let wasm_start = Instant::now();
@@ -58,8 +67,18 @@ mod tests {
             [ValType::I64],
             None,
             hello_world,
-        );
-        let functions = [&f];
+        )
+        .with_namespace("env");
+        let g = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world_panic,
+        )
+        .with_namespace("test");
+
+        let functions = [&f, &g];
         let mut plugin = Plugin::new(&context, WASM, functions, true).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
