@@ -10,7 +10,7 @@ description = "Extism runtime component"
 
 [dependencies]
 wasmtime = "4.0.0"
-wasmtime-wasi = "4.0.0"
+wasmtime-wasi = "5.0.0"
 wasmtime-wasi-nn = {version = "4.0.0", optional=true}
 anyhow = "1"
 serde = {version = "1", features = ["derive"]}
