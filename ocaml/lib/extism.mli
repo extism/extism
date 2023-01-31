@@ -168,6 +168,9 @@ module Function : sig
       called.
   *)
 
+  val with_namespace: t -> string -> t
+  (** Update a function's namespace *)
+
   val free : t -> unit
   (** Free a function *)
 
