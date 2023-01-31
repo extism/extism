@@ -531,7 +531,9 @@ export class HostFunction {
    * Set function namespace
    */
   setNamespace(name: string) {
-    lib.extism_function_set_namespace(this.pointer, name)
+    if (this.pointer !== null) {
+      lib.extism_function_set_namespace(this.pointer, name)
+    }
   }
 
   withNamespace(name: string) : HostFunction {
