@@ -318,6 +318,10 @@ public:
     this->func = std::shared_ptr<ExtismFunction>(ptr, extism_function_free);
   }
 
+  void set_namespace(std::string s) {
+    extism_function_set_namespace(this->func.get(), s.c_str());
+  }
+
   Function(const Function &f) { this->func = f.func; }
 
   ExtismFunction *get() { return this->func.get(); }

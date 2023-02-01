@@ -216,6 +216,13 @@ class Function:
             _ffi.NULL,
         )
 
+    def set_namespace(self, name: str):
+        _lib.extism_function_set_namespace(self.pointer, name.encode())
+
+    def with_namespace(self, name: str):
+        self.set_namespace(name)
+        return self
+
     def __del__(self):
         if not hasattr(self, "pointer"):
             return

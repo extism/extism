@@ -144,6 +144,11 @@ ExtismFunction *extism_function_new(const char *name,
                                     void (*free_user_data)(void *_));
 
 /**
+ * Set the namespace of an `ExtismFunction`
+ */
+void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
+
+/**
  * Free an `ExtismFunction`
  */
 void extism_function_free(ExtismFunction *ptr);

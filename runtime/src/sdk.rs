@@ -236,6 +236,17 @@ pub unsafe extern "C" fn extism_function_new(
     Box::into_raw(Box::new(ExtismFunction(f)))
 }
 
+/// Set the namespace of an `ExtismFunction`
+#[no_mangle]
+pub unsafe extern "C" fn extism_function_set_namespace(
+    ptr: *mut ExtismFunction,
+    namespace: *const std::ffi::c_char,
+) {
+    let namespace = std::ffi::CStr::from_ptr(namespace);
+    let f = &mut *ptr;
+    f.0.set_namespace(namespace.to_string_lossy().to_string());
+}
+
 /// Free an `ExtismFunction`
 #[no_mangle]
 pub unsafe extern "C" fn extism_function_free(ptr: *mut ExtismFunction) {

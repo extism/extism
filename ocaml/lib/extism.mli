@@ -155,6 +155,7 @@ module Function : sig
 
   val create :
     string ->
+    ?namespace:string ->
     params:Val_type.t list ->
     results:Val_type.t list ->
     user_data:'a ->
@@ -166,6 +167,9 @@ module Function : sig
       OCaml values into the function and [f] is the OCaml function that will be
       called.
   *)
+
+  val with_namespace : t -> string -> t
+  (** Update a function's namespace *)
 
   val free : t -> unit
   (** Free a function *)
