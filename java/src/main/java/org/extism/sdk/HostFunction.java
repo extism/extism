@@ -31,35 +31,26 @@ public class HostFunction {
                          int nOutputs,
                          Pointer data) -> {
 
-            /*LibExtism.ExtismVal.ByReference inputRef = new LibExtism.ExtismVal.ByReference();
-            LibExtism.ExtismVal[] inputsVal = (LibExtism.ExtismVal[])inputRef.toArray(nInputs);
-
-            var inputValue = new LibExtism.ExtismValUnion();
-            inputValue.i32 = 14;
-
-            inputsVal[0].value = inputValue;
-            inputsVal[0].t = LibExtism.ExtismValType.I32.value;*/
-
-            LibExtism.ExtismVal.ByReference outputRef = new LibExtism.ExtismVal.ByReference();
-            LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputRef.toArray(nOutputs);
-
-            LibExtism.ExtismVal[] hostFunctionsOutputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+            // LibExtism.ExtismVal.ByReference outputRef = new LibExtism.ExtismVal.ByReference();
+            // LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputRef.toArray(nOutputs);
 
             f.invoke(
                     new ExtismCurrentPlugin(currentPlugin),
                     inputs,
                     nInputs,
-                    outputRef,
+                    outputs,
                     nOutputs,
                     userData
             );
 
-            // System.out.println(outputsVal[0].value.i64);
-            System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(outputsVal[0].value.i64));
+            //System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(outputsVal[0].value.i64));
 
+            //LibExtism.ExtismVal[] hostFunctionsOutputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
             for (int i = 0; i < nOutputs; i++) {
-                hostFunctionsOutputsVal[i].t = outputsVal[i].t;
-                hostFunctionsOutputsVal[i].value.i64 = outputsVal[i].value.i64;
+                //System.out.println(hostFunctionsOutputsVal[i].t + ":" + outputsVal[i].t);
+                //hostFunctionsOutputsVal[i] = outputsVal[i];
+               //  hostFunctionsOutputsVal[i].t = outputsVal[i].t;
+               // hostFunctionsOutputsVal[i].value.i64 = outputsVal[i].value.i64;
             }
         };
 

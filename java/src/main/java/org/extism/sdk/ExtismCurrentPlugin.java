@@ -36,25 +36,21 @@ public class ExtismCurrentPlugin {
      * @param output - The output to set
      * @param s - The string to return
      */
-    void  returnString(LibExtism.ExtismVal output, String s) {
-        long offs = this.alloc(s.length());
-        Pointer ptr = this.memory(offs);
-        ptr.setString(0, s);
-        output.value.i64 = offs;
-        // TODO - not sure of t = 1
-        output.t = 1;
+    void returnString(LibExtism.ExtismVal output, String s) {
+        returnBytes(output, s.getBytes(StandardCharsets.UTF_8));
     }
 
     /**
      * Return bytes from a host function
      * @param output - The output to set
      * @param b - The buffer to return
-    void returnBytes(LibExtism.ExtismVal output, Pointer b) {
-        var offs = this.memoryAlloc(b.length);
-        this.memory(offs).set(b);
-        output.v.i64 = offs;
-    }  */
-
+     */
+    void returnBytes(LibExtism.ExtismVal output, byte[] b) {
+        int offs = this.alloc(b.length);
+        Pointer ptr = this.memory(offs);
+        ptr.write(0, b, 0, b.length);
+        output.value.i64 = offs;
+    }
 
     /**
      * Get bytes from host function parameter

@@ -5,10 +5,20 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="24fbf7eb-9461-44e8-9634-e65656cbe417" name="Changes" comment="">
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/ManifestHttpRequest.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/ManifestHttpRequest.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/MemoryOptions.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/manifest/MemoryOptions.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/ByteArrayWasmSource.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/ByteArrayWasmSource.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/PathWasmSource.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/wasm/PathWasmSource.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/ExtismCurrentPlugin.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/HostFunction.java" afterDir="false" />
+      <change afterPath="$PROJECT_DIR$/src/test/resources/code-functions.wasm" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/extism.iml" beforeDir="false" afterPath="$PROJECT_DIR$/extism.iml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Extism.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Extism.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/LibExtism.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/LibExtism.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Plugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Plugin.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/org/extism/sdk/PluginTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/org/extism/sdk/PluginTests.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/test/java/org/extism/sdk/TestWasmSources.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/org/extism/sdk/TestWasmSources.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -35,11 +45,6 @@
         <option name="useMavenConfig" value="true" />
       </MavenGeneralSettings>
     </option>
-    <option name="importingSettings">
-      <MavenImportingSettings>
-        <option name="workspaceImportEnabled" value="true" />
-      </MavenImportingSettings>
-    </option>
   </component>
   <component name="ProjectCodeStyleSettingsMigration">
     <option name="version" value="2" />
@@ -54,12 +59,15 @@
     &quot;RunOnceActivity.OpenProjectViewOnStart&quot;: &quot;true&quot;,
     &quot;RunOnceActivity.ShowReadmeOnStart&quot;: &quot;true&quot;,
     &quot;WebServerToolWindowFactoryState&quot;: &quot;false&quot;,
-    &quot;last_opened_file_path&quot;: &quot;/Users/79966b/Documents/opensource/extism/java/src/test/resources&quot;,
+    &quot;last_opened_file_path&quot;: &quot;/Users/79966b/Documents/opensource/extism/java/pom.xml&quot;,
     &quot;node.js.detected.package.eslint&quot;: &quot;true&quot;,
     &quot;node.js.detected.package.tslint&quot;: &quot;true&quot;,
     &quot;node.js.selected.package.eslint&quot;: &quot;(autodetect)&quot;,
     &quot;node.js.selected.package.tslint&quot;: &quot;(autodetect)&quot;,
     &quot;nodejs_package_manager_path&quot;: &quot;npm&quot;,
+    &quot;project.structure.last.edited&quot;: &quot;Project&quot;,
+    &quot;project.structure.proportion&quot;: &quot;0.0&quot;,
+    &quot;project.structure.side.proportion&quot;: &quot;0.0&quot;,
     &quot;vue.rearranger.settings.migration&quot;: &quot;true&quot;
   }
 }</component>
@@ -70,16 +78,48 @@
   </component>
   <component name="RunAnythingCache">
     <option name="myCommands">
-      <command value="mvn clean verify" />
       <command value="mvn " />
+      <command value="mvn clean" />
+      <command value="mvn clean verify" />
     </option>
   </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="JUnit.PluginTests.shouldAllowInvokeHostFunctionFromPDK">
+    <configuration name="PluginTests" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="extism" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.extism.sdk.ExtismCurrentPlugin" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="org.extism.sdk" />
+      <option name="MAIN_CLASS_NAME" value="org.extism.sdk.PluginTests" />
+      <option name="TEST_OBJECT" value="class" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
+    <configuration name="PluginTests.shouldAllowInvokeHostFunctionFromPDK" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
+      <module name="extism" />
+      <extension name="coverage">
+        <pattern>
+          <option name="PATTERN" value="org.extism.sdk.ExtismCurrentPlugin" />
+          <option name="ENABLED" value="true" />
+        </pattern>
+      </extension>
+      <option name="PACKAGE_NAME" value="org.extism.sdk" />
+      <option name="MAIN_CLASS_NAME" value="org.extism.sdk.PluginTests" />
+      <option name="METHOD_NAME" value="shouldAllowInvokeHostFunctionFromPDK" />
+      <option name="TEST_OBJECT" value="method" />
+      <method v="2">
+        <option name="Make" enabled="true" />
+      </method>
+    </configuration>
     <configuration name="PluginTests.shouldWorks" type="JUnit" factoryName="JUnit" temporary="true" nameIsGenerated="true">
       <module name="extism" />
       <extension name="coverage">
         <pattern>
-          <option name="PATTERN" value="org.extism.sdk.*" />
+          <option name="PATTERN" value="org.extism.sdk.ExtismCurrentPlugin" />
           <option name="ENABLED" value="true" />
         </pattern>
       </extension>
@@ -87,13 +127,23 @@
       <option name="MAIN_CLASS_NAME" value="org.extism.sdk.PluginTests" />
       <option name="METHOD_NAME" value="shouldWorks" />
       <option name="TEST_OBJECT" value="method" />
+      <envs>
+        <env name="-Djna.debug_load" value="true" />
+      </envs>
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
     </configuration>
+    <list>
+      <item itemvalue="JUnit.PluginTests" />
+      <item itemvalue="JUnit.PluginTests.shouldAllowInvokeHostFunctionFromPDK" />
+      <item itemvalue="JUnit.PluginTests.shouldWorks" />
+    </list>
     <recent_temporary>
       <list>
+        <item itemvalue="JUnit.PluginTests.shouldAllowInvokeHostFunctionFromPDK" />
         <item itemvalue="JUnit.PluginTests.shouldWorks" />
+        <item itemvalue="JUnit.PluginTests" />
       </list>
     </recent_temporary>
   </component>
@@ -110,22 +160,14 @@
       <workItem from="1674156645380" duration="1718000" />
       <workItem from="1674502059613" duration="1086000" />
       <workItem from="1674636904837" duration="60000" />
-      <workItem from="1674673587693" duration="13029000" />
+      <workItem from="1674673587693" duration="13862000" />
+      <workItem from="1675091988904" duration="1478000" />
+      <workItem from="1675115645366" duration="17269000" />
+      <workItem from="1675249238920" duration="25921000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
-  </component>
-  <component name="XDebuggerManager">
-    <breakpoint-manager>
-      <breakpoints>
-        <line-breakpoint enabled="true" type="java-line">
-          <url>file://$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java</url>
-          <line>33</line>
-          <option name="timeStamp" value="3" />
-        </line-breakpoint>
-      </breakpoints>
-    </breakpoint-manager>
   </component>
 </project>
