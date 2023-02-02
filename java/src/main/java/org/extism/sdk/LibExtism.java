@@ -1,8 +1,9 @@
 package org.extism.sdk;
 
-import com.sun.jna.Library;
-import com.sun.jna.Native;
-import com.sun.jna.Pointer;
+import com.sun.jna.*;
+
+import java.util.Arrays;
+import java.util.List;
 
 /**
  * Wrapper around the Extism library.
@@ -15,7 +16,100 @@ public interface LibExtism extends Library {
      */
     LibExtism INSTANCE = Native.load("extism", LibExtism.class);
 
+    interface ExtismFunction extends Callback {
+       void invoke(
+                ExtismCurrentPlugin currentPlugin,
+                ExtismVal.ByReference inputs,
+                int nInputs,
+                ExtismVal.ByReference outputs,
+                int nOutputs,
+                Pointer data
+        );
+    }
+
+    interface InternalExtismFunction extends Callback {
+        void invoke(
+                Pointer currentPlugin,
+                ExtismVal.ByReference inputs,
+                int nInputs,
+                ExtismVal.ByReference outputs,
+                int nOutputs,
+                Pointer data
+        );
+    }
+
+    class ExtismValUnion extends Union {
+        public static class ByValue extends ExtismValUnion implements Union.ByValue {};
+
+        public int i32;
+        public long i64;
+        public float f32;
+        public double f64;
+    }
+
+    class ExtismVal extends Structure {
+        public static class ByValue extends ExtismVal implements Structure.ByValue {};
+        public static class ByReference extends ExtismVal implements Structure.ByReference {}
+
+        @Override
+        protected List<String> getFieldOrder() {
+            return Arrays.asList("t", "value");
+        }
+
+        public int t;
+        public ExtismValUnion value;
+    }
+
+    enum ExtismValType {
+        I32(0),
+        I64(1),
+        F32(2),
+        F64(3),
+        V128(4),
+        FuncRef(5),
+        ExternRef(6);
+
+        public final int value;
+
+        ExtismValType(int value) {
+            this.value = value;
+        }
+    }
+
+    Pointer extism_function_new(String name,
+                                int[] inputs,
+                                int nInputs,
+                                int[] outputs,
+                                int nOutputs,
+                                InternalExtismFunction func,
+                                Pointer userData,
+                                Pointer freeUserData);
+
     /**
+     * Get the length of an allocated block
+     * NOTE: this should only be called from host functions.
+     */
+    long extism_current_plugin_memory_length(Pointer plugin, long n);
+
+    /**
+     * Returns a pointer to the memory of the currently running plugin
+     * NOTE: this should only be called from host functions.
+     */
+    Pointer extism_current_plugin_memory(Pointer plugin);
+
+    /**
+     * Allocate a memory block in the currently running plugin
+     * NOTE: this should only be called from host functions.
+     */
+    int extism_current_plugin_memory_alloc(Pointer plugin, long n);
+
+    /**
+     * Free an allocated memory block
+     * NOTE: this should only be called from host functions.
+     */
+    void extism_current_plugin_memory_free(Pointer plugin, long ptr);
+
+        /**
      * Create a new context
      */
     Pointer extism_context_new();
@@ -61,7 +155,7 @@ public interface LibExtism extends Library {
      * @param withWASI       enables/disables WASI
      * @return id of the plugin or {@literal -1} in case of error
      */
-    int extism_plugin_new(Pointer contextPointer, byte[] wasm, long wasmSize, Pointer functions, int nFunctions, boolean withWASI);
+    int extism_plugin_new(Pointer contextPointer, byte[] wasm, long wasmSize, Pointer[] functions, int nFunctions, boolean withWASI);
 
     /**
      * Returns the Extism version string
@@ -76,9 +170,9 @@ public interface LibExtism extends Library {
      * @param length         the length of the `wasm` parameter
      * @param withWASI       enables/disables WASI
      * @return id of the plugin or {@literal -1} in case of error
-     * @see #extism_plugin_new(long, byte[], long, boolean)
      */
-    int extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI);
+    //int extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI);
+
 
     /**
      * Calls a function from the @{@link Plugin} at the given {@code pluginIndex}.

@@ -28,15 +28,27 @@ public class Plugin implements AutoCloseable {
      *
      * @param context       The context to manage the plugin
      * @param manifestBytes The manifest for the plugin
+     * @param functions     The Host functions for th eplugin
      * @param withWASI      Set to true to enable WASI
      */
-    public Plugin(Context context, byte[] manifestBytes, boolean withWASI) {
+    public Plugin(Context context, byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
 
         Objects.requireNonNull(context, "context");
         Objects.requireNonNull(manifestBytes, "manifestBytes");
 
+        Pointer[] ptrArr = new Pointer[functions == null ? 0 : functions.length];
+
+        if (functions != null)
+            for (int i = 0; i < functions.length; i++) {
+               ptrArr[i] = functions[i].pointer;
+            }
+
         Pointer contextPointer = context.getPointer();
-        int index = LibExtism.INSTANCE.extism_plugin_new(contextPointer, manifestBytes, manifestBytes.length, null, 0, withWASI);
+
+        int index = LibExtism.INSTANCE.extism_plugin_new(contextPointer, manifestBytes, manifestBytes.length,
+                ptrArr,
+                functions == null ? 0 : functions.length,
+                withWASI);
         if (index == -1) {
             String error = context.error(this);
             throw new ExtismException(error);
@@ -46,8 +58,8 @@ public class Plugin implements AutoCloseable {
         this.context = context;
     }
 
-    public Plugin(Context context, Manifest manifest, boolean withWASI) {
-        this(context, serialize(manifest), withWASI);
+    public Plugin(Context context, Manifest manifest, boolean withWASI, HostFunction[] functions) {
+        this(context, serialize(manifest), withWASI, functions);
     }
 
     private static byte[] serialize(Manifest manifest) {

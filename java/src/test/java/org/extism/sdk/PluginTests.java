@@ -1,10 +1,14 @@
 package org.extism.sdk;
 
+import com.sun.jdi.StringReference;
+import com.sun.jna.Memory;
+import com.sun.jna.Pointer;
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
 import org.extism.sdk.wasm.WasmSourceResolver;
 import org.junit.jupiter.api.Test;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
@@ -80,7 +84,7 @@ public class PluginTests {
         var input = "Hello World";
 
         try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false)) {
+            try (var plugin = ctx.newPlugin(manifest, false, null)) {
                 var output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
             }
@@ -94,12 +98,66 @@ public class PluginTests {
         var input = "Hello World";
 
         try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false)) {
+            try (var plugin = ctx.newPlugin(manifest, false, null)) {
                 var output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
 
                 output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
+            }
+        }
+    }
+
+    @Test
+    public void shouldAllowInvokeHostFunctionFromPDK() {
+        Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+
+        String functionName = "say_hello";
+        String input = "aaa";
+
+        LibExtism.ExtismValType[] params = {LibExtism.ExtismValType.I64};
+        LibExtism.ExtismValType[] returns = {LibExtism.ExtismValType.I64};
+
+        String myString = "test";
+        Pointer hostUserData = new Memory(myString.length() + 1);
+        hostUserData.setString(0, myString);
+
+        HostFunction hello_world = new HostFunction(
+                "hello_world",
+                params,
+                returns,
+                (ExtismCurrentPlugin plugin,
+                 LibExtism.ExtismVal.ByReference inputs,
+                 int nInputs,
+                 LibExtism.ExtismVal.ByReference outputs,
+                 int nOutputs,
+                 Pointer userData) -> {
+                    LibExtism.ExtismVal[] inputsVal = (LibExtism.ExtismVal[])inputs.toArray(nInputs);
+                    System.out.println(inputsVal[0].value.i64);
+
+                    LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+
+                    System.out.println("Hello from Java!");
+
+                    String userDatAsString = userData.getString(0);
+                    System.out.println(userDatAsString);
+
+                    plugin.returnString(outputsVal[0], userDatAsString);
+                },
+                hostUserData
+        );
+
+        HostFunction[] functions = {hello_world};
+
+        try (var ctx = new Context()) {
+            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
+                var output = plugin.call(functionName, input);
+
+                System.out.println("##### OUT #####");
+                System.out.println(output);
+                System.out.println("##### OUT END #####");
+
+                assertThat(output).isEqualTo("test");
             }
         }
     }
