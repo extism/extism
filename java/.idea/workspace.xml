@@ -5,20 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="24fbf7eb-9461-44e8-9634-e65656cbe417" name="Changes" comment="">
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/ExtismCurrentPlugin.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/HostFunction.java" afterDir="false" />
-      <change afterPath="$PROJECT_DIR$/src/test/resources/code-functions.wasm" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/../.gitignore" beforeDir="false" afterPath="$PROJECT_DIR$/../.gitignore" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/compiler.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/compiler.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/misc.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/misc.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/extism.iml" beforeDir="false" afterPath="$PROJECT_DIR$/extism.iml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Context.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Extism.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Extism.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/HostFunction.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/HostFunction.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/LibExtism.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/LibExtism.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Plugin.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/main/java/org/extism/sdk/Plugin.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/test/java/org/extism/sdk/PluginTests.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/org/extism/sdk/PluginTests.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/test/java/org/extism/sdk/TestWasmSources.java" beforeDir="false" afterPath="$PROJECT_DIR$/src/test/java/org/extism/sdk/TestWasmSources.java" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -163,7 +153,7 @@
       <workItem from="1674673587693" duration="13862000" />
       <workItem from="1675091988904" duration="1478000" />
       <workItem from="1675115645366" duration="17269000" />
-      <workItem from="1675249238920" duration="25921000" />
+      <workItem from="1675249238920" duration="27535000" />
     </task>
     <servers />
   </component>

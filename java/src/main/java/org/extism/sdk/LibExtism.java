@@ -16,17 +16,6 @@ public interface LibExtism extends Library {
      */
     LibExtism INSTANCE = Native.load("extism", LibExtism.class);
 
-    interface ExtismFunction extends Callback {
-       void invoke(
-                ExtismCurrentPlugin currentPlugin,
-                ExtismVal.ByReference inputs,
-                int nInputs,
-                ExtismVal.ByReference outputs,
-                int nOutputs,
-                Pointer data
-        );
-    }
-
     interface InternalExtismFunction extends Callback {
         void invoke(
                 Pointer currentPlugin,
@@ -45,6 +34,16 @@ public interface LibExtism extends Library {
         public long i64;
         public float f32;
         public double f64;
+
+        @Override
+        public String toString() {
+            return "ExtismValUnion{" +
+                    "i32=" + i32 +
+                    ", i64=" + i64 +
+                    ", f32=" + f32 +
+                    ", f64=" + f64 +
+                    '}';
+        }
     }
 
     class ExtismVal extends Structure {
@@ -58,6 +57,14 @@ public interface LibExtism extends Library {
 
         public int t;
         public ExtismValUnion value;
+
+        @Override
+        public String toString() {
+            return "ExtismVal{" +
+                    "t=" + t +
+                    ", value=" + value +
+                    '}';
+        }
     }
 
     enum ExtismValType {

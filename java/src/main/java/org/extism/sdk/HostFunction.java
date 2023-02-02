@@ -1,5 +1,6 @@
 package org.extism.sdk;
 
+import com.google.gson.JsonParser;
 import com.sun.jna.Pointer;
 
 import java.util.Arrays;
@@ -18,7 +19,7 @@ public class HostFunction {
 
     public final Pointer userData;
 
-    public HostFunction(String name, LibExtism.ExtismValType[] params, LibExtism.ExtismValType[] returns, LibExtism.ExtismFunction f, Pointer userData) {
+    public HostFunction(String name, LibExtism.ExtismValType[] params, LibExtism.ExtismValType[] returns, ExtismFunction f, Pointer userData) {
 
         this.name = name;
         this.params = params;
@@ -31,27 +32,26 @@ public class HostFunction {
                          int nOutputs,
                          Pointer data) -> {
 
-            // LibExtism.ExtismVal.ByReference outputRef = new LibExtism.ExtismVal.ByReference();
-            // LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputRef.toArray(nOutputs);
-
-            f.invoke(
+             f.invoke(
                     new ExtismCurrentPlugin(currentPlugin),
-                    inputs,
-                    nInputs,
-                    outputs,
-                    nOutputs,
-                    userData
+                    (LibExtism.ExtismVal[])inputs.toArray(nOutputs),
+                    (LibExtism.ExtismVal[])outputs.toArray(nOutputs),
+                    new JsonParser().parse(data.getString(0))
             );
 
             //System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(outputsVal[0].value.i64));
 
-            //LibExtism.ExtismVal[] hostFunctionsOutputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
-            for (int i = 0; i < nOutputs; i++) {
-                //System.out.println(hostFunctionsOutputsVal[i].t + ":" + outputsVal[i].t);
-                //hostFunctionsOutputsVal[i] = outputsVal[i];
-               //  hostFunctionsOutputsVal[i].t = outputsVal[i].t;
-               // hostFunctionsOutputsVal[i].value.i64 = outputsVal[i].value.i64;
+            for (LibExtism.ExtismVal extismVal : (LibExtism.ExtismVal[])outputs.toArray(nOutputs)) {
+                System.out.println(extismVal);
             }
+
+            /*LibExtism.ExtismVal[] hostFunctionsOutputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+            for (int i = 0; i < nOutputs; i++) {
+                System.out.println(hostFunctionsOutputsVal[i].t + ":" + outputsVal[i].t);
+                hostFunctionsOutputsVal[i] = outputsVal[i];
+                 hostFunctionsOutputsVal[i].t = outputsVal[i].t;
+                hostFunctionsOutputsVal[i].value.i64 = outputsVal[i].value.i64;
+            }*/
         };
 
         this.pointer = LibExtism.INSTANCE.extism_function_new(

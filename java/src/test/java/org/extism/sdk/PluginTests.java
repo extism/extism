@@ -1,5 +1,8 @@
 package org.extism.sdk;
 
+import com.google.gson.Gson;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
 import com.sun.jdi.StringReference;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
@@ -115,7 +118,7 @@ public class PluginTests {
         String functionName = "say_hello";
         String input = "aaa";
 
-        LibExtism.ExtismValType[] params = {LibExtism.ExtismValType.I64};
+        LibExtism.ExtismValType[] parameters = {LibExtism.ExtismValType.I64};
         LibExtism.ExtismValType[] returns = {LibExtism.ExtismValType.I64};
 
         String myString = "test";
@@ -124,25 +127,22 @@ public class PluginTests {
 
         HostFunction hello_world = new HostFunction(
                 "hello_world",
-                params,
+                parameters,
                 returns,
                 (ExtismCurrentPlugin plugin,
-                 LibExtism.ExtismVal.ByReference inputs,
-                 int nInputs,
-                 LibExtism.ExtismVal.ByReference outputs,
-                 int nOutputs,
-                 Pointer userData) -> {
-                    LibExtism.ExtismVal[] inputsVal = (LibExtism.ExtismVal[])inputs.toArray(nInputs);
-                    System.out.println(inputsVal[0].value.i64);
+                 LibExtism.ExtismVal[] params,
+                 LibExtism.ExtismVal[] results,
+                 JsonElement userData) -> {
+                    System.out.println(params[0].value);
 
-                    LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+                    // LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
 
                     System.out.println("Hello from Java!");
 
-                    String userDatAsString = userData.getString(0);
+                    String userDatAsString = userData.toString();
                     System.out.println(userDatAsString);
 
-                    plugin.returnString(outputsVal[0], userDatAsString);
+                    plugin.returnString(results[0], userDatAsString);
                 },
                 hostUserData
         );
