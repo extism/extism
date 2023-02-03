@@ -6,8 +6,6 @@ namespace Extism.Sdk.Native;
 /// </summary>
 internal static class LibExtism
 {
-
-
     internal enum ExtismValType
     {
         /// <summary>
@@ -105,6 +103,73 @@ internal static class LibExtism
     internal delegate void ExtismFunctionType(ref ExtismCurrentPlugin plugin, Span<ExtismVal> inputs, uint n_inputs, Span<ExtismVal> outputs, uint n_outputs, IntPtr data);
 
     /// <summary>
+    /// Returns a pointer to the memory of the currently running plugin.
+    /// NOTE: this should only be called from host functions.
+    /// </summary>
+    /// <param name="plugin"></param>
+    /// <returns></returns>
+    [DllImport("extism", EntryPoint = "extism_current_plugin_memory")]
+    public static extern IntPtr CurrentPluginMemory(ref ExtismCurrentPlugin plugin);
+
+    /// <summary>
+    /// 
+    /// </summary>
+    /// <param name="plugin"></param>
+    /// <param name="n"></param>
+    /// <returns></returns>
+    [DllImport("extism", EntryPoint = "extism_current_plugin_memory_alloc")]
+    public static extern IntPtr CurrentPluginMemoryAlloc(ref ExtismCurrentPlugin plugin, long n);
+
+    /// <summary>
+    /// Allocate a memory block in the currently running plugin.
+    /// NOTE: this should only be called from host functions.
+    /// </summary>
+    /// <param name="plugin"></param>
+    /// <param name="n"></param>
+    /// <returns></returns>
+    [DllImport("extism", EntryPoint = "extism_current_plugin_memory_length")]
+    public static extern long CurrentPluginMemoryLength(ref ExtismCurrentPlugin plugin, long n);
+
+    /// <summary>
+    /// Get the length of an allocated block.
+    /// NOTE: this should only be called from host functions.
+    /// </summary>
+    /// <param name="plugin"></param>
+    /// <param name="ptr"></param>
+    [DllImport("extism", EntryPoint = "extism_current_plugin_memory_free")]
+    public static extern void CurrentPluginMemoryFree(ref ExtismCurrentPlugin plugin, IntPtr ptr);
+
+    /// <summary>
+    /// Create a new host function.
+    /// </summary>
+    /// <param name="name">function name, this should be valid UTF-8</param>
+    /// <param name="inputs">argument types</param>
+    /// <param name="nInputs">number of argument types</param>
+    /// <param name="outputs">return types</param>
+    /// <param name="nOutputs">number of return types</param>
+    /// <param name="func">the function to call</param>
+    /// <param name="userData">a pointer that will be passed to the function when it's called this value should live as long as the function exists</param>
+    /// <param name="freeUserData">a callback to release the `user_data` value when the resulting `ExtismFunction` is freed.</param>
+    /// <returns></returns>
+    [DllImport("extism", EntryPoint = "extism_function_new")]
+    public static extern IntPtr FunctionNew(string name, IntPtr inputs, long nInputs, IntPtr outputs, long nOutputs, ExtismFunctionType func, IntPtr userData, IntPtr freeUserData);
+
+    /// <summary>
+    /// Set the namespace of an <see cref="ExtismFunction"/>
+    /// </summary>
+    /// <param name="ptr"></param>
+    /// <param name="namespace"></param>
+    [DllImport("extism", EntryPoint = "extism_function_set_namespace")]
+    public static extern void FunctionSetNamespace(ref ExtismFunction ptr, string @namespace);
+
+    /// <summary>
+    /// Free an <see cref="ExtismFunction"/>
+    /// </summary>
+    /// <param name="ptr"></param>
+    [DllImport("extism", EntryPoint = "extism_function_free")]
+    public static extern void FunctionFree(ref ExtismFunction ptr);
+
+    /// <summary>
     /// Create a new context.
     /// </summary>
     /// <returns>A pointer to the newly created context.</returns>
@@ -139,13 +204,13 @@ internal static class LibExtism
     /// <param name="context">Pointer to the context the plugin is associated with.</param>
     /// <param name="plugin">Pointer to the plugin you want to update.</param>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
-    /// <param name="wasmLength">The length of the `wasm` parameter.</param>
+    /// <param name="wasmSize">The length of the `wasm` parameter.</param>
     /// <param name="functions">Array of host function pointers.</param>
     /// <param name="nFunctions">Number of host functions.</param>
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, int wasmLength, IntPtr* functions, int nFunctions, bool withWasi);
+    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, long wasmSize, IntPtr functions, long nFunctions, bool withWasi);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.
