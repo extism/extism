@@ -210,7 +210,7 @@ internal static class LibExtism
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, long wasmSize, IntPtr functions, long nFunctions, bool withWasi);
+    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, long wasmSize, IntPtr* functions, long nFunctions, bool withWasi);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.
