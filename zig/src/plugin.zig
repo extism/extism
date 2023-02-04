@@ -145,6 +145,10 @@ pub const CurrentPlugin = struct {
         c.extism_current_plugin_memory_free(self.c_currplugin, offset);
     }
 
+    pub fn length(self: *CurrentPlugin, offset: u64) u64 {
+        return c.extism_current_plugin_memory_length(self.c_currplugin,offset);
+    }
+
     pub fn returnBytes(self: *CurrentPlugin, val: *const c.ExtismVal, data: []const u8) void {
         const mem = self.alloc(@as(u64, data.len));
         const ptr = self.getMemory(mem);
