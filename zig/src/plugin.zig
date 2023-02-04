@@ -146,4 +146,15 @@ pub const CurrentPlugin = struct {
     pub fn free(self: *CurrentPlugin, offset: u64) void {
         c.extism_current_plugin_memory_free(self.c_currplugin, offset);
     }
+
+    pub fn returnBytes(self: *CurrentPlugin, val: *const c.ExtismVal, data: []const u8) void {
+        const mem = self.alloc(@as(u64, data.len));
+        const ptr = self.getMemory(mem);
+        std.mem.copy(u8, ptr, data);
+        val.v.i64 = @as(i64, mem);
+    }
+
+    pub fn inputBytes(self: *CurrentPlugin, val: *const c.ExtismVal) []const u8 {
+        return self.getMemory(@intCast(u64, val.v.@"i64"));
+    }
 };
