@@ -29,14 +29,19 @@ test "Single threaded tests" {
     _ = sdk.setLogFile("test.log", .Debug);
 
     var ctx = Context.init();
-    const f = Function.newFunction(
+    defer ctx.deinit();
+
+    var f = Function.init(
         "hello_world",
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
         @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
     );
+    defer f.deinit();
+
     var plugin = try Plugin.init(testing.allocator, &ctx, wasm, &[_]Function{f}, true);
+    defer plugin.deinit();
 
     std.debug.print("\nregister loaded plugin: {}\n", .{std.fmt.fmtDuration(wasm_start.read())});
     const repeat = 1182;
@@ -81,14 +86,17 @@ test "Multi threaded tests" {
     const S = struct {
         fn _test(w: []const u8) !void {
             var ctx = Context.init();
-            const f = Function.newFunction(
+            defer ctx.deinit();
+            var f = Function.init(
                 "hello_world",
                 &[_]sdk.c.ExtismValType{sdk.c.I64},
                 &[_]sdk.c.ExtismValType{sdk.c.I64},
                 &hello_world,
                 @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
             );
+            defer f.deinit();
             var plugin = try Plugin.init(testing.allocator, &ctx, w, &[_]Function{f}, true);
+            defer plugin.deinit();
             const output = try plugin.call("count_vowels", "this is a test");
             const local_stdout = std.io.getStdOut().writer();
             try local_stdout.writeAll(output);
@@ -98,15 +106,22 @@ test "Multi threaded tests" {
     try stdout.writeByte('\n');
     _ = try std.Thread.spawn(.{}, S._test, .{wasm});
     _ = try std.Thread.spawn(.{}, S._test, .{wasm});
+
     var ctx = Context.init();
-    const f = Function.newFunction(
+    defer ctx.deinit();
+
+    var f = Function.init(
         "hello_world",
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
         @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
     );
+    defer f.deinit();
+
     var plugin = try Plugin.init(testing.allocator, &ctx, wasm, &[_]Function{f}, true);
+    defer plugin.deinit();
+    
     const output = try plugin.call("count_vowels", "this is a test");
     try stdout.writeAll(output);
     try stdout.writeByte('\n');

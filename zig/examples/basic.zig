@@ -28,13 +28,14 @@ pub fn main() !void {
 
     const wasmfile_manifest = manifest.WasmFile{ .path = "../wasm/code-functions.wasm" };
     const man = .{ .wasm = &[_]manifest.Wasm{.{ .wasm_file = wasmfile_manifest }} };
-    const f = Function.newFunction(
+    var f = Function.init(
         "hello_world",
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
         @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
     );
+    defer f.deinit();
     var my_plugin = try Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
     // var my_plugin = try Plugin.init(allocator, &context, wasm, &[_]Function{f}, false);
     defer my_plugin.deinit();
