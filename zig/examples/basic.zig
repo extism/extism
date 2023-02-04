@@ -2,7 +2,8 @@ const std = @import("std");
 const testing = std.testing;
 const sdk = @import("extism");
 const Context = sdk.Context;
-const plugin = sdk.plugin;
+const Plugin = sdk.Plugin;
+const CurrentPlugin = sdk.CurrentPlugin;
 const Function = sdk.Function;
 const manifest = sdk.manifest;
 
@@ -12,7 +13,7 @@ export fn hello_world(plugin_ptr: ?*sdk.c.ExtismCurrentPlugin, inputs: [*c]const
     std.debug.print("User data: {s}\n", .{str_ud});
     var input_slice = inputs[0..n_inputs];
     var output_slice = outputs[0..n_outputs];
-    var curr_plugin = plugin.CurrentPlugin.getCurrentPlugin(plugin_ptr orelse unreachable);
+    var curr_plugin = CurrentPlugin.getCurrentPlugin(plugin_ptr orelse unreachable);
     const input = curr_plugin.inputBytes(&input_slice[0]);
     std.debug.print("input: {s}\n", .{input});
     output_slice[0] = input_slice[0];
@@ -34,8 +35,8 @@ pub fn main() !void {
         &hello_world,
         @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
     );
-    var my_plugin = try plugin.Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
-    // var my_plugin = try Plugin.init(&context, wasm, false);
+    var my_plugin = try Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
+    // var my_plugin = try Plugin.init(allocator, &context, wasm, &[_]Function{f}, false);
     defer my_plugin.deinit();
 
     var config = std.StringHashMap([]const u8).init(allocator);

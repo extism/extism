@@ -1,9 +1,10 @@
 const std = @import("std");
 const testing = std.testing;
-pub const c = @import("ffi.zig");
+pub const c = @import("ffi.zig"); // TODO
 
-pub const Context = @import("context.zig").Context;
-pub const plugin = @import("plugin.zig");
+pub const Context = @import("context.zig");
+pub const Plugin = @import("plugin.zig");
+pub const CurrentPlugin = @import("current_plugin.zig");
 pub const Function = @import("function.zig");
 pub const manifest = @import("manifest.zig");
 pub const LogLevel = enum {
