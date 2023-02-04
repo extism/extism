@@ -16,7 +16,6 @@ pub const Plugin = struct {
     pub fn init(allocator: std.mem.Allocator, ctx: *Context, data: []const u8, functions: []Function, wasi: bool) !Plugin {
         ctx.mutex.lock();
         defer ctx.mutex.unlock();
-        // const data_ptr = &data[0]; // TODO
         var plugin: i32 = -1;
         if (functions.len > 0) {
             var funcPtrs = try allocator.alloc(?*c.ExtismFunction, functions.len);
