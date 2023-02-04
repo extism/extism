@@ -1,11 +1,6 @@
 const std = @import("std");
 const json = std.json;
 
-pub fn toCstr(zig_str: []const u8) [*c]const u8 {
-    return @ptrCast([*c]const u8, zig_str);
-}
-
-
 pub fn stringifyAlloc(allocator: std.mem.Allocator, value: anytype) ![]const u8 {
     var list = std.ArrayList(u8).init(allocator);
     errdefer list.deinit();

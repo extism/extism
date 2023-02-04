@@ -1,7 +1,5 @@
 const std = @import("std");
 const c = @import("ffi.zig");
-const utils = @import("utils.zig");
-const toCstr = utils.toCstr;
 
 pub const Context = struct {
     mutex: std.Thread.Mutex,

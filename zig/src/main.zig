@@ -1,8 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
 pub const c = @import("ffi.zig");
-const utils = @import("utils.zig");
-const toCstr = utils.toCstr;
 
 pub const Context = @import("context.zig").Context;
 pub const plugin = @import("plugin.zig");
@@ -27,7 +25,7 @@ pub const LogLevel = enum {
 };
 
 pub fn setLogFile(file_name: []const u8, level: LogLevel) bool {
-    const res = c.extism_log_file(toCstr(file_name), toCstr(level.toStr()));
+    const res = c.extism_log_file(file_name.ptr, level.toStr().ptr);
     return res;
 }
 

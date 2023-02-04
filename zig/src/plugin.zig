@@ -4,7 +4,6 @@ const Manifest = @import("manifest.zig").Manifest;
 const Function = @import("function.zig");
 const c = @import("ffi.zig");
 const utils = @import("utils.zig");
-const toCstr = utils.toCstr;
 
 pub const Plugin = struct {
     ctx: *Context,
@@ -64,7 +63,7 @@ pub const Plugin = struct {
     pub fn call(self: *Plugin, function_name: []const u8, input: []const u8) ![]const u8 {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
-        const res = c.extism_plugin_call(self.ctx.ctx, self.id, toCstr(function_name), toCstr(input), @intCast(u64, input.len));
+        const res = c.extism_plugin_call(self.ctx.ctx, self.id, function_name.ptr, input.ptr, @intCast(u64, input.len));
         if (res != 0) {
             var err_c = c.extism_error(self.ctx.ctx, self.id);
             const err = std.mem.span(err_c);
@@ -90,7 +89,7 @@ pub const Plugin = struct {
     pub fn update(self: *Plugin, data: []const u8, wasi: bool) !void {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
-        const res = c.extism_plugin_update(self.ctx.ctx, self.id, toCstr(data), @intCast(u64, data.len), null, 0, wasi);
+        const res = c.extism_plugin_update(self.ctx.ctx, self.id, data.ptr, @intCast(u64, data.len), null, 0, wasi);
         if (res) return;
         const err_c = c.extism_error(self.ctx.ctx, @as(i32, -1));
         const err = std.mem.span(err_c);
@@ -113,14 +112,14 @@ pub const Plugin = struct {
         defer self.ctx.mutex.unlock();
         const config_json = try utils.stringifyAlloc(allocator, config);
         defer allocator.free(config_json);
-        _ = c.extism_plugin_config(self.ctx.ctx, self.id, toCstr(config_json), @intCast(u64, config_json.len));
+        _ = c.extism_plugin_config(self.ctx.ctx, self.id,config_json.ptr, @intCast(u64, config_json.len));
     }
 
     /// Returns true if the plugin has a function matching `name`
     pub fn hasFunction(self: Plugin, function_name: []const u8) bool {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
-        const res = c.extism_plugin_function_exists(self.ctx.ctx, self.id, toCstr(function_name));
+        const res = c.extism_plugin_function_exists(self.ctx.ctx, self.id, function_name.ptr);
         return res;
     }
 };
