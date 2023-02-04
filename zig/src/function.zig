@@ -13,7 +13,7 @@ pub fn newFunction(name: []const u8, inputs: []const c.ExtismValType, outputs: [
     if (outputs.len > 0) {
         outputsPtr = &outputs[0];
     }
-    const ptr = c.extism_function_new(name.ptr, inputsPtr, @intCast(u64, inputs.len), outputsPtr, @intCast(u64, outputs.len), f, user_data, null);
+    const ptr = c.extism_function_new(name.ptr, inputsPtr, @as(u64, inputs.len), outputsPtr, @as(u64, outputs.len), f, user_data, null);
 
     return .{ .c_func = ptr };
 }

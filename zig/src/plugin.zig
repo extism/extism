@@ -64,7 +64,7 @@ pub fn deinit(self: *Self) void {
 pub fn call(self: *Self, function_name: []const u8, input: []const u8) ![]const u8 {
     self.ctx.mutex.lock();
     defer self.ctx.mutex.unlock();
-    const res = c.extism_plugin_call(self.ctx.ctx, self.id, function_name.ptr, input.ptr, @intCast(u64, input.len));
+    const res = c.extism_plugin_call(self.ctx.ctx, self.id, function_name.ptr, input.ptr, @as(u64, input.len));
     if (res != 0) {
         var err_c = c.extism_error(self.ctx.ctx, self.id);
         const err = std.mem.span(err_c);
@@ -90,7 +90,7 @@ pub fn call(self: *Self, function_name: []const u8, input: []const u8) ![]const 
 pub fn update(self: *Self, data: []const u8, wasi: bool) !void {
     self.ctx.mutex.lock();
     defer self.ctx.mutex.unlock();
-    const res = c.extism_plugin_update(self.ctx.ctx, self.id, data.ptr, @intCast(u64, data.len), null, 0, wasi);
+    const res = c.extism_plugin_update(self.ctx.ctx, self.id, data.ptr, @as(u64, data.len), null, 0, wasi);
     if (res) return;
     const err_c = c.extism_error(self.ctx.ctx, @as(i32, -1));
     const err = std.mem.span(err_c);
@@ -113,7 +113,7 @@ pub fn setConfig(self: *Self, allocator: std.mem.Allocator, config: std.StringHa
     defer self.ctx.mutex.unlock();
     const config_json = try utils.stringifyAlloc(allocator, config);
     defer allocator.free(config_json);
-    _ = c.extism_plugin_config(self.ctx.ctx, self.id, config_json.ptr, @intCast(u64, config_json.len));
+    _ = c.extism_plugin_config(self.ctx.ctx, self.id, config_json.ptr, @as(u64, config_json.len));
 }
 
 /// Returns true if the plugin has a function matching `name`
