@@ -1,0 +1,29 @@
+const std = @import("std");
+const c = @import("ffi.zig");
+
+const Self = @This();
+c_func: ?*c.ExtismFunction,
+
+pub fn newFunction(name: []const u8, inputs: []const c.ExtismValType, outputs: []const c.ExtismValType, f: c.ExtismFunctionType, user_data: ?*anyopaque) Self {
+    var inputsPtr: ?*const c.ExtismValType = null;
+    if (inputs.len > 0) {
+        inputsPtr = &inputs[0];
+    }
+    var outputsPtr: ?*const c.ExtismValType = null;
+    if (outputs.len > 0) {
+        outputsPtr = &outputs[0];
+    }
+    const ptr = c.extism_function_new(name.ptr, inputsPtr, @intCast(u64, inputs.len), outputsPtr, @intCast(u64, outputs.len), f, user_data, null);
+
+    return .{ .c_func = ptr };
+}
+
+pub fn setNamespace(self: *Self, namespace: []const u8) void {
+    c.extism_function_set_namespace(self.c_func, namespace);
+}
+
+// TODO
+pub fn withNamespace(self: Self, namespace: []const u8) Self {
+    self.setNamespace(namespace);
+    return self;
+}

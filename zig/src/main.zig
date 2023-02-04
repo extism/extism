@@ -1,11 +1,12 @@
 const std = @import("std");
 const testing = std.testing;
-const c = @import("ffi.zig");
+pub const c = @import("ffi.zig");
 const utils = @import("utils.zig");
 const toCstr = utils.toCstr;
 
 pub const Context = @import("context.zig").Context;
-pub const Plugin = @import("plugin.zig").Plugin;
+pub const plugin = @import("plugin.zig");
+pub const Function = @import("function.zig");
 pub const manifest = @import("manifest.zig");
 pub const LogLevel = enum {
     Error,

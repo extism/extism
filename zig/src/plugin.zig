@@ -1,6 +1,7 @@
 const std = @import("std");
 const Context = @import("context.zig").Context;
 const Manifest = @import("manifest.zig").Manifest;
+const Function = @import("function.zig");
 const c = @import("ffi.zig");
 const utils = @import("utils.zig");
 const toCstr = utils.toCstr;
@@ -13,10 +14,23 @@ pub const Plugin = struct {
     error_info: ?[]const u8,
 
     /// Create a new plugin from a WASM module
-    pub fn init(ctx: *Context, data: []const u8, wasi: bool) !Plugin {
+    pub fn init(allocator: std.mem.Allocator, ctx: *Context, data: []const u8, functions: []Function, wasi: bool) !Plugin {
         ctx.mutex.lock();
         defer ctx.mutex.unlock();
-        const plugin = c.extism_plugin_new(ctx.ctx, toCstr(data), @as(u64, data.len), null, 0, wasi);
+        // const data_ptr = &data[0]; // TODO
+        var plugin: i32 = -1;
+        if (functions.len > 0) {
+            var funcPtrs = try allocator.alloc(?*c.ExtismFunction, functions.len);
+            var i: usize = 0;
+            for (functions) |function| {
+                funcPtrs[i] = function.c_func;
+                i += 1;
+            }
+            plugin = c.extism_plugin_new(ctx.ctx, data.ptr, @as(u64, data.len), &funcPtrs[0], functions.len, wasi);
+        } else {
+            plugin = c.extism_plugin_new(ctx.ctx, data.ptr, @as(u64, data.len), null, 0, wasi);
+        }
+
         if (plugin < 0) {
             const err_c = c.extism_error(ctx.ctx, @as(i32, -1));
             const err = std.mem.span(err_c);
@@ -34,10 +48,10 @@ pub const Plugin = struct {
     }
 
     /// Create a new plugin from the given manifest
-    pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, manifest: Manifest, wasi: bool) !Plugin {
+    pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, manifest: Manifest, functions: []Function, wasi: bool) !Plugin {
         const json = try utils.stringifyAlloc(allocator, manifest);
         defer allocator.free(json);
-        return init(ctx, json, wasi);
+        return init(allocator, ctx, json, functions, wasi);
     }
 
     pub fn deinit(self: *Plugin) void {
@@ -108,5 +122,28 @@ pub const Plugin = struct {
         defer self.ctx.mutex.unlock();
         const res = c.extism_plugin_function_exists(self.ctx.ctx, self.id, toCstr(function_name));
         return res;
+    }
+};
+
+pub const CurrentPlugin = struct {
+    c_currplugin: *c.ExtismCurrentPlugin,
+
+    pub fn getCurrentPlugin(ptr: *c.ExtismCurrentPlugin) CurrentPlugin {
+        return .{ .c_currplugin = ptr };
+    }
+
+    pub fn getMemory(self: CurrentPlugin, offset: u64) []const u8 {
+        const len = c.extism_current_plugin_memory_length(self.c_currplugin, offset);
+        const c_data = c.extism_current_plugin_memory(self.c_currplugin);
+        const data: [*:0]u8 = std.mem.span(c_data);
+        return (data + offset)[0..len];
+    }
+
+    pub fn alloc(self: *CurrentPlugin, n: u64) u64 {
+        return c.extism_current_plugin_memory_alloc(self.c_currplugin, n);
+    }
+
+    pub fn free(self: *CurrentPlugin, offset: u64) void {
+        c.extism_current_plugin_memory_free(self.c_currplugin, offset);
     }
 };
