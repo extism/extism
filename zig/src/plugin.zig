@@ -85,7 +85,7 @@ pub fn call(self: *Self, function_name: []const u8, input: []const u8) ![]const 
     return "";
 }
 
-// TODO: test this function
+
 /// Update a plugin with the given WASM module
 pub fn update(self: *Self, data: []const u8, wasi: bool) !void {
     self.ctx.mutex.lock();

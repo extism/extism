@@ -22,7 +22,6 @@ pub fn setNamespace(self: *Self, namespace: []const u8) void {
     c.extism_function_set_namespace(self.c_func, namespace.ptr);
 }
 
-// TODO
 pub fn withNamespace(self: Self, namespace: []const u8) Self {
     var not_so_self = self;
     not_so_self.setNamespace(namespace);

@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-pub const c = @import("ffi.zig"); // TODO
+pub const c = @import("ffi.zig");
 
 pub const Context = @import("context.zig");
 pub const Plugin = @import("plugin.zig");
