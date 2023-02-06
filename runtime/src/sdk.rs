@@ -1,5 +1,6 @@
 #![allow(clippy::missing_safety_doc)]
 
+use std::ffi::CString;
 use std::os::raw::c_char;
 use std::str::FromStr;
 
@@ -451,6 +452,67 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     };
 
     plugin.as_mut().get_func(name).is_some()
+}
+
+/// Returns the list of exports
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_export_list(
+    ctx: *mut Context,
+    plugin: PluginIndex,
+) -> *mut *mut c_char {
+    let ctx = &mut *ctx;
+    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return std::ptr::null_mut(),
+        Some(p) => p,
+    };
+    let plugin_mut = plugin.as_mut();
+
+    let mut cstr_exports = vec![];
+    plugin_mut
+        .instance
+        .exports(&mut plugin_mut.memory.store)
+        .for_each(|export| {
+            cstr_exports.push(CString::new(export.name()).unwrap());
+        });
+
+    let mut exports = cstr_exports
+        .into_iter()
+        .map(|s| s.into_raw())
+        .collect::<Vec<_>>();
+
+    exports.shrink_to_fit();
+    let ptr = exports.as_mut_ptr();
+    std::mem::forget(exports);
+    ptr
+}
+
+/// Returns the export count
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_export_count(
+    ctx: *mut Context,
+    plugin: PluginIndex,
+) -> Size {
+    let ctx = &mut *ctx;
+    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return 0,
+        Some(p) => p,
+    };
+    let plugin_mut = plugin.as_mut();
+    plugin_mut
+        .instance
+        .exports(&mut plugin_mut.memory.store)
+        .count() as Size
+}
+
+/// Frees the returned list of exports
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_export_list_free(exports: *mut *mut c_char, len: Size) {
+    let v = Vec::from_raw_parts(exports, len as usize, len as usize);
+
+    for elem in v {
+        let s = CString::from_raw(elem);
+        drop(s);
+    }
 }
 
 /// Call a function

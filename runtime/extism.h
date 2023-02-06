@@ -209,6 +209,21 @@ bool extism_plugin_config(ExtismContext *ctx,
 bool extism_plugin_function_exists(ExtismContext *ctx, ExtismPlugin plugin, const char *func_name);
 
 /**
+ * Returns the list of exports
+ */
+char **extism_plugin_export_list(ExtismContext *ctx, ExtismPlugin plugin);
+
+/**
+ * Returns the export count
+ */
+ExtismSize extism_plugin_export_count(ExtismContext *ctx, ExtismPlugin plugin);
+
+/**
+ * Frees the returned list of exports
+ */
+void extism_plugin_export_list_free(char **exports, ExtismSize len);
+
+/**
  * Call a function
  *
  * `func_name`: is the function to call
