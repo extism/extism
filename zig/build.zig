@@ -14,13 +14,9 @@ pub fn build(b: *std.Build) void {
     });
     lib.install();
 
-    var tests = b.addTest(.{ 
-        .name = "Library Tests", 
-        .root_source_file = .{ .path = "test.zig" }, 
-        .target = target, 
-        .optimize = optimize, 
-        .kind = .test_exe });
-    tests.addPackagePath("extism", "src/main.zig");
+    var tests = b.addTest(.{ .name = "Library Tests", .root_source_file = .{ .path = "test.zig" }, .target = target, .optimize = optimize, .kind = .test_exe });
+
+    tests.addAnonymousModule("extism", .{ .source_file = .{ .path = "src/main.zig" } });
     tests.linkLibC();
     tests.addIncludePath("/usr/local/include");
     tests.addLibraryPath("/usr/local/lib");
@@ -36,7 +32,8 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    example.addPackagePath("extism", "src/main.zig");
+
+    example.addAnonymousModule("extism", .{ .source_file = .{ .path = "src/main.zig" } });
     example.linkLibC();
     example.addIncludePath("/usr/local/include");
     example.addLibraryPath("/usr/local/lib");
