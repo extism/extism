@@ -151,3 +151,16 @@ func TestErrorsOnUnknownFunction(t *testing.T) {
 		t.Fatal("Was expecting call to unknown function to fail")
 	}
 }
+
+func TestListExports(t *testing.T) {
+	ctx := NewContext()
+	defer ctx.Free()
+
+	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
+	if err != nil {
+		t.Error(err)
+	}
+	if len(plugin.ListExports()) != 4 {
+		t.Fatal("Was expecting the export count to be 4")
+	}
+}

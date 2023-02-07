@@ -382,6 +382,21 @@ func (plugin Plugin) FunctionExists(functionName string) bool {
 	return bool(b)
 }
 
+func (plugin Plugin) ListExports() []string {
+	c_exports := C.extism_plugin_export_list(plugin.ctx.pointer, C.int(plugin.id))
+	exports_len := C.extism_plugin_export_count(plugin.ctx.pointer, C.int(plugin.id))
+	exports := make([]string, int(exports_len))
+	start := unsafe.Pointer(c_exports)
+	pointerSize := unsafe.Sizeof(c_exports)
+
+	for i := 0; i < int(exports_len); i++ {
+		// Copy each input string into a Go string and add it to the slice.
+		pointer := (**C.char)(unsafe.Pointer(uintptr(start) + uintptr(i)*pointerSize))
+		exports[i] = C.GoString(*pointer)
+	}
+	return exports
+}
+
 // Call a function by name with the given input, returning the output
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	ptr := makePointer(input)
