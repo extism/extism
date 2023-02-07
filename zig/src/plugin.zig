@@ -109,4 +109,18 @@ pub const Plugin = struct {
         const res = c.extism_plugin_function_exists(self.ctx.ctx, self.id, toCstr(function_name));
         return res;
     }
+
+    /// Returns the list of exports. Caller owns the memory
+    pub fn listExports(self: Plugin, allocator: std.mem.Allocator) ![]const []const u8 {
+        self.ctx.mutex.lock();
+        defer self.ctx.mutex.unlock();
+        const c_exports = c.extism_plugin_export_list(self.ctx.ctx, self.id);
+        const exports_len = c.extism_plugin_export_count(self.ctx.ctx, self.id);
+        var exports = try allocator.alloc([]const u8, @as(usize, exports_len));
+        const exports_cstr = c_exports[0..exports_len];
+        for (exports_cstr) |export_cstr, i| {
+            exports[i] = std.mem.span(export_cstr);
+        }
+        return exports;
+    }
 };
