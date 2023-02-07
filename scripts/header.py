@@ -68,6 +68,9 @@ class Visitor(c_ast.NodeVisitor):
         else:
             t = node.type
             is_ptr = False
+        
+        if isinstance(t, c_ast.PtrDecl): # for functions returning pointer to pointer
+            t = t.type
 
         name = t.declname
         args = self.args(node.args)
