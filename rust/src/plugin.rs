@@ -133,6 +133,27 @@ impl<'a> Plugin<'a> {
         }
     }
 
+    pub fn list_exports(&self) -> Result<Vec<String>, Error> {
+        let c_exports =
+            unsafe { bindings::extism_plugin_export_list(&mut *self.context.lock(), self.id) };
+        let exports_len =
+            unsafe { bindings::extism_plugin_export_count(&mut *self.context.lock(), self.id) };
+        let vec_exports =
+            unsafe { Vec::from_raw_parts(c_exports, exports_len as usize, exports_len as usize) };
+        let mut exports = vec![];
+        for c_export in &vec_exports {
+            unsafe {
+                let cstr = std::ffi::CStr::from_ptr(*c_export);
+                exports.push(cstr.to_str()?.into());
+            }
+        }
+        std::mem::forget(vec_exports);
+        unsafe {
+            bindings::extism_plugin_export_list_free(c_exports, exports_len);
+        }
+        Ok(exports)
+    }
+
     /// Call a function with the given input
     pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
