@@ -385,14 +385,14 @@ func (plugin Plugin) FunctionExists(functionName string) bool {
 func (plugin Plugin) ListExports() []string {
 	c_exports := C.extism_plugin_export_list(plugin.ctx.pointer, C.int(plugin.id))
 	exports_len := C.extism_plugin_export_count(plugin.ctx.pointer, C.int(plugin.id))
+	defer C.extism_plugin_export_list_free(c_exports, exports_len)
 	exports := make([]string, int(exports_len))
 	start := unsafe.Pointer(c_exports)
 	pointerSize := unsafe.Sizeof(c_exports)
-
 	for i := 0; i < int(exports_len); i++ {
 		// Copy each input string into a Go string and add it to the slice.
 		pointer := (**C.char)(unsafe.Pointer(uintptr(start) + uintptr(i)*pointerSize))
-		exports[i] = C.GoString(*pointer)
+		exports[i] = C.GoString(*pointer) // Creates a copy of the string
 	}
 	return exports
 }

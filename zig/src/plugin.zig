@@ -110,17 +110,21 @@ pub const Plugin = struct {
         return res;
     }
 
-    /// Returns the list of exports. Caller owns the memory
-    pub fn listExports(self: Plugin, allocator: std.mem.Allocator) ![]const []const u8 {
+    /// Returns the list of exports. Free with `freeListExports`
+    pub fn listExports(self: Plugin) []const [*:0]const u8 {
         self.ctx.mutex.lock();
         defer self.ctx.mutex.unlock();
         const c_exports = c.extism_plugin_export_list(self.ctx.ctx, self.id);
         const exports_len = c.extism_plugin_export_count(self.ctx.ctx, self.id);
-        var exports = try allocator.alloc([]const u8, @as(usize, exports_len));
-        const exports_cstr = c_exports[0..exports_len];
-        for (exports_cstr) |export_cstr, i| {
-            exports[i] = std.mem.span(export_cstr);
-        }
+        const exports = @ptrCast([*]const [*:0]const u8, c_exports)[0..exports_len];
         return exports;
+    }
+
+    /// Frees the returned list of exports
+    pub fn freeListExports(self: Plugin, exports: []const [*:0]const u8) void {
+        _ = self; // for consistency
+        const c_exports = @ptrCast([*c]const [*c]const u8, exports);
+        const len = exports.len;
+        c.EditedFunctions.extism_plugin_export_list_free(c_exports, len);
     }
 };
