@@ -478,6 +478,18 @@ public:
     return extism_plugin_function_exists(this->context.get(), this->plugin,
                                          func.c_str());
   }
+
+  std::vector<std::string> list_exports() const {
+      char **c_exports = extism_plugin_export_list(this->context.get(), this->plugin);
+      int exports_len = extism_plugin_export_count(this->context.get(), this->plugin);
+      std::vector<std::string> exports;
+      for (int i = 0; i < exports_len; i++)
+      {
+        exports.push_back(c_exports[i]);
+      }
+      extism_plugin_export_list_free(c_exports, exports_len);
+      return exports;
+  }
 };
 
 class Context {
