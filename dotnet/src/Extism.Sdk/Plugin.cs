@@ -123,7 +123,14 @@ public class Plugin : IDisposable
                     {
                         break;
                     }
-                    await Task.Delay(10);
+
+                    try
+                    { 
+                        await Task.Delay(1000, cancellationToken ?? internalTokenSource.Token);
+                    }
+                    catch (Exception e)
+                    {
+                    }
                 }
             }
             else
@@ -135,7 +142,13 @@ public class Plugin : IDisposable
                     {
                         break;
                     }
-                    await Task.Delay(10);
+                    try
+                    { 
+                        await Task.Delay(1000, cancellationToken ?? internalTokenSource.Token);
+                    }
+                    catch (Exception e)
+                    {
+                    }
                 }
             }
         };
@@ -171,7 +184,8 @@ public class Plugin : IDisposable
 
         if (executeFunctionInternalTask.IsCompletedSuccessfully)
         {
-            internalTokenSource.Cancel();
+            internalTokenSource.Cancel(); // Cancel internal token so the background task will terminate.
+            await cancellableTimeoutTask;
             return await executeFunctionInternalTask;
         }
 
@@ -179,9 +193,10 @@ public class Plugin : IDisposable
         // the plugin is in a bad state.  We will dispose it so
         // execution will stop, and the caller must handle the
         // TaskCanceledException and throw away the plugin reference.
-        Dispose();
+        // Dispose();
 
-        internalTokenSource.Cancel();
+        internalTokenSource.Cancel(); // Cancel internal token so the background task will terminate.
+        await cancellableTimeoutTask;
         throw new TaskCanceledException();
     }
 
