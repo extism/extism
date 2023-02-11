@@ -73,6 +73,7 @@ const _functions = {
     ],
   ],
   extism_function_free: ["void", [function_t]],
+  extism_function_set_namespace: ["void", [function_t, "string"]],
   extism_current_plugin_memory: ["uint8*", ["void*"]],
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
@@ -147,6 +148,7 @@ interface LibExtism {
     user_data: Buffer | null,
     free: Buffer | null
   ) => Buffer;
+  extism_function_set_namespace: (f: Buffer, s: string) => void;
   extism_function_free: (f: Buffer) => void;
   extism_current_plugin_memory: (p: Buffer) => Buffer;
   extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
@@ -408,6 +410,44 @@ export class CurrentPlugin {
   memoryLength(offset: number): number {
     return lib.extism_current_plugin_memory_length(this.pointer, offset);
   }
+
+  /**
+   * Return a string from a host function
+   * @param output - The output to set
+   * @param s - The string to return
+   */
+  returnString(output: typeof Val, s: string) {
+    var offs = this.memoryAlloc(Buffer.byteLength(s));
+    this.memory(offs).write(s);
+    output.v.i64 = offs;
+  }
+
+  /**
+   * Return bytes from a host function
+   * @param output - The output to set
+   * @param b - The buffer to return
+   */
+  returnBytes(output: typeof Val, b: Buffer) {
+    var offs = this.memoryAlloc(b.length);
+    this.memory(offs).fill(b);
+    output.v.i64 = offs;
+  }
+
+  /**
+   * Get bytes from host function parameter
+   * @param input - The input to read
+   */
+  inputBytes(input: typeof Val): Buffer {
+    return this.memory(input.v.i64)
+  }
+
+  /**
+   * Get string from host function parameter
+   * @param input - The input to read
+   */
+  inputString(input: typeof Val): string {
+    return this.memory(input.v.i64).toString()
+  }
 }
 
 /**
@@ -485,6 +525,20 @@ export class HostFunction {
     );
     this.userData = userData;
     functionRegistry.register(this, this.pointer, this.pointer);
+  }
+
+  /** 
+   * Set function namespace
+   */
+  setNamespace(name: string) {
+    if (this.pointer !== null) {
+      lib.extism_function_set_namespace(this.pointer, name)
+    }
+  }
+
+  withNamespace(name: string) : HostFunction {
+    this.setNamespace(name)
+    return this;
   }
 
   /**

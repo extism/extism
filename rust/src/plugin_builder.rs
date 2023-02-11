@@ -54,7 +54,7 @@ impl<'a> PluginBuilder<'a> {
             Source::Manifest(m) => {
                 Plugin::new_with_manifest(context, &m, self.functions, self.wasi)
             }
-            Source::Data(d) => Plugin::new(context, &d, self.functions, self.wasi),
+            Source::Data(d) => Plugin::new(context, d, self.functions, self.wasi),
         }
     }
 }

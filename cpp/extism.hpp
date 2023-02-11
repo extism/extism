@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstring>
 #include <functional>
 #include <map>
 #include <memory>
@@ -239,6 +240,32 @@ public:
   void free(uint64_t offs) {
     extism_current_plugin_memory_free(this->pointer, offs);
   }
+
+  void returnString(Val &output, const std::string &s) {
+    this->returnBytes(output, (const uint8_t *)s.c_str(), s.size());
+  }
+
+  void returnBytes(Val &output, const uint8_t *bytes, size_t len) {
+    auto offs = this->alloc(len);
+    memcpy(this->memory() + offs, bytes, len);
+    output.v.i64 = offs;
+  }
+
+  uint8_t *inputBytes(Val &inp, size_t *length = nullptr) {
+    if (inp.t != ValType::I64) {
+      return nullptr;
+    }
+    if (length != nullptr) {
+      *length = this->memory_length(inp.v.i64);
+    }
+    return this->memory() + inp.v.i64;
+  }
+
+  std::string inputString(Val &inp) {
+    size_t length = 0;
+    char *buf = (char *)this->inputBytes(inp, &length);
+    return std::string(buf, length);
+  }
 };
 
 typedef std::function<void(CurrentPlugin, const std::vector<Val> &,
@@ -289,6 +316,10 @@ public:
         this->name.c_str(), inputs.data(), inputs.size(), outputs.data(),
         outputs.size(), function_callback, &this->user_data, free_user_data);
     this->func = std::shared_ptr<ExtismFunction>(ptr, extism_function_free);
+  }
+
+  void set_namespace(std::string s) {
+    extism_function_set_namespace(this->func.get(), s.c_str());
   }
 
   Function(const Function &f) { this->func = f.func; }

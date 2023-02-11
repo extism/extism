@@ -72,8 +72,7 @@ impl<'a> Plugin<'a> {
     ) -> Result<(), Error> {
         let functions = functions
             .into_iter()
-            .map(|x| bindings::ExtismFunction::from(x.clone()))
-            .collect::<Vec<_>>();
+            .map(|x| bindings::ExtismFunction::from(x.clone()));
         let mut functions = functions
             .into_iter()
             .map(|x| &x as *const _)
