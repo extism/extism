@@ -68,6 +68,25 @@ public class BasicTests
     }
 
     // TODO: write tests with long running functions and also test pre-cancelling the task
+    
+    [Fact]
+    public async void LongRunningtask_WithCancellation_CanBeCanceled()
+    {
+        using var context = new Context();
+        using var plugin = context.CreatePlugin(sleepMs, withWasi: true);
+
+        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        // Schedule token to automatically cancel after 3 seconds.
+        cancellationTokenSource.CancelAfter(3000);
+        
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        {
+            // This should throw after ~3000 ms and not complete execution.
+            var response = await plugin.CallFunctionAsync("sleepMs", Encoding.UTF8.GetBytes("[50000]"), null, cancellationTokenSource.Token);
+            Assert.Fail("This should be unreachable.");
+        });
+        
+    }
 
     [Fact]
     public async void PrecancelledToken_DoesntInvoke_Throws()
