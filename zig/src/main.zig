@@ -18,7 +18,7 @@ pub const LogLevel = enum {
         inline for (@typeInfo(LogLevel).Enum.fields) |field| {
             if (@enumToInt(self) == field.value) {
                 const first_lower = std.ascii.toLower(field.name[0]);
-                return .{first_lower} ++  field.name[1..];
+                return .{first_lower} ++ field.name[1..];
             }
         }
         unreachable;
