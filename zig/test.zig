@@ -104,8 +104,10 @@ test "Multi threaded tests" {
         }
     };
     try stdout.writeByte('\n');
-    _ = try std.Thread.spawn(.{}, S._test, .{wasm});
-    _ = try std.Thread.spawn(.{}, S._test, .{wasm});
+    const t1 = try std.Thread.spawn(.{}, S._test, .{wasm});
+    const t2 = try std.Thread.spawn(.{}, S._test, .{wasm});
+    t1.join();
+    t2.join();
 
     var ctx = Context.init();
     defer ctx.deinit();
@@ -121,7 +123,7 @@ test "Multi threaded tests" {
 
     var plugin = try Plugin.init(testing.allocator, &ctx, wasm, &[_]Function{f}, true);
     defer plugin.deinit();
-    
+
     const output = try plugin.call("count_vowels", "this is a test");
     try stdout.writeAll(output);
     try stdout.writeByte('\n');
