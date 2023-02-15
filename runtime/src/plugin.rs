@@ -13,6 +13,7 @@ pub struct Plugin {
     pub vars: BTreeMap<String, Vec<u8>>,
     pub should_reinstantiate: bool,
     pub timer_id: uuid::Uuid,
+    pub cancel_handle: sdk::ExtismCancelHandle,
 }
 
 pub struct Internal {
@@ -206,7 +207,12 @@ impl Plugin {
         }
 
         let instance = linker.instantiate(&mut memory.store, main)?;
-
+        let timer_id = uuid::Uuid::new_v4();
+        let cancel_handle = sdk::ExtismCancelHandle {
+            engine: memory.store.engine().clone(),
+            id: timer_id,
+            epoch_timer_tx: None,
+        };
         let mut plugin = Plugin {
             module: main.clone(),
             linker,
@@ -216,7 +222,8 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
-            timer_id: uuid::Uuid::new_v4(),
+            timer_id,
+            cancel_handle,
         };
 
         plugin.initialize_runtime()?;

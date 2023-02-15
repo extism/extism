@@ -359,19 +359,44 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
     ctx.remove(plugin);
 }
 
-/// Cancel a running plugin
+pub struct ExtismCancelHandle {
+    pub engine: wasmtime::Engine,
+    pub(crate) epoch_timer_tx: Option<std::sync::mpsc::SyncSender<TimerAction>>,
+    pub id: uuid::Uuid,
+}
+
+/// Get plugin ID for cancellation
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_cancel(ctx: *mut Context, plugin: PluginIndex) {
+pub unsafe extern "C" fn extism_plugin_cancel_handle(
+    ctx: *mut Context,
+    plugin: PluginIndex,
+) -> *const ExtismCancelHandle {
     let ctx = &mut *ctx;
-    let plugin = match PluginRef::new(ctx, plugin, true) {
-        None => return,
+    let tx = ctx.epoch_timer_tx.clone();
+    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return std::ptr::null_mut(),
         Some(p) => p,
     };
+    let plugin = plugin.as_mut();
+    plugin.start_timer(&tx).unwrap();
+    if plugin.cancel_handle.epoch_timer_tx.is_none() {
+        plugin.cancel_handle.epoch_timer_tx = Some(tx);
+    }
+    &plugin.cancel_handle as *const _
+}
 
-    let id = plugin.as_ref().timer_id;
-    plugin
-        .as_ref()
-        .error(plugin.epoch_timer_tx.send(TimerAction::Cancel { id }), ())
+/// Cancel a running plugin
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) {
+    let handle = &*handle;
+    if let Some(tx) = &handle.epoch_timer_tx {
+        println!("CANCEL PLUGIN");
+        tx.send(TimerAction::Cancel {
+            id: handle.id,
+            engine: handle.engine.clone(),
+        })
+        .unwrap();
+    }
 }
 
 /// Remove all plugins from the registry
