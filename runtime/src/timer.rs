@@ -9,6 +9,9 @@ pub(crate) enum TimerAction {
     Stop {
         id: uuid::Uuid,
     },
+    Cancel {
+        id: uuid::Uuid,
+    },
     Shutdown,
 }
 
@@ -41,6 +44,11 @@ impl Timer {
                             plugins.remove(&id);
                         }
                         TimerAction::Shutdown => return,
+                        TimerAction::Cancel { id } => {
+                            if let Some(t) = plugins.get_mut(&id) {
+                                t.1 = std::time::Instant::now();
+                            }
+                        }
                     }
                 };
             }

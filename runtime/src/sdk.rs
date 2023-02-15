@@ -359,6 +359,21 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
     ctx.remove(plugin);
 }
 
+/// Cancel a running plugin
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_cancel(ctx: *mut Context, plugin: PluginIndex) {
+    let ctx = &mut *ctx;
+    let plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return,
+        Some(p) => p,
+    };
+
+    let id = plugin.as_ref().timer_id;
+    plugin
+        .as_ref()
+        .error(plugin.epoch_timer_tx.send(TimerAction::Cancel { id }), ())
+}
+
 /// Remove all plugins from the registry
 #[no_mangle]
 pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {

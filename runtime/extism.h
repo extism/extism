@@ -191,6 +191,11 @@ bool extism_plugin_update(ExtismContext *ctx,
 void extism_plugin_free(ExtismContext *ctx, ExtismPlugin plugin);
 
 /**
+ * Cancel a running plugin
+ */
+void extism_plugin_cancel(ExtismContext *ctx, ExtismPlugin plugin);
+
+/**
  * Remove all plugins from the registry
  */
 void extism_context_reset(ExtismContext *ctx);
