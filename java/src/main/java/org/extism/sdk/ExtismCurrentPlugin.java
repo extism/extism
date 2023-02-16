@@ -53,22 +53,13 @@ public class ExtismCurrentPlugin {
         output.value.i64 = offs;
     }
 
-   /* Memory memoryAtOffset(long offs) {
-        var len = LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, offs);
-        return new Memory(offs, len);
-    }
-
-    Pointer input_buffer(LibExtism.ExtismVal input) {
-        var mem = this.memoryAtOffset(input.value.i64);
-        return this.memory(mem);
-    }*/
-
     /**
      * Get bytes from host function parameter
      * @param input - The input to read
      */
-    Pointer inputBytes(LibExtism.ExtismVal input) {
-        return this.memory().getPointer(input.value.i64);
+    byte[] inputBytes(LibExtism.ExtismVal input) {
+        return this.memory()
+                .getByteArray(input.value.i64, LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, input.value.i64));
     }
 
     /**
@@ -76,7 +67,6 @@ public class ExtismCurrentPlugin {
      * @param input - The input to read
      */
     String inputString(LibExtism.ExtismVal input) {
-        Pointer p = this.inputBytes(input);
-        return p == null ? ""  : p.toString();
+        return new String(this.inputBytes(input));
     }
 }

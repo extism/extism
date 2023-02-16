@@ -37,9 +37,7 @@ public class HostFunction {
             for (int i = 0; i < nOutputs; i++) {
                 arraysOfOutputs[i] = new LibExtism.ExtismVal();
                 arraysOfOutputs[i].t = arraysOfInputs[i].t;
-                var union = new LibExtism.ExtismValUnion();
-                union.i64 = 0;
-                arraysOfOutputs[i].value = union;
+                arraysOfOutputs[i].value = new LibExtism.ExtismValUnion();
             }
 
              f.invoke(
@@ -49,18 +47,19 @@ public class HostFunction {
                     new JsonParser().parse(data.getString(0))
             );
 
-
-            System.out.println(arraysOfOutputs.length);
              //var tmp = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
 
              System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(arraysOfOutputs[0].value.i64));
 
-             var out = ((LibExtism.ExtismVal[])outputs.toArray(nOutputs));
-            for (int i = 0; i < nOutputs; i++) {
-                out[i] = arraysOfInputs[i];
-                // out[i].t = arraysOfOutputs[i].t;
-                // out[i].value.i64 = arraysOfOutputs[i].value.i64;
-            }
+             LibExtism.ExtismVal[] out = ((LibExtism.ExtismVal[])outputs.toArray(nOutputs));
+
+             for (int i = 0; i < nOutputs; i++) {
+                out[i].t = arraysOfOutputs[i].t;
+                out[i].value = arraysOfOutputs[i].value;
+             }
+
+             System.out.println(outputs);
+             System.out.println("Exit Host function");
         };
 
         this.pointer = LibExtism.INSTANCE.extism_function_new(

@@ -96,7 +96,7 @@ public interface LibExtism extends Library {
      * Get the length of an allocated block
      * NOTE: this should only be called from host functions.
      */
-    long extism_current_plugin_memory_length(Pointer plugin, long n);
+    int extism_current_plugin_memory_length(Pointer plugin, long n);
 
     /**
      * Returns a pointer to the memory of the currently running plugin
