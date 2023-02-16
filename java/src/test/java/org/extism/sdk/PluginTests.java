@@ -1,9 +1,7 @@
 package org.extism.sdk;
 
-import com.google.gson.Gson;
+
 import com.google.gson.JsonElement;
-import com.google.gson.JsonObject;
-import com.sun.jdi.StringReference;
 import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import org.extism.sdk.manifest.Manifest;
@@ -115,8 +113,9 @@ public class PluginTests {
     public void shouldAllowInvokeHostFunctionFromPDK() {
         Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
 
-        String functionName = "say_hello";
-        String input = "aaa";
+        // String functionName = "say_hello";
+        String functionName = "count_vowels";
+        String input = "this is a test";
 
         LibExtism.ExtismValType[] parameters = {LibExtism.ExtismValType.I64};
         LibExtism.ExtismValType[] returns = {LibExtism.ExtismValType.I64};
@@ -133,16 +132,12 @@ public class PluginTests {
                  LibExtism.ExtismVal[] params,
                  LibExtism.ExtismVal[] results,
                  JsonElement userData) -> {
-                    System.out.println(params[0].value);
-
-                    // LibExtism.ExtismVal[] outputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+                    int offs = plugin.alloc(4);
+                    Pointer mem = plugin.memory();
+                    mem.write(offs, "test".getBytes(), 0, 4);
+                    results[0].value.i64 = offs;
 
                     System.out.println("Hello from Java!");
-
-                    String userDatAsString = userData.toString();
-                    System.out.println(userDatAsString);
-
-                    plugin.returnString(results[0], userDatAsString);
                 },
                 hostUserData
         );
@@ -153,10 +148,7 @@ public class PluginTests {
             try (var plugin = ctx.newPlugin(manifest, true, functions)) {
                 var output = plugin.call(functionName, input);
 
-                System.out.println("##### OUT #####");
-                System.out.println(output);
-                System.out.println("##### OUT END #####");
-
+                System.out.println(String.format("Plugin output length: %d, output: %s", output.length(), output));
                 assertThat(output).isEqualTo("test");
             }
         }

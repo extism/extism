@@ -13,10 +13,11 @@ public class ExtismCurrentPlugin {
         this.pointer = pointer;
     }
 
-    Pointer memory(long offs) {
-        long length = LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, offs);
+    Pointer memory() {
+        /*long length = LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, offs);
         Pointer data = LibExtism.INSTANCE.extism_current_plugin_memory(this.pointer);
-        return data.share(offs, length);
+        return data.share(offs, length);*/
+        return LibExtism.INSTANCE.extism_current_plugin_memory(this.pointer);
     }
 
     int alloc(int n) {
@@ -47,17 +48,27 @@ public class ExtismCurrentPlugin {
      */
     void returnBytes(LibExtism.ExtismVal output, byte[] b) {
         int offs = this.alloc(b.length);
-        Pointer ptr = this.memory(offs);
-        ptr.write(0, b, 0, b.length);
+        Pointer ptr = this.memory();
+        ptr.write(offs, b, 0, b.length);
         output.value.i64 = offs;
     }
+
+   /* Memory memoryAtOffset(long offs) {
+        var len = LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, offs);
+        return new Memory(offs, len);
+    }
+
+    Pointer input_buffer(LibExtism.ExtismVal input) {
+        var mem = this.memoryAtOffset(input.value.i64);
+        return this.memory(mem);
+    }*/
 
     /**
      * Get bytes from host function parameter
      * @param input - The input to read
      */
     Pointer inputBytes(LibExtism.ExtismVal input) {
-        return this.memory(input.value.i64);
+        return this.memory().getPointer(input.value.i64);
     }
 
     /**

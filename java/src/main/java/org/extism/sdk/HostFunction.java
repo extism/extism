@@ -31,27 +31,36 @@ public class HostFunction {
                          LibExtism.ExtismVal.ByReference outputs,
                          int nOutputs,
                          Pointer data) -> {
+            var arraysOfInputs = ((LibExtism.ExtismVal[])inputs.toArray(nInputs));
+
+            LibExtism.ExtismVal[] arraysOfOutputs = new LibExtism.ExtismVal[nOutputs];
+            for (int i = 0; i < nOutputs; i++) {
+                arraysOfOutputs[i] = new LibExtism.ExtismVal();
+                arraysOfOutputs[i].t = arraysOfInputs[i].t;
+                var union = new LibExtism.ExtismValUnion();
+                union.i64 = 0;
+                arraysOfOutputs[i].value = union;
+            }
 
              f.invoke(
                     new ExtismCurrentPlugin(currentPlugin),
-                    (LibExtism.ExtismVal[])inputs.toArray(nOutputs),
-                    (LibExtism.ExtismVal[])outputs.toArray(nOutputs),
+                     arraysOfInputs,
+                     arraysOfOutputs,
                     new JsonParser().parse(data.getString(0))
             );
 
-            //System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(outputsVal[0].value.i64));
 
-            for (LibExtism.ExtismVal extismVal : (LibExtism.ExtismVal[])outputs.toArray(nOutputs)) {
-                System.out.println(extismVal);
-            }
+            System.out.println(arraysOfOutputs.length);
+             //var tmp = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
 
-            /*LibExtism.ExtismVal[] hostFunctionsOutputsVal = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+             System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(arraysOfOutputs[0].value.i64));
+
+             var out = ((LibExtism.ExtismVal[])outputs.toArray(nOutputs));
             for (int i = 0; i < nOutputs; i++) {
-                System.out.println(hostFunctionsOutputsVal[i].t + ":" + outputsVal[i].t);
-                hostFunctionsOutputsVal[i] = outputsVal[i];
-                 hostFunctionsOutputsVal[i].t = outputsVal[i].t;
-                hostFunctionsOutputsVal[i].value.i64 = outputsVal[i].value.i64;
-            }*/
+                out[i] = arraysOfInputs[i];
+                // out[i].t = arraysOfOutputs[i].t;
+                // out[i].value.i64 = arraysOfOutputs[i].value.i64;
+            }
         };
 
         this.pointer = LibExtism.INSTANCE.extism_function_new(
