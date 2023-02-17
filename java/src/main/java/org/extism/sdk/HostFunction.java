@@ -27,9 +27,9 @@ public class HostFunction {
         this.returns = returns;
         this.userData = userData;
         this.callback = (Pointer currentPlugin,
-                         LibExtism.ExtismVal.ByReference inputs,
+                         LibExtism.ExtismVal inputs,
                          int nInputs,
-                         LibExtism.ExtismVal.ByReference outs,
+                         LibExtism.ExtismVal outs,
                          int nOutputs,
                          Pointer data) -> {
 

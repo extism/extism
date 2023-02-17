@@ -19,45 +19,20 @@ public interface LibExtism extends Library {
     interface InternalExtismFunction extends Callback {
         void invoke(
                 Pointer currentPlugin,
-                ExtismVal.ByReference inputs,
+                ExtismVal inputs,
                 int nInputs,
-                ExtismVal.ByReference outputs,
+                ExtismVal outputs,
                 int nOutputs,
                 Pointer data
         );
     }
 
+    @Structure.FieldOrder({"t", "v"})
     class ExtismVal extends Structure {
-        protected static class ByReference extends ExtismVal implements Structure.ByReference{
-            public ByReference() {
-                super();
-            }
-
-            public ByReference(Pointer ptr) {
-                super(ptr);
-            }
-        }
-
-        public ExtismVal() {
-            super();
-            read();
-        }
-
-        public ExtismVal(Pointer ptr) {
-            super(ptr);
-            read();
-        }
-
-        @Override
-        protected List<String> getFieldOrder() {
-            return Arrays.asList("t", "v");
-        }
-
         public int t;
         public ExtismValUnion v;
     }
-
-
+    
     class ExtismValUnion extends Union {
         public int i32;
         public long i64;
