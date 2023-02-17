@@ -36,7 +36,7 @@ test "Single threaded tests" {
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
-        @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
+        @constCast(@ptrCast(*const anyopaque, "user data")),
     );
     defer f.deinit();
 
@@ -92,7 +92,7 @@ test "Multi threaded tests" {
                 &[_]sdk.c.ExtismValType{sdk.c.I64},
                 &[_]sdk.c.ExtismValType{sdk.c.I64},
                 &hello_world,
-                @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
+                @constCast(@ptrCast(*const anyopaque, "user data")),
             );
             defer f.deinit();
             var plugin = try Plugin.init(testing.allocator, &ctx, w, &[_]Function{f}, true);
@@ -117,7 +117,7 @@ test "Multi threaded tests" {
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
-        @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
+        @constCast(@ptrCast(*const anyopaque, "user data")),
     );
     defer f.deinit();
 
