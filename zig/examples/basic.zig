@@ -33,7 +33,7 @@ pub fn main() !void {
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
-        @qualCast(*anyopaque, @ptrCast(*const anyopaque, "user data")),
+        @constCast(@ptrCast(*const anyopaque, "user data")),
     );
     defer f.deinit();
     var my_plugin = try Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
