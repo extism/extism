@@ -5,8 +5,8 @@ import com.google.gson.JsonElement;
 public interface ExtismFunction{
     void invoke(
             ExtismCurrentPlugin currentPlugin,
-            LibExtism.ExtismVal[] params,
-            LibExtism.ExtismVal[] returns,
+            LibExtism.ExtismVal.ByReference params,
+            LibExtism.ExtismVal.ByReference returns,
             JsonElement data
     );
 }

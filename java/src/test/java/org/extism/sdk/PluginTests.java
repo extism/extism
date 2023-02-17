@@ -125,15 +125,18 @@ public class PluginTests {
                 new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64},
                 new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64},
                 (ExtismCurrentPlugin plugin,
-                 LibExtism.ExtismVal[] params,
-                 LibExtism.ExtismVal[] results,
+                 LibExtism.ExtismVal.ByReference params,
+                 LibExtism.ExtismVal.ByReference results,
                  JsonElement userData) -> {
-                    System.out.println(plugin.inputString(params[0]));
+                /*    var inpts = (LibExtism.ExtismVal[])params.toArray(1);
+                    System.out.println(plugin.inputString(inpts[0]));
 
                     int offs = plugin.alloc(4);
                     Pointer mem = plugin.memory();
                     mem.write(offs, "test".getBytes(), 0, 4);
-                    results[0].value.i64 = offs;
+
+                    var outpts = (LibExtism.ExtismVal[])params.toArray(1);
+                    outpts[0].v.i64 = offs;*/
 
                     System.out.println("Hello from Java!");
                 },
@@ -142,10 +145,12 @@ public class PluginTests {
 
         HostFunction[] functions = {hello_world};
 
+
         try (var ctx = new Context()) {
             try (var plugin = ctx.newPlugin(manifest, true, functions)) {
                 var output = plugin.call(functionName, input);
 
+                System.out.println(" ");
                 System.out.println(String.format("Plugin output length: %d, output: %s", output.length(), output));
                 //assertThat(output).isEqualTo("test");
             }

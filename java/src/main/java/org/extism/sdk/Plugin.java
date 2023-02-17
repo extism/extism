@@ -124,8 +124,8 @@ public class Plugin implements AutoCloseable {
      * @param withWASI Set to true to enable WASI
      * @return {@literal true} if update was successful
      */
-    public boolean update(Manifest manifest, boolean withWASI) {
-        return update(serialize(manifest), withWASI);
+    public boolean update(Manifest manifest, boolean withWASI, HostFunction[] functions) {
+        return update(serialize(manifest), withWASI, functions);
     }
 
     /**
@@ -135,9 +135,20 @@ public class Plugin implements AutoCloseable {
      * @param withWASI      Set to true to enable WASI
      * @return {@literal true} if update was successful
      */
-    public boolean update(byte[] manifestBytes, boolean withWASI) {
+    public boolean update(byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
         Objects.requireNonNull(manifestBytes, "manifestBytes");
-        return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length, null, 0, withWASI);
+        Pointer[] ptrArr = new Pointer[functions == null ? 0 : functions.length];
+
+        if (functions != null)
+            for (int i = 0; i < functions.length; i++) {
+                ptrArr[i] = functions[i].pointer;
+            }
+
+
+        return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length,
+                ptrArr,
+                functions == null ? 0 : functions.length,
+                withWASI);
     }
 
     /**

@@ -1,9 +1,11 @@
 package org.extism.sdk;
 
 import com.sun.jna.*;
+import com.sun.jna.ptr.PointerByReference;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * Wrapper around the Extism library.
@@ -28,43 +30,70 @@ public interface LibExtism extends Library {
     }
 
     class ExtismValUnion extends Union {
-        public static class ByValue extends ExtismValUnion implements Union.ByValue {};
+        public static class ByReference extends ExtismValUnion implements Structure.ByReference {}
 
         public int i32;
         public long i64;
         public float f32;
         public double f64;
-
-        @Override
-        public String toString() {
-            return "ExtismValUnion{" +
-                    "i32=" + i32 +
-                    ", i64=" + i64 +
-                    ", f32=" + f32 +
-                    ", f64=" + f64 +
-                    '}';
-        }
     }
 
     class ExtismVal extends Structure {
-        public static class ByValue extends ExtismVal implements Structure.ByValue {};
-        public static class ByReference extends ExtismVal implements Structure.ByReference {}
+        protected static class ByReference extends ExtismVal implements Structure.ByReference{
+            public ByReference() {
+                super();
+            }
+
+            public ByReference(Pointer ptr) {
+                super(ptr);
+            }
+        }
+        protected static class ByValue extends ExtismVal implements Structure.ByValue{}
+
+        public ExtismVal() {
+            super();
+            read();
+        }
+
+        public ExtismVal(Pointer ptr) {
+            super(ptr);
+            read();
+        }
 
         @Override
         protected List<String> getFieldOrder() {
-            return Arrays.asList("t", "value");
+            return Arrays.asList("t", "v");
         }
 
         public int t;
-        public ExtismValUnion value;
+        public long v;
 
-        @Override
-        public String toString() {
-            return "ExtismVal{" +
-                    "t=" + t +
-                    ", value=" + value +
-                    '}';
+        public void setT(int t) {
+            this.t = t;
         }
+
+        public void setV(long v) { this.v = v; }
+
+    /*    public void read() {
+            super.read();
+
+            switch (t) {
+                case 0:
+                    setV((int)v);
+                    break;
+                case 1:
+                    setV((long)v);
+                    break;
+                case 2:
+                    setV((float)v);
+                    break;
+                case 3:
+                    setV((double)v);
+                    break;
+                default:
+                    throw new ExtismException("ExtismValUnion unknown");
+            }
+        }*/
     }
 
     enum ExtismValType {
@@ -76,10 +105,10 @@ public interface LibExtism extends Library {
         FuncRef(5),
         ExternRef(6);
 
-        public final int value;
+        public final int v;
 
         ExtismValType(int value) {
-            this.value = value;
+            this.v = value;
         }
     }
 
@@ -169,17 +198,6 @@ public interface LibExtism extends Library {
      */
     String extism_version();
 
-    /**
-     * Create a new plugin.
-     *
-     * @param contextPointer pointer to the {@link Context}.
-     * @param wasm           is a WASM module (wat or wasm) or a JSON encoded manifest
-     * @param length         the length of the `wasm` parameter
-     * @param withWASI       enables/disables WASI
-     * @return id of the plugin or {@literal -1} in case of error
-     */
-    //int extism_plugin_new(Pointer contextPointer, byte[] wasm, int length, boolean withWASI);
-
 
     /**
      * Calls a function from the @{@link Plugin} at the given {@code pluginIndex}.
@@ -225,7 +243,7 @@ public interface LibExtism extends Library {
      * @param withWASI
      * @return {@literal true} if update was successful
      */
-    boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, Pointer functions, int nFunctions, boolean withWASI);
+    boolean extism_plugin_update(Pointer contextPointer, int pluginIndex, byte[] wasm, int length, Pointer[] functions, int nFunctions, boolean withWASI);
 
     /**
      * Remove a plugin from the registry and free associated memory.

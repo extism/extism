@@ -1,7 +1,10 @@
 package org.extism.sdk;
 
 import com.google.gson.JsonParser;
+import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
+import com.sun.jna.Structure;
+import com.sun.jna.ptr.PointerByReference;
 
 import java.util.Arrays;
 
@@ -31,45 +34,77 @@ public class HostFunction {
                          LibExtism.ExtismVal.ByReference outputs,
                          int nOutputs,
                          Pointer data) -> {
-            var arraysOfInputs = ((LibExtism.ExtismVal[])inputs.toArray(nInputs));
 
-            LibExtism.ExtismVal[] arraysOfOutputs = new LibExtism.ExtismVal[nOutputs];
-            for (int i = 0; i < nOutputs; i++) {
-                arraysOfOutputs[i] = new LibExtism.ExtismVal();
-                arraysOfOutputs[i].t = arraysOfInputs[i].t;
-                arraysOfOutputs[i].value = new LibExtism.ExtismValUnion();
-            }
+            ExtismCurrentPlugin plugin = new ExtismCurrentPlugin(currentPlugin);
+            int offs = plugin.alloc(4);
+            Pointer mem = plugin.memory();
+            mem.write(offs, "test".getBytes(), 0, 4);
 
-             f.invoke(
+          /*  Arrays.stream((LibExtism.ExtismVal[])inputs.toArray(nInputs)).forEach(r -> {
+                System.out.println(Arrays.asList(r.t, r.v.i64));
+            });
+
+            LibExtism.ExtismVal[] outs = new LibExtism.ExtismVal[nOutputs];
+            outs[0] = new LibExtism.ExtismVal();
+            outs[0].v = new LibExtism.ExtismValUnion();
+            outs[0].v.i64 = 1;
+            outs[0].t = LibExtism.ExtismValType.I64.v;*/
+
+            outputs.writeField("t", 1);
+            outputs.writeField("v", (long)offs);
+            //PointerByReference ptr = new PointerByReference();
+      /*     Pointer ptrToFirst = outputs.getPointer();
+           LibExtism.ExtismVal firstElement = new LibExtism.ExtismVal(ptrToFirst);
+           LibExtism.ExtismVal[] array = (LibExtism.ExtismVal []) firstElement.toArray(1);
+           array[0].v.i64 = 1;
+           array[0].t = LibExtism.ExtismValType.I64.v;
+           array[0].write();*/
+
+          // outputs.write();
+
+           // firstElement.write();
+
+            // outputs.getPointer().setPointer(0, firstElement.getPointer());
+
+            // outputs.v.i64 = inputs.v.i64;
+
+            /*Arrays.stream((LibExtism.ExtismVal[])outputs.toArray(nInputs)).forEach(r -> {
+                System.out.println(Arrays.asList(r.t, r.v.i64));
+            });*/
+
+            //outputs.read();
+            //outputs.t = 1;
+            //outputs.v.i64 = inputs.v.i64;
+            //outputs.write();
+
+          /*  LibExtism.ExtismVal[] outs = new LibExtism.ExtismVal[1];
+            outs[0] = new LibExtism.ExtismVal();
+            outs[0].t = 1;
+            outs[0].v = new LibExtism.ExtismValUnion();
+            outs[0].v.i64 = inputs.v.i64;*/
+
+            /* f.invoke(
                     new ExtismCurrentPlugin(currentPlugin),
-                     arraysOfInputs,
-                     arraysOfOutputs,
+                     inputs,
+                     outputs,
                     new JsonParser().parse(data.getString(0))
-            );
+            );*/
 
-             //var tmp = (LibExtism.ExtismVal[])outputs.toArray(nOutputs);
+           //  System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(outputs.v.i64));
 
-             System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(arraysOfOutputs[0].value.i64));
+             //System.out.println(inputs.getPointer().equals(outputs));
 
-             LibExtism.ExtismVal[] out = ((LibExtism.ExtismVal[])outputs.toArray(nOutputs));
-
-             for (int i = 0; i < nOutputs; i++) {
-                out[i].t = arraysOfOutputs[i].t;
-                out[i].value = arraysOfOutputs[i].value;
-             }
-
-             System.out.println(outputs);
              System.out.println("Exit Host function");
         };
 
         this.pointer = LibExtism.INSTANCE.extism_function_new(
                 this.name,
                 Arrays.stream(this.params)
-                        .mapToInt(typ -> typ.value)
+                        .mapToInt(typ -> typ.v)
                         .toArray(),
                 this.params.length,
                 Arrays.stream(this.returns)
-                        .mapToInt(typ -> typ.value)
+                        .mapToInt(typ -> typ.v)
                         .toArray(),
                 this.returns.length,
                 this.callback,

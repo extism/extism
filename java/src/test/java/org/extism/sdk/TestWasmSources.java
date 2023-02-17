@@ -18,6 +18,7 @@ public enum TestWasmSources {
         }
         public Path getWasmFunctionsFilePath() {
              return Paths.get(WASM_LOCATION, "code-functions.wasm");
+          //  return Paths.get("/Users/79966b/Documents/opensource/wasm/go-plugins/example.wasm");
         }
     };
 
