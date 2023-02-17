@@ -1,11 +1,9 @@
 package org.extism.sdk;
 
 import com.sun.jna.*;
-import com.sun.jna.ptr.PointerByReference;
 
 import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 
 /**
  * Wrapper around the Extism library.
@@ -29,15 +27,6 @@ public interface LibExtism extends Library {
         );
     }
 
-    class ExtismValUnion extends Union {
-        public static class ByReference extends ExtismValUnion implements Structure.ByReference {}
-
-        public int i32;
-        public long i64;
-        public float f32;
-        public double f64;
-    }
-
     class ExtismVal extends Structure {
         protected static class ByReference extends ExtismVal implements Structure.ByReference{
             public ByReference() {
@@ -48,7 +37,6 @@ public interface LibExtism extends Library {
                 super(ptr);
             }
         }
-        protected static class ByValue extends ExtismVal implements Structure.ByValue{}
 
         public ExtismVal() {
             super();
@@ -66,34 +54,15 @@ public interface LibExtism extends Library {
         }
 
         public int t;
-        public long v;
+        public ExtismValUnion v;
+    }
 
-        public void setT(int t) {
-            this.t = t;
-        }
 
-        public void setV(long v) { this.v = v; }
-
-    /*    public void read() {
-            super.read();
-
-            switch (t) {
-                case 0:
-                    setV((int)v);
-                    break;
-                case 1:
-                    setV((long)v);
-                    break;
-                case 2:
-                    setV((float)v);
-                    break;
-                case 3:
-                    setV((double)v);
-                    break;
-                default:
-                    throw new ExtismException("ExtismValUnion unknown");
-            }
-        }*/
+    class ExtismValUnion extends Union {
+        public int i32;
+        public long i64;
+        public float f32;
+        public double f64;
     }
 
     enum ExtismValType {
@@ -231,7 +200,7 @@ public interface LibExtism extends Library {
 
     /**
      * Update a plugin, keeping the existing ID.
-     * Similar to {@link #extism_plugin_new(long, byte[], long, boolean)} but takes an {@code pluginIndex} argument to specify which plugin to update.
+     * Similar to {@link #extism_plugin_new(Pointer, byte[], long, Pointer[], int, boolean)} but takes an {@code pluginIndex} argument to specify which plugin to update.
      * Note: Memory for this plugin will be reset upon update.
      *
      * @param contextPointer

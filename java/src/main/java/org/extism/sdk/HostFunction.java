@@ -1,12 +1,10 @@
 package org.extism.sdk;
 
 import com.google.gson.JsonParser;
-import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
-import com.sun.jna.Structure;
-import com.sun.jna.ptr.PointerByReference;
 
 import java.util.Arrays;
+import java.util.Optional;
 
 public class HostFunction {
 
@@ -31,85 +29,53 @@ public class HostFunction {
         this.callback = (Pointer currentPlugin,
                          LibExtism.ExtismVal.ByReference inputs,
                          int nInputs,
-                         LibExtism.ExtismVal.ByReference outputs,
+                         LibExtism.ExtismVal.ByReference outs,
                          int nOutputs,
                          Pointer data) -> {
 
-            ExtismCurrentPlugin plugin = new ExtismCurrentPlugin(currentPlugin);
-            int offs = plugin.alloc(4);
-            Pointer mem = plugin.memory();
-            mem.write(offs, "test".getBytes(), 0, 4);
+            LibExtism.ExtismVal[] outputs = (LibExtism.ExtismVal []) outs.toArray(nOutputs);
 
-          /*  Arrays.stream((LibExtism.ExtismVal[])inputs.toArray(nInputs)).forEach(r -> {
-                System.out.println(Arrays.asList(r.t, r.v.i64));
-            });
-
-            LibExtism.ExtismVal[] outs = new LibExtism.ExtismVal[nOutputs];
-            outs[0] = new LibExtism.ExtismVal();
-            outs[0].v = new LibExtism.ExtismValUnion();
-            outs[0].v.i64 = 1;
-            outs[0].t = LibExtism.ExtismValType.I64.v;*/
-
-            outputs.writeField("t", 1);
-            outputs.writeField("v", (long)offs);
-            //PointerByReference ptr = new PointerByReference();
-      /*     Pointer ptrToFirst = outputs.getPointer();
-           LibExtism.ExtismVal firstElement = new LibExtism.ExtismVal(ptrToFirst);
-           LibExtism.ExtismVal[] array = (LibExtism.ExtismVal []) firstElement.toArray(1);
-           array[0].v.i64 = 1;
-           array[0].t = LibExtism.ExtismValType.I64.v;
-           array[0].write();*/
-
-          // outputs.write();
-
-           // firstElement.write();
-
-            // outputs.getPointer().setPointer(0, firstElement.getPointer());
-
-            // outputs.v.i64 = inputs.v.i64;
-
-            /*Arrays.stream((LibExtism.ExtismVal[])outputs.toArray(nInputs)).forEach(r -> {
-                System.out.println(Arrays.asList(r.t, r.v.i64));
-            });*/
-
-            //outputs.read();
-            //outputs.t = 1;
-            //outputs.v.i64 = inputs.v.i64;
-            //outputs.write();
-
-          /*  LibExtism.ExtismVal[] outs = new LibExtism.ExtismVal[1];
-            outs[0] = new LibExtism.ExtismVal();
-            outs[0].t = 1;
-            outs[0].v = new LibExtism.ExtismValUnion();
-            outs[0].v.i64 = inputs.v.i64;*/
-
-            /* f.invoke(
+            f.invoke(
                     new ExtismCurrentPlugin(currentPlugin),
-                     inputs,
-                     outputs,
-                    new JsonParser().parse(data.getString(0))
-            );*/
+                    (LibExtism.ExtismVal []) inputs.toArray(nInputs),
+                    outputs,
+                    data == null ? Optional.empty() : Optional.of(new JsonParser().parse(data.getString(0)))
+            );
 
-           //  System.out.println(LibExtism.INSTANCE.extism_current_plugin_memory(currentPlugin).getString(outputs.v.i64));
-
-             //System.out.println(inputs.getPointer().equals(outputs));
-
-             System.out.println("Exit Host function");
+            for (LibExtism.ExtismVal output : outputs) {
+                convertOutput(output, output);
+            }
         };
 
         this.pointer = LibExtism.INSTANCE.extism_function_new(
                 this.name,
-                Arrays.stream(this.params)
-                        .mapToInt(typ -> typ.v)
-                        .toArray(),
+                Arrays.stream(this.params).mapToInt(r -> r.v).toArray(),
                 this.params.length,
-                Arrays.stream(this.returns)
-                        .mapToInt(typ -> typ.v)
-                        .toArray(),
+                Arrays.stream(this.returns).mapToInt(r -> r.v).toArray(),
                 this.returns.length,
                 this.callback,
                 userData,
                 null
         );
+    }
+
+    void convertOutput(LibExtism.ExtismVal original, LibExtism.ExtismVal fromHostFunction) {
+        if (fromHostFunction.t != original.t)
+            throw new ExtismException(String.format("Output type mismatch, got %d but expected %d", fromHostFunction.t, original.t));
+
+        if (fromHostFunction.t == LibExtism.ExtismValType.I32.v) {
+            original.v.setType(Integer.TYPE);
+            original.v.i32 = fromHostFunction.v.i32;
+        } else if (fromHostFunction.t == LibExtism.ExtismValType.I64.v) {
+            original.v.setType(Long.TYPE);
+            original.v.i64 = fromHostFunction.v.i64;
+        } else if (fromHostFunction.t == LibExtism.ExtismValType.F32.v) {
+            original.v.setType(Float.TYPE);
+            original.v.f32 = fromHostFunction.v.f32;
+        } else if (fromHostFunction.t == LibExtism.ExtismValType.F64.v) {
+            original.v.setType(Double.TYPE);
+            original.v.f64 = fromHostFunction.v.f64;
+        } else
+            throw new ExtismException(String.format("Unsupported return type: %s", original.t));
     }
 }

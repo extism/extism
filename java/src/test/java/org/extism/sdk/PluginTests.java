@@ -12,6 +12,7 @@ import org.junit.jupiter.api.Test;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.extism.sdk.TestWasmSources.CODE;
@@ -111,48 +112,40 @@ public class PluginTests {
 
     @Test
     public void shouldAllowInvokeHostFunctionFromPDK() {
-        Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+        var parametersTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+        var resultsTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
 
-        String functionName = "count_vowels";
-        String input = "this is a test";
+        ExtismFunction helloWorldFunction = (ExtismCurrentPlugin plugin, LibExtism.ExtismVal[] params, LibExtism.ExtismVal[] returns, Optional<JsonElement> data) -> {
+            System.out.println("Hello from Java Host Function!");
+            System.out.println(String.format("Input string received from plugin, %s", plugin.inputString(params[0])));
 
-        String myString = "test";
-        Pointer hostUserData = new Memory(myString.length() + 1);
-        hostUserData.setString(0, myString);
+            int offs = plugin.alloc(4);
+            Pointer mem = plugin.memory();
+            mem.write(offs, data.map(JsonElement::getAsString).orElse("test").getBytes(), 0, 4);
+            returns[0].v.i64 = offs;
+        };
+
+        String str = "test";
+        Pointer hostUserData = new Memory(str.length() + 1);
+        hostUserData.setString(0, str);
 
         HostFunction hello_world = new HostFunction(
                 "hello_world",
-                new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64},
-                new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64},
-                (ExtismCurrentPlugin plugin,
-                 LibExtism.ExtismVal.ByReference params,
-                 LibExtism.ExtismVal.ByReference results,
-                 JsonElement userData) -> {
-                /*    var inpts = (LibExtism.ExtismVal[])params.toArray(1);
-                    System.out.println(plugin.inputString(inpts[0]));
-
-                    int offs = plugin.alloc(4);
-                    Pointer mem = plugin.memory();
-                    mem.write(offs, "test".getBytes(), 0, 4);
-
-                    var outpts = (LibExtism.ExtismVal[])params.toArray(1);
-                    outpts[0].v.i64 = offs;*/
-
-                    System.out.println("Hello from Java!");
-                },
+                parametersTypes,
+                resultsTypes,
+                helloWorldFunction,
                 hostUserData
         );
 
         HostFunction[] functions = {hello_world};
 
-
         try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
-                var output = plugin.call(functionName, input);
+            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+            String functionName = "count_vowels";
 
-                System.out.println(" ");
-                System.out.println(String.format("Plugin output length: %d, output: %s", output.length(), output));
-                //assertThat(output).isEqualTo("test");
+            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
+                var output = plugin.call(functionName, "this is a test");
+                assertThat(output).isEqualTo("test");
             }
         }
     }
