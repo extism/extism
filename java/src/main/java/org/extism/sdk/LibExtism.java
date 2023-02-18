@@ -32,7 +32,7 @@ public interface LibExtism extends Library {
         public int t;
         public ExtismValUnion v;
     }
-    
+
     class ExtismValUnion extends Union {
         public int i32;
         public long i64;

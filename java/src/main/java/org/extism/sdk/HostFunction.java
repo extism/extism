@@ -6,7 +6,7 @@ import com.sun.jna.Pointer;
 import java.util.Arrays;
 import java.util.Optional;
 
-public class HostFunction {
+public class HostFunction<T extends HostUserData> {
 
     private final LibExtism.InternalExtismFunction callback;
 
@@ -18,9 +18,9 @@ public class HostFunction {
 
     public final LibExtism.ExtismValType[] returns;
 
-    public final Pointer userData;
+    public final T userData;
 
-    public HostFunction(String name, LibExtism.ExtismValType[] params, LibExtism.ExtismValType[] returns, ExtismFunction f, Pointer userData) {
+    public HostFunction(String name, LibExtism.ExtismValType[] params, LibExtism.ExtismValType[] returns, ExtismFunction f, T userData) {
 
         this.name = name;
         this.params = params;
@@ -39,7 +39,7 @@ public class HostFunction {
                     new ExtismCurrentPlugin(currentPlugin),
                     (LibExtism.ExtismVal []) inputs.toArray(nInputs),
                     outputs,
-                    data == null ? Optional.empty() : Optional.of(new JsonParser().parse(data.getString(0)))
+                    userData
             );
 
             for (LibExtism.ExtismVal output : outputs) {
@@ -54,7 +54,7 @@ public class HostFunction {
                 Arrays.stream(this.returns).mapToInt(r -> r.v).toArray(),
                 this.returns.length,
                 this.callback,
-                userData,
+                userData.getPointer(),
                 null
         );
     }

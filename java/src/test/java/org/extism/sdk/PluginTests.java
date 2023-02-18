@@ -115,26 +115,35 @@ public class PluginTests {
         var parametersTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
         var resultsTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
 
-        ExtismFunction helloWorldFunction = (ExtismCurrentPlugin plugin, LibExtism.ExtismVal[] params, LibExtism.ExtismVal[] returns, Optional<JsonElement> data) -> {
+        class MyUserData extends HostUserData {
+            private String data1;
+            private int data2;
+
+            public MyUserData(String data1, int data2) {
+                super();
+                this.data1 = data1;
+                this.data2 = data2;
+            }
+        }
+
+        ExtismFunction helloWorldFunction = (ExtismFunction<MyUserData>) (plugin, params, returns, data) -> {
             System.out.println("Hello from Java Host Function!");
             System.out.println(String.format("Input string received from plugin, %s", plugin.inputString(params[0])));
 
             int offs = plugin.alloc(4);
             Pointer mem = plugin.memory();
-            mem.write(offs, data.map(JsonElement::getAsString).orElse("test").getBytes(), 0, 4);
+            mem.write(offs, "test".getBytes(), 0, 4);
             returns[0].v.i64 = offs;
+
+            System.out.println(String.format("Host user data, %s, %d", data.data1, data.data2));
         };
 
-        String str = "test";
-        Pointer hostUserData = new Memory(str.length() + 1);
-        hostUserData.setString(0, str);
-
-        HostFunction hello_world = new HostFunction(
+        HostFunction hello_world = new HostFunction<>(
                 "hello_world",
                 parametersTypes,
                 resultsTypes,
                 helloWorldFunction,
-                hostUserData
+                new MyUserData("test", 2)
         );
 
         HostFunction[] functions = {hello_world};
