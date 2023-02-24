@@ -2,9 +2,6 @@ package org.extism.sdk;
 
 import com.sun.jna.*;
 
-import java.util.Arrays;
-import java.util.List;
-
 /**
  * Wrapper around the Extism library.
  */

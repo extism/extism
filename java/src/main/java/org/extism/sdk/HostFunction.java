@@ -1,7 +1,7 @@
 package org.extism.sdk;
 
-import com.google.gson.JsonParser;
 import com.sun.jna.Pointer;
+import com.sun.jna.PointerType;
 
 import java.util.Arrays;
 import java.util.Optional;
@@ -18,9 +18,9 @@ public class HostFunction<T extends HostUserData> {
 
     public final LibExtism.ExtismValType[] returns;
 
-    public final T userData;
+    public final Optional<T> userData;
 
-    public HostFunction(String name, LibExtism.ExtismValType[] params, LibExtism.ExtismValType[] returns, ExtismFunction f, T userData) {
+    public HostFunction(String name, LibExtism.ExtismValType[] params, LibExtism.ExtismValType[] returns, ExtismFunction f, Optional<T> userData) {
 
         this.name = name;
         this.params = params;
@@ -54,7 +54,7 @@ public class HostFunction<T extends HostUserData> {
                 Arrays.stream(this.returns).mapToInt(r -> r.v).toArray(),
                 this.returns.length,
                 this.callback,
-                userData.getPointer(),
+                userData.map(PointerType::getPointer).orElse(null),
                 null
         );
     }

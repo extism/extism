@@ -144,7 +144,6 @@ public class Plugin implements AutoCloseable {
                 ptrArr[i] = functions[i].pointer;
             }
 
-
         return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length,
                 ptrArr,
                 functions == null ? 0 : functions.length,

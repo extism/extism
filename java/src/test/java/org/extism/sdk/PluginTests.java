@@ -1,8 +1,5 @@
 package org.extism.sdk;
 
-
-import com.google.gson.JsonElement;
-import com.sun.jna.Memory;
 import com.sun.jna.Pointer;
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
@@ -135,18 +132,18 @@ public class PluginTests {
             mem.write(offs, "test".getBytes(), 0, 4);
             returns[0].v.i64 = offs;
 
-            System.out.println(String.format("Host user data, %s, %d", data.data1, data.data2));
+            data.ifPresent(d -> System.out.println(String.format("Host user data, %s, %d", d.data1, d.data2)));
         };
 
-        HostFunction hello_world = new HostFunction<>(
+        HostFunction helloWorld = new HostFunction<>(
                 "hello_world",
                 parametersTypes,
                 resultsTypes,
                 helloWorldFunction,
-                new MyUserData("test", 2)
+                Optional.of(new MyUserData("test", 2))
         );
 
-        HostFunction[] functions = {hello_world};
+        HostFunction[] functions = {helloWorld};
 
         try (var ctx = new Context()) {
             Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
@@ -155,6 +152,61 @@ public class PluginTests {
             try (var plugin = ctx.newPlugin(manifest, true, functions)) {
                 var output = plugin.call(functionName, "this is a test");
                 assertThat(output).isEqualTo("test");
+            }
+        }
+    }
+
+    @Test
+    public void shouldAllowInvokeHostFunctionWithoutUserData() {
+        var parametersTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+        var resultsTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+
+
+        ExtismFunction helloWorldFunction = (plugin, params, returns, data) -> {
+            System.out.println("Hello from Java Host Function!");
+            System.out.println(String.format("Input string received from plugin, %s", plugin.inputString(params[0])));
+
+            int offs = plugin.alloc(4);
+            Pointer mem = plugin.memory();
+            mem.write(offs, "test".getBytes(), 0, 4);
+            returns[0].v.i64 = offs;
+
+            assertThat(data.isEmpty());
+        };
+
+        HostFunction helloWorld = new HostFunction<>(
+                "hello_world",
+                parametersTypes,
+                resultsTypes,
+                helloWorldFunction,
+                Optional.empty()
+        );
+
+        HostFunction[] functions = {helloWorld};
+
+        try (var ctx = new Context()) {
+            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+            String functionName = "count_vowels";
+
+            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
+                var output = plugin.call(functionName, "this is a test");
+                assertThat(output).isEqualTo("test");
+            }
+        }
+    }
+
+
+    @Test
+    public void shouldFailToInvokeUnknownHostFunction() {
+        try (var ctx = new Context()) {
+            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+            String functionName = "count_vowels";
+
+            try {
+                var plugin = ctx.newPlugin(manifest, true, null);
+                plugin.call(functionName, "this is a test");
+            }  catch (ExtismException e) {
+                assertThat(e.getMessage()).contains("unknown import: `env::hello_world` has not been defined");
             }
         }
     }
