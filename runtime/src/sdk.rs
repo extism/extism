@@ -149,6 +149,26 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Plugin, 
     plugin.memory.free(ptr as usize);
 }
 
+/// Cancel a pluin from inside a host function
+/// NOTE: this should only be called from host functions.
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_cancel(plugin: *mut Plugin) -> bool {
+    if plugin.is_null() {
+        return false;
+    }
+
+    let plugin = &mut *plugin;
+    if let Some(tx) = &plugin.cancel_handle.epoch_timer_tx {
+        return tx
+            .send(TimerAction::Cancel {
+                id: plugin.timer_id,
+            })
+            .is_ok();
+    }
+
+    false
+}
+
 /// Create a new host function
 ///
 /// Arguments
@@ -360,7 +380,6 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
 }
 
 pub struct ExtismCancelHandle {
-    pub engine: wasmtime::Engine,
     pub(crate) epoch_timer_tx: Option<std::sync::mpsc::SyncSender<TimerAction>>,
     pub id: uuid::Uuid,
 }
@@ -372,31 +391,23 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(
     plugin: PluginIndex,
 ) -> *const ExtismCancelHandle {
     let ctx = &mut *ctx;
-    let tx = ctx.epoch_timer_tx.clone();
     let mut plugin = match PluginRef::new(ctx, plugin, true) {
         None => return std::ptr::null_mut(),
         Some(p) => p,
     };
     let plugin = plugin.as_mut();
-    plugin.start_timer(&tx).unwrap();
-    if plugin.cancel_handle.epoch_timer_tx.is_none() {
-        plugin.cancel_handle.epoch_timer_tx = Some(tx);
-    }
     &plugin.cancel_handle as *const _
 }
 
 /// Cancel a running plugin
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) {
+pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) -> bool {
     let handle = &*handle;
     if let Some(tx) = &handle.epoch_timer_tx {
-        println!("CANCEL PLUGIN");
-        tx.send(TimerAction::Cancel {
-            id: handle.id,
-            engine: handle.engine.clone(),
-        })
-        .unwrap();
+        return tx.send(TimerAction::Cancel { id: handle.id }).is_ok();
     }
+
+    false
 }
 
 /// Remove all plugins from the registry
@@ -567,7 +578,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     }
 
     // Stop timer
-    if let Err(e) = plugin_ref.as_mut().stop_timer(&tx) {
+    if let Err(e) = plugin_ref.as_mut().stop_timer() {
         let id = plugin_ref.as_ref().timer_id;
         return plugin_ref.as_ref().error(
             format!("Failed to stop timeout manager for {id}: {e:?}"),

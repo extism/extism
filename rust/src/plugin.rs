@@ -6,20 +6,16 @@ pub struct Plugin<'a> {
     context: &'a Context,
 }
 
-pub struct CancelHandle(
-    pub(crate) std::sync::Mutex<*const extism_runtime::sdk::ExtismCancelHandle>,
-);
+pub struct CancelHandle(pub(crate) *const extism_runtime::sdk::ExtismCancelHandle);
 
 unsafe impl Sync for CancelHandle {}
 unsafe impl Send for CancelHandle {}
 
 impl CancelHandle {
     pub fn cancel(self) {
-        let x = match self.0.lock() {
-            Ok(x) => x,
-            Err(e) => e.into_inner(),
-        };
-        unsafe { extism_runtime::sdk::extism_plugin_cancel(*x) }
+        unsafe {
+            extism_runtime::sdk::extism_plugin_cancel(self.0);
+        }
     }
 }
 
@@ -154,7 +150,7 @@ impl<'a> Plugin<'a> {
         let ptr =
             unsafe { bindings::extism_plugin_cancel_handle(&mut *self.context.lock(), self.id) };
 
-        CancelHandle(std::sync::Mutex::new(ptr))
+        CancelHandle(ptr)
     }
 
     /// Call a function with the given input
