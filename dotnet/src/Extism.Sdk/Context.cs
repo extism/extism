@@ -42,7 +42,8 @@ public unsafe class Context : IDisposable
             fixed (byte* wasmPtr = wasm)
             {
                 var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
-                return new Plugin(this, plugin);
+                var cancelHandle = LibExtism.extism_plugin_cancel_handle(NativeHandle, plugin);
+                return new Plugin(this, plugin, cancelHandle);
             }
         }
     }

@@ -13,11 +13,13 @@ public class Plugin : IDisposable
 
     private readonly Context _context;
     private int _disposed;
+    private readonly IntPtr _cancelHandle;
 
-    internal Plugin(Context context, IntPtr handle)
+    internal Plugin(Context context, IntPtr handle, IntPtr cancelHandle)
     {
         _context = context;
         NativeHandle = handle;
+        _cancelHandle = cancelHandle;
     }
 
     /// <summary>

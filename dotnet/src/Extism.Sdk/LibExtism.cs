@@ -156,6 +156,21 @@ internal static class LibExtism
     unsafe internal static extern void extism_plugin_free(ExtismContext* context, IntPtr plugin);
 
     /// <summary>
+    /// Request cancellation on a currently-executing plugin.  Will cancel before executing the next epoch.
+    /// </summary>
+    /// <param name="context">Pointer to the context the plugin is associated with.</param>
+    /// <param name="plugin">Pointer to the plugin you want to cancel.</param>
+    [DllImport("extism")]
+    unsafe internal static extern IntPtr extism_plugin_cancel_handle(ExtismContext* context, IntPtr plugin);
+    
+    /// <summary>
+    /// Request cancellation on a currently-executing plugin.  Will cancel before executing the next epoch.
+    /// </summary>
+    /// <param name="handle">Pointer to the plugin's cancel handle.</param>
+    [DllImport("extism")]
+    unsafe internal static extern void extism_plugin_cancel(IntPtr handle);
+
+    /// <summary>
     /// Remove all plugins from the registry.
     /// </summary>
     /// <param name="context"></param>
@@ -194,6 +209,8 @@ internal static class LibExtism
     /// <returns></returns>
     [DllImport("extism")]
     unsafe internal static extern int extism_plugin_call(ExtismContext* context, IntPtr plugin, string funcName, byte* data, int dataLen);
+    
+    
 
     /// <summary>
     /// Get the error associated with a Context or Plugin, if plugin is -1 then the context error will be returned.
