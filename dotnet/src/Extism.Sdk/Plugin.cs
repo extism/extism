@@ -41,6 +41,17 @@ public class Plugin : IDisposable
             return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
         }
     }
+    
+    /// <summary>
+    /// Request to cancel a currently-executing plugin at the next epoch.
+    /// </summary>
+    /// <param name="wasm">The plugin WASM bytes.</param>
+    /// <param name="withWasi">Enable/Disable WASI.</param>
+    unsafe public void Cancel() 
+    {
+        CheckNotDisposed();
+        LibExtism.extism_plugin_cancel(_cancelHandle);
+    }
 
     /// <summary>
     ///  Update plugin config values, this will merge with the existing values.
@@ -161,23 +172,14 @@ public class Plugin : IDisposable
         Task cancellableTimeoutTask;
         Task<byte[]> executeFunctionInternalTask;
 
-        if (cancellationToken.HasValue)
+        // If cancellation token has already been canceled, don't execute any code.
+        if (cancellationToken?.IsCancellationRequested ?? false)
         {
-            // Pass cancellation token to the task so that it won't run the task if it's already canceled before we get here.
-            cancellableTimeoutTask = Task.Run(runUntilTimeoutOrCancelled, cancellationToken.Value);
-            executeFunctionInternalTask = Task.Run(() =>
-            {
-                return CallFunction(functionName, data).ToArray();
-            }, cancellationToken.Value);
+            throw new TaskCanceledException();
         }
-        else
-        {
-            cancellableTimeoutTask = Task.Run(runUntilTimeoutOrCancelled);
-            executeFunctionInternalTask = Task.Run(() =>
-            {
-                return CallFunction(functionName, data).ToArray();
-            });
-        }
+
+        cancellableTimeoutTask = Task.Run(runUntilTimeoutOrCancelled);
+        executeFunctionInternalTask = Task.Run(() => { return CallFunction(functionName, data).ToArray(); });
 
         // Race the 2 tasks.  When they're complete, either executeFunctionInternal
         // will have completed with a result, or the cancellableTimeout will have run to completion
@@ -187,7 +189,7 @@ public class Plugin : IDisposable
         if (executeFunctionInternalTask.IsCompletedSuccessfully)
         {
             internalTokenSource.Cancel(); // Cancel internal token so the background task will terminate.
-            await cancellableTimeoutTask;
+            await cancellableTimeoutTask; // Wait for the cancellation monitor task to exit gracefully
             return await executeFunctionInternalTask;
         }
 
@@ -198,7 +200,10 @@ public class Plugin : IDisposable
         // Dispose();
 
         internalTokenSource.Cancel(); // Cancel internal token so the background task will terminate.
-        await cancellableTimeoutTask;
+        await cancellableTimeoutTask; // Wait for the task to exit gracefully
+        Cancel(); // Cancel the plugin so Extism can free it when we exit.
+        // Dispose();
+        // Throw an exception so the caller knows that something timed out and the plugin can no longer be used.
         throw new TaskCanceledException();
     }
 
