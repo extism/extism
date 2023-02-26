@@ -36,30 +36,39 @@ public class AsyncTests
         }
     }
     
-    // // TODO: write tests with long running functions and also test pre-cancelling the task
-    //
-    // [Fact]
-    // public async void LongRunningtask_WithCancellation_CanBeCanceled()
-    // {
-    //     using var context = new Context();
-    //     using var plugin = context.CreatePlugin(sleepMs, withWasi: true);
-    //
-    //     CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
-    //     // Schedule token to automatically cancel after 3 seconds.
-    //     cancellationTokenSource.CancelAfter(3000);
-    //     
-    //     await Assert.ThrowsAsync<TaskCanceledException>(async () =>
-    //     {
-    //         // This should throw after ~3000 ms and not complete execution.
-    //         var response = await plugin.CallFunctionAsync("sleepMs", Encoding.UTF8.GetBytes("[50000]"), null, cancellationTokenSource.Token);
-    //         Assert.Fail("This should be unreachable.");
-    //     });
-    //     
-    // }
-    //
+    [Fact]
+    public async void LongRunningtask_WithScheduledCancellation_ThrowsTaskCanceledException()
+    {
+        using var context = new Context();
+        using var plugin = context.CreatePlugin(sleepMs, withWasi: true);
+    
+        CancellationTokenSource cancellationTokenSource = new CancellationTokenSource();
+        
+        // Schedule token to automatically cancel after 1 second.
+        cancellationTokenSource.CancelAfter(1000);
+
+        var sw = Stopwatch.StartNew();
+        await Assert.ThrowsAsync<TaskCanceledException>(async () =>
+        {
+            // This should throw after ~1000 ms and not complete execution.
+            var response = await plugin.CallFunctionAsync("sleepMs", Encoding.UTF8.GetBytes("[50000]"), null, cancellationTokenSource.Token);
+            Assert.Fail("This should be unreachable.");
+        });
+        
+        
+        // Verify that the time that has passed is less than 1.5 seconds (should be very close to 1 second).
+        output.WriteLine($"Expected: 1000 ms. Actual: {sw.ElapsedMilliseconds}.");
+        Assert.True(sw.ElapsedMilliseconds < 1500);
+        
+    }
+    
+    // TODO: No cancellation of multiple parallel plugins (should make the wasm return the # of ms slept or something)
+    // TODO: Cancel a plugin early and try running it again several times
+    // TODO: Test native timeout support in Extism Context
+    
     
     [Fact]
-    public async void PrecancelledToken_DoesntInvoke_Throws()
+    public async void PrecancelledToken_DoesntRunWASMModule_ThrowsTaskCanceledException()
     {
         using var context = new Context();
         using var plugin = context.CreatePlugin(count_vowels, withWasi: true);
@@ -75,7 +84,7 @@ public class AsyncTests
     }
     
     [Fact]
-    public async void ExecutingPlugin_IsCanceledEarly_StopsExecutingWithin500ms()
+    public async void ExecutingPlugin_IsCanceledEarlyWhenCallingCancelMethod_StopsExecutingWithin500ms()
     {
         using var context = new Context();
         using var plugin = context.CreatePlugin(sleepMs, withWasi: true);
@@ -108,18 +117,4 @@ public class AsyncTests
 
     }
     
-    //
-    // [Fact]
-    // public async void LongRunningTask_DoesntComplete_IsCanceled()
-    // {
-    //     using var context = new Context();
-    //     using var plugin = context.CreatePlugin(sleepMs, withWasi: true);
-    //
-    //     await Assert.ThrowsAsync<TaskCanceledException>(async () =>
-    //     {
-    //         // This should throw after ~2500 ms and not complete execution.
-    //         var response = await plugin.CallFunctionAsync("sleepMs", Encoding.UTF8.GetBytes("[5000]"), 1500);
-    //         Assert.Fail("This should be unreachable.");
-    //     });
-    // }
 }
