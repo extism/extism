@@ -1,4 +1,5 @@
 import sys
+
 import json
 import hashlib
 import pathlib
@@ -27,7 +28,9 @@ def main(args):
     else:
         data = b"some data from python!"
 
-    wasm_file_path = pathlib.Path(__file__).parent.parent / "wasm" / "code-functions.wasm"
+    wasm_file_path = (
+        pathlib.Path(__file__).parent.parent / "wasm" / "code-functions.wasm"
+    )
     wasm = wasm_file_path.read_bytes()
     hash = hashlib.sha256(wasm).hexdigest()
     config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
@@ -54,5 +57,5 @@ def main(args):
     assert wasm_vowel_count["count"] == count_vowels(data)
 
 
-if  __name__ == "__main__":
+if __name__ == "__main__":
     main(sys.argv)

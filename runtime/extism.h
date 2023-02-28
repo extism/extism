@@ -120,12 +120,6 @@ ExtismSize extism_current_plugin_memory_length(ExtismCurrentPlugin *plugin, Exti
 void extism_current_plugin_memory_free(ExtismCurrentPlugin *plugin, uint64_t ptr);
 
 /**
- * Cancel a pluin from inside a host function
- * NOTE: this should only be called from host functions.
- */
-bool extism_current_plugin_cancel(ExtismCurrentPlugin *plugin);
-
-/**
  * Create a new host function
  *
  * Arguments

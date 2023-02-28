@@ -149,26 +149,6 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Plugin, 
     plugin.memory.free(ptr as usize);
 }
 
-/// Cancel a pluin from inside a host function
-/// NOTE: this should only be called from host functions.
-#[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_cancel(plugin: *mut Plugin) -> bool {
-    if plugin.is_null() {
-        return false;
-    }
-
-    let plugin = &mut *plugin;
-    if let Some(tx) = &plugin.cancel_handle.epoch_timer_tx {
-        return tx
-            .send(TimerAction::Cancel {
-                id: plugin.timer_id,
-            })
-            .is_ok();
-    }
-
-    false
-}
-
 /// Create a new host function
 ///
 /// Arguments
