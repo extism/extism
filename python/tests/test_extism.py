@@ -2,6 +2,8 @@ import unittest
 import extism
 import hashlib
 import json
+import time
+from threading import Thread
 from datetime import datetime, timedelta
 from os.path import join, dirname
 
@@ -97,6 +99,16 @@ class TestExtism(unittest.TestCase):
             plugin = ctx.plugin(self._manifest(functions=True), functions=f, wasi=True)
             res = plugin.call("count_vowels", "aaa")
             self.assertEqual(res, b"test")
+
+    def test_extism_plugin_cancel(self):
+        with extism.Context() as ctx:
+            plugin = ctx.plugin(self._loop_manifest())
+            cancel_handle = plugin.cancel_handle()
+            def cancel(handle):
+                time.sleep(0.5)
+                handle.cancel()
+            Thread(target=cancel, args=[cancel_handle]).run()
+            self.assertRaises(extism.Error, lambda: plugin.call("infinite_loop", b""))
 
     def _manifest(self, functions=False):
         wasm = self._count_vowels_wasm(functions)
