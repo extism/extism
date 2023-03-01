@@ -494,3 +494,16 @@ func (p *CurrentPlugin) InputBytes(v unsafe.Pointer) []byte {
 func (p *CurrentPlugin) InputString(v unsafe.Pointer) string {
 	return string(p.InputBytes(v))
 }
+
+type CancelHandle struct {
+	pointer *C.ExtismCancelHandle
+}
+
+func (p *Plugin) CancelHandle() CancelHandle {
+	pointer := C.extism_plugin_cancel_handle(p.ctx.pointer, C.int(p.id))
+	return CancelHandle{pointer}
+}
+
+func (c *CancelHandle) Cancel() bool {
+	return bool(C.extism_plugin_cancel(c.pointer))
+}
