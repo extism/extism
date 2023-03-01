@@ -78,6 +78,8 @@ const _functions = {
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_free: ["void", ["void*", "uint64"]],
+  extism_plugin_cancel_handle: ["void*", [context, pluginIndex]],
+  extism_plugin_cancel: ["bool", ["void*"]],
 };
 
 /**
@@ -154,6 +156,8 @@ interface LibExtism {
   extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_length: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_free: (p: Buffer, n: number) => void;
+  extism_plugin_cancel_handle: (p: Buffer, n: number) => Buffer;
+  extism_plugin_cancel: (p: Buffer) => boolean;
 }
 
 function locate(paths: string[]): LibExtism {
@@ -556,6 +560,24 @@ export class HostFunction {
 }
 
 /**
+  * CancelHandle is used to cancel a running Plugin
+  */
+export class CancelHandle {
+  handle: Buffer
+
+  constructor(handle: Buffer) {
+    this.handle = handle;
+  }
+
+  /**
+    * Cancel execution of the Plugin associated with the CancelHandle 
+    */
+  cancel(): boolean {
+    return lib.extism_plugin_cancel(this.handle);
+  }
+}
+
+/**
  * A Plugin represents an instance of your WASM program from the given manifest.
  */
 export class Plugin {
@@ -621,6 +643,15 @@ export class Plugin {
         Buffer.byteLength(s, "utf-8")
       );
     }
+  }
+
+  /**
+   * Return a new `CancelHandle`, which can be used to cancel a running Plugin
+   */
+  cancelHandle(): CancelHandle {
+    if (!this.ctx.pointer) throw Error("No Context set");
+    let handle = lib.extism_plugin_cancel_handle(this.ctx.pointer, this.id);
+    return new CancelHandle(handle);
   }
 
   /**
