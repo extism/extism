@@ -327,6 +327,14 @@ public:
   ExtismFunction *get() { return this->func.get(); }
 };
 
+class CancelHandle {
+  const ExtismCancelHandle *handle;
+
+public:
+  CancelHandle(const ExtismCancelHandle *x) : handle(x){};
+  bool cancel() { return extism_plugin_cancel(this->handle); }
+};
+
 class Plugin {
   std::shared_ptr<ExtismContext> context;
   ExtismPlugin plugin;
@@ -349,6 +357,11 @@ public:
       throw Error(err == nullptr ? "Unable to load plugin" : err);
     }
     this->context = ctx;
+  }
+
+  CancelHandle cancel_handle() {
+    return CancelHandle(
+        extism_plugin_cancel_handle(this->context.get(), this->id()));
   }
 
 #ifndef EXTISM_NO_JSON
