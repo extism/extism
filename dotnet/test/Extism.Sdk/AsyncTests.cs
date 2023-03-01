@@ -37,6 +37,16 @@ public class AsyncTests
     }
     
     [Fact]
+    public async void InvokingUnknownFunctionAsync_DoesntWork_ThrowsException() {
+        using var context = new Context();
+        // Test multiple plugin invocations to ensure that plugin calls can be repeated
+        using var plugin = context.CreatePlugin(count_vowels, withWasi: true);
+        var exception = await Assert.ThrowsAsync<ExtismException>(
+            async () => { await plugin.CallFunctionAsync("unknown_function_name", Encoding.UTF8.GetBytes("Hello World")); });
+        Assert.Equal("Function not found: unknown_function_name", exception.Message);
+    }
+    
+    [Fact]
     public async void LongRunningtask_WithScheduledCancellation_ThrowsTaskCanceledException()
     {
         using var context = new Context();

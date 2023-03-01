@@ -51,4 +51,14 @@ public class BasicTests
             Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
         }
     }
+    
+    [Fact]
+    public void InvokingUnknownFunction_DoesntWork_ThrowsException() {
+            using var context = new Context();
+            // Test multiple plugin invocations to ensure that plugin calls can be repeated
+            using var plugin = context.CreatePlugin(count_vowels, withWasi: true);
+            var exception = Assert.Throws<ExtismException>(
+                () => { plugin.CallFunction("unknown_function_name", Encoding.UTF8.GetBytes("Hello World")); });
+            Assert.Equal("Function not found: unknown_function_name", exception.Message);
+    }
 }
