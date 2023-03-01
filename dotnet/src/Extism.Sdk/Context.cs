@@ -41,12 +41,8 @@ public unsafe class Context : IDisposable
         {
             fixed (byte* wasmPtr = wasm)
             {
-                // TODO: figure out if this is a valid use case where the native failed pointer might be 64 bit
-                // but the Extism failed pointer is 32 bit.
-                var failedPointerNative = new IntPtr(-1);
-                var failedPointer32Bit = new IntPtr(0xffffffff);
                 var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
-                if (plugin == failedPointer32Bit || plugin == failedPointerNative)
+                if (plugin == -1)
                 {
                     throw new ExtismException(GetError() ?? "Unknown exception when calling extism_plugin_new");
                 }
