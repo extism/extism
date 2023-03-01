@@ -192,18 +192,18 @@ public class Plugin : IDisposable
             await cancellableTimeoutTask; // Wait for the cancellation monitor task to exit gracefully
             return await executeFunctionInternalTask;
         }
-
-        // TODO: Until we have a way to cancel a task in Extism,
-        // the plugin is in a bad state.  We will dispose it so
-        // execution will stop, and the caller must handle the
-        // TaskCanceledException and throw away the plugin reference.
-        // Dispose();
-
+        
         internalTokenSource.Cancel(); // Cancel internal token so the background task will terminate.
         await cancellableTimeoutTask; // Wait for the task to exit gracefully
-        Cancel(); // Cancel the plugin so Extism can free it when we exit.
+        Cancel(); // Cancel the plugin so Extism can free it when we exit
+        
+        // If an exception was thrown by the task, rethrow it.
+        if (executeFunctionInternalTask.Exception.InnerException != null)
+        {
+            throw executeFunctionInternalTask.Exception.InnerException;
+        }
         // Dispose();
-        // Throw an exception so the caller knows that something timed out and the plugin can no longer be used.
+        // Throw an exception so the caller knows that something timed out.
         throw new TaskCanceledException();
     }
 
