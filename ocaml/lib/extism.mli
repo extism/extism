@@ -245,4 +245,12 @@ module Plugin : sig
 
   val function_exists : t -> string -> bool
   (** Check if a function is exported by a plugin *)
+
+  module Cancel_handle: sig
+    type t
+
+    val cancel: t -> bool
+  end
+
+  val cancel_handle: t -> Cancel_handle.t
 end

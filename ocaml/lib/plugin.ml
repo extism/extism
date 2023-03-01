@@ -163,3 +163,12 @@ let%test "function exists" =
       let plugin = of_manifest ctx manifest |> Error.unwrap in
       function_exists plugin "count_vowels"
       && not (function_exists plugin "function_does_not_exist"))
+
+module Cancel_handle = struct
+  type t = { inner : unit Ctypes.ptr }
+
+  let cancel { inner } = Bindings.extism_plugin_cancel inner
+end
+
+let cancel_handle { id; ctx; _ } =
+  Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle ctx.pointer id }
