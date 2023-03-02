@@ -11,19 +11,19 @@ public class ExtismCurrentPlugin {
         this.pointer = pointer;
     }
 
-    Pointer memory() {
+    public Pointer memory() {
         return LibExtism.INSTANCE.extism_current_plugin_memory(this.pointer);
     }
 
-    int alloc(int n) {
+    public int alloc(int n) {
         return LibExtism.INSTANCE.extism_current_plugin_memory_alloc(this.pointer, n);
     }
 
-    void free(long offset) {
+    public void free(long offset) {
         LibExtism.INSTANCE.extism_current_plugin_memory_free(this.pointer, offset);
     }
 
-    long memoryLength(long offset) {
+    public long memoryLength(long offset) {
         return LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, offset);
     }
 
@@ -32,7 +32,7 @@ public class ExtismCurrentPlugin {
      * @param output - The output to set
      * @param s - The string to return
      */
-    void returnString(LibExtism.ExtismVal output, String s) {
+    public void returnString(LibExtism.ExtismVal output, String s) {
         returnBytes(output, s.getBytes(StandardCharsets.UTF_8));
     }
 
@@ -41,7 +41,7 @@ public class ExtismCurrentPlugin {
      * @param output - The output to set
      * @param b - The buffer to return
      */
-    void returnBytes(LibExtism.ExtismVal output, byte[] b) {
+    public void returnBytes(LibExtism.ExtismVal output, byte[] b) {
         int offs = this.alloc(b.length);
         Pointer ptr = this.memory();
         ptr.write(offs, b, 0, b.length);
@@ -52,17 +52,27 @@ public class ExtismCurrentPlugin {
      * Get bytes from host function parameter
      * @param input - The input to read
      */
-    byte[] inputBytes(LibExtism.ExtismVal input) {
-        return this.memory()
-                .getByteArray(input.v.i64,
-                        LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, input.v.i64));
+    public byte[] inputBytes(LibExtism.ExtismVal input) {
+        switch (input.t) {
+            case 0:
+                return this.memory()
+                        .getByteArray(input.v.i32,
+                                LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, input.v.i32));
+            case 1:
+                return this.memory()
+                        .getByteArray(input.v.i64,
+                                LibExtism.INSTANCE.extism_current_plugin_memory_length(this.pointer, input.v.i64));
+            default:
+                throw new ExtismException("inputBytes error: ExtismValType " + LibExtism.ExtismValType.values()[input.t] + " not implemtented");
+        }
     }
+
 
     /**
      * Get string from host function parameter
      * @param input - The input to read
      */
-    String inputString(LibExtism.ExtismVal input) {
+    public String inputString(LibExtism.ExtismVal input) {
         return new String(this.inputBytes(input));
     }
 }
