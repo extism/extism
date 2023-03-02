@@ -6,10 +6,7 @@ import org.extism.sdk.manifest.MemoryOptions;
 import org.extism.sdk.wasm.WasmSourceResolver;
 import org.junit.jupiter.api.Test;
 
-import java.util.Arrays;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.extism.sdk.TestWasmSources.CODE;
@@ -45,14 +42,12 @@ public class PluginTests {
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
-    // TODO This test breaks on CI with error:
-    // data did not match any variant of untagged enum Wasm at line 8 column 3
-    // @Test
-    // public void shouldInvokeFunctionFromByteArrayWasmSource() {
-    //     var manifest = new Manifest(CODE.byteArrayWasmSource());
-    //     var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
-    //     assertThat(output).isEqualTo("{\"count\": 3}");
-    // }
+     @Test
+     public void shouldInvokeFunctionFromByteArrayWasmSource() {
+         var manifest = new Manifest(CODE.byteArrayWasmSource());
+         var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
+         assertThat(output).isEqualTo("{\"count\": 3}");
+     }
 
     @Test
     public void shouldFailToInvokeUnknownFunction() {
@@ -158,9 +153,9 @@ public class PluginTests {
 
     @Test
     public void shouldAllowInvokeHostFunctionWithoutUserData() {
+
         var parametersTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
         var resultsTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
-
 
         ExtismFunction helloWorldFunction = (plugin, params, returns, data) -> {
             System.out.println("Hello from Java Host Function!");

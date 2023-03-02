@@ -37,7 +37,7 @@ public enum TestWasmSources {
 
     public ByteArrayWasmSource byteArrayWasmSource() {
         try {
-            var wasmBytes = Files.readAllBytes(getWasmFilePath());
+            byte[] wasmBytes = Files.readAllBytes(getWasmFilePath());
             return new WasmSourceResolver().resolve("wasm@" + Arrays.hashCode(wasmBytes), wasmBytes);
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
