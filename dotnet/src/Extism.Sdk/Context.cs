@@ -37,6 +37,7 @@ public unsafe class Context : IDisposable
     {
         CheckNotDisposed();
 
+        
         unsafe
         {
             fixed (byte* wasmPtr = wasm)
@@ -139,6 +140,7 @@ public unsafe class Context : IDisposable
         return Marshal.PtrToStringUTF8(pointer);
     }
 
+    // TODO: this should not be within the context, neither should the version.
     /// <summary>
     /// Set Extism's log file and level. This is applied for all <see cref="Context"/>s.
     /// </summary>
@@ -160,6 +162,7 @@ public unsafe class Context : IDisposable
     }
 }
 
+// TODO: check if the enums are correctly set
 /// <summary>
 /// Extism Log Levels
 /// </summary>

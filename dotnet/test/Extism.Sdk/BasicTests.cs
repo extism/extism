@@ -61,4 +61,24 @@ public class BasicTests
                 () => { plugin.CallFunction("unknown_function_name", Encoding.UTF8.GetBytes("Hello World")); });
             Assert.Equal("Function not found: unknown_function_name", exception.Message);
     }
+    // TODO: implement these from Java SDK
+    /*
+    @Test
+    public void shouldInvokeFunctionWithMemoryOptions() {
+        //FIXME check whether memory options are effective
+        var manifest = new Manifest(List.of(CODE.pathWasmSource()), new MemoryOptions(0));
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
+        assertThat(output).isEqualTo("{\"count\": 3}");
+    }
+
+    @Test
+    public void shouldInvokeFunctionWithConfig() {
+        //FIXME check if config options are available in wasm call
+        var config = Map.of("key1", "value1");
+        var manifest = new Manifest(List.of(CODE.pathWasmSource()), null, config);
+        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
+        assertThat(output).isEqualTo("{\"count\": 3}");
+    }
+    */
+    
 }

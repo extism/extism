@@ -285,4 +285,44 @@ internal static class LibExtism
         /// </summary>
         internal const string Trace = "Trace";
     }
+    
+    
+    
+    // TODO: I think this should be refactored to have host functions in their own file, as well as enums, etc.
+    /*
+    Pointer extism_function_new(String name,
+        int[] inputs,
+        int nInputs,
+        int[] outputs,
+        int nOutputs,
+        InternalExtismFunction func,
+        Pointer userData,
+        Pointer freeUserData);
+        
+        
+    /**
+     * Get the length of an allocated block
+     * NOTE: this should only be called from host functions.
+     *
+    int extism_current_plugin_memory_length(Pointer plugin, long n);
+
+    /**
+     * Returns a pointer to the memory of the currently running plugin
+     * NOTE: this should only be called from host functions.
+     *
+    Pointer extism_current_plugin_memory(Pointer plugin);
+
+    /**
+     * Allocate a memory block in the currently running plugin
+     * NOTE: this should only be called from host functions.
+     *
+    int extism_current_plugin_memory_alloc(Pointer plugin, long n);
+
+    /**
+     * Free an allocated memory block
+     * NOTE: this should only be called from host functions.
+     *
+    void extism_current_plugin_memory_free(Pointer plugin, long ptr);
+
+    */
 }
