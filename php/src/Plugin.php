@@ -4,6 +4,23 @@ namespace Extism;
 
 require_once "ExtismLib.php";
 
+class CancelHandle
+{
+    private $lib;
+    private $handle;
+
+    function __construct($lib, $handle)
+    {
+        $this->lib = $lib;
+        $this->handle = $handle;
+    }
+
+    public function cancel()
+    {
+        return $this->lib->extism_plugin_cancel($this->handle);
+    }
+}
+
 class Plugin
 {
     private $lib;
@@ -56,6 +73,11 @@ class Plugin
     public function functionExists($name)
     {
         return $this->lib->extism_plugin_function_exists($this->context->pointer, $this->id, $name);
+    }
+
+    public function cancelHandle()
+    {
+        return new \CancelHandle($this->lib, $this->lib->extism_plugin_cancel_handle($this->context->pointer, $this->id));
     }
 
     public function call($name, $input = null)
