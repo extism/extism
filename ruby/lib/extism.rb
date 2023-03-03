@@ -115,6 +115,18 @@ module Extism
     end
   end
 
+  # A CancelHandle can be used to cancel a running plugin from another thread
+  class CancelHandle
+    def initialize(handle)
+      @handle = handle
+    end
+
+    # Cancel the plugin used to generate the handle
+    def cancel
+      return C.extism_plugin_cancel(@handle)
+    end
+  end
+
   # A Plugin represents an instance of your WASM program from the given manifest.
   class Plugin
     # Intialize a plugin
@@ -219,6 +231,11 @@ module Extism
       C.extism_plugin_free(@context.pointer, @plugin)
       @plugin = -1
     end
+
+    # Get a CancelHandle for a plugin
+    def cancel_handle
+      return CancelHandle.new(C.extism_plugin_cancel_handle(@context.pointer, @plugin))
+    end
   end
 
   private
@@ -241,5 +258,7 @@ module Extism
     attach_function :extism_plugin_free, [:pointer, :int32], :void
     attach_function :extism_context_reset, [:pointer], :void
     attach_function :extism_version, [], :string
+    attach_function :extism_plugin_cancel_handle, [:pointer, :int32], :pointer
+    attach_function :extism_plugin_cancel, [:pointer], :bool
   end
 end
