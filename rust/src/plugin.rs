@@ -12,10 +12,8 @@ unsafe impl Sync for CancelHandle {}
 unsafe impl Send for CancelHandle {}
 
 impl CancelHandle {
-    pub fn cancel(self) {
-        unsafe {
-            extism_runtime::sdk::extism_plugin_cancel(self.0);
-        }
+    pub fn cancel(&self) -> bool {
+        unsafe { extism_runtime::sdk::extism_plugin_cancel(self.0) }
     }
 }
 
