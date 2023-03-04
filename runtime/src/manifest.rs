@@ -170,9 +170,11 @@ impl Manifest {
         let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
         let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
         if !has_magic && !is_wast {
-            if let Ok(t) = toml::from_slice::<Self>(data) {
-                let m = t.modules(engine)?;
-                return Ok((t, m));
+            if let Ok(s) = std::str::from_utf8(data) {
+                if let Ok(t) = toml::from_str::<Self>(s) {
+                    let m = t.modules(engine)?;
+                    return Ok((t, m));
+                }
             }
 
             let t = serde_json::from_slice::<Self>(data)?;

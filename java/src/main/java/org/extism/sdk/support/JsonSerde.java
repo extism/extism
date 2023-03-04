@@ -1,18 +1,14 @@
 package org.extism.sdk.support;
 
-import com.google.gson.FieldNamingPolicy;
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
-import com.google.gson.JsonDeserializationContext;
-import com.google.gson.JsonDeserializer;
-import com.google.gson.JsonElement;
-import com.google.gson.JsonParseException;
-import com.google.gson.JsonPrimitive;
-import com.google.gson.JsonSerializationContext;
-import com.google.gson.JsonSerializer;
+import com.google.gson.*;
+import com.google.gson.stream.JsonReader;
+import com.google.gson.stream.JsonToken;
+import com.google.gson.stream.JsonWriter;
 import org.extism.sdk.manifest.Manifest;
 
+import java.io.IOException;
 import java.lang.reflect.Type;
+import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 public class JsonSerde {
@@ -23,7 +19,7 @@ public class JsonSerde {
         GSON = new GsonBuilder() //
                 .disableHtmlEscaping() //
                 // needed to convert the byte[] to a base64 encoded String
-                .registerTypeHierarchyAdapter(byte[].class, new ByteArrayToBase64TypeAdapter()) //
+                .registerTypeHierarchyAdapter(byte[].class, new ByteArrayAdapter()) //
                 .setFieldNamingPolicy(FieldNamingPolicy.LOWER_CASE_WITH_UNDERSCORES) //
                 .setPrettyPrinting() //
                 .create();
@@ -33,14 +29,28 @@ public class JsonSerde {
         return GSON.toJson(manifest);
     }
 
-    private static class ByteArrayToBase64TypeAdapter implements JsonSerializer<byte[]>, JsonDeserializer<byte[]> {
+    private static class ByteArrayAdapter extends TypeAdapter<byte[]> {
 
-        public byte[] deserialize(JsonElement json, Type typeOfT, JsonDeserializationContext context) throws JsonParseException {
-            return Base64.getDecoder().decode(json.getAsString());
+        @Override
+        public void write(JsonWriter out, byte[] byteValue) throws IOException {
+            out.value(new String(Base64.getEncoder().encode(byteValue)));
         }
 
-        public JsonElement serialize(byte[] src, Type typeOfSrc, JsonSerializationContext context) {
-            return new JsonPrimitive(Base64.getEncoder().withoutPadding().encodeToString(src));
+        @Override
+        public byte[] read(JsonReader in) {
+            try {
+                if (in.peek() == JsonToken.NULL) {
+                    in.nextNull();
+                    return new byte[]{};
+                }
+                String byteValue = in.nextString();
+                if (byteValue != null) {
+                    return Base64.getDecoder().decode(byteValue);
+                }
+                return new byte[]{};
+            } catch (Exception e) {
+                throw new JsonParseException(e);
+            }
         }
     }
 }

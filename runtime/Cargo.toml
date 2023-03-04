@@ -1,6 +1,6 @@
 [package]
 name = "extism-runtime"
-version = "0.2.0"
+version = "0.2.1"
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
@@ -9,13 +9,13 @@ repository = "https://github.com/extism/extism"
 description = "Extism runtime component"
 
 [dependencies]
-wasmtime = "4.0.0"
-wasmtime-wasi = "4.0.0"
-wasmtime-wasi-nn = {version = "4.0.0", optional=true}
+wasmtime = "6.0.0"
+wasmtime-wasi = "6.0.0"
+wasmtime-wasi-nn = {version = "6.0.0", optional=true}
 anyhow = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
-toml = "0.5"
+toml = "0.7"
 sha2 = "0.10"
 log = "0.4"
 log4rs = "1.1"

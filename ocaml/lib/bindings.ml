@@ -157,6 +157,9 @@ let extism_function_new =
    @-> uint64_t @-> extism_function_type @-> ptr void @-> extism_free_user_data
     @-> returning (ptr void))
 
+let extism_function_set_namespace =
+  fn "extism_function_set_namespace" (ptr void @-> string @-> returning void)
+
 let extism_function_free =
   fn "extism_function_free" (ptr void @-> returning void)
 

@@ -1,12 +1,12 @@
 package org.extism.sdk;
 
+import com.sun.jna.Pointer;
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
 import org.extism.sdk.wasm.WasmSourceResolver;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.extism.sdk.TestWasmSources.CODE;
@@ -42,14 +42,12 @@ public class PluginTests {
         assertThat(output).isEqualTo("{\"count\": 3}");
     }
 
-    // TODO This test breaks on CI with error:
-    // data did not match any variant of untagged enum Wasm at line 8 column 3
-    // @Test
-    // public void shouldInvokeFunctionFromByteArrayWasmSource() {
-    //     var manifest = new Manifest(CODE.byteArrayWasmSource());
-    //     var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
-    //     assertThat(output).isEqualTo("{\"count\": 3}");
-    // }
+     @Test
+     public void shouldInvokeFunctionFromByteArrayWasmSource() {
+         var manifest = new Manifest(CODE.byteArrayWasmSource());
+         var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
+         assertThat(output).isEqualTo("{\"count\": 3}");
+     }
 
     @Test
     public void shouldFailToInvokeUnknownFunction() {
@@ -80,7 +78,7 @@ public class PluginTests {
         var input = "Hello World";
 
         try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false)) {
+            try (var plugin = ctx.newPlugin(manifest, false, null)) {
                 var output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
             }
@@ -94,12 +92,116 @@ public class PluginTests {
         var input = "Hello World";
 
         try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false)) {
+            try (var plugin = ctx.newPlugin(manifest, false, null)) {
                 var output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
 
                 output = plugin.call(functionName, input);
                 assertThat(output).isEqualTo("{\"count\": 3}");
+            }
+        }
+    }
+
+    @Test
+    public void shouldAllowInvokeHostFunctionFromPDK() {
+        var parametersTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+        var resultsTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+
+        class MyUserData extends HostUserData {
+            private String data1;
+            private int data2;
+
+            public MyUserData(String data1, int data2) {
+                super();
+                this.data1 = data1;
+                this.data2 = data2;
+            }
+        }
+
+        ExtismFunction helloWorldFunction = (ExtismFunction<MyUserData>) (plugin, params, returns, data) -> {
+            System.out.println("Hello from Java Host Function!");
+            System.out.println(String.format("Input string received from plugin, %s", plugin.inputString(params[0])));
+
+            int offs = plugin.alloc(4);
+            Pointer mem = plugin.memory();
+            mem.write(offs, "test".getBytes(), 0, 4);
+            returns[0].v.i64 = offs;
+
+            data.ifPresent(d -> System.out.println(String.format("Host user data, %s, %d", d.data1, d.data2)));
+        };
+
+        HostFunction helloWorld = new HostFunction<>(
+                "hello_world",
+                parametersTypes,
+                resultsTypes,
+                helloWorldFunction,
+                Optional.of(new MyUserData("test", 2))
+        );
+
+        HostFunction[] functions = {helloWorld};
+
+        try (var ctx = new Context()) {
+            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+            String functionName = "count_vowels";
+
+            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
+                var output = plugin.call(functionName, "this is a test");
+                assertThat(output).isEqualTo("test");
+            }
+        }
+    }
+
+    @Test
+    public void shouldAllowInvokeHostFunctionWithoutUserData() {
+
+        var parametersTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+        var resultsTypes = new LibExtism.ExtismValType[]{LibExtism.ExtismValType.I64};
+
+        ExtismFunction helloWorldFunction = (plugin, params, returns, data) -> {
+            System.out.println("Hello from Java Host Function!");
+            System.out.println(String.format("Input string received from plugin, %s", plugin.inputString(params[0])));
+
+            int offs = plugin.alloc(4);
+            Pointer mem = plugin.memory();
+            mem.write(offs, "test".getBytes(), 0, 4);
+            returns[0].v.i64 = offs;
+
+            assertThat(data.isEmpty());
+        };
+
+        HostFunction helloWorld = new HostFunction<>(
+                "hello_world",
+                parametersTypes,
+                resultsTypes,
+                helloWorldFunction,
+                Optional.empty()
+        );
+
+        HostFunction[] functions = {helloWorld};
+
+        try (var ctx = new Context()) {
+            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+            String functionName = "count_vowels";
+
+            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
+                var output = plugin.call(functionName, "this is a test");
+                assertThat(output).isEqualTo("test");
+            }
+        }
+    }
+
+
+    @Test
+    public void shouldFailToInvokeUnknownHostFunction() {
+        try (var ctx = new Context()) {
+            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+            String functionName = "count_vowels";
+
+            try {
+                var plugin = ctx.newPlugin(manifest, true, null);
+                plugin.call(functionName, "this is a test");
+            }  catch (ExtismException e) {
+                assertThat(e.getMessage()).contains("unknown import: `env::hello_world` has not been defined");
             }
         }
     }

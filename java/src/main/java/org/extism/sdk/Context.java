@@ -28,10 +28,11 @@ public class Context implements AutoCloseable {
      *
      * @param manifest The manifest for the plugin
      * @param withWASI Set to true to enable WASI
+     * @param functions List of Host functions
      * @return the plugin instance
      */
-    public Plugin newPlugin(Manifest manifest, boolean withWASI) {
-        return new Plugin(this, manifest, withWASI);
+    public Plugin newPlugin(Manifest manifest, boolean withWASI, HostFunction[] functions) {
+        return new Plugin(this, manifest, withWASI, functions);
     }
 
     /**
