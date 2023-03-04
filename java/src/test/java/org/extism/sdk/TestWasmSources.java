@@ -16,19 +16,28 @@ public enum TestWasmSources {
         public Path getWasmFilePath() {
             return Paths.get(WASM_LOCATION, "code.wasm");
         }
+        public Path getWasmFunctionsFilePath() {
+            return Paths.get(WASM_LOCATION, "code-functions.wasm");
+        }
     };
 
     public static final String WASM_LOCATION = "src/test/resources";
 
     public abstract Path getWasmFilePath();
 
+    public abstract Path getWasmFunctionsFilePath();
+
     public PathWasmSource pathWasmSource() {
         return resolvePathWasmSource(getWasmFilePath());
     }
 
+    public PathWasmSource pathWasmFunctionsSource() {
+        return resolvePathWasmSource(getWasmFunctionsFilePath());
+    }
+
     public ByteArrayWasmSource byteArrayWasmSource() {
         try {
-            var wasmBytes = Files.readAllBytes(getWasmFilePath());
+            byte[] wasmBytes = Files.readAllBytes(getWasmFilePath());
             return new WasmSourceResolver().resolve("wasm@" + Arrays.hashCode(wasmBytes), wasmBytes);
         } catch (IOException ioe) {
             throw new RuntimeException(ioe);
