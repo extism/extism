@@ -169,15 +169,25 @@ public class PluginTests {
             assertThat(data.isEmpty());
         };
 
-        HostFunction helloWorld = new HostFunction<>(
+        HostFunction f = new HostFunction<>(
                 "hello_world",
                 parametersTypes,
                 resultsTypes,
                 helloWorldFunction,
                 Optional.empty()
-        );
+        )
+                .withNamespace("env");
 
-        HostFunction[] functions = {helloWorld};
+        HostFunction g = new HostFunction<>(
+                "hello_world",
+                parametersTypes,
+                resultsTypes,
+                helloWorldFunction,
+                Optional.empty()
+        )
+                .withNamespace("test");
+
+        HostFunction[] functions = {f,g};
 
         try (var ctx = new Context()) {
             Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
