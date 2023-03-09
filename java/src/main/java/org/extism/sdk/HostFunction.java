@@ -78,4 +78,15 @@ public class HostFunction<T extends HostUserData> {
         } else
             throw new ExtismException(String.format("Unsupported return type: %s", original.t));
     }
+
+    public void setNamespace(String name) {
+        if (this.pointer != null) {
+            LibExtism.INSTANCE.extism_function_set_namespace(this.pointer, name);
+        }
+    }
+
+    HostFunction withNamespace(String name) {
+        this.setNamespace(name);
+        return this;
+    }
 }

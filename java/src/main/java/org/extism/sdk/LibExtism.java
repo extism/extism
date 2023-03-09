@@ -204,8 +204,7 @@ public interface LibExtism extends Library {
      * @return {@literal true} if update was successful
      */
     boolean extism_plugin_config(Pointer contextPointer, int pluginIndex, byte[] json, int jsonLength);
-
     Pointer extism_plugin_cancel_handle(Pointer contextPointer, int n);
-
     boolean extism_plugin_cancel(Pointer contextPointer);
+    void extism_function_set_namespace(Pointer p, String name);
 }
