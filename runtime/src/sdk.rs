@@ -359,6 +359,37 @@ pub unsafe extern "C" fn extism_plugin_free(ctx: *mut Context, plugin: PluginInd
     ctx.remove(plugin);
 }
 
+pub struct ExtismCancelHandle {
+    pub(crate) epoch_timer_tx: Option<std::sync::mpsc::SyncSender<TimerAction>>,
+    pub id: uuid::Uuid,
+}
+
+/// Get plugin ID for cancellation
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_cancel_handle(
+    ctx: *mut Context,
+    plugin: PluginIndex,
+) -> *const ExtismCancelHandle {
+    let ctx = &mut *ctx;
+    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+        None => return std::ptr::null_mut(),
+        Some(p) => p,
+    };
+    let plugin = plugin.as_mut();
+    &plugin.cancel_handle as *const _
+}
+
+/// Cancel a running plugin
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) -> bool {
+    let handle = &*handle;
+    if let Some(tx) = &handle.epoch_timer_tx {
+        return tx.send(TimerAction::Cancel { id: handle.id }).is_ok();
+    }
+
+    false
+}
+
 /// Remove all plugins from the registry
 #[no_mangle]
 pub unsafe extern "C" fn extism_context_reset(ctx: *mut Context) {
@@ -527,7 +558,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     }
 
     // Stop timer
-    if let Err(e) = plugin_ref.as_mut().stop_timer(&tx) {
+    if let Err(e) = plugin_ref.as_mut().stop_timer() {
         let id = plugin_ref.as_ref().timer_id;
         return plugin_ref.as_ref().error(
             format!("Failed to stop timeout manager for {id}: {e:?}"),

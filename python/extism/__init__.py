@@ -8,5 +8,5 @@ from .extism import (
     Function,
     ValType,
     Val,
-    CurrentPlugin
+    CurrentPlugin,
 )

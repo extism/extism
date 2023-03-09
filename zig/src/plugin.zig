@@ -2,6 +2,7 @@ const std = @import("std");
 const Context = @import("context.zig");
 const Manifest = @import("manifest.zig").Manifest;
 const Function = @import("function.zig");
+const CancelHandle = @import("cancel_handle.zig");
 const c = @import("ffi.zig");
 const utils = @import("utils.zig");
 
@@ -58,6 +59,11 @@ pub fn deinit(self: *Self) void {
     self.ctx.mutex.lock();
     defer self.ctx.mutex.unlock();
     c.extism_plugin_free(self.ctx.ctx, self.id);
+}
+
+pub fn cancelHandle(self: *Self) CancelHandle {
+    const ptr = c.extism_plugin_cancel_handle(self.ctx.ctx, self.id);
+    return CancelHandle{ .handle = ptr };
 }
 
 /// Call a function with the given input

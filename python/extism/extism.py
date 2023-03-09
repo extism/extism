@@ -230,6 +230,14 @@ class Function:
             _lib.extism_function_free(self.pointer)
 
 
+class CancelHandle:
+    def __init__(self, ptr):
+        self.pointer = ptr
+
+    def cancel(self) -> bool:
+        return _lib.extism_plugin_cancel(self.pointer)
+
+
 class Plugin:
     """
     Plugin is used to call WASM functions.
@@ -274,6 +282,11 @@ class Plugin:
         if config is not None:
             s = json.dumps(config).encode()
             _lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
+
+    def cancel_handle(self):
+        return CancelHandle(
+            _lib.extism_plugin_cancel_handle(self.ctx.pointer, self.plugin)
+        )
 
     def update(
         self, manifest: Union[str, bytes, dict], wasi=False, config=None, functions=None
@@ -488,7 +501,7 @@ class CurrentPlugin:
 
     def input_string(self, input: Val) -> str:
         return self.input_bytes(input).decode()
-         
+
 
 def host_fn(func):
     """

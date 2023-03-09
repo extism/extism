@@ -46,6 +46,8 @@ typedef enum {
  */
 typedef struct ExtismContext ExtismContext;
 
+typedef struct ExtismCancelHandle ExtismCancelHandle;
+
 /**
  * Wraps host functions
  */
@@ -189,6 +191,16 @@ bool extism_plugin_update(ExtismContext *ctx,
  * Remove a plugin from the registry and free associated memory
  */
 void extism_plugin_free(ExtismContext *ctx, ExtismPlugin plugin);
+
+/**
+ * Get plugin ID for cancellation
+ */
+const ExtismCancelHandle *extism_plugin_cancel_handle(ExtismContext *ctx, ExtismPlugin plugin);
+
+/**
+ * Cancel a running plugin
+ */
+bool extism_plugin_cancel(const ExtismCancelHandle *handle);
 
 /**
  * Remove all plugins from the registry

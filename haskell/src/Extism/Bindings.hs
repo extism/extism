@@ -10,6 +10,7 @@ import Data.Word
 
 newtype ExtismContext = ExtismContext () deriving Show
 newtype ExtismFunction = ExtismFunction () deriving Show
+newtype ExtismCancelHandle = ExtismCancelHandle () deriving Show
 
 foreign import ccall safe "extism.h extism_context_new" extism_context_new :: IO (Ptr ExtismContext)
 foreign import ccall safe "extism.h &extism_context_free" extism_context_free :: FunPtr (Ptr ExtismContext -> IO ())
@@ -25,3 +26,5 @@ foreign import ccall safe "extism.h extism_plugin_config" extism_plugin_config :
 foreign import ccall safe "extism.h extism_plugin_free" extism_plugin_free :: Ptr ExtismContext -> Int32 -> IO ()
 foreign import ccall safe "extism.h extism_context_reset" extism_context_reset :: Ptr ExtismContext -> IO ()
 foreign import ccall safe "extism.h extism_version" extism_version :: IO CString
+foreign import ccall safe "extism.h extism_plugin_cancel_handle" extism_plugin_cancel_handle :: Ptr ExtismContext -> Int32 -> IO (Ptr ExtismCancelHandle)
+foreign import ccall safe "extism.h extism_plugin_cancel" extism_plugin_cancel :: Ptr ExtismCancelHandle -> IO Bool

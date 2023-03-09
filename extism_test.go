@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 )
 
 func manifest(functions bool) Manifest {
@@ -149,5 +150,35 @@ func TestErrorsOnUnknownFunction(t *testing.T) {
 	_, err = plugin.Call("i_dont_exist", []byte("someinput"))
 	if err == nil {
 		t.Fatal("Was expecting call to unknown function to fail")
+	}
+}
+
+func TestCancel(t *testing.T) {
+	manifest := Manifest{
+		Wasm: []Wasm{
+			WasmFile{
+				Path: "./wasm/loop.wasm",
+			},
+		},
+	}
+
+	ctx := NewContext()
+	defer ctx.Free()
+
+	plugin, err := ctx.PluginFromManifest(manifest, []Function{}, false)
+	if err != nil {
+		t.Error(err)
+	}
+
+	cancelHandle := plugin.CancelHandle()
+
+	go func(handle CancelHandle) {
+		time.Sleep(time.Second * 1)
+		handle.Cancel()
+	}(cancelHandle)
+
+	_, err = plugin.Call("infinite_loop", []byte(""))
+	if err == nil {
+		t.Fail()
 	}
 }

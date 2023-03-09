@@ -8,7 +8,7 @@ mod plugin;
 mod plugin_builder;
 
 pub use context::Context;
-pub use plugin::Plugin;
+pub use plugin::{CancelHandle, Plugin};
 pub use plugin_builder::PluginBuilder;
 pub type Error = anyhow::Error;
 
@@ -36,6 +36,7 @@ mod tests {
     use std::time::Instant;
 
     const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
+    const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 
     fn hello_world(
         _plugin: &mut CurrentPlugin,
@@ -207,5 +208,32 @@ mod tests {
         let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
         let output = plugin.call("count_vowels", "abc123").unwrap();
         std::io::stdout().write_all(output).unwrap();
+    }
+
+    #[test]
+    fn test_cancel() {
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+
+        let context = Context::new();
+        let mut plugin = Plugin::new(&context, WASM_LOOP, [&f], true).unwrap();
+        let handle = plugin.cancel_handle();
+
+        std::thread::spawn(move || {
+            std::thread::sleep(std::time::Duration::from_secs(1));
+            handle.cancel();
+        });
+
+        let start = std::time::Instant::now();
+        let _output = plugin.call("infinite_loop", "abc123");
+        let end = std::time::Instant::now();
+        let time = end - start;
+        println!("Cancelled plugin ran for {:?}", time);
+        // std::io::stdout().write_all(output).unwrap();
     }
 }
