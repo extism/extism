@@ -11,5 +11,5 @@ crate-type = ["cdylib"]
 
 [dependencies]
 rustler = "0.27.0"
-extism = { version = "0.2.1", path = "../../../rust", package = "extism" }
+extism = { version = "0.3.0", path = "../../../rust", package = "extism" }
 log = "0.4"
