@@ -8,7 +8,7 @@
 
     <PropertyGroup>
         <PackageId>Extism.runtime.win-x64</PackageId>
-        <Version>0.3.0</Version>
+        <Version>0.4.0</Version>
         <Authors>Extism Contributors</Authors>
         <Description>Internal implementation package for Extism to work on Windows x64</Description>
         <Tags>extism, wasm, plugin</Tags>
