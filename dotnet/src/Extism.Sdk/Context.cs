@@ -44,7 +44,19 @@ public unsafe class Context : IDisposable
             fixed (byte* wasmPtr = wasm)
             fixed (IntPtr* functionsPtr = functionHandles)
             {
-                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, functionsPtr, 0, withWasi);
+                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, functionsPtr, functions.Length, withWasi);
+                if (plugin == -1)
+                {
+                    var errorMsg = GetError();
+                    if (errorMsg != null)
+                    {
+                        throw new ExtismException(errorMsg);
+                    }
+                    else
+                    {
+                        throw new ExtismException("Failed to create plugin.");
+                    }
+                }
                 return new Plugin(this, functions, plugin);
             }
         }

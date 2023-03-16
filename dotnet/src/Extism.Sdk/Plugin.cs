@@ -14,17 +14,17 @@ public class Plugin : IDisposable
     private readonly HostFunction[] _functions;
     private int _disposed;
 
-    internal Plugin(Context context, HostFunction[] functions, IntPtr handle)
+    internal Plugin(Context context, HostFunction[] functions, int index)
     {
         _context = context;
         _functions = functions;
-        NativeHandle = handle;
+        Index = index;
     }
 
     /// <summary>
     /// A pointer to the native Plugin struct.
     /// </summary>
-    internal IntPtr NativeHandle { get; }
+    internal int Index { get; }
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
@@ -38,7 +38,7 @@ public class Plugin : IDisposable
         var functions = _functions.Select(f => f.Native).ToArray();
         fixed (byte* wasmPtr = wasm)
         {
-            return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, functions, 0, withWasi);
+            return LibExtism.extism_plugin_update(_context.NativeHandle, Index, wasmPtr, wasm.Length, functions, 0, withWasi);
         }
     }
 
@@ -52,7 +52,7 @@ public class Plugin : IDisposable
 
         fixed (byte* jsonPtr = json)
         {
-            return LibExtism.extism_plugin_config(_context.NativeHandle, NativeHandle, jsonPtr, json.Length);
+            return LibExtism.extism_plugin_config(_context.NativeHandle, Index, jsonPtr, json.Length);
         }
     }
 
@@ -63,7 +63,7 @@ public class Plugin : IDisposable
     {
         CheckNotDisposed();
 
-        return LibExtism.extism_plugin_function_exists(_context.NativeHandle, NativeHandle, name);
+        return LibExtism.extism_plugin_function_exists(_context.NativeHandle, Index, name);
     }
 
     /// <summary>
@@ -81,7 +81,7 @@ public class Plugin : IDisposable
 
         fixed (byte* dataPtr = data)
         {
-            int response = LibExtism.extism_plugin_call(_context.NativeHandle, NativeHandle, functionName, dataPtr, data.Length);
+            int response = LibExtism.extism_plugin_call(_context.NativeHandle, Index, functionName, dataPtr, data.Length);
             if (response == 0)
             {
                 return OutputData();
@@ -109,7 +109,7 @@ public class Plugin : IDisposable
     {
         CheckNotDisposed();
 
-        return (int)LibExtism.extism_plugin_output_length(_context.NativeHandle, NativeHandle);
+        return (int)LibExtism.extism_plugin_output_length(_context.NativeHandle, Index);
     }
 
     /// <summary>
@@ -123,7 +123,7 @@ public class Plugin : IDisposable
 
         unsafe
         {
-            var ptr = LibExtism.extism_plugin_output_data(_context.NativeHandle, NativeHandle).ToPointer();
+            var ptr = LibExtism.extism_plugin_output_data(_context.NativeHandle, Index).ToPointer();
             return new Span<byte>(ptr, length);
         }
     }
@@ -136,7 +136,7 @@ public class Plugin : IDisposable
     {
         CheckNotDisposed();
 
-        var result = LibExtism.extism_error(_context.NativeHandle, NativeHandle);
+        var result = LibExtism.extism_error(_context.NativeHandle, Index);
         return Marshal.PtrToStringUTF8(result);
     }
 
@@ -185,7 +185,7 @@ public class Plugin : IDisposable
         }
 
         // Free up unmanaged resources
-        LibExtism.extism_plugin_free(_context.NativeHandle, NativeHandle);
+        LibExtism.extism_plugin_free(_context.NativeHandle, Index);
     }
 
     /// <summary>

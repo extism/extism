@@ -2,7 +2,7 @@
 
 namespace Extism.Sdk
 {
-    public delegate void ExtismFunction(IntPtr plugin, Span<ExtismVal> inputs, Span<ExtismVal> outputs, IntPtr data);
+    public delegate void ExtismFunction(int plugin, ExtismVal[] inputs, ExtismVal[] outputs, IntPtr data);
 
     public class HostFunction
     {
@@ -22,10 +22,10 @@ namespace Extism.Sdk
             }
 
             void CallbackImpl(
-                IntPtr plugin,
-                Span<ExtismVal> inputs,
+                int plugin,
+                ExtismVal[] inputs,
                 uint n_inputs,
-                Span<ExtismVal> outputs,
+                ExtismVal[] outputs,
                 uint n_outputs, IntPtr data)
             {
                 hostFunction(plugin, inputs, outputs, data);
@@ -33,5 +33,10 @@ namespace Extism.Sdk
         }
 
         internal IntPtr Native { get; }
+
+        public void SetNamespace(string ns)
+        {
+            LibExtism.extism_function_set_namespace(Native, ns);
+        }
     }
 }

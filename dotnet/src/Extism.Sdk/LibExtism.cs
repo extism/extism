@@ -92,7 +92,7 @@ internal static class LibExtism
     /// <param name="outputs"></param>
     /// <param name="n_outputs"></param>
     /// <param name="data"></param>
-    internal delegate void InternalExtismFunction(IntPtr plugin, Span<ExtismVal> inputs, uint n_inputs, Span<ExtismVal> outputs, uint n_outputs, IntPtr data);
+    unsafe internal delegate void InternalExtismFunction(int plugin, ExtismVal[] inputs, uint n_inputs, ExtismVal[] outputs, uint n_outputs, IntPtr data);
 
     /// <summary>
     /// Returns a pointer to the memory of the currently running plugin.
@@ -101,7 +101,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory")]
-    internal static extern IntPtr extism_current_plugin_memory(IntPtr plugin);
+    internal static extern IntPtr extism_current_plugin_memory(int plugin);
 
     /// <summary>
     /// 
@@ -110,7 +110,7 @@ internal static class LibExtism
     /// <param name="n"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_alloc")]
-    internal static extern IntPtr extism_current_plugin_memory_alloc(IntPtr plugin, long n);
+    internal static extern IntPtr extism_current_plugin_memory_alloc(int plugin, long n);
 
     /// <summary>
     /// Allocate a memory block in the currently running plugin.
@@ -120,7 +120,7 @@ internal static class LibExtism
     /// <param name="n"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_length")]
-    internal static extern long extism_current_plugin_memory_length(IntPtr plugin, long n);
+    internal static extern long extism_current_plugin_memory_length(int plugin, long n);
 
     /// <summary>
     /// Get the length of an allocated block.
@@ -129,7 +129,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <param name="ptr"></param>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_free")]
-    internal static extern void extism_current_plugin_memory_free(IntPtr plugin, IntPtr ptr);
+    internal static extern void extism_current_plugin_memory_free(int plugin, IntPtr ptr);
 
     /// <summary>
     /// Create a new host function.
@@ -186,7 +186,7 @@ internal static class LibExtism
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern IntPtr extism_plugin_new(ExtismContext* context, byte* wasm, int wasmSize, IntPtr* functions, int nFunctions, bool withWasi);
+    unsafe internal static extern int extism_plugin_new(ExtismContext* context, byte* wasm, int wasmSize, IntPtr* functions, int nFunctions, bool withWasi);
 
     /// <summary>
     /// Update a plugin, keeping the existing ID.
@@ -202,7 +202,7 @@ internal static class LibExtism
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, long wasmSize, Span<IntPtr> functions, long nFunctions, bool withWasi);
+    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, int plugin, byte* wasm, long wasmSize, Span<IntPtr> functions, long nFunctions, bool withWasi);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.
@@ -210,7 +210,7 @@ internal static class LibExtism
     /// <param name="context">Pointer to the context the plugin is associated with.</param>
     /// <param name="plugin">Pointer to the plugin you want to free.</param>
     [DllImport("extism")]
-    unsafe internal static extern void extism_plugin_free(ExtismContext* context, IntPtr plugin);
+    unsafe internal static extern void extism_plugin_free(ExtismContext* context, int plugin);
 
     /// <summary>
     /// Remove all plugins from the registry.
@@ -228,7 +228,7 @@ internal static class LibExtism
     /// <param name="jsonLength">The length of the `json` parameter.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern bool extism_plugin_config(ExtismContext* context, IntPtr plugin, byte* json, int jsonLength);
+    unsafe internal static extern bool extism_plugin_config(ExtismContext* context, int plugin, byte* json, int jsonLength);
 
     /// <summary>
     /// Returns true if funcName exists.
@@ -238,7 +238,7 @@ internal static class LibExtism
     /// <param name="funcName"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern bool extism_plugin_function_exists(ExtismContext* context, IntPtr plugin, string funcName);
+    unsafe internal static extern bool extism_plugin_function_exists(ExtismContext* context, int plugin, string funcName);
 
     /// <summary>
     /// Call a function.
@@ -250,7 +250,7 @@ internal static class LibExtism
     /// <param name="dataLen">The length of the `data` parameter.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern int extism_plugin_call(ExtismContext* context, IntPtr plugin, string funcName, byte* data, int dataLen);
+    unsafe internal static extern int extism_plugin_call(ExtismContext* context, int plugin, string funcName, byte* data, int dataLen);
 
     /// <summary>
     /// Get the error associated with a Context or Plugin, if plugin is -1 then the context error will be returned.
@@ -268,7 +268,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern long extism_plugin_output_length(ExtismContext* context, IntPtr plugin);
+    unsafe internal static extern long extism_plugin_output_length(ExtismContext* context, int plugin);
 
     /// <summary>
     /// Get the plugin's output data.
@@ -277,7 +277,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern IntPtr extism_plugin_output_data(ExtismContext* context, IntPtr plugin);
+    unsafe internal static extern IntPtr extism_plugin_output_data(ExtismContext* context, int plugin);
 
     /// <summary>
     /// Set log file and level.
