@@ -17,12 +17,19 @@ mod atoms {
 struct ExtismContext {
     ctx: RwLock<Context>,
 }
-
 unsafe impl Sync for ExtismContext {}
 unsafe impl Send for ExtismContext {}
 
+struct ExtismCancelHandle {
+    handle: RwLock<extism::CancelHandle>,
+}
+
+unsafe impl Sync for ExtismCancelHandle {}
+unsafe impl Send for ExtismCancelHandle {}
+
 fn load(env: Env, _: Term) -> bool {
     rustler::resource!(ExtismContext, env);
+    rustler::resource!(ExtismCancelHandle, env);
     true
 }
 
@@ -113,6 +120,24 @@ fn plugin_update_manifest(
 }
 
 #[rustler::nif]
+fn plugin_cancel_handle(
+    ctx: ResourceArc<ExtismContext>,
+    plugin_id: i32,
+) -> Result<ResourceArc<ExtismCancelHandle>, rustler::Error> {
+    let context = &ctx.ctx.read().unwrap();
+    let plugin = unsafe { Plugin::from_id(plugin_id, context) };
+    let handle = plugin.cancel_handle();
+    Ok(ResourceArc::new(ExtismCancelHandle {
+        handle: RwLock::new(handle),
+    }))
+}
+
+#[rustler::nif]
+fn plugin_cancel(handle: ResourceArc<ExtismCancelHandle>) -> bool {
+    handle.handle.read().unwrap().cancel()
+}
+
+#[rustler::nif]
 fn plugin_free(ctx: ResourceArc<ExtismContext>, plugin_id: i32) -> Result<(), rustler::Error> {
     let context = &ctx.ctx.read().unwrap();
     let plugin = unsafe { Plugin::from_id(plugin_id, context) };
@@ -165,6 +190,8 @@ rustler::init!(
         plugin_call,
         plugin_update_manifest,
         plugin_has_function,
+        plugin_cancel_handle,
+        plugin_cancel,
         plugin_free,
         set_log_file,
     ],

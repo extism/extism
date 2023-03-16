@@ -155,6 +155,7 @@ pub struct Function {
     pub(crate) name: String,
     pub(crate) ty: wasmtime::FuncType,
     pub(crate) f: std::sync::Arc<FunctionInner>,
+    pub(crate) namespace: Option<String>,
     pub(crate) _user_data: std::sync::Arc<UserData>,
 }
 
@@ -183,12 +184,26 @@ impl Function {
             f: std::sync::Arc::new(move |mut caller, inp, outp| {
                 f(caller.data_mut().plugin_mut(), inp, outp, data.make_copy())
             }),
+            namespace: None,
             _user_data: std::sync::Arc::new(user_data),
         }
     }
 
     pub fn name(&self) -> &str {
         &self.name
+    }
+
+    pub fn namespace(&self) -> Option<&str> {
+        self.namespace.as_deref()
+    }
+
+    pub fn set_namespace(&mut self, namespace: impl Into<String>) {
+        self.namespace = Some(namespace.into());
+    }
+
+    pub fn with_namespace(mut self, namespace: impl Into<String>) -> Self {
+        self.set_namespace(namespace);
+        self
     }
 
     pub fn ty(&self) -> &wasmtime::FuncType {

@@ -1,6 +1,8 @@
 ### _Welcome!_
 
-**Please note:** this project still under active development. It's usable, but expect some rough edges while work is underway. If you're interested in working on or building with Extism, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know - we are happy to help get you started.
+**Please note:** This project still under active development and APIs may change until we hit v1.0.
+
+If you're interested in working on or building with Extism, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know - we are happy to help get you started.
 
 [![Discord](https://img.shields.io/discord/1011124058408112148?color=%23404eed&label=Community%20Chat&logo=Discord&logoColor=%23404eed)](https://discord.gg/cx3usBCWnc)
 
@@ -60,7 +62,6 @@ Extism is an open-source product from the team at:
 <p align="left">
   <a href="https://dylib.so" _target="blanks"><img width="200px" src="https://user-images.githubusercontent.com/7517515/198204119-5afdebb9-a5d8-4322-bd2a-46179c8d7b24.svg"/></a>
 </p>
-
 
 
 _Reach out and tell us what you're building! We'd love to help._

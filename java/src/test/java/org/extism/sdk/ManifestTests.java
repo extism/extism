@@ -6,6 +6,7 @@ import org.extism.sdk.support.JsonSerde;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.HashMap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.extism.sdk.TestWasmSources.CODE;
@@ -16,13 +17,16 @@ public class ManifestTests {
 
     @Test
     public void shouldSerializeManifestWithWasmSourceToJson() {
-
-        var manifest = new Manifest(CODE.pathWasmSource());
+        var paths = new HashMap<String, String>();
+        paths.put("/tmp/foo", "/tmp/extism-plugins/foo");
+        var manifest = new Manifest(List.of(CODE.pathWasmSource()), null, null, null, paths);
         var json = JsonSerde.toJson(manifest);
         assertNotNull(json);
 
         assertJson(json).at("/wasm").isArray();
         assertJson(json).at("/wasm").hasSize(1);
+        assertJson(json).at("/allowed_paths").isObject();
+        assertJson(json).at("/allowed_paths").hasSize(1);
     }
 
     @Test

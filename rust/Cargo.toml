@@ -1,6 +1,6 @@
 [package]
 name = "extism"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
@@ -9,8 +9,9 @@ repository = "https://github.com/extism/extism"
 description = "Extism Host SDK for Rust"
 
 [dependencies]
-extism-manifest = { version = "0.2.0", path = "../manifest" }
-extism-runtime = { version = "0.2.0", path = "../runtime"}
+extism-manifest = { version = "0.3.0", path = "../manifest" }
+extism-runtime = { version = "0.3.0", path = "../runtime"}
 serde_json = "1"
 log = "0.4"
 anyhow = "1"
+uuid = { version = "1", features = ["v4"] }

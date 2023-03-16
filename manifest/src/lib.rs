@@ -6,6 +6,7 @@ pub type ManifestMemory = MemoryOptions;
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 pub struct MemoryOptions {
     #[serde(alias = "max")]
     pub max_pages: Option<u32>,
@@ -13,6 +14,7 @@ pub struct MemoryOptions {
 
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 pub struct HttpRequest {
     pub url: String,
     #[serde(default)]
@@ -43,6 +45,7 @@ impl HttpRequest {
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 pub struct WasmMetadata {
     pub name: Option<String>,
     pub hash: Option<String>,
@@ -81,6 +84,7 @@ pub type ManifestWasm = Wasm;
 #[derive(serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
+#[serde(deny_unknown_fields)]
 pub enum Wasm {
     File {
         path: PathBuf,
@@ -151,6 +155,7 @@ fn base64_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::
 
 #[derive(Default, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
 pub struct Manifest {
     #[serde(default)]
     pub wasm: Vec<Wasm>,

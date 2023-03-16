@@ -10,7 +10,7 @@
 
 	<PropertyGroup>
 		<PackageId>Extism.Sdk</PackageId>
-		<Version>0.3.0</Version>
+		<Version>0.4.0</Version>
 		<Authors>Extism Contributors</Authors>
 		<Description>Extism SDK that allows hosting Extism plugins in .NET apps.</Description>
 		<Tags>extism, wasm, plugin</Tags>

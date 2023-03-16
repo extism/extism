@@ -36,3 +36,8 @@ vendor
 zig/zig-*
 zig/example-out/
 zig/*.log
+java/*.iml
+java/*.log
+java/.idea
+java/.DS_Store
+

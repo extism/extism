@@ -7,9 +7,7 @@ const {
 const { readFileSync } = require("fs");
 
 function f(currentPlugin, inputs, outputs, userData) {
-  let mem = currentPlugin.memory(inputs[0].v.i64);
-  console.log(mem.length);
-  console.log(mem.toString());
+  console.log(currentPlugin.inputString(inputs[0]));
   console.log("Hello from Javascript!");
   console.log(userData);
   outputs[0] = inputs[0];

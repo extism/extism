@@ -6,6 +6,17 @@ pub struct Plugin<'a> {
     context: &'a Context,
 }
 
+pub struct CancelHandle(pub(crate) *const extism_runtime::sdk::ExtismCancelHandle);
+
+unsafe impl Sync for CancelHandle {}
+unsafe impl Send for CancelHandle {}
+
+impl CancelHandle {
+    pub fn cancel(&self) -> bool {
+        unsafe { extism_runtime::sdk::extism_plugin_cancel(self.0) }
+    }
+}
+
 impl<'a> Plugin<'a> {
     /// Create plugin from a known-good ID
     ///
@@ -72,8 +83,7 @@ impl<'a> Plugin<'a> {
     ) -> Result<(), Error> {
         let functions = functions
             .into_iter()
-            .map(|x| bindings::ExtismFunction::from(x.clone()))
-            .collect::<Vec<_>>();
+            .map(|x| bindings::ExtismFunction::from(x.clone()));
         let mut functions = functions
             .into_iter()
             .map(|x| &x as *const _)
@@ -132,6 +142,13 @@ impl<'a> Plugin<'a> {
                 name.as_ptr() as *const _,
             )
         }
+    }
+
+    pub fn cancel_handle(&self) -> CancelHandle {
+        let ptr =
+            unsafe { bindings::extism_plugin_cancel_handle(&mut *self.context.lock(), self.id) };
+
+        CancelHandle(ptr)
     }
 
     /// Call a function with the given input

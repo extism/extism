@@ -13,6 +13,7 @@ pub struct Plugin {
     pub vars: BTreeMap<String, Vec<u8>>,
     pub should_reinstantiate: bool,
     pub timer_id: uuid::Uuid,
+    pub(crate) cancel_handle: sdk::ExtismCancelHandle,
 }
 
 pub struct Internal {
@@ -144,7 +145,7 @@ impl Plugin {
                     concat!("extism_", stringify!($name)) => {
                         let t = FuncType::new([$($args),*], [$($($r),*)?]);
                         let f = Func::new(&mut memory.store, t, pdk::$name);
-                        linker.define(EXPORT_MODULE_NAME, concat!("extism_", stringify!($name)), Extern::Func(f))?;
+                        linker.define(&mut memory.store, EXPORT_MODULE_NAME, concat!("extism_", stringify!($name)), Extern::Func(f))?;
                         continue
                     }
                 )*
@@ -187,10 +188,11 @@ impl Plugin {
 
                     for f in &mut imports {
                         let name = f.name().to_string();
+                        let ns = f.namespace().unwrap_or(EXPORT_MODULE_NAME);
                         let func = Func::new(&mut memory.store, f.ty().clone(), unsafe {
                             &*std::sync::Arc::as_ptr(&f.f)
                         });
-                        linker.define(EXPORT_MODULE_NAME, &name, func)?;
+                        linker.define(&mut memory.store, ns, &name, func)?;
                     }
                 }
             }
@@ -205,7 +207,7 @@ impl Plugin {
         }
 
         let instance = linker.instantiate(&mut memory.store, main)?;
-
+        let timer_id = uuid::Uuid::new_v4();
         let mut plugin = Plugin {
             module: main.clone(),
             linker,
@@ -215,7 +217,11 @@ impl Plugin {
             manifest,
             vars: BTreeMap::new(),
             should_reinstantiate: false,
-            timer_id: uuid::Uuid::new_v4(),
+            timer_id,
+            cancel_handle: sdk::ExtismCancelHandle {
+                id: timer_id,
+                epoch_timer_tx: None,
+            },
         };
 
         plugin.initialize_runtime()?;
@@ -301,7 +307,7 @@ impl Plugin {
                 self.memory.store.set_epoch_deadline(1);
                 self.start_timer(&timer.tx)?;
                 let x = runtime.init(self);
-                self.stop_timer(&timer.tx)?;
+                self.stop_timer()?;
                 self.memory.store.set_epoch_deadline(0);
                 return x;
             }
@@ -314,27 +320,34 @@ impl Plugin {
         &mut self,
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
     ) -> Result<(), Error> {
-        if let Some(duration) = self.manifest.as_ref().timeout_ms {
-            self.memory.store.set_epoch_deadline(1);
-            let engine: Engine = self.memory.store.engine().clone();
-            tx.send(TimerAction::Start {
-                id: self.timer_id,
-                duration: std::time::Duration::from_millis(duration),
-                engine,
-            })?;
-        } else {
-            self.memory.store.set_epoch_deadline(1);
+        let duration = self
+            .manifest
+            .as_ref()
+            .timeout_ms
+            .map(std::time::Duration::from_millis);
+        self.cancel_handle.epoch_timer_tx = Some(tx.clone());
+        self.memory.store.set_epoch_deadline(1);
+        let engine: Engine = self.memory.store.engine().clone();
+        tx.send(TimerAction::Start {
+            id: self.timer_id,
+            duration,
+            engine,
+        })?;
+
+        Ok(())
+    }
+
+    pub(crate) fn stop_timer(&mut self) -> Result<(), Error> {
+        if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
+            tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
 
         Ok(())
     }
 
-    pub(crate) fn stop_timer(
-        &mut self,
-        tx: &std::sync::mpsc::SyncSender<TimerAction>,
-    ) -> Result<(), Error> {
-        if self.manifest.as_ref().timeout_ms.is_some() {
-            tx.send(TimerAction::Stop { id: self.timer_id })?;
+    pub fn cancel(&self) -> Result<(), Error> {
+        if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
+            tx.send(TimerAction::Cancel { id: self.timer_id })?;
         }
 
         Ok(())
@@ -388,7 +401,7 @@ impl Drop for Plugin {
                         error!("Unable to cleanup runtime: {e:?}");
                     }
 
-                    if let Err(e) = self.stop_timer(&timer.tx) {
+                    if let Err(e) = self.stop_timer() {
                         error!("Unable to stop timer in Plugin::drop: {e:?}");
                     }
                 }

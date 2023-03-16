@@ -4,7 +4,7 @@
     <groupId>org.extism.sdk</groupId>
     <artifactId>extism</artifactId>
     <packaging>jar</packaging>
-    <version>0.2.0</version>
+    <version>0.3.0</version>
     <name>extism</name>
     <url>https://github.com/extism/extism</url>
     <description>Java-SDK for Extism to use webassembly from Java</description>
@@ -36,7 +36,7 @@
     <scm>
         <connection>scm:git:git://github.com/extism/extism.git</connection>
         <developerConnection>scm:git:ssh://git@github.com/extism/extism.git</developerConnection>
-        <url>https://github.com/extism/extism/java</url>
+        <url>https://github.com/extism/extism/tree/main/java</url>
         <tag>main</tag>
     </scm>
 
