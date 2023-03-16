@@ -1,95 +1,87 @@
 using System.Runtime.InteropServices;
+
+using static Extism.Sdk.Native.LibExtism;
+
 namespace Extism.Sdk.Native;
+
+
+/// <summary>
+/// A union type for host function argument/return values.
+/// </summary>
+[StructLayout(LayoutKind.Explicit)]
+public struct ExtismValUnion
+{
+    [FieldOffset(0)]
+    public int i32;
+
+    [FieldOffset(0)]
+    public long i64;
+
+    [FieldOffset(0)]
+    public float f32;
+
+    [FieldOffset(0)]
+    public double f64;
+}
+
+public enum ExtismValType : byte
+{
+    /// <summary>
+    /// Signed 32 bit integer. Equivalent of <see cref="int"/> or <see cref="uint"/>
+    /// </summary>
+    I32,
+
+    /// <summary>
+    /// Signed 64 bit integer. Equivalent of <see cref="long"/> or <see cref="ulong"/>
+    /// </summary>
+    I64,
+
+    /// <summary>
+    /// Floating point 32 bit integer. Equivalent of <see cref="float"/>
+    /// </summary>
+    F32,
+
+    /// <summary>
+    /// Floating point 64 bit integer. Equivalent of <see cref="double"/>
+    /// </summary>
+    F64,
+
+    /// <summary>
+    /// A 128 bit number.
+    /// </summary>
+    V128,
+
+    /// <summary>
+    /// A reference to opaque data in the Wasm instance.
+    /// </summary>
+    FuncRef,
+
+    /// <summary>
+    /// A reference to opaque data in the Wasm instance.
+    /// </summary>
+    ExternRef
+}
+
+/// <summary>
+/// `ExtismVal` holds the type and value of a function argument/return
+/// </summary>
+[StructLayout(LayoutKind.Sequential)]
+public struct ExtismVal
+{
+    public ExtismValType t;
+    public ExtismValUnion v;
+}
 
 /// <summary>
 /// Functions exposed by the native Extism library.
 /// </summary>
 internal static class LibExtism
 {
-    internal enum ExtismValType
-    {
-        /// <summary>
-        /// Signed 32 bit integer. Equivalent of <see cref="int"/> or <see cref="uint"/>
-        /// </summary>
-        I32,
-
-        /// <summary>
-        /// Signed 64 bit integer. Equivalent of <see cref="long"/> or <see cref="ulong"/>
-        /// </summary>
-        I64,
-
-        /// <summary>
-        /// Floating point 32 bit integer. Equivalent of <see cref="float"/>
-        /// </summary>
-        F32,
-
-        /// <summary>
-        /// Floating point 64 bit integer. Equivalent of <see cref="double"/>
-        /// </summary>
-        F64,
-
-        /// <summary>
-        /// A 128 bit number.
-        /// </summary>
-        V128,
-
-        /// <summary>
-        /// A reference to opaque data in the Wasm instance.
-        /// </summary>
-        FuncRef,
-
-        /// <summary>
-        /// A reference to opaque data in the Wasm instance.
-        /// </summary>
-        ExternRef
-    }
-
     /// <summary>
     /// A `Context` is used to store and manage plugins.
     /// </summary>
     [StructLayout(LayoutKind.Sequential)]
     internal struct ExtismContext { }
-
-    /// <summary>
-    /// Wraps host functions
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ExtismFunction { }
-
-    /// <summary>
-    /// Plugin contains everything needed to execute a WASM function.
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ExtismCurrentPlugin { }
-
-    /// <summary>
-    /// A union type for host function argument/return values.
-    /// </summary>
-    [StructLayout(LayoutKind.Explicit)]
-    internal struct ExtismValUnion
-    {
-        [FieldOffset(0)]
-        internal int i32;
-
-        [FieldOffset(0)]
-        internal long i64;
-
-        [FieldOffset(0)]
-        internal float f32;
-
-        [FieldOffset(0)]
-        internal double f64;
-    }
-
-    /// <summary>
-    /// `ExtismVal` holds the type and value of a function argument/return
-    /// </summary>
-    [StructLayout(LayoutKind.Sequential)]
-    internal struct ExtismVal
-    {
-        internal ExtismValType t;
-        internal ExtismValUnion v;
-    }
 
     /// <summary>
     /// Host function signature
@@ -100,7 +92,7 @@ internal static class LibExtism
     /// <param name="outputs"></param>
     /// <param name="n_outputs"></param>
     /// <param name="data"></param>
-    internal delegate void ExtismFunctionType(ref ExtismCurrentPlugin plugin, Span<ExtismVal> inputs, uint n_inputs, Span<ExtismVal> outputs, uint n_outputs, IntPtr data);
+    internal delegate void InternalExtismFunction(IntPtr plugin, Span<ExtismVal> inputs, uint n_inputs, Span<ExtismVal> outputs, uint n_outputs, IntPtr data);
 
     /// <summary>
     /// Returns a pointer to the memory of the currently running plugin.
@@ -109,7 +101,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory")]
-    public static extern IntPtr CurrentPluginMemory(ref ExtismCurrentPlugin plugin);
+    internal static extern IntPtr extism_current_plugin_memory(IntPtr plugin);
 
     /// <summary>
     /// 
@@ -118,7 +110,7 @@ internal static class LibExtism
     /// <param name="n"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_alloc")]
-    public static extern IntPtr CurrentPluginMemoryAlloc(ref ExtismCurrentPlugin plugin, long n);
+    internal static extern IntPtr extism_current_plugin_memory_alloc(IntPtr plugin, long n);
 
     /// <summary>
     /// Allocate a memory block in the currently running plugin.
@@ -128,7 +120,7 @@ internal static class LibExtism
     /// <param name="n"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_length")]
-    public static extern long CurrentPluginMemoryLength(ref ExtismCurrentPlugin plugin, long n);
+    internal static extern long extism_current_plugin_memory_length(IntPtr plugin, long n);
 
     /// <summary>
     /// Get the length of an allocated block.
@@ -137,7 +129,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <param name="ptr"></param>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_free")]
-    public static extern void CurrentPluginMemoryFree(ref ExtismCurrentPlugin plugin, IntPtr ptr);
+    internal static extern void extism_current_plugin_memory_free(IntPtr plugin, IntPtr ptr);
 
     /// <summary>
     /// Create a new host function.
@@ -152,7 +144,7 @@ internal static class LibExtism
     /// <param name="freeUserData">a callback to release the `user_data` value when the resulting `ExtismFunction` is freed.</param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_function_new")]
-    public static extern IntPtr FunctionNew(string name, IntPtr inputs, long nInputs, IntPtr outputs, long nOutputs, ExtismFunctionType func, IntPtr userData, IntPtr freeUserData);
+    unsafe internal static extern IntPtr extism_function_new(string name, ExtismValType* inputs, long nInputs, ExtismValType* outputs, long nOutputs, InternalExtismFunction func, IntPtr userData, IntPtr freeUserData);
 
     /// <summary>
     /// Set the namespace of an <see cref="ExtismFunction"/>
@@ -160,14 +152,14 @@ internal static class LibExtism
     /// <param name="ptr"></param>
     /// <param name="namespace"></param>
     [DllImport("extism", EntryPoint = "extism_function_set_namespace")]
-    public static extern void FunctionSetNamespace(ref ExtismFunction ptr, string @namespace);
+    internal static extern void extism_function_set_namespace(IntPtr ptr, string @namespace);
 
     /// <summary>
     /// Free an <see cref="ExtismFunction"/>
     /// </summary>
     /// <param name="ptr"></param>
     [DllImport("extism", EntryPoint = "extism_function_free")]
-    public static extern void FunctionFree(ref ExtismFunction ptr);
+    internal static extern void extism_function_free(IntPtr ptr);
 
     /// <summary>
     /// Create a new context.
@@ -210,7 +202,7 @@ internal static class LibExtism
     /// <param name="withWasi">Enables/disables WASI.</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, long wasmSize, IntPtr* functions, long nFunctions, bool withWasi);
+    unsafe internal static extern bool extism_plugin_update(ExtismContext* context, IntPtr plugin, byte* wasm, long wasmSize, Span<IntPtr> functions, long nFunctions, bool withWasi);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.

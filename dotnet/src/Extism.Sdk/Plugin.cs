@@ -11,11 +11,13 @@ public class Plugin : IDisposable
     private const int DisposedMarker = 1;
 
     private readonly Context _context;
+    private readonly HostFunction[] _functions;
     private int _disposed;
 
-    internal Plugin(Context context, IntPtr handle)
+    internal Plugin(Context context, HostFunction[] functions, IntPtr handle)
     {
         _context = context;
+        _functions = functions;
         NativeHandle = handle;
     }
 
@@ -33,9 +35,10 @@ public class Plugin : IDisposable
     {
         CheckNotDisposed();
 
+        var functions = _functions.Select(f => f.Native).ToArray();
         fixed (byte* wasmPtr = wasm)
         {
-            return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
+            return LibExtism.extism_plugin_update(_context.NativeHandle, NativeHandle, wasmPtr, wasm.Length, functions, 0, withWasi);
         }
     }
 

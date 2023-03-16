@@ -33,16 +33,19 @@ public unsafe class Context : IDisposable
     /// </summary>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, bool withWasi)
+    public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, HostFunction[] functions, bool withWasi)
     {
         CheckNotDisposed();
+
+        var functionHandles = functions.Select(f => f.Native).ToArray();
 
         unsafe
         {
             fixed (byte* wasmPtr = wasm)
+            fixed (IntPtr* functionsPtr = functionHandles)
             {
-                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
-                return new Plugin(this, plugin);
+                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, functionsPtr, 0, withWasi);
+                return new Plugin(this, functions, plugin);
             }
         }
     }

@@ -11,6 +11,9 @@
     <None Include="..\..\..\wasm\code.wasm" Link="code.wasm">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+	  <None Include="..\..\..\wasm\code-functions.wasm" Link="code-functions.wasm">
+		  <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
   </ItemGroup>
 
   <ItemGroup>
