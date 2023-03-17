@@ -30,6 +30,7 @@ rust/test.log
 duniverse
 _build
 php/Extism.php
+python/docs
 dist-newstyle
 .stack-work
 vendor
