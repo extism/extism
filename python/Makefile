@@ -20,7 +20,7 @@ lint:
 	poetry run black --check extism/ tests/ example.py
 
 docs:
-	poetry run pdoc --force --html extism
+	poetry run pycco extism/*.py
 
 show-docs: docs
-	open html/extism/index.html
+	open docs/extism.html
