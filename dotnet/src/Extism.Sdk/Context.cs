@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -8,6 +9,8 @@ namespace Extism.Sdk.Native;
 /// </summary>
 public unsafe class Context : IDisposable
 {
+    private readonly ConcurrentDictionary<int, Plugin> _plugins = new ConcurrentDictionary<int, Plugin>();
+
     private const int DisposedMarker = 1;
 
     private int _disposed;
@@ -44,8 +47,8 @@ public unsafe class Context : IDisposable
             fixed (byte* wasmPtr = wasm)
             fixed (IntPtr* functionsPtr = functionHandles)
             {
-                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, functionsPtr, functions.Length, withWasi);
-                if (plugin == -1)
+                var index = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, functionsPtr, functions.Length, withWasi);
+                if (index == -1)
                 {
                     var errorMsg = GetError();
                     if (errorMsg != null)
@@ -57,9 +60,20 @@ public unsafe class Context : IDisposable
                         throw new ExtismException("Failed to create plugin.");
                     }
                 }
-                return new Plugin(this, functions, plugin);
+
+                return _plugins[index] = new Plugin(this, functions, index);
             }
         }
+    }
+
+    /// <summary>
+    /// Get a plugin by index.
+    /// </summary>
+    /// <param name="index">Index of plugin.</param>
+    /// <returns></returns>
+    public Plugin GetPlugin(int index)
+    {
+        return _plugins[index];
     }
 
     /// <summary>
@@ -126,6 +140,11 @@ public unsafe class Context : IDisposable
         if (disposing)
         {
             // Free up any managed resources here
+        }
+
+        foreach (var plugin in _plugins.Values)
+        {
+            plugin.Dispose();
         }
 
         // Free up unmanaged resources

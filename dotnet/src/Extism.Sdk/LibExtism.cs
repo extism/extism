@@ -92,7 +92,7 @@ internal static class LibExtism
     /// <param name="outputs"></param>
     /// <param name="n_outputs"></param>
     /// <param name="data"></param>
-    unsafe internal delegate void InternalExtismFunction(int plugin, ExtismVal[] inputs, uint n_inputs, ExtismVal[] outputs, uint n_outputs, IntPtr data);
+    unsafe internal delegate void InternalExtismFunction(nint plugin, ExtismVal[] inputs, uint n_inputs, ExtismVal[] outputs, uint n_outputs, IntPtr data);
 
     /// <summary>
     /// Returns a pointer to the memory of the currently running plugin.
@@ -101,26 +101,26 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory")]
-    internal static extern IntPtr extism_current_plugin_memory(int plugin);
+    internal static extern IntPtr extism_current_plugin_memory(nint plugin);
 
     /// <summary>
-    /// 
+    /// Allocate a memory block in the currently running plugin
     /// </summary>
     /// <param name="plugin"></param>
     /// <param name="n"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_alloc")]
-    internal static extern IntPtr extism_current_plugin_memory_alloc(int plugin, long n);
+    internal static extern IntPtr extism_current_plugin_memory_alloc(nint plugin, long n);
 
     /// <summary>
-    /// Allocate a memory block in the currently running plugin.
+    /// Get the length of an allocated block.
     /// NOTE: this should only be called from host functions.
     /// </summary>
     /// <param name="plugin"></param>
     /// <param name="n"></param>
     /// <returns></returns>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_length")]
-    internal static extern long extism_current_plugin_memory_length(int plugin, long n);
+    internal static extern long extism_current_plugin_memory_length(nint plugin, long n);
 
     /// <summary>
     /// Get the length of an allocated block.
@@ -129,7 +129,7 @@ internal static class LibExtism
     /// <param name="plugin"></param>
     /// <param name="ptr"></param>
     [DllImport("extism", EntryPoint = "extism_current_plugin_memory_free")]
-    internal static extern void extism_current_plugin_memory_free(int plugin, IntPtr ptr);
+    internal static extern void extism_current_plugin_memory_free(nint plugin, IntPtr ptr);
 
     /// <summary>
     /// Create a new host function.
