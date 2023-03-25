@@ -9,7 +9,7 @@ var context = new Context();
 
 var userData = Marshal.StringToHGlobalAnsi("Hello again!");
 
-var helloWorld = new HostFunction(
+using var helloWorld = new HostFunction(
     "hello_world",
     new[] { ExtismValType.I64 },
     new[] { ExtismValType.I64 },
