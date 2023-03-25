@@ -11,11 +11,14 @@ namespace Extism.Sdk
     /// <param name="inputs">Input parameters</param>
     /// <param name="outputs">Output parameters, the host function can change this.</param>
     /// <param name="userData">A data passed in during Host Function creation.</param>
-    public delegate void ExtismFunction(CurrentPlugin plugin, ExtismVal[] inputs, ExtismVal[] outputs, IntPtr userData);
+    public delegate void ExtismFunction(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> outputs, IntPtr userData);
 
+    /// <summary>
+    /// Represents the current plugin. Can only be used within <see cref="HostFunction"/>s.
+    /// </summary>
     public class CurrentPlugin
     {
-        public CurrentPlugin(nint nativeHandle)
+        internal CurrentPlugin(nint nativeHandle)
         {
             NativeHandle = nativeHandle;
         }
@@ -95,10 +98,13 @@ namespace Extism.Sdk
                 nint plugin,
                 ExtismVal[] inputs,
                 uint n_inputs,
-                ExtismVal[] outputs,
-                uint n_outputs, IntPtr data)
+                ExtismVal* outputs,
+                uint n_outputs,
+                IntPtr data)
             {
-                hostFunction(new CurrentPlugin(plugin), inputs, outputs, data);
+                var buffer = new Span<ExtismVal>(outputs, (int)n_outputs);
+
+                hostFunction(new CurrentPlugin(plugin), inputs, buffer, data);
             }
         }
 

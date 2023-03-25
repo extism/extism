@@ -18,7 +18,7 @@ using var helloWorld = new HostFunction(
 
 helloWorld.SetNamespace("env");
 
-void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, ExtismVal[] outputs, nint data)
+void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> outputs, nint data)
 {
     Console.WriteLine("Hello from .NET!");
 
@@ -26,13 +26,11 @@ void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, ExtismVal[] outputs, n
     Console.WriteLine(text);
 
     var ptr = new nint(inputs[0].v.i64);
-    var str = Marshal.PtrToStringAnsi(ptr);
-
     var mem = plugin.GetMemory();
     var input = Marshal.PtrToStringAnsi(mem + ptr);
-    Console.WriteLine(input);
+    Console.WriteLine($"Input: {input}");
 
-    outputs[0] = inputs[0];
+    outputs[0].v.i64 = inputs[0].v.i64;
 }
 
 var wasm = File.ReadAllBytes("./code-functions.wasm");
