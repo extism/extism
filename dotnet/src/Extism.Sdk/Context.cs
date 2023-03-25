@@ -37,7 +37,7 @@ public unsafe class Context : IDisposable
     {
         CheckNotDisposed();
 
-        var functionHandles = functions.Select(f => f.Native).ToArray();
+        var functionHandles = functions.Select(f => f.NativeHandle).ToArray();
 
         unsafe
         {

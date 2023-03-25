@@ -35,7 +35,7 @@ public class Plugin : IDisposable
     {
         CheckNotDisposed();
 
-        var functions = _functions.Select(f => f.Native).ToArray();
+        var functions = _functions.Select(f => f.NativeHandle).ToArray();
         fixed (byte* wasmPtr = wasm)
         {
             return LibExtism.extism_plugin_update(_context.NativeHandle, Index, wasmPtr, wasm.Length, functions, 0, withWasi);
