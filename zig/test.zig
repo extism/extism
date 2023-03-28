@@ -19,12 +19,10 @@ export fn hello_world(plugin_ptr: ?*sdk.c.ExtismCurrentPlugin, inputs: [*c]const
     output_slice[0] = input_slice[0];
 }
 
-test "Single threaded tests" {
-    const dir = try std.fs.cwd().openDir("../wasm", .{});
-    const wasm_file = try dir.openFile("code-functions.wasm", .{});
-    const wasm = try wasm_file.readToEndAlloc(testing.allocator, (try wasm_file.stat()).size);
-    defer testing.allocator.free(wasm);
+const wasmfile_manifest = manifest.WasmFile{ .path = "../wasm/code-functions.wasm" };
+const man = .{ .wasm = &[_]manifest.Wasm{.{ .wasm_file = wasmfile_manifest }} };
 
+test "Single threaded tests" {
     var wasm_start = try std.time.Timer.start();
     _ = sdk.setLogFile("test.log", .Debug);
 
@@ -40,7 +38,7 @@ test "Single threaded tests" {
     );
     defer f.deinit();
 
-    var plugin = try Plugin.init(testing.allocator, &ctx, wasm, &[_]Function{f}, true);
+    var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, man, &[_]Function{f}, true);
     defer plugin.deinit();
 
     std.debug.print("\nregister loaded plugin: {}\n", .{std.fmt.fmtDuration(wasm_start.read())});
@@ -78,13 +76,8 @@ test "Single threaded tests" {
 }
 
 test "Multi threaded tests" {
-    const stdout = std.io.getStdOut().writer();
-    const dir = try std.fs.cwd().openDir("../wasm", .{});
-    const wasm_file = try dir.openFile("code-functions.wasm", .{});
-    const wasm = try wasm_file.readToEndAlloc(testing.allocator, (try wasm_file.stat()).size);
-    defer testing.allocator.free(wasm);
     const S = struct {
-        fn _test(w: []const u8) !void {
+        fn _test() !void {
             var ctx = Context.init();
             defer ctx.deinit();
             var f = Function.init(
@@ -95,20 +88,17 @@ test "Multi threaded tests" {
                 @constCast(@ptrCast(*const anyopaque, "user data")),
             );
             defer f.deinit();
-            var plugin = try Plugin.init(testing.allocator, &ctx, w, &[_]Function{f}, true);
+            var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, man, &[_]Function{f}, true);
             defer plugin.deinit();
             const output = try plugin.call("count_vowels", "this is a test");
-            const local_stdout = std.io.getStdOut().writer();
-            try local_stdout.writeAll(output);
-            try local_stdout.writeByte('\n');
+            std.debug.print("{s}\n", .{output});
         }
     };
-    try stdout.writeByte('\n');
-    const t1 = try std.Thread.spawn(.{}, S._test, .{wasm});
-    const t2 = try std.Thread.spawn(.{}, S._test, .{wasm});
+    const t1 = try std.Thread.spawn(.{}, S._test, .{});
+    const t2 = try std.Thread.spawn(.{}, S._test, .{});
     t1.join();
     t2.join();
-
+    _ = sdk.setLogFile("test.log", .Debug);
     var ctx = Context.init();
     defer ctx.deinit();
 
@@ -121,10 +111,41 @@ test "Multi threaded tests" {
     );
     defer f.deinit();
 
-    var plugin = try Plugin.init(testing.allocator, &ctx, wasm, &[_]Function{f}, true);
+    var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, man, &[_]Function{f}, true);
     defer plugin.deinit();
 
     const output = try plugin.call("count_vowels", "this is a test");
-    try stdout.writeAll(output);
-    try stdout.writeByte('\n');
+    std.debug.print("{s}\n", .{output});
+}
+
+test "Plugin Cancellation" {
+    const loop_manifest = manifest.WasmFile{ .path = "../wasm/loop.wasm" };
+    const loop_man = .{ .wasm = &[_]manifest.Wasm{.{ .wasm_file = loop_manifest }} };
+    var ctx = Context.init();
+    defer ctx.deinit();
+    _ = sdk.setLogFile("test.log", .Debug);
+    var f = Function.init(
+        "hello_world",
+        &[_]sdk.c.ExtismValType{sdk.c.I64},
+        &[_]sdk.c.ExtismValType{sdk.c.I64},
+        &hello_world,
+        @constCast(@ptrCast(*const anyopaque, "user data")),
+    );
+    defer f.deinit();
+
+    var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, loop_man, &[_]Function{f}, true);
+    defer plugin.deinit();
+    var handle = plugin.cancelHandle();
+    const S = struct {
+        fn _test(h: *sdk.CancelHandle) void {
+            std.os.nanosleep(1, 0);
+            _ = h.cancel();
+        }
+    };
+    _ = try std.Thread.spawn(.{}, S._test, .{&handle});
+    var call_start = try std.time.Timer.start();
+    const output = plugin.call("infinite_loop", "abc123");
+    const call_end = call_start.read();
+    try std.testing.expectError(error.PluginCallFailed, output);
+    std.debug.print("Cancelled plugin ran for {}\n", .{std.fmt.fmtDuration(call_end)});
 }

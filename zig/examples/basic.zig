@@ -37,7 +37,7 @@ pub fn main() !void {
     );
     defer f.deinit();
     var my_plugin = try Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
-    // var my_plugin = try Plugin.init(allocator, &context, wasm, &[_]Function{f}, false);
+    // var my_plugin = try Plugin.init(allocator, &context, wasm, &[_]Function{f}, true);
     defer my_plugin.deinit();
 
     var config = std.StringHashMap([]const u8).init(allocator);

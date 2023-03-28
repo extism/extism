@@ -63,7 +63,7 @@ pub fn deinit(self: *Self) void {
 
 pub fn cancelHandle(self: *Self) CancelHandle {
     const ptr = c.extism_plugin_cancel_handle(self.ctx.ctx, self.id);
-    return CancelHandle{ .handle = ptr };
+    return .{ .handle = ptr };
 }
 
 /// Call a function with the given input
@@ -121,7 +121,7 @@ pub fn setConfig(self: *Self, allocator: std.mem.Allocator, config: std.StringHa
     _ = c.extism_plugin_config(self.ctx.ctx, self.id, config_json.ptr, @as(u64, config_json.len));
 }
 
-/// Returns true if the plugin has a function matching `name`
+/// Returns true if the plugin has a function matching `function_name`
 pub fn hasFunction(self: Self, function_name: []const u8) bool {
     self.ctx.mutex.lock();
     defer self.ctx.mutex.unlock();

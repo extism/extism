@@ -14,20 +14,10 @@ pub const LogLevel = enum {
     Info,
     Debug,
     Trace,
-
-    fn toStr(self: LogLevel) []const u8 {
-        inline for (@typeInfo(LogLevel).Enum.fields) |field| {
-            if (@enumToInt(self) == field.value) {
-                const first_lower = std.ascii.toLower(field.name[0]);
-                return .{first_lower} ++ field.name[1..];
-            }
-        }
-        unreachable;
-    }
 };
 
 pub fn setLogFile(file_name: []const u8, level: LogLevel) bool {
-    const res = c.extism_log_file(file_name.ptr, level.toStr().ptr);
+    const res = c.extism_log_file(file_name.ptr, @tagName(level));
     return res;
 }
 

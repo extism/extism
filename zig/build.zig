@@ -14,7 +14,12 @@ pub fn build(b: *std.Build) void {
     });
     lib.install();
 
-    var tests = b.addTest(.{ .name = "Library Tests", .root_source_file = .{ .path = "test.zig" }, .target = target, .optimize = optimize, .kind = .test_exe });
+    var tests = b.addTest(.{
+        .name = "Library Tests",
+        .root_source_file = .{ .path = "test.zig" },
+        .target = target,
+        .optimize = optimize,
+    });
 
     tests.addAnonymousModule("extism", .{ .source_file = .{ .path = "src/main.zig" } });
     tests.linkLibC();
