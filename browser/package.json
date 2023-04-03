@@ -1,6 +1,6 @@
 {
   "name": "@extism/runtime-browser",
-  "version": "0.2.2",
+  "version": "0.2.7",
   "description": "Extism runtime in the browser",
   "scripts": {
     "build": "node build.js && tsc --emitDeclarationOnly --outDir dist",
@@ -34,6 +34,6 @@
     "typescript": "^4.8.4"
   },
   "dependencies": {
-    "@bjorn3/browser_wasi_shim": "^0.2.1"
+    "@bjorn3/browser_wasi_shim": "^0.2.7"
   }
 }
