@@ -1,7 +1,6 @@
 import Allocator from './allocator';
 import { PluginConfig } from './manifest';
-//@ts-ignore TODO add types to this library
-import { WASI, File } from "@bjorn3/browser_wasi_shim";
+import { WASI, Fd } from "@bjorn3/browser_wasi_shim";
 
 export default class ExtismPlugin {
   moduleData: ArrayBuffer;
@@ -65,10 +64,10 @@ export default class ExtismPlugin {
     const environment = this.makeEnv();
     const args: Array<string> = [];
     const envVars: Array<string> = [];
-    let fds = [
-        new File([]), // stdin
-        new File([]), // stdout
-        new File([]), // stderr
+    let fds: Fd[] = [
+        // new XtermStdio(term), // stdin
+        // new XtermStdio(term), // stdout
+        // new XtermStdio(term), // stderr
     ];
     let wasi = new WASI(args, envVars, fds);
     let env = {
@@ -76,8 +75,13 @@ export default class ExtismPlugin {
       env: environment
     };
     this.module = await WebAssembly.instantiate(this.moduleData, env);
+    // normally we would call wasi.start here but it doesn't respect when there is
+    // no _start function
+    //@ts-ignore
+    wasi.inst = this.module.instance;
     if (this.module.instance.exports._start) {
-      wasi.start(this.module.instance);
+      //@ts-ignore
+      this.module.instance.exports._start()
     }
     return this.module;
   }
