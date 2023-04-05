@@ -103,13 +103,11 @@
         }
 
         async loadFunctions(url) {
-            let helloWorld = (index) => {
-              console.log("INDEX:" + index);
+            let helloWorld = function(index){
+              console.log("Hello, " + this.allocator.getString(index));
               return index;
             };
-            let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": url } ] }, {
-                "hello_world": helloWorld
-            });
+            let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": url } ] }, {"hello_world": helloWorld});
             let functions = Object.keys(await plugin.getExports())
             console.log("funcs ", functions)
             this.setState({functions})
@@ -141,8 +139,8 @@
 
         async handleOnRun(e) {
           e && e.preventDefault && e.preventDefault();
-          let helloWorld = (index) => {
-            console.log("INDEX:" + index);
+          let helloWorld = function(index){
+            console.log("Hello, " + this.allocator.getString(index));
             return index;
           };
           let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": this.state.url } ] }, {
