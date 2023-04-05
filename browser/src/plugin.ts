@@ -93,7 +93,7 @@ export class ExtismPlugin {
   makeEnv(): any {
     const plugin = this;
     var env: any = {
-      extism_alloc: (n: bigint): bigint => {
+      extism_alloc(n: bigint): bigint {
         return plugin.allocator.alloc(n);
       },
       extism_free(n: bigint) {
