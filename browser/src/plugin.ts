@@ -2,7 +2,19 @@ import Allocator from './allocator';
 import { PluginConfig } from './manifest';
 import { WASI, Fd } from "@bjorn3/browser_wasi_shim";
 
-export default class ExtismPlugin {
+export class ExtismFunction {
+  name: string;
+  function: any;
+  userData: any;
+
+  constructor(name: string, f: any, userData: any = null) {
+    this.name = name;
+    this.function = f;
+    this.userData = userData;
+  } 
+}
+
+export class ExtismPlugin {
   moduleData: ArrayBuffer;
   allocator: Allocator;
   config?: PluginConfig;
@@ -10,14 +22,16 @@ export default class ExtismPlugin {
   input: Uint8Array;
   output: Uint8Array;
   module?: WebAssembly.WebAssemblyInstantiatedSource;
+  functions: Array<ExtismFunction>;
 
-  constructor(moduleData: ArrayBuffer, config?: PluginConfig) {
+  constructor(moduleData: ArrayBuffer, functions: Array<ExtismFunction> = [], config?: PluginConfig) {
     this.moduleData = moduleData;
     this.allocator = new Allocator(1024 * 1024);
     this.config = config;
     this.vars = {};
     this.input = new Uint8Array();
     this.output = new Uint8Array();
+    this.functions = functions;
   }
 
   async getExports(): Promise<WebAssembly.Exports> {
@@ -88,8 +102,8 @@ export default class ExtismPlugin {
 
   makeEnv(): any {
     const plugin = this;
-    return {
-      extism_alloc(n: bigint): bigint {
+    var env: any = {
+      extism_alloc: (n: bigint): bigint => {
         return plugin.allocator.alloc(n);
       },
       extism_free(n: bigint) {
@@ -187,5 +201,24 @@ export default class ExtismPlugin {
         console.error(s);
       },
     };
+
+    for(var i = 0; i < this.functions.length; i++){
+      let func = this.functions[i];
+      env[func.name] = function() {
+        var args = [plugin];
+
+        for(var j = 0; j < arguments.length; j++){
+          args.push(arguments[j]);
+        }
+
+        if (func.userData !== null){
+          args.push(func.userData)
+        }
+      
+        return func.function.apply(plugin, args);
+      }
+    }
+
+    return env;
   }
 }

@@ -1,10 +1,10 @@
-const {
+import {
   withContext,
   Context,
   HostFunction,
   ValType,
-} = require("./dist/index.js");
-const { readFileSync } = require("fs");
+} from "./dist/index.js";
+import { readFileSync } from "https://deno.land/std@0.120.0/node/module.ts";
 
 function f(currentPlugin, inputs, outputs, userData) {
   console.log(currentPlugin.inputString(inputs[0]));

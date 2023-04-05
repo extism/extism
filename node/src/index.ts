@@ -1,6 +1,6 @@
-import ffi from "ffi-napi";
-import ref from "ref-napi";
-import path from "path";
+import ffi from "npm:ffi-napi";
+import ref from "npm:ref-napi";
+import path from "npm:path";
 
 var ArrayType = require("ref-array-di")(ref);
 var StructType = require("ref-struct-di")(ref);
