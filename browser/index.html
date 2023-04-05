@@ -103,13 +103,13 @@
         }
 
         async loadFunctions(url) {
-            let helloWorld = this.extismContext.newFunction("hello_world", (plugin, index) => {
+            let helloWorld = (index) => {
               console.log("INDEX:" + index);
               return index;
+            };
+            let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": url } ] }, {
+                "hello_world": helloWorld
             });
-            let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": url } ] }, [
-              helloWorld
-            ]) 
             let functions = Object.keys(await plugin.getExports())
             console.log("funcs ", functions)
             this.setState({functions})
@@ -141,11 +141,13 @@
 
         async handleOnRun(e) {
           e && e.preventDefault && e.preventDefault();
-          let helloWorld = this.extismContext.newFunction("hello_world", (plugin, index) => {
+          let helloWorld = (index) => {
             console.log("INDEX:" + index);
             return index;
+          };
+          let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": this.state.url } ] }, {
+              "hello_world": helloWorld
           });
-          let plugin = await this.extismContext.newPlugin({ "wasm": [ { "path": this.state.url } ] }, [helloWorld])
           let result = await plugin.call(this.state.func_name, this.state.input)
           let output = result
           this.setState({output})

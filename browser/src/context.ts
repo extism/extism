@@ -1,5 +1,5 @@
 import { Manifest, PluginConfig, ManifestWasmFile, ManifestWasmData } from './manifest';
-import { ExtismPlugin, ExtismFunction } from './plugin';
+import { ExtismPlugin } from './plugin';
 
 /**
  * Can be a {@link Manifest} or just the raw bytes of the WASM module as an ArrayBuffer.
@@ -20,7 +20,7 @@ export default class ExtismContext {
    * @param config - Config details for the plugin
    * @returns A new Plugin scoped to this Context
    */
-  async newPlugin(manifest: ManifestData, functions: Array<ExtismFunction> = [], config?: PluginConfig) {
+  async newPlugin(manifest: ManifestData, functions: Record<string, any> = {}, config?: PluginConfig) {
     let moduleData: ArrayBuffer | null = null;
     if (manifest instanceof ArrayBuffer) {
       moduleData = manifest;
@@ -41,9 +41,5 @@ export default class ExtismContext {
     }
 
     return new ExtismPlugin(moduleData, functions, config);
-  }
-
-  newFunction(name: string, f: any, userData?: any) : ExtismFunction {
-    return new ExtismFunction(name, f, userData);
   }
 }

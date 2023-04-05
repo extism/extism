@@ -1,18 +1,8 @@
 import Allocator from './allocator';
 import { PluginConfig } from './manifest';
-import { WASI, Fd } from "@bjorn3/browser_wasi_shim";
+import { WASI, Fd } from '@bjorn3/browser_wasi_shim';
 
-export class ExtismFunction {
-  name: string;
-  function: any;
-  userData: any;
-
-  constructor(name: string, f: any, userData: any = null) {
-    this.name = name;
-    this.function = f;
-    this.userData = userData;
-  } 
-}
+export type ExtismFunction = any;
 
 export class ExtismPlugin {
   moduleData: ArrayBuffer;
@@ -22,9 +12,9 @@ export class ExtismPlugin {
   input: Uint8Array;
   output: Uint8Array;
   module?: WebAssembly.WebAssemblyInstantiatedSource;
-  functions: Array<ExtismFunction>;
+  functions: Record<string, ExtismFunction>;
 
-  constructor(moduleData: ArrayBuffer, functions: Array<ExtismFunction> = [], config?: PluginConfig) {
+  constructor(moduleData: ArrayBuffer, functions: Record<string, ExtismFunction> = {}, config?: PluginConfig) {
     this.moduleData = moduleData;
     this.allocator = new Allocator(1024 * 1024);
     this.config = config;
@@ -79,14 +69,14 @@ export class ExtismPlugin {
     const args: Array<string> = [];
     const envVars: Array<string> = [];
     let fds: Fd[] = [
-        // new XtermStdio(term), // stdin
-        // new XtermStdio(term), // stdout
-        // new XtermStdio(term), // stderr
+      // new XtermStdio(term), // stdin
+      // new XtermStdio(term), // stdout
+      // new XtermStdio(term), // stderr
     ];
     let wasi = new WASI(args, envVars, fds);
     let env = {
       wasi_snapshot_preview1: wasi.wasiImport,
-      env: environment
+      env: environment,
     };
     this.module = await WebAssembly.instantiate(this.moduleData, env);
     // normally we would call wasi.start here but it doesn't respect when there is
@@ -95,7 +85,7 @@ export class ExtismPlugin {
     wasi.inst = this.module.instance;
     if (this.module.instance.exports._start) {
       //@ts-ignore
-      this.module.instance.exports._start()
+      this.module.instance.exports._start();
     }
     return this.module;
   }
@@ -202,21 +192,10 @@ export class ExtismPlugin {
       },
     };
 
-    for(var i = 0; i < this.functions.length; i++){
-      let func = this.functions[i];
-      env[func.name] = function() {
-        var args = [plugin];
-
-        for(var j = 0; j < arguments.length; j++){
-          args.push(arguments[j]);
-        }
-
-        if (func.userData !== null){
-          args.push(func.userData)
-        }
-      
-        return func.function.apply(plugin, args);
-      }
+    for (const [name, func] of Object.entries(this.functions)) {
+      env[name] = function () {
+        return func.apply(plugin, arguments);
+      };
     }
 
     return env;
