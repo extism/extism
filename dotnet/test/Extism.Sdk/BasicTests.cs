@@ -1,6 +1,7 @@
 using Extism.Sdk.Native;
 
 using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
 
 using Xunit;
@@ -20,5 +21,44 @@ public class BasicTests
 
         var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
         Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
+    }
+
+    [Fact]
+    public void CountVowelsHostFunctions()
+    {
+        using var context = new Context();
+
+        var userData = Marshal.StringToHGlobalAnsi("Hello again!");
+
+        using var helloWorld = new HostFunction(
+            "hello_world",
+            new[] { ExtismValType.I64 },
+            new[] { ExtismValType.I64 },
+            userData,
+            HelloWorld);
+
+        helloWorld.SetNamespace("env");
+
+        var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
+        var wasm = File.ReadAllBytes(Path.Combine(binDirectory, "code-functions.wasm"));
+        using var plugin = context.CreatePlugin(wasm, new[] { helloWorld }, withWasi: true);
+
+        var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
+        Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
+
+        void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> outputs, nint data)
+        {
+            Console.WriteLine("Hello from .NET!");
+
+            var text = Marshal.PtrToStringAnsi(data);
+            Console.WriteLine(text);
+
+            var ptr = new nint(inputs[0].v.i64);
+            var mem = plugin.GetMemory();
+            var input = Marshal.PtrToStringAnsi(mem + ptr);
+            Console.WriteLine($"Input: {input}");
+
+            outputs[0].v.i64 = inputs[0].v.i64;
+        }
     }
 }
