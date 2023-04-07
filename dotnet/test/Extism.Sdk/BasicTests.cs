@@ -58,7 +58,12 @@ public class BasicTests
             var input = Marshal.PtrToStringAnsi(mem + ptr);
             Console.WriteLine($"Input: {input}");
 
-            outputs[0].v.i64 = inputs[0].v.i64;
+            var output = new string(input);
+            var outputBytes = Encoding.UTF8.GetBytes(output);
+            var outPtr = plugin.AllocateBlock(outputBytes.Length);
+            Marshal.Copy(outputBytes, 0, mem + outPtr, outputBytes.Length);
+
+            outputs[0].v.i64 = outPtr;
         }
     }
 }
