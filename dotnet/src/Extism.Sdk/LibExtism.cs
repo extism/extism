@@ -89,7 +89,7 @@ internal static class LibExtism
     /// <param name="outputs"></param>
     /// <param name="n_outputs"></param>
     /// <param name="data"></param>
-    unsafe internal delegate void InternalExtismFunction(nint plugin, ExtismVal[] inputs, uint n_inputs, ExtismVal* outputs, uint n_outputs, IntPtr data);
+    unsafe internal delegate void InternalExtismFunction(nint plugin, ExtismVal* inputs, uint n_inputs, ExtismVal* outputs, uint n_outputs, IntPtr data);
 
     /// <summary>
     /// Returns a pointer to the memory of the currently running plugin.

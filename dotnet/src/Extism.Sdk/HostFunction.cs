@@ -11,7 +11,7 @@ namespace Extism.Sdk
     /// <param name="inputs">Input parameters</param>
     /// <param name="outputs">Output parameters, the host function can change this.</param>
     /// <param name="userData">A data passed in during Host Function creation.</param>
-    public delegate void ExtismFunction(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> outputs, IntPtr userData);
+    public delegate void ExtismFunction(CurrentPlugin plugin, Span<ExtismVal> inputs, Span<ExtismVal> outputs, IntPtr userData);
 
     /// <summary>
     /// A function provided by the host that plugins can call.
@@ -32,8 +32,8 @@ namespace Extism.Sdk
         /// <param name="hostFunction"></param>
         public HostFunction(
             string functionName,
-            ExtismValType[] inputTypes,
-            ExtismValType[] outputTypes,
+            Span<ExtismValType> inputTypes,
+            Span<ExtismValType> outputTypes,
             IntPtr userData,
             ExtismFunction hostFunction) :
             this(functionName, "", inputTypes, outputTypes, userData, hostFunction)
@@ -54,8 +54,8 @@ namespace Extism.Sdk
         unsafe public HostFunction(
             string functionName,
             string @namespace,
-            ExtismValType[] inputTypes,
-            ExtismValType[] outputTypes,
+            Span<ExtismValType> inputTypes,
+            Span<ExtismValType> outputTypes,
             IntPtr userData,
             ExtismFunction hostFunction)
         {
@@ -72,15 +72,16 @@ namespace Extism.Sdk
 
             void CallbackImpl(
                 nint plugin,
-                ExtismVal[] inputs,
+                ExtismVal* inputsPtr,
                 uint n_inputs,
-                ExtismVal* outputs,
+                ExtismVal* outputsPtr,
                 uint n_outputs,
                 IntPtr data)
             {
-                var buffer = new Span<ExtismVal>(outputs, (int)n_outputs);
+                var outputs = new Span<ExtismVal>(outputsPtr, (int)n_outputs);
+                var inputs = new Span<ExtismVal>(inputsPtr, (int)n_inputs);
 
-                hostFunction(new CurrentPlugin(plugin), inputs, buffer, data);
+                hostFunction(new CurrentPlugin(plugin), inputs, outputs, data);
             }
         }
 

@@ -45,7 +45,7 @@ public class BasicTests
         var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
         Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
 
-        void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> outputs, nint data)
+        void HelloWorld(CurrentPlugin plugin, Span<ExtismVal> inputs, Span<ExtismVal> outputs, nint data)
         {
             Console.WriteLine("Hello from .NET!");
 
