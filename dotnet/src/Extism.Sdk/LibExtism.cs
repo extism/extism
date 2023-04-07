@@ -1,9 +1,6 @@
 using System.Runtime.InteropServices;
 
-using static Extism.Sdk.Native.LibExtism;
-
 namespace Extism.Sdk.Native;
-
 
 /// <summary>
 /// A union type for host function argument/return values.
