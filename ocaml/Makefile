@@ -1,4 +1,5 @@
-VERSION?=0.1.0
+VERSION?=0.2.0
+TAG?=0.3.0
 
 build:
 	dune build
@@ -12,4 +13,4 @@ prepare:
 	opam install .. --deps-only
 
 publish:
-	opam publish -v $(VERSION) -t $(VERSION) ..
+	opam publish -v $(VERSION) https://github.com/extism/extism/archive/refs/tags/v$(TAG).tar.gz ..

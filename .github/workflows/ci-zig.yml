@@ -18,6 +18,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, macos-latest]
+        zig_version: ["master"] # eventually use multiple versions once stable
         rust:
           - stable
     steps:
@@ -26,6 +27,8 @@ jobs:
       - uses: ./.github/actions/extism
       - name: Setup Zig env
         uses: goto-bus-stop/setup-zig@v2
+        with: 
+          version: ${{ matrix.zig_version }}
 
       - name: Test Zig Host SDK
         run: |

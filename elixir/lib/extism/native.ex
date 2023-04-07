@@ -16,6 +16,8 @@ defmodule Extism.Native do
   def plugin_has_function(_ctx, _plugin_id, _function_name), do: error()
   def plugin_free(_ctx, _plugin_id), do: error()
   def set_log_file(_filename, _level), do: error()
+  def plugin_cancel_handle(_ctx, _plugin_id), do: error()
+  def plugin_cancel(_handle), do: error()
 
   defp error, do: :erlang.nif_error(:nif_not_loaded)
 end

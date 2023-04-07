@@ -1,6 +1,6 @@
 {
   "name": "@extism/extism",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Extism Host SDK for Node",
   "keywords": [
     "extism",
@@ -41,7 +41,7 @@
     "@types/jest": "^29.2.0",
     "@types/node": "^18.11.4",
     "jest": "^29.2.2",
-    "prettier": "2.8.3",
+    "prettier": "2.8.4",
     "ts-jest": "^29.0.3",
     "ts-node": "^10.9.1",
     "typedoc": "^0.23.18",

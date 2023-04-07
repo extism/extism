@@ -341,22 +341,39 @@ pub(crate) fn http_request(
 
         let res = if body_offset > 0 {
             let buf = data.memory().get(body_offset)?;
-            let res = r.send_bytes(buf)?;
-            data.http_status = res.status();
-            res.into_reader()
+            r.send_bytes(buf)
         } else {
-            let res = r.call()?;
-            data.http_status = res.status();
-            res.into_reader()
+            r.call()
         };
 
-        let mut buf = Vec::new();
-        res.take(1024 * 1024 * 50) // TODO: make this limit configurable
-            .read_to_end(&mut buf)?;
+        let reader = match res {
+            Ok(res) => {
+                data.http_status = res.status();
+                Some(res.into_reader())
+            }
+            Err(e) => {
+                if let Some(res) = e.into_response() {
+                    data.http_status = res.status();
+                    Some(res.into_reader())
+                } else {
+                    None
+                }
+            }
+        };
 
-        let mem = data.memory_mut().alloc_bytes(buf)?;
+        if let Some(reader) = reader {
+            let mut buf = Vec::new();
+            reader
+                .take(1024 * 1024 * 50) // TODO: make this limit configurable
+                .read_to_end(&mut buf)?;
 
-        output[0] = Val::I64(mem.offset as i64);
+            let mem = data.memory_mut().alloc_bytes(buf)?;
+
+            output[0] = Val::I64(mem.offset as i64);
+        } else {
+            output[0] = Val::I64(0);
+        }
+
         Ok(())
     }
 }

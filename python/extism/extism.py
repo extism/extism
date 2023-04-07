@@ -216,11 +216,26 @@ class Function:
             _ffi.NULL,
         )
 
+    def set_namespace(self, name: str):
+        _lib.extism_function_set_namespace(self.pointer, name.encode())
+
+    def with_namespace(self, name: str):
+        self.set_namespace(name)
+        return self
+
     def __del__(self):
         if not hasattr(self, "pointer"):
             return
         if self.pointer is not None:
             _lib.extism_function_free(self.pointer)
+
+
+class CancelHandle:
+    def __init__(self, ptr):
+        self.pointer = ptr
+
+    def cancel(self) -> bool:
+        return _lib.extism_plugin_cancel(self.pointer)
 
 
 class Plugin:
@@ -267,6 +282,11 @@ class Plugin:
         if config is not None:
             s = json.dumps(config).encode()
             _lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
+
+    def cancel_handle(self):
+        return CancelHandle(
+            _lib.extism_plugin_cancel_handle(self.ctx.pointer, self.plugin)
+        )
 
     def update(
         self, manifest: Union[str, bytes, dict], wasi=False, config=None, functions=None
@@ -441,28 +461,46 @@ class CurrentPlugin:
     def __init__(self, p):
         self.pointer = p
 
-    def memory(self, mem: Memory):
+    def memory(self, mem: Memory) -> _ffi.buffer:
         """Access a block of memory"""
         p = _lib.extism_current_plugin_memory(self.pointer)
         if p == 0:
             return None
         return _ffi.buffer(p + mem.offset, mem.length)
 
-    def alloc(self, n):
+    def alloc(self, n: int) -> Memory:
         """Allocate a new block of memory of [n] bytes"""
         offs = _lib.extism_current_plugin_memory_alloc(self.pointer, n)
         return Memory(offs, n)
 
-    def free(self, mem):
+    def free(self, mem: Memory):
         """Free a block of memory"""
         return _lib.extism_current_plugin_memory_free(self.pointer, mem.offset)
 
-    def memory_at_offset(self, offs):
+    def memory_at_offset(self, offs: int) -> Memory:
         """Get a block of memory at the specified offset"""
         if isinstance(offs, Val):
             offs = offs.value
         len = _lib.extism_current_plugin_memory_length(self.pointer, offs)
         return Memory(offs, len)
+
+    def return_bytes(self, output: Val, b: bytes):
+        mem = self.alloc(len(b))
+        self.memory(mem)[:] = b
+        output.value = mem.offset
+
+    def return_string(self, output: Val, s: str):
+        self.return_bytes(output, s.encode())
+
+    def input_buffer(self, input: Val) -> _ffi.buffer:
+        mem = self.memory_at_offset(input)
+        return self.memory(mem)
+
+    def input_bytes(self, input: Val) -> bytes:
+        return self.input_buffer(input)[:]
+
+    def input_string(self, input: Val) -> str:
+        return self.input_bytes(input).decode()
 
 
 def host_fn(func):

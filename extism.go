@@ -93,11 +93,19 @@ func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Poin
 	function.userData = cgo.NewHandle(userData)
 	cname := C.CString(name)
 	ptr := unsafe.Pointer(function.userData)
+	var inputsPtr *C.ExtismValType = nil
+	if len(inputs) > 0 {
+		inputsPtr = (*C.ExtismValType)(&inputs[0])
+	}
+	var outputsPtr *C.ExtismValType = nil
+	if len(outputs) > 0 {
+		outputsPtr = (*C.ExtismValType)(&outputs[0])
+	}
 	function.pointer = C.extism_function_new(
 		cname,
-		(*C.ExtismValType)(&inputs[0]),
+		inputsPtr,
 		C.uint64_t(len(inputs)),
-		(*C.ExtismValType)(&outputs[0]),
+		outputsPtr,
 		C.uint64_t(len(outputs)),
 		(*[0]byte)(f),
 		ptr,
@@ -105,6 +113,17 @@ func NewFunction(name string, inputs []ValType, outputs []ValType, f unsafe.Poin
 	)
 	C.free(unsafe.Pointer(cname))
 	return function
+}
+
+func (f *Function) SetNamespace(s string) {
+	cstr := C.CString(s)
+	defer C.free(unsafe.Pointer(cstr))
+	C.extism_function_set_namespace(f.pointer, cstr)
+}
+
+func (f Function) WithNamespace(s string) Function {
+	f.SetNamespace(s)
+	return f
 }
 
 type CurrentPlugin struct {
@@ -455,4 +474,36 @@ func ValSetF32(v unsafe.Pointer, i float32) {
 // ValSetF64 stores a float64 in an ExtismVal, it accepts a pointer to a C.ExtismVal and the new value
 func ValSetF64(v unsafe.Pointer, f float64) {
 	C.extism_val_set_f64(&(*Val)(v).v, C.double(f))
+}
+
+func (p *CurrentPlugin) ReturnBytes(v unsafe.Pointer, b []byte) {
+	mem := p.Alloc(uint(len(b)))
+	ptr := p.Memory(mem)
+	copy(ptr, b)
+	ValSetI64(v, int64(mem))
+}
+
+func (p *CurrentPlugin) ReturnString(v unsafe.Pointer, s string) {
+	p.ReturnBytes(v, []byte(s))
+}
+
+func (p *CurrentPlugin) InputBytes(v unsafe.Pointer) []byte {
+	return p.Memory(ValGetUInt(v))
+}
+
+func (p *CurrentPlugin) InputString(v unsafe.Pointer) string {
+	return string(p.InputBytes(v))
+}
+
+type CancelHandle struct {
+	pointer *C.ExtismCancelHandle
+}
+
+func (p *Plugin) CancelHandle() CancelHandle {
+	pointer := C.extism_plugin_cancel_handle(p.ctx.pointer, C.int(p.id))
+	return CancelHandle{pointer}
+}
+
+func (c *CancelHandle) Cancel() bool {
+	return bool(C.extism_plugin_cancel(c.pointer))
 }

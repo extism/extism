@@ -139,8 +139,7 @@ let%test "call_functions" =
       ~user_data:"Hello again!"
     @@ fun plugin params results user_data ->
     let open Types.Val_array in
-    let mem = Current_plugin.Memory_block.of_val_exn plugin params.$[0] in
-    let s = Current_plugin.Memory_block.get_string plugin mem in
+    let s = Current_plugin.input_string plugin params 0 in
     let () = print_endline "Hello from OCaml!" in
     let () = print_endline user_data in
     let () = print_endline s in
@@ -164,3 +163,12 @@ let%test "function exists" =
       let plugin = of_manifest ctx manifest |> Error.unwrap in
       function_exists plugin "count_vowels"
       && not (function_exists plugin "function_does_not_exist"))
+
+module Cancel_handle = struct
+  type t = { inner : unit Ctypes.ptr }
+
+  let cancel { inner } = Bindings.extism_plugin_cancel inner
+end
+
+let cancel_handle { id; ctx; _ } =
+  Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle ctx.pointer id }

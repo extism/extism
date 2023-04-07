@@ -73,10 +73,13 @@ const _functions = {
     ],
   ],
   extism_function_free: ["void", [function_t]],
+  extism_function_set_namespace: ["void", [function_t, "string"]],
   extism_current_plugin_memory: ["uint8*", ["void*"]],
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_free: ["void", ["void*", "uint64"]],
+  extism_plugin_cancel_handle: ["void*", [context, pluginIndex]],
+  extism_plugin_cancel: ["bool", ["void*"]],
 };
 
 /**
@@ -147,11 +150,14 @@ interface LibExtism {
     user_data: Buffer | null,
     free: Buffer | null
   ) => Buffer;
+  extism_function_set_namespace: (f: Buffer, s: string) => void;
   extism_function_free: (f: Buffer) => void;
   extism_current_plugin_memory: (p: Buffer) => Buffer;
   extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_length: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_free: (p: Buffer, n: number) => void;
+  extism_plugin_cancel_handle: (p: Buffer, n: number) => Buffer;
+  extism_plugin_cancel: (p: Buffer) => boolean;
 }
 
 function locate(paths: string[]): LibExtism {
@@ -408,6 +414,44 @@ export class CurrentPlugin {
   memoryLength(offset: number): number {
     return lib.extism_current_plugin_memory_length(this.pointer, offset);
   }
+
+  /**
+   * Return a string from a host function
+   * @param output - The output to set
+   * @param s - The string to return
+   */
+  returnString(output: typeof Val, s: string) {
+    var offs = this.memoryAlloc(Buffer.byteLength(s));
+    this.memory(offs).write(s);
+    output.v.i64 = offs;
+  }
+
+  /**
+   * Return bytes from a host function
+   * @param output - The output to set
+   * @param b - The buffer to return
+   */
+  returnBytes(output: typeof Val, b: Buffer) {
+    var offs = this.memoryAlloc(b.length);
+    this.memory(offs).fill(b);
+    output.v.i64 = offs;
+  }
+
+  /**
+   * Get bytes from host function parameter
+   * @param input - The input to read
+   */
+  inputBytes(input: typeof Val): Buffer {
+    return this.memory(input.v.i64)
+  }
+
+  /**
+   * Get string from host function parameter
+   * @param input - The input to read
+   */
+  inputString(input: typeof Val): string {
+    return this.memory(input.v.i64).toString()
+  }
 }
 
 /**
@@ -487,6 +531,20 @@ export class HostFunction {
     functionRegistry.register(this, this.pointer, this.pointer);
   }
 
+  /** 
+   * Set function namespace
+   */
+  setNamespace(name: string) {
+    if (this.pointer !== null) {
+      lib.extism_function_set_namespace(this.pointer, name)
+    }
+  }
+
+  withNamespace(name: string) : HostFunction {
+    this.setNamespace(name)
+    return this;
+  }
+
   /**
    *  Free a host function - this should be called to cleanup the associated resources
    */
@@ -498,6 +556,24 @@ export class HostFunction {
 
     lib.extism_function_free(this.pointer);
     this.pointer = null;
+  }
+}
+
+/**
+  * CancelHandle is used to cancel a running Plugin
+  */
+export class CancelHandle {
+  handle: Buffer
+
+  constructor(handle: Buffer) {
+    this.handle = handle;
+  }
+
+  /**
+    * Cancel execution of the Plugin associated with the CancelHandle 
+    */
+  cancel(): boolean {
+    return lib.extism_plugin_cancel(this.handle);
   }
 }
 
@@ -567,6 +643,15 @@ export class Plugin {
         Buffer.byteLength(s, "utf-8")
       );
     }
+  }
+
+  /**
+   * Return a new `CancelHandle`, which can be used to cancel a running Plugin
+   */
+  cancelHandle(): CancelHandle {
+    if (!this.ctx.pointer) throw Error("No Context set");
+    let handle = lib.extism_plugin_cancel_handle(this.ctx.pointer, this.id);
+    return new CancelHandle(handle);
   }
 
   /**

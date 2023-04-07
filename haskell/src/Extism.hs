@@ -19,6 +19,8 @@ newtype Context = Context (ForeignPtr ExtismContext)
 -- | Plugins can be used to call WASM function
 data Plugin = Plugin Context Int32
 
+data CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
+
 -- | Log level
 data LogLevel = Error | Warn | Info | Debug | Trace deriving (Show)
 
@@ -172,3 +174,13 @@ call (Plugin (Context ctx) plugin) name input =
 free :: Plugin -> IO ()
 free (Plugin (Context ctx) plugin) =
   withForeignPtr ctx (`extism_plugin_free` plugin)
+
+cancelHandle :: Plugin -> IO CancelHandle
+cancelHandle (Plugin (Context ctx) plugin) = do
+  handle <- withForeignPtr ctx (\ctx -> extism_plugin_cancel_handle ctx plugin)
+  return (CancelHandle handle)
+
+cancel :: CancelHandle -> IO Bool
+cancel (CancelHandle handle) = 
+  extism_plugin_cancel handle
+

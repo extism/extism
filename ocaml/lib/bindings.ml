@@ -157,6 +157,9 @@ let extism_function_new =
    @-> uint64_t @-> extism_function_type @-> ptr void @-> extism_free_user_data
     @-> returning (ptr void))
 
+let extism_function_set_namespace =
+  fn "extism_function_set_namespace" (ptr void @-> string @-> returning void)
+
 let extism_function_free =
   fn "extism_function_free" (ptr void @-> returning void)
 
@@ -174,3 +177,9 @@ let extism_current_plugin_memory_alloc =
 let extism_current_plugin_memory_free =
   fn "extism_current_plugin_memory_free"
     (ptr void @-> uint64_t @-> returning void)
+
+let extism_plugin_cancel_handle =
+  fn "extism_plugin_cancel_handle" (context @-> int32_t @-> returning (ptr void))
+
+let extism_plugin_cancel =
+  fn "extism_plugin_cancel" (ptr void @-> returning bool)

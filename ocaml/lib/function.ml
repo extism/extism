@@ -18,7 +18,7 @@ let free t =
 
 let free_all l = List.iter free l
 
-let create name ~params ~results ~user_data f =
+let create name ?namespace ~params ~results ~user_data f =
   let inputs = CArray.of_list Bindings.Extism_val_type.t params in
   let n_inputs = Unsigned.UInt64.of_int (CArray.length inputs) in
   let outputs = CArray.of_list Bindings.Extism_val_type.t results in
@@ -35,6 +35,13 @@ let create name ~params ~results ~user_data f =
     Bindings.extism_function_new name (CArray.start inputs) n_inputs
       (CArray.start outputs) n_outputs f user_data free'
   in
+  let () =
+    Option.iter (Bindings.extism_function_set_namespace pointer) namespace
+  in
   let t = { pointer; user_data; name } in
   Gc.finalise free t;
   t
+
+let with_namespace f ns =
+  Bindings.extism_function_set_namespace f.pointer ns;
+  f

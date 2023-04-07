@@ -4,9 +4,12 @@ pub(crate) enum TimerAction {
     Start {
         id: uuid::Uuid,
         engine: Engine,
-        duration: std::time::Duration,
+        duration: Option<std::time::Duration>,
     },
     Stop {
+        id: uuid::Uuid,
+    },
+    Cancel {
         id: uuid::Uuid,
     },
     Shutdown,
@@ -17,6 +20,7 @@ pub(crate) struct Timer {
     pub thread: Option<std::thread::JoinHandle<()>>,
 }
 
+#[cfg(not(target_family = "windows"))]
 extern "C" fn cleanup_timer() {
     drop(Context::timer().take())
 }
@@ -35,12 +39,23 @@ impl Timer {
                             engine,
                             duration,
                         } => {
-                            plugins.insert(id, (engine, std::time::Instant::now() + duration));
+                            let duration = duration.map(|x| std::time::Instant::now() + x);
+                            plugins.insert(id, (engine, duration));
                         }
                         TimerAction::Stop { id } => {
                             plugins.remove(&id);
                         }
-                        TimerAction::Shutdown => return,
+                        TimerAction::Cancel { id } => {
+                            if let Some((engine, _)) = plugins.remove(&id) {
+                                engine.increment_epoch();
+                            }
+                        }
+                        TimerAction::Shutdown => {
+                            for (_, (engine, _)) in plugins.iter() {
+                                engine.increment_epoch();
+                            }
+                            return;
+                        }
                     }
                 };
             }
@@ -55,10 +70,12 @@ impl Timer {
                 plugins = plugins
                     .into_iter()
                     .filter(|(_k, (engine, end))| {
-                        let now = std::time::Instant::now();
-                        if end <= &now {
-                            engine.increment_epoch();
-                            return false;
+                        if let Some(end) = end {
+                            let now = std::time::Instant::now();
+                            if end <= &now {
+                                engine.increment_epoch();
+                                return false;
+                            }
                         }
                         true
                     })
@@ -74,6 +91,7 @@ impl Timer {
             tx: tx.clone(),
         });
 
+        #[cfg(not(target_family = "windows"))]
         unsafe {
             libc::atexit(cleanup_timer);
         }
