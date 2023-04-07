@@ -1,6 +1,5 @@
 ﻿using Extism.Sdk.Native;
 
-using System.Runtime.InteropServices;
 using System.Text;
 
 namespace Extism.Sdk
@@ -26,7 +25,6 @@ namespace Extism.Sdk
         {
             return LibExtism.extism_current_plugin_memory(NativeHandle);
         }
-
 
         /// <summary>
         /// Reads a string from a memory block using UTF8.
@@ -136,6 +134,5 @@ namespace Extism.Sdk
         {
             return LibExtism.extism_current_plugin_memory_length(NativeHandle, pointer);
         }
-
     }
 }

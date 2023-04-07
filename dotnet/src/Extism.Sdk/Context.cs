@@ -35,6 +35,7 @@ public unsafe class Context : IDisposable
     /// Loads an Extism <see cref="Plugin"/>.
     /// </summary>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
+    /// <param name="functions">List of host functions expected by the plugin.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
     public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, HostFunction[] functions, bool withWasi)
     {
@@ -187,35 +188,4 @@ public unsafe class Context : IDisposable
 
         return LibExtism.extism_log_file(logPath, logLevel);
     }
-}
-
-/// <summary>
-/// Extism Log Levels
-/// </summary>
-public enum LogLevel
-{
-    /// <summary>
-    /// Designates very serious errors.
-    /// </summary>
-    Error,
-
-    /// <summary>
-    /// Designates hazardous situations.
-    /// </summary>
-    Warning,
-
-    /// <summary>
-    /// Designates useful information.
-    /// </summary>
-    Info,
-
-    /// <summary>
-    /// Designates lower priority information.
-    /// </summary>
-    Debug,
-
-    /// <summary>
-    /// Designates very low priority, often extremely verbose, information.
-    /// </summary>
-    Trace
 }
