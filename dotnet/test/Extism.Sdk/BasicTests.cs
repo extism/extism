@@ -53,17 +53,11 @@ public class BasicTests
             var text = Marshal.PtrToStringAnsi(data);
             Console.WriteLine(text);
 
-            var ptr = new nint(inputs[0].v.i64);
-            var mem = plugin.GetMemory();
-            var input = Marshal.PtrToStringAnsi(mem + ptr);
+            var input = plugin.ReadString(new nint(inputs[0].v.i64));
             Console.WriteLine($"Input: {input}");
 
-            var output = new string(input);
-            var outputBytes = Encoding.UTF8.GetBytes(output);
-            var outPtr = plugin.AllocateBlock(outputBytes.Length);
-            Marshal.Copy(outputBytes, 0, mem + outPtr, outputBytes.Length);
-
-            outputs[0].v.i64 = outPtr;
+            var output = new string(input); // clone the string
+            outputs[0].v.i64 = plugin.WriteString(output);
         }
     }
 }

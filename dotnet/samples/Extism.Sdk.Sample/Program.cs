@@ -1,7 +1,6 @@
 using Extism.Sdk;
 using Extism.Sdk.Native;
 
-using System;
 using System.Runtime.InteropServices;
 using System.Text;
 
@@ -25,12 +24,10 @@ void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> output
     var text = Marshal.PtrToStringAnsi(data);
     Console.WriteLine(text);
 
-    var ptr = new nint(inputs[0].v.i64);
-    var mem = plugin.GetMemory();
-    var input = Marshal.PtrToStringAnsi(mem + ptr);
+    var input = plugin.ReadString(new nint(inputs[0].v.i64));
     Console.WriteLine($"Input: {input}");
 
-    outputs[0].v.i64 = inputs[0].v.i64;
+    outputs[0].v.i64 = plugin.WriteString(input);
 }
 
 var wasm = File.ReadAllBytes("./code-functions.wasm");
