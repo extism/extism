@@ -91,7 +91,7 @@ namespace Extism.Sdk
         /// </summary>
         /// <param name="pointer"></param>
         /// <param name="bytes"></param>
-        public void WriteBytes(nint pointer, byte[] bytes)
+        public unsafe void WriteBytes(nint pointer, Span<byte> bytes)
         {
             var length = BlockLength(pointer);
             if (length < bytes.Length)
@@ -100,7 +100,10 @@ namespace Extism.Sdk
             }
 
             var mem = GetMemory();
-            Marshal.Copy(bytes, 0, mem + pointer, bytes.Length);
+            var ptr = (void*)(mem + pointer);
+            var destination = new Span<byte>(ptr, bytes.Length);
+
+            bytes.CopyTo(destination);
         }
 
         /// <summary>
