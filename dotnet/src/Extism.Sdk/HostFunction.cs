@@ -24,14 +24,36 @@ namespace Extism.Sdk
         /// <summary>
         /// Registers a Host Function.
         /// </summary>
-        /// <param name="name">The literal name of the function, how it would be called from a <see cref="Plugin"/>.</param>
+        /// <param name="functionName">The literal name of the function, how it would be called from a <see cref="Plugin"/>.</param>
+        /// <param name="inputTypes">The types of the input arguments/parameters the <see cref="Plugin"/> caller will provide.</param>
+        /// <param name="outputTypes">The types of the output returned from the host function to the <see cref="Plugin"/>.</param>
+        /// <param name="userData">An opaque pointer to an object from the host, accessible to the <see cref="Plugin"/>.
+        /// NOTE: it is the shared responsibility of the host and <see cref="Plugin"/> to cast/dereference this value properly.</param>
+        /// <param name="hostFunction"></param>
+        public HostFunction(
+            string functionName,
+            ExtismValType[] inputTypes,
+            ExtismValType[] outputTypes,
+            IntPtr userData,
+            ExtismFunction hostFunction) :
+            this(functionName, "", inputTypes, outputTypes, userData, hostFunction)
+        {
+
+        }
+
+        /// <summary>
+        /// Registers a Host Function.
+        /// </summary>
+        /// <param name="functionName">The literal name of the function, how it would be called from a <see cref="Plugin"/>.</param>
+        /// <param name="namespace">Function namespace.</param>
         /// <param name="inputTypes">The types of the input arguments/parameters the <see cref="Plugin"/> caller will provide.</param>
         /// <param name="outputTypes">The types of the output returned from the host function to the <see cref="Plugin"/>.</param>
         /// <param name="userData">An opaque pointer to an object from the host, accessible to the <see cref="Plugin"/>.
         /// NOTE: it is the shared responsibility of the host and <see cref="Plugin"/> to cast/dereference this value properly.</param>
         /// <param name="hostFunction"></param>
         unsafe public HostFunction(
-            string name,
+            string functionName,
+            string @namespace,
             ExtismValType[] inputTypes,
             ExtismValType[] outputTypes,
             IntPtr userData,
@@ -40,7 +62,12 @@ namespace Extism.Sdk
             fixed (ExtismValType* inputs = inputTypes)
             fixed (ExtismValType* outputs = outputTypes)
             {
-                NativeHandle = LibExtism.extism_function_new(name, inputs, inputTypes.Length, outputs, outputTypes.Length, CallbackImpl, userData, IntPtr.Zero);
+                NativeHandle = LibExtism.extism_function_new(functionName, inputs, inputTypes.Length, outputs, outputTypes.Length, CallbackImpl, userData, IntPtr.Zero);
+            }
+
+            if (!string.IsNullOrEmpty(functionName))
+            {
+                LibExtism.extism_function_set_namespace(NativeHandle, @namespace);
             }
 
             void CallbackImpl(
@@ -58,15 +85,6 @@ namespace Extism.Sdk
         }
 
         internal IntPtr NativeHandle { get; }
-
-        /// <summary>
-        /// Set the namespace of a <see cref="HostFunction"/>.
-        /// </summary>
-        /// <param name="ns"></param>
-        public void SetNamespace(string ns)
-        {
-            LibExtism.extism_function_set_namespace(NativeHandle, ns);
-        }
 
         /// <summary>
         /// Frees all resources held by this Host Function.

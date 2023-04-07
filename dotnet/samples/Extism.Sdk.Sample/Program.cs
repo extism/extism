@@ -10,12 +10,11 @@ var userData = Marshal.StringToHGlobalAnsi("Hello again!");
 
 using var helloWorld = new HostFunction(
     "hello_world",
+    "env",
     new[] { ExtismValType.I64 },
     new[] { ExtismValType.I64 },
     userData,
     HelloWorld);
-
-helloWorld.SetNamespace("env");
 
 void HelloWorld(CurrentPlugin plugin, ExtismVal[] inputs, Span<ExtismVal> outputs, nint data)
 {

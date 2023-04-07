@@ -32,12 +32,11 @@ public class BasicTests
 
         using var helloWorld = new HostFunction(
             "hello_world",
+            "env",
             new[] { ExtismValType.I64 },
             new[] { ExtismValType.I64 },
             userData,
             HelloWorld);
-
-        helloWorld.SetNamespace("env");
 
         var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
         var wasm = File.ReadAllBytes(Path.Combine(binDirectory, "code-functions.wasm"));
