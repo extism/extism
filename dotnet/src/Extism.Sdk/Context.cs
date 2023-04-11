@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.InteropServices;
 
@@ -6,8 +7,10 @@ namespace Extism.Sdk.Native;
 /// <summary>
 /// Represents an Extism context through which you can load <see cref="Plugin"/>s.
 /// </summary>
-public class Context : IDisposable
+public unsafe class Context : IDisposable
 {
+    private readonly ConcurrentDictionary<int, Plugin> _plugins = new ConcurrentDictionary<int, Plugin>();
+
     private const int DisposedMarker = 1;
 
     private int _disposed;
@@ -17,31 +20,61 @@ public class Context : IDisposable
     /// </summary>
     public Context()
     {
-        NativeHandle = LibExtism.extism_context_new();
+        unsafe
+        {
+            NativeHandle = LibExtism.extism_context_new();
+        }
     }
 
     /// <summary>
     /// Native pointer to the Extism Context.
     /// </summary>
-    internal IntPtr NativeHandle { get; }
+    internal LibExtism.ExtismContext* NativeHandle { get; }
 
     /// <summary>
     /// Loads an Extism <see cref="Plugin"/>.
     /// </summary>
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
+    /// <param name="functions">List of host functions expected by the plugin.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, bool withWasi)
+    public Plugin CreatePlugin(ReadOnlySpan<byte> wasm, HostFunction[] functions, bool withWasi)
     {
         CheckNotDisposed();
+
+        var functionHandles = functions.Select(f => f.NativeHandle).ToArray();
 
         unsafe
         {
             fixed (byte* wasmPtr = wasm)
+            fixed (IntPtr* functionsPtr = functionHandles)
             {
-                var plugin = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, null, 0, withWasi);
-                return new Plugin(this, plugin);
+                var index = LibExtism.extism_plugin_new(NativeHandle, wasmPtr, wasm.Length, functionsPtr, functions.Length, withWasi);
+                if (index == -1)
+                {
+                    var errorMsg = GetError();
+                    if (errorMsg != null)
+                    {
+                        throw new ExtismException(errorMsg);
+                    }
+                    else
+                    {
+                        throw new ExtismException("Failed to create plugin.");
+                    }
+                }
+
+                return _plugins[index] = new Plugin(this, functions, index);
             }
         }
+    }
+
+    /// <summary>
+    /// Get a plugin by index.
+    /// </summary>
+    /// <param name="index">Index of plugin.</param>
+    /// <returns></returns>
+    public Plugin GetPlugin(int index)
+    {
+        return _plugins[index];
     }
 
     /// <summary>
@@ -110,6 +143,11 @@ public class Context : IDisposable
             // Free up any managed resources here
         }
 
+        foreach (var plugin in _plugins.Values)
+        {
+            plugin.Dispose();
+        }
+
         // Free up unmanaged resources
         LibExtism.extism_context_free(NativeHandle);
     }
@@ -150,35 +188,4 @@ public class Context : IDisposable
 
         return LibExtism.extism_log_file(logPath, logLevel);
     }
-}
-
-/// <summary>
-/// Extism Log Levels
-/// </summary>
-public enum LogLevel
-{
-    /// <summary>
-    /// Designates very serious errors.
-    /// </summary>
-    Error,
-
-    /// <summary>
-    /// Designates hazardous situations.
-    /// </summary>
-    Warning,
-
-    /// <summary>
-    /// Designates useful information.
-    /// </summary>
-    Info,
-
-    /// <summary>
-    /// Designates lower priority information.
-    /// </summary>
-    Debug,
-
-    /// <summary>
-    /// Designates very low priority, often extremely verbose, information.
-    /// </summary>
-    Trace
 }
