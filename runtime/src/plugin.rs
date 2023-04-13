@@ -297,6 +297,39 @@ impl Plugin {
             }
         }
 
+        // Check for `__wasm__call_ctors` and `__wasm_call_dtors`, this is used by WASI to
+        // initialize certain interfaces.
+        if self.has_wasi() {
+            if let Some(init) = self.get_func("__wasm_call_ctors") {
+                if init.typed::<(), ()>(&self.memory.store).is_err() {
+                    trace!(
+                        "__wasm_call_ctors function found with type {:?}",
+                        init.ty(&self.memory.store)
+                    );
+                    return None;
+                }
+                trace!("WASI runtime detected");
+                if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
+                    if cleanup.typed::<(), ()>(&self.memory.store).is_err() {
+                        trace!(
+                            "__wasm_call_dtors function found with type {:?}",
+                            cleanup.ty(&self.memory.store)
+                        );
+                        return None;
+                    }
+                    return Some(Runtime::Wasi {
+                        init,
+                        cleanup: Some(cleanup),
+                    });
+                }
+
+                return Some(Runtime::Wasi {
+                    init,
+                    cleanup: None,
+                });
+            }
+        }
+
         trace!("No runtime detected");
         None
     }
@@ -357,6 +390,7 @@ impl Plugin {
 // Enumerates the supported PDK language runtimes
 enum Runtime {
     Haskell { init: Func, cleanup: Func },
+    Wasi { init: Func, cleanup: Option<Func> },
 }
 
 impl Runtime {
@@ -371,12 +405,27 @@ impl Runtime {
                 )?;
                 debug!("Initialized Haskell language runtime");
             }
+            Runtime::Wasi { init, cleanup: _ } => {
+                init.call(&mut plugin.memory.store, &[], &mut [])?;
+                debug!("Called __wasm_call_ctors");
+            }
         }
         Ok(())
     }
 
     fn cleanup(&self, plugin: &mut Plugin) -> Result<(), Error> {
         match self {
+            Runtime::Wasi {
+                init: _,
+                cleanup: Some(cleanup),
+            } => {
+                cleanup.call(&mut plugin.memory.store, &[], &mut [])?;
+                debug!("Called __wasm_call_dtors");
+            }
+            Runtime::Wasi {
+                init: _,
+                cleanup: None,
+            } => (),
             // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
             // by calling the `hs_exit` export
             Runtime::Haskell { init: _, cleanup } => {
@@ -386,7 +435,6 @@ impl Runtime {
                 debug!("Cleaned up Haskell language runtime");
             }
         }
-
         Ok(())
     }
 }

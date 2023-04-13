@@ -553,7 +553,7 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     plugin_ref.as_ref().dump_memory();
 
-    if plugin_ref.as_ref().has_wasi() && name == "_start" {
+    if plugin_ref.as_ref().has_wasi() {
         plugin_ref.as_mut().should_reinstantiate = true;
     }
 
