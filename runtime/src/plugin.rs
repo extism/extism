@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+se std::collections::BTreeMap;
 
 use crate::*;
 
@@ -11,9 +11,9 @@ pub struct Plugin {
     pub memory: PluginMemory,
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
-    pub should_reinstantiate: bool,
     pub timer_id: uuid::Uuid,
     pub(crate) cancel_handle: sdk::ExtismCancelHandle,
+    pub(crate) runtime: Option<Runtime>,
 }
 
 pub struct Internal {
@@ -216,16 +216,14 @@ impl Plugin {
             last_error: std::cell::RefCell::new(None),
             manifest,
             vars: BTreeMap::new(),
-            should_reinstantiate: false,
+            runtime: None,
             timer_id,
             cancel_handle: sdk::ExtismCancelHandle {
                 id: timer_id,
                 epoch_timer_tx: None,
             },
         };
-
-        plugin.initialize_runtime()?;
-
+        plugin.detect_runtime();
         Ok(plugin)
     }
 
@@ -272,7 +270,6 @@ impl Plugin {
             .linker
             .instantiate(&mut self.memory.store, &self.module)?;
         self.instance = instance;
-        self.initialize_runtime()?;
         Ok(())
     }
 
@@ -280,7 +277,7 @@ impl Plugin {
         self.memory.store.data().wasi.is_some()
     }
 
-    fn detect_runtime(&mut self) -> Option<Runtime> {
+    fn detect_runtime(&mut self) {
         // Check for Haskell runtime initialization functions
         // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
         // by calling the `hs_init` export
@@ -291,10 +288,10 @@ impl Plugin {
                         "hs_init function found with type {:?}",
                         init.ty(&self.memory.store)
                     );
-                    return None;
                 }
-                return Some(Runtime::Haskell { init, cleanup });
+                self.runtime = Some(Runtime::Haskell { init, cleanup });
             }
+            return;
         }
 
         // Check for `__wasm__call_ctors` and `__wasm_call_dtors`, this is used by WASI to
@@ -306,7 +303,6 @@ impl Plugin {
                         "__wasm_call_ctors function found with type {:?}",
                         init.ty(&self.memory.store)
                     );
-                    return None;
                 }
                 trace!("WASI runtime detected");
                 if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
@@ -315,35 +311,35 @@ impl Plugin {
                             "__wasm_call_dtors function found with type {:?}",
                             cleanup.ty(&self.memory.store)
                         );
-                        return None;
                     }
-                    return Some(Runtime::Wasi {
+                    self.runtime = Some(Runtime::Wasi {
                         init,
                         cleanup: Some(cleanup),
                     });
                 }
 
-                return Some(Runtime::Wasi {
+                self.runtime = Some(Runtime::Wasi {
                     init,
                     cleanup: None,
                 });
             }
+            return;
         }
 
         trace!("No runtime detected");
-        None
     }
 
-    fn initialize_runtime(&mut self) -> Result<(), Error> {
-        if let Some(runtime) = self.detect_runtime() {
-            if let Some(timer) = Context::timer().as_ref() {
-                self.memory.store.set_epoch_deadline(1);
-                self.start_timer(&timer.tx)?;
-                let x = runtime.init(self);
-                self.stop_timer()?;
-                self.memory.store.set_epoch_deadline(0);
-                return x;
-            }
+    pub(crate) fn initialize_runtime(&mut self) -> Result<(), Error> {
+        if let Some(runtime) = self.runtime.clone() {
+            return runtime.init(self);
+        }
+
+        Ok(())
+    }
+
+    pub(crate) fn cleanup_runtime(&mut self) -> Result<(), Error> {
+        if let Some(runtime) = self.runtime.clone() {
+            return runtime.cleanup(self);
         }
 
         Ok(())
@@ -388,7 +384,8 @@ impl Plugin {
 }
 
 // Enumerates the supported PDK language runtimes
-enum Runtime {
+#[derive(Clone)]
+pub(crate) enum Runtime {
     Haskell { init: Func, cleanup: Func },
     Wasi { init: Func, cleanup: Option<Func> },
 }
@@ -436,24 +433,5 @@ impl Runtime {
             }
         }
         Ok(())
-    }
-}
-
-impl Drop for Plugin {
-    fn drop(&mut self) {
-        if let Some(runtime) = self.detect_runtime() {
-            self.memory.store.set_epoch_deadline(1);
-            if let Some(timer) = Context::timer().as_ref() {
-                if self.start_timer(&timer.tx).is_ok() {
-                    if let Err(e) = runtime.cleanup(self) {
-                        error!("Unable to cleanup runtime: {e:?}");
-                    }
-
-                    if let Err(e) = self.stop_timer() {
-                        error!("Unable to stop timer in Plugin::drop: {e:?}");
-                    }
-                }
-            }
-        }
     }
 }

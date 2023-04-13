@@ -512,6 +512,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         Ok(name) => name,
         Err(e) => return plugin_ref.as_ref().error(e, -1),
     };
+    let is_start = name == "_start";
 
     debug!("Calling function: {name} in plugin {plugin_id}");
 
@@ -543,6 +544,15 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
+    // Initialize runtime
+    if !is_start {
+        if let Err(e) = plugin_ref.as_mut().initialize_runtime() {
+            return plugin_ref
+                .as_ref()
+                .error(format!("Failed to initialize runtime: {e:?}"), -1);
+        }
+    }
+
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
     let res = func.call(
@@ -553,8 +563,13 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     plugin_ref.as_ref().dump_memory();
 
-    if plugin_ref.as_ref().has_wasi() {
-        plugin_ref.as_mut().should_reinstantiate = true;
+    // Cleanup runtime
+    if !is_start {
+        if let Err(e) = plugin_ref.as_mut().cleanup_runtime() {
+            return plugin_ref
+                .as_ref()
+                .error(format!("Failed to cleanup runtime: {e:?}"), -1);
+        }
     }
 
     // Stop timer
