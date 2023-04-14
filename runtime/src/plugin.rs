@@ -270,6 +270,7 @@ impl Plugin {
             .linker
             .instantiate(&mut self.memory.store, &self.module)?;
         self.instance = instance;
+        self.detect_runtime();
         Ok(())
     }
 
@@ -303,6 +304,7 @@ impl Plugin {
                         "__wasm_call_ctors function found with type {:?}",
                         init.ty(&self.memory.store)
                     );
+                    return;
                 }
                 trace!("WASI runtime detected");
                 if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
@@ -311,11 +313,13 @@ impl Plugin {
                             "__wasm_call_dtors function found with type {:?}",
                             cleanup.ty(&self.memory.store)
                         );
+                        return;
                     }
                     self.runtime = Some(Runtime::Wasi {
                         init,
                         cleanup: Some(cleanup),
                     });
+                    return;
                 }
 
                 self.runtime = Some(Runtime::Wasi {
@@ -330,18 +334,54 @@ impl Plugin {
     }
 
     pub(crate) fn initialize_runtime(&mut self) -> Result<(), Error> {
-        if let Some(runtime) = self.runtime.clone() {
+        if let Some(runtime) = &self.runtime {
             trace!("Plugin::initialize_runtime");
-            return runtime.init(self);
+            match runtime {
+                Runtime::Haskell { init, cleanup: _ } => {
+                    let mut results =
+                        vec![Val::null(); init.ty(&self.memory.store).results().len()];
+                    init.call(
+                        &mut self.memory.store,
+                        &[Val::I32(0), Val::I32(0)],
+                        results.as_mut_slice(),
+                    )?;
+                    debug!("Initialized Haskell language runtime");
+                }
+                Runtime::Wasi { init, cleanup: _ } => {
+                    debug!("Calling __wasm_call_ctors");
+                    init.call(&mut self.memory.store, &[], &mut [])?;
+                }
+            }
         }
 
         Ok(())
     }
 
+    #[inline(always)]
     pub(crate) fn cleanup_runtime(&mut self) -> Result<(), Error> {
         if let Some(runtime) = self.runtime.clone() {
             trace!("Plugin::cleanup_runtime");
-            return runtime.cleanup(self);
+            match runtime {
+                Runtime::Wasi {
+                    init: _,
+                    cleanup: Some(cleanup),
+                } => {
+                    debug!("Calling __wasm_call_dtors");
+                    cleanup.call(&mut self.memory.store, &[], &mut [])?;
+                }
+                Runtime::Wasi {
+                    init: _,
+                    cleanup: None,
+                } => (),
+                // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
+                // by calling the `hs_exit` export
+                Runtime::Haskell { init: _, cleanup } => {
+                    let mut results =
+                        vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
+                    cleanup.call(&mut self.memory.store, &[], results.as_mut_slice())?;
+                    debug!("Cleaned up Haskell language runtime");
+                }
+            }
         }
 
         Ok(())
@@ -388,50 +428,4 @@ impl Plugin {
 pub(crate) enum Runtime {
     Haskell { init: Func, cleanup: Func },
     Wasi { init: Func, cleanup: Option<Func> },
-}
-
-impl Runtime {
-    fn init(&self, plugin: &mut Plugin) -> Result<(), Error> {
-        match self {
-            Runtime::Haskell { init, cleanup: _ } => {
-                let mut results = vec![Val::null(); init.ty(&plugin.memory.store).results().len()];
-                init.call(
-                    &mut plugin.memory.store,
-                    &[Val::I32(0), Val::I32(0)],
-                    results.as_mut_slice(),
-                )?;
-                debug!("Initialized Haskell language runtime");
-            }
-            Runtime::Wasi { init, cleanup: _ } => {
-                debug!("Calling __wasm_call_ctors");
-                init.call(&mut plugin.memory.store, &[], &mut [])?;
-            }
-        }
-        Ok(())
-    }
-
-    fn cleanup(&self, plugin: &mut Plugin) -> Result<(), Error> {
-        match self {
-            Runtime::Wasi {
-                init: _,
-                cleanup: Some(cleanup),
-            } => {
-                debug!("Calling __wasm_call_dtors");
-                cleanup.call(&mut plugin.memory.store, &[], &mut [])?;
-            }
-            Runtime::Wasi {
-                init: _,
-                cleanup: None,
-            } => (),
-            // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
-            // by calling the `hs_exit` export
-            Runtime::Haskell { init: _, cleanup } => {
-                let mut results =
-                    vec![Val::null(); cleanup.ty(&plugin.memory.store).results().len()];
-                cleanup.call(&mut plugin.memory.store, &[], results.as_mut_slice())?;
-                debug!("Cleaned up Haskell language runtime");
-            }
-        }
-        Ok(())
-    }
 }
