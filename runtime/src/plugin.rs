@@ -1,4 +1,4 @@
-se std::collections::BTreeMap;
+use std::collections::BTreeMap;
 
 use crate::*;
 
@@ -331,6 +331,7 @@ impl Plugin {
 
     pub(crate) fn initialize_runtime(&mut self) -> Result<(), Error> {
         if let Some(runtime) = self.runtime.clone() {
+            trace!("Plugin::initialize_runtime");
             return runtime.init(self);
         }
 
@@ -339,6 +340,7 @@ impl Plugin {
 
     pub(crate) fn cleanup_runtime(&mut self) -> Result<(), Error> {
         if let Some(runtime) = self.runtime.clone() {
+            trace!("Plugin::cleanup_runtime");
             return runtime.cleanup(self);
         }
 
@@ -362,7 +364,6 @@ impl Plugin {
             duration,
             engine,
         })?;
-
         Ok(())
     }
 
@@ -370,7 +371,6 @@ impl Plugin {
         if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
             tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
-
         Ok(())
     }
 
@@ -403,8 +403,8 @@ impl Runtime {
                 debug!("Initialized Haskell language runtime");
             }
             Runtime::Wasi { init, cleanup: _ } => {
+                debug!("Calling __wasm_call_ctors");
                 init.call(&mut plugin.memory.store, &[], &mut [])?;
-                debug!("Called __wasm_call_ctors");
             }
         }
         Ok(())
@@ -416,8 +416,8 @@ impl Runtime {
                 init: _,
                 cleanup: Some(cleanup),
             } => {
+                debug!("Calling __wasm_call_dtors");
                 cleanup.call(&mut plugin.memory.store, &[], &mut [])?;
-                debug!("Called __wasm_call_dtors");
             }
             Runtime::Wasi {
                 init: _,

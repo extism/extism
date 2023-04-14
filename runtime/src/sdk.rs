@@ -514,8 +514,6 @@ pub unsafe extern "C" fn extism_plugin_call(
     };
     let is_start = name == "_start";
 
-    debug!("Calling function: {name} in plugin {plugin_id}");
-
     let func = match plugin_ref.as_mut().get_func(name) {
         Some(x) => x,
         None => {
@@ -524,15 +522,6 @@ pub unsafe extern "C" fn extism_plugin_call(
                 .error(format!("Function not found: {name}"), -1)
         }
     };
-
-    // Check the number of results, reject functions with more than 1 result
-    let n_results = func.ty(&plugin_ref.as_ref().memory.store).results().len();
-    if n_results > 1 {
-        return plugin_ref.as_ref().error(
-            format!("Function {name} has {n_results} results, expected 0 or 1"),
-            -1,
-        );
-    }
 
     // Start timer
     let tx = plugin_ref.epoch_timer_tx.clone();
@@ -552,6 +541,17 @@ pub unsafe extern "C" fn extism_plugin_call(
                 .error(format!("Failed to initialize runtime: {e:?}"), -1);
         }
     }
+
+    // Check the number of results, reject functions with more than 1 result
+    let n_results = func.ty(&plugin_ref.as_ref().memory.store).results().len();
+    if n_results > 1 {
+        return plugin_ref.as_ref().error(
+            format!("Function {name} has {n_results} results, expected 0 or 1"),
+            -1,
+        );
+    }
+
+    debug!("Calling function: {name} in plugin {plugin_id}");
 
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
