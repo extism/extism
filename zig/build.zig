@@ -12,7 +12,7 @@ pub fn build(b: *std.Build) void {
         .target = target,
         .optimize = optimize,
     });
-    lib.install();
+    b.installArtifact(lib);
 
     var tests = b.addTest(.{
         .name = "Library Tests",
@@ -26,10 +26,10 @@ pub fn build(b: *std.Build) void {
     tests.addIncludePath("/usr/local/include");
     tests.addLibraryPath("/usr/local/lib");
     tests.linkSystemLibrary("extism");
-    tests.install();
+    const tests_run_step = b.addRunArtifact(tests);
 
     const test_step = b.step("test", "Run library tests");
-    test_step.dependOn(&tests.run().step);
+    test_step.dependOn(&tests_run_step.step);
 
     var example = b.addExecutable(.{
         .name = "Example",
@@ -43,11 +43,8 @@ pub fn build(b: *std.Build) void {
     example.addIncludePath("/usr/local/include");
     example.addLibraryPath("/usr/local/lib");
     example.linkSystemLibrary("extism");
-    example.setOutputDir("example-out");
-    example.install();
+    const example_run_step = b.addRunArtifact(example);
 
-    const example_run_cmd = example.run();
-
-    const example_run_step = b.step("run_example", "Build basic_example");
-    example_run_step.dependOn(&example_run_cmd.step);
+    const example_step = b.step("run_example", "Build basic_example");
+    example_step.dependOn(&example_run_step.step);
 }
