@@ -11,9 +11,9 @@ pub struct Plugin {
     pub memory: PluginMemory,
     pub manifest: Manifest,
     pub vars: BTreeMap<String, Vec<u8>>,
-    pub should_reinstantiate: bool,
     pub timer_id: uuid::Uuid,
     pub(crate) cancel_handle: sdk::ExtismCancelHandle,
+    pub(crate) runtime: Option<Runtime>,
 }
 
 pub struct Internal {
@@ -216,16 +216,14 @@ impl Plugin {
             last_error: std::cell::RefCell::new(None),
             manifest,
             vars: BTreeMap::new(),
-            should_reinstantiate: false,
+            runtime: None,
             timer_id,
             cancel_handle: sdk::ExtismCancelHandle {
                 id: timer_id,
                 epoch_timer_tx: None,
             },
         };
-
-        plugin.initialize_runtime()?;
-
+        plugin.detect_runtime();
         Ok(plugin)
     }
 
@@ -272,7 +270,7 @@ impl Plugin {
             .linker
             .instantiate(&mut self.memory.store, &self.module)?;
         self.instance = instance;
-        self.initialize_runtime()?;
+        self.detect_runtime();
         Ok(())
     }
 
@@ -280,7 +278,7 @@ impl Plugin {
         self.memory.store.data().wasi.is_some()
     }
 
-    fn detect_runtime(&mut self) -> Option<Runtime> {
+    fn detect_runtime(&mut self) {
         // Check for Haskell runtime initialization functions
         // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
         // by calling the `hs_init` export
@@ -291,25 +289,98 @@ impl Plugin {
                         "hs_init function found with type {:?}",
                         init.ty(&self.memory.store)
                     );
-                    return None;
                 }
-                return Some(Runtime::Haskell { init, cleanup });
+                self.runtime = Some(Runtime::Haskell { init, cleanup });
             }
+            return;
+        }
+
+        // Check for `__wasm__call_ctors` and `__wasm_call_dtors`, this is used by WASI to
+        // initialize certain interfaces.
+        if self.has_wasi() {
+            if let Some(init) = self.get_func("__wasm_call_ctors") {
+                if init.typed::<(), ()>(&self.memory.store).is_err() {
+                    trace!(
+                        "__wasm_call_ctors function found with type {:?}",
+                        init.ty(&self.memory.store)
+                    );
+                    return;
+                }
+                trace!("WASI runtime detected");
+                if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
+                    if cleanup.typed::<(), ()>(&self.memory.store).is_err() {
+                        trace!(
+                            "__wasm_call_dtors function found with type {:?}",
+                            cleanup.ty(&self.memory.store)
+                        );
+                        return;
+                    }
+                    self.runtime = Some(Runtime::Wasi {
+                        init,
+                        cleanup: Some(cleanup),
+                    });
+                    return;
+                }
+
+                self.runtime = Some(Runtime::Wasi {
+                    init,
+                    cleanup: None,
+                });
+            }
+            return;
         }
 
         trace!("No runtime detected");
-        None
     }
 
-    fn initialize_runtime(&mut self) -> Result<(), Error> {
-        if let Some(runtime) = self.detect_runtime() {
-            if let Some(timer) = Context::timer().as_ref() {
-                self.memory.store.set_epoch_deadline(1);
-                self.start_timer(&timer.tx)?;
-                let x = runtime.init(self);
-                self.stop_timer()?;
-                self.memory.store.set_epoch_deadline(0);
-                return x;
+    pub(crate) fn initialize_runtime(&mut self) -> Result<(), Error> {
+        if let Some(runtime) = &self.runtime {
+            trace!("Plugin::initialize_runtime");
+            match runtime {
+                Runtime::Haskell { init, cleanup: _ } => {
+                    let mut results =
+                        vec![Val::null(); init.ty(&self.memory.store).results().len()];
+                    init.call(
+                        &mut self.memory.store,
+                        &[Val::I32(0), Val::I32(0)],
+                        results.as_mut_slice(),
+                    )?;
+                    debug!("Initialized Haskell language runtime");
+                }
+                Runtime::Wasi { init, cleanup: _ } => {
+                    debug!("Calling __wasm_call_ctors");
+                    init.call(&mut self.memory.store, &[], &mut [])?;
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    #[inline(always)]
+    pub(crate) fn cleanup_runtime(&mut self) -> Result<(), Error> {
+        if let Some(runtime) = self.runtime.clone() {
+            trace!("Plugin::cleanup_runtime");
+            match runtime {
+                Runtime::Wasi {
+                    init: _,
+                    cleanup: Some(cleanup),
+                } => {
+                    debug!("Calling __wasm_call_dtors");
+                    cleanup.call(&mut self.memory.store, &[], &mut [])?;
+                }
+                Runtime::Wasi {
+                    init: _,
+                    cleanup: None,
+                } => (),
+                // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
+                // by calling the `hs_exit` export
+                Runtime::Haskell { init: _, cleanup } => {
+                    let mut results =
+                        vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
+                    cleanup.call(&mut self.memory.store, &[], results.as_mut_slice())?;
+                    debug!("Cleaned up Haskell language runtime");
+                }
             }
         }
 
@@ -333,7 +404,6 @@ impl Plugin {
             duration,
             engine,
         })?;
-
         Ok(())
     }
 
@@ -341,7 +411,6 @@ impl Plugin {
         if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
             tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
-
         Ok(())
     }
 
@@ -355,57 +424,8 @@ impl Plugin {
 }
 
 // Enumerates the supported PDK language runtimes
-enum Runtime {
+#[derive(Clone)]
+pub(crate) enum Runtime {
     Haskell { init: Func, cleanup: Func },
-}
-
-impl Runtime {
-    fn init(&self, plugin: &mut Plugin) -> Result<(), Error> {
-        match self {
-            Runtime::Haskell { init, cleanup: _ } => {
-                let mut results = vec![Val::null(); init.ty(&plugin.memory.store).results().len()];
-                init.call(
-                    &mut plugin.memory.store,
-                    &[Val::I32(0), Val::I32(0)],
-                    results.as_mut_slice(),
-                )?;
-                debug!("Initialized Haskell language runtime");
-            }
-        }
-        Ok(())
-    }
-
-    fn cleanup(&self, plugin: &mut Plugin) -> Result<(), Error> {
-        match self {
-            // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
-            // by calling the `hs_exit` export
-            Runtime::Haskell { init: _, cleanup } => {
-                let mut results =
-                    vec![Val::null(); cleanup.ty(&plugin.memory.store).results().len()];
-                cleanup.call(&mut plugin.memory.store, &[], results.as_mut_slice())?;
-                debug!("Cleaned up Haskell language runtime");
-            }
-        }
-
-        Ok(())
-    }
-}
-
-impl Drop for Plugin {
-    fn drop(&mut self) {
-        if let Some(runtime) = self.detect_runtime() {
-            self.memory.store.set_epoch_deadline(1);
-            if let Some(timer) = Context::timer().as_ref() {
-                if self.start_timer(&timer.tx).is_ok() {
-                    if let Err(e) = runtime.cleanup(self) {
-                        error!("Unable to cleanup runtime: {e:?}");
-                    }
-
-                    if let Err(e) = self.stop_timer() {
-                        error!("Unable to stop timer in Plugin::drop: {e:?}");
-                    }
-                }
-            }
-        }
-    }
+    Wasi { init: Func, cleanup: Option<Func> },
 }

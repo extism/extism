@@ -512,8 +512,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         Ok(name) => name,
         Err(e) => return plugin_ref.as_ref().error(e, -1),
     };
-
-    debug!("Calling function: {name} in plugin {plugin_id}");
+    let is_start = name == "_start";
 
     let func = match plugin_ref.as_mut().get_func(name) {
         Some(x) => x,
@@ -523,15 +522,6 @@ pub unsafe extern "C" fn extism_plugin_call(
                 .error(format!("Function not found: {name}"), -1)
         }
     };
-
-    // Check the number of results, reject functions with more than 1 result
-    let n_results = func.ty(&plugin_ref.as_ref().memory.store).results().len();
-    if n_results > 1 {
-        return plugin_ref.as_ref().error(
-            format!("Function {name} has {n_results} results, expected 0 or 1"),
-            -1,
-        );
-    }
 
     // Start timer
     let tx = plugin_ref.epoch_timer_tx.clone();
@@ -543,6 +533,26 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
+    // Check the number of results, reject functions with more than 1 result
+    let n_results = func.ty(&plugin_ref.as_ref().memory.store).results().len();
+    if n_results > 1 {
+        return plugin_ref.as_ref().error(
+            format!("Function {name} has {n_results} results, expected 0 or 1"),
+            -1,
+        );
+    }
+
+    // Initialize runtime
+    if !is_start {
+        if let Err(e) = plugin_ref.as_mut().initialize_runtime() {
+            return plugin_ref
+                .as_ref()
+                .error(format!("Failed to initialize runtime: {e:?}"), -1);
+        }
+    }
+
+    debug!("Calling function: {name} in plugin {plugin_id}");
+
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
     let res = func.call(
@@ -553,8 +563,13 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     plugin_ref.as_ref().dump_memory();
 
-    if plugin_ref.as_ref().has_wasi() && name == "_start" {
-        plugin_ref.as_mut().should_reinstantiate = true;
+    // Cleanup runtime
+    if !is_start {
+        if let Err(e) = plugin_ref.as_mut().cleanup_runtime() {
+            return plugin_ref
+                .as_ref()
+                .error(format!("Failed to cleanup runtime: {e:?}"), -1);
+        }
     }
 
     // Stop timer
