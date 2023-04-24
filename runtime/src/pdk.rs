@@ -316,21 +316,24 @@ pub(crate) fn http_request(
         };
         let allowed_hosts = &data.plugin().manifest.as_ref().allowed_hosts;
         let host_str = url.host_str().unwrap_or_default();
-        if let Some(allowed_hosts) = allowed_hosts {
-            let host_matches_allowed = allowed_hosts.iter().any(|url| {
+        let host_matches = if let Some(allowed_hosts) = allowed_hosts {
+            allowed_hosts.iter().any(|url| {
                 let pat = match glob::Pattern::new(url) {
                     Ok(x) => x,
                     Err(_) => return url == host_str,
                 };
 
                 pat.matches(host_str)
-            });
-            if !host_matches_allowed {
-                return Err(Error::msg(format!(
-                    "HTTP request to {} is not allowed",
-                    req.url
-                )));
-            }
+            })
+        } else {
+            false
+        };
+
+        if !host_matches {
+            return Err(Error::msg(format!(
+                "HTTP request to {} is not allowed",
+                req.url
+            )));
         }
 
         let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
