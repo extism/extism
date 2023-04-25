@@ -1,8 +1,10 @@
 import Allocator from './allocator';
 import { PluginConfig } from './manifest';
-import { WASI, Fd } from "@bjorn3/browser_wasi_shim";
+import { WASI, Fd } from '@bjorn3/browser_wasi_shim';
 
-export default class ExtismPlugin {
+export type ExtismFunction = any;
+
+export class ExtismPlugin {
   moduleData: ArrayBuffer;
   allocator: Allocator;
   config?: PluginConfig;
@@ -10,14 +12,16 @@ export default class ExtismPlugin {
   input: Uint8Array;
   output: Uint8Array;
   module?: WebAssembly.WebAssemblyInstantiatedSource;
+  functions: Record<string, ExtismFunction>;
 
-  constructor(moduleData: ArrayBuffer, config?: PluginConfig) {
+  constructor(moduleData: ArrayBuffer, functions: Record<string, ExtismFunction> = {}, config?: PluginConfig) {
     this.moduleData = moduleData;
     this.allocator = new Allocator(1024 * 1024);
     this.config = config;
     this.vars = {};
     this.input = new Uint8Array();
     this.output = new Uint8Array();
+    this.functions = functions;
   }
 
   async getExports(): Promise<WebAssembly.Exports> {
@@ -65,14 +69,14 @@ export default class ExtismPlugin {
     const args: Array<string> = [];
     const envVars: Array<string> = [];
     let fds: Fd[] = [
-        // new XtermStdio(term), // stdin
-        // new XtermStdio(term), // stdout
-        // new XtermStdio(term), // stderr
+      // new XtermStdio(term), // stdin
+      // new XtermStdio(term), // stdout
+      // new XtermStdio(term), // stderr
     ];
     let wasi = new WASI(args, envVars, fds);
     let env = {
       wasi_snapshot_preview1: wasi.wasiImport,
-      env: environment
+      env: environment,
     };
     this.module = await WebAssembly.instantiate(this.moduleData, env);
     // normally we would call wasi.start here but it doesn't respect when there is
@@ -81,14 +85,14 @@ export default class ExtismPlugin {
     wasi.inst = this.module.instance;
     if (this.module.instance.exports._start) {
       //@ts-ignore
-      this.module.instance.exports._start()
+      this.module.instance.exports._start();
     }
     return this.module;
   }
 
   makeEnv(): any {
     const plugin = this;
-    return {
+    var env: any = {
       extism_alloc(n: bigint): bigint {
         return plugin.allocator.alloc(n);
       },
@@ -187,5 +191,13 @@ export default class ExtismPlugin {
         console.error(s);
       },
     };
+
+    for (const [name, func] of Object.entries(this.functions)) {
+      env[name] = function () {
+        return func.apply(plugin, arguments);
+      };
+    }
+
+    return env;
   }
 }

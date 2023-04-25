@@ -19,6 +19,6 @@ describe('', () => {
     // expect(parse(output)).toEqual({ count: 7 });
     // output = await plugin.call('count_vowels', 'this is a test thrice');
     // expect(parse(output)).toEqual({ count: 6 });
-    expect(true).toEqual(true)
+    expect(true).toEqual(true);
   });
 });
