@@ -1,6 +1,6 @@
 {
   "name": "@extism/runtime-browser",
-  "version": "0.2.7",
+  "version": "0.3.0",
   "description": "Extism runtime in the browser",
   "scripts": {
     "build": "node build.js && tsc --emitDeclarationOnly --outDir dist",
