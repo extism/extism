@@ -323,6 +323,18 @@ func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi 
 	)
 }
 
+// NewPlugin creates a plugin in its own context
+func NewPlugin(module io.Reader, functions []Function, wasi bool) (Plugin, error) {
+	ctx := NewContext()
+	return ctx.Plugin(module, functions, wasi)
+}
+
+// NewPlugin creates a plugin in its own context from a manifest
+func NewPluginFromManifest(manifest Manifest, functions []Function, wasi bool) (Plugin, error) {
+	ctx := NewContext()
+	return ctx.PluginFromManifest(manifest, functions, wasi)
+}
+
 // PluginFromManifest creates a plugin from a `Manifest`
 func (ctx *Context) PluginFromManifest(manifest Manifest, functions []Function, wasi bool) (Plugin, error) {
 	data, err := json.Marshal(manifest)

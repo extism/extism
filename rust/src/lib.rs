@@ -86,8 +86,7 @@ mod tests {
         )
         .with_namespace("test");
 
-        let functions = [&f, &g];
-        let mut plugin = Plugin::new(&context, WASM, functions, true).unwrap();
+        let mut plugin = Plugin::new(&context, WASM, [f, g], true).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -175,7 +174,7 @@ mod tests {
     }
 
     #[test]
-    fn test_threads() {
+    fn test_context_threads() {
         use std::io::Write;
         std::thread::spawn(|| {
             let context = Context::new();
@@ -186,7 +185,7 @@ mod tests {
                 None,
                 hello_world,
             );
-            let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
+            let mut plugin = Plugin::new(&context, WASM, [f], true).unwrap();
             let output = plugin.call("count_vowels", "this is a test").unwrap();
             std::io::stdout().write_all(output).unwrap();
         });
@@ -199,22 +198,63 @@ mod tests {
             hello_world,
         );
 
-        let g = f.clone();
-        std::thread::spawn(move || {
-            let context = Context::new();
-            let mut plugin = PluginBuilder::new_with_module(WASM)
-                .with_function(&g)
-                .with_wasi(true)
-                .build(&context)
-                .unwrap();
-            let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
-            std::io::stdout().write_all(output).unwrap();
-        });
-
+        // One context shared between two threads
         let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM, [&f], true).unwrap();
-        let output = plugin.call("count_vowels", "abc123").unwrap();
-        std::io::stdout().write_all(output).unwrap();
+        let mut threads = vec![];
+        for _ in 0..3 {
+            let ctx = context.clone();
+            let g = f.clone();
+            let a = std::thread::spawn(move || {
+                let mut plugin = PluginBuilder::new_with_module(WASM)
+                    .with_function(g)
+                    .with_wasi(true)
+                    .build(Some(&ctx))
+                    .unwrap();
+                for _ in 0..10 {
+                    let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
+                    assert_eq!(b"{\"count\": 7}", output);
+                }
+            });
+            threads.push(a);
+        }
+        for thread in threads {
+            thread.join().unwrap();
+        }
+    }
+
+    #[test]
+    fn test_plugin_threads() {
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+
+        let p = std::sync::Arc::new(std::sync::Mutex::new(
+            PluginBuilder::new_with_module(WASM)
+                .with_function(f)
+                .with_wasi(true)
+                .build(None)
+                .unwrap(),
+        ));
+
+        let mut threads = vec![];
+        for _ in 0..3 {
+            let plugin = p.clone();
+            let a = std::thread::spawn(move || {
+                let mut plugin = plugin.lock().unwrap();
+                for _ in 0..10 {
+                    let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
+                    assert_eq!(b"{\"count\": 7}", output);
+                }
+            });
+            threads.push(a);
+        }
+        for thread in threads {
+            thread.join().unwrap();
+        }
     }
 
     #[test]
@@ -228,7 +268,7 @@ mod tests {
         );
 
         let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM_LOOP, [&f], true).unwrap();
+        let mut plugin = Plugin::new(&context, WASM_LOOP, [f], true).unwrap();
         let handle = plugin.cancel_handle();
 
         std::thread::spawn(move || {

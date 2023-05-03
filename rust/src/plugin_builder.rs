@@ -6,13 +6,13 @@ enum Source {
 }
 
 /// PluginBuilder is used to configure and create `Plugin` instances
-pub struct PluginBuilder<'a> {
+pub struct PluginBuilder {
     source: Source,
     wasi: bool,
-    functions: Vec<&'a Function>,
+    functions: Vec<Function>,
 }
 
-impl<'a> PluginBuilder<'a> {
+impl PluginBuilder {
     /// Create a new `PluginBuilder` with the given WebAssembly module
     pub fn new_with_module(data: impl Into<Vec<u8>>) -> Self {
         PluginBuilder {
@@ -38,23 +38,29 @@ impl<'a> PluginBuilder<'a> {
     }
 
     /// Add a single host function
-    pub fn with_function(mut self, f: &'a Function) -> Self {
+    pub fn with_function(mut self, f: Function) -> Self {
         self.functions.push(f);
         self
     }
 
     /// Add multiple host functions
-    pub fn with_functions(mut self, f: impl IntoIterator<Item = &'a Function>) -> Self {
+    pub fn with_functions(mut self, f: impl IntoIterator<Item = Function>) -> Self {
         self.functions.extend(f);
         self
     }
 
-    pub fn build(self, context: &'a Context) -> Result<Plugin<'a>, Error> {
-        match self.source {
-            Source::Manifest(m) => {
-                Plugin::new_with_manifest(context, &m, self.functions, self.wasi)
-            }
-            Source::Data(d) => Plugin::new(context, d, self.functions, self.wasi),
+    pub fn build<'a>(self, context: Option<&'a Context>) -> Result<Plugin<'a>, Error> {
+        match context {
+            Some(context) => match self.source {
+                Source::Manifest(m) => {
+                    Plugin::new_with_manifest(context, &m, self.functions, self.wasi)
+                }
+                Source::Data(d) => Plugin::new(context, d, self.functions, self.wasi),
+            },
+            None => match self.source {
+                Source::Manifest(m) => Plugin::create_with_manifest(&m, self.functions, self.wasi),
+                Source::Data(d) => Plugin::create(d, self.functions, self.wasi),
+            },
         }
     }
 }
