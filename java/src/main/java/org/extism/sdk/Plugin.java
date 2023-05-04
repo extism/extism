@@ -62,6 +62,16 @@ public class Plugin implements AutoCloseable {
         this(context, serialize(manifest), withWASI, functions);
     }
 
+
+    public Plugin(byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
+        this(new Context(), manifestBytes, withWASI, functions);
+    }
+
+    
+    public Plugin(Manifest manifest, boolean withWASI, HostFunction[] functions) {
+        this(new Context(), serialize(manifest), withWASI, functions);
+    }
+
     private static byte[] serialize(Manifest manifest) {
         Objects.requireNonNull(manifest, "manifest");
         return JsonSerde.toJson(manifest).getBytes(StandardCharsets.UTF_8);
