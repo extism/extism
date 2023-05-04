@@ -104,9 +104,11 @@ class TestExtism(unittest.TestCase):
         with extism.Context() as ctx:
             plugin = ctx.plugin(self._loop_manifest())
             cancel_handle = plugin.cancel_handle()
+
             def cancel(handle):
                 time.sleep(0.5)
                 handle.cancel()
+
             Thread(target=cancel, args=[cancel_handle]).run()
             self.assertRaises(extism.Error, lambda: plugin.call("infinite_loop", b""))
 

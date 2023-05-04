@@ -194,11 +194,7 @@ class Context:
             The created plugin
         """
         return Plugin(
-            manifest, 
-            context=self, 
-            wasi=wasi, 
-            config=config, 
-            functions=functions
+            manifest, context=self, wasi=wasi, config=config, functions=functions
         )
 
 

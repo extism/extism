@@ -104,7 +104,7 @@ interface LibExtism {
     data_len: number,
     functions: Buffer,
     nfunctions: number,
-    wasi: boolean,
+    wasi: boolean
   ) => number;
   extism_plugin_update: (
     ctx: Buffer,
@@ -113,7 +113,7 @@ interface LibExtism {
     data_len: number,
     functions: Buffer,
     nfunctions: number,
-    wasi: boolean,
+    wasi: boolean
   ) => boolean;
   extism_error: (ctx: Buffer, plugin_id: number) => string;
   extism_plugin_call: (
@@ -121,7 +121,7 @@ interface LibExtism {
     plugin_id: number,
     func: string,
     input: string,
-    input_len: number,
+    input_len: number
   ) => number;
   extism_plugin_output_length: (ctx: Buffer, plugin_id: number) => number;
   extism_plugin_output_data: (ctx: Buffer, plugin_id: number) => Uint8Array;
@@ -129,13 +129,13 @@ interface LibExtism {
   extism_plugin_function_exists: (
     ctx: Buffer,
     plugin_id: number,
-    func: string,
+    func: string
   ) => boolean;
   extism_plugin_config: (
     ctx: Buffer,
     plugin_id: number,
     data: string | Buffer,
-    data_len: number,
+    data_len: number
   ) => void;
   extism_plugin_free: (ctx: Buffer, plugin_id: number) => void;
   extism_context_reset: (ctx: Buffer) => void;
@@ -148,7 +148,7 @@ interface LibExtism {
     nOutputs: number,
     f: Buffer,
     user_data: Buffer | null,
-    free: Buffer | null,
+    free: Buffer | null
   ) => Buffer;
   extism_function_set_namespace: (f: Buffer, s: string) => void;
   extism_function_free: (f: Buffer) => void;
@@ -321,7 +321,7 @@ export class Context {
     manifest: ManifestData,
     wasi: boolean = false,
     functions: HostFunction[] = [],
-    config?: PluginConfig,
+    config?: PluginConfig
   ) {
     return new Plugin(this, manifest, wasi, functions, config);
   }
@@ -385,7 +385,7 @@ export class CurrentPlugin {
     return Buffer.from(
       lib.extism_current_plugin_memory(this.pointer).buffer,
       offset,
-      length,
+      length
     );
   }
 
@@ -489,7 +489,7 @@ export class HostFunction {
         nInputs: number,
         outputs: Buffer,
         nOutputs: number,
-        user_data,
+        user_data
       ) => {
         let inputArr = [];
         let outputArr = [];
@@ -506,13 +506,13 @@ export class HostFunction {
           new CurrentPlugin(currentPlugin),
           inputArr,
           outputArr,
-          ...this.userData,
+          ...this.userData
         );
 
         for (var i = 0; i < nOutputs; i++) {
           Val.set(outputs, i, outputArr[i]);
         }
-      },
+      }
     );
     this.name = name;
     this.inputs = new ValTypeArray(inputs);
@@ -525,7 +525,7 @@ export class HostFunction {
       this.outputs.length,
       this.callback,
       null,
-      null,
+      null
     );
     this.userData = userData;
     functionRegistry.register(this, this.pointer, this.pointer);
@@ -600,7 +600,7 @@ export class Plugin {
     ctx: Context | null = null,
     wasi: boolean = false,
     functions: HostFunction[] = [],
-    config?: PluginConfig,
+    config?: PluginConfig
   ) {
     if (ctx === null) {
       ctx = new Context();
@@ -624,7 +624,7 @@ export class Plugin {
       Buffer.byteLength(dataRaw, "utf-8"),
       this.functions,
       functions.length,
-      wasi,
+      wasi
     );
     if (plugin < 0) {
       var err = lib.extism_error(ctx.pointer, -1);
@@ -643,7 +643,7 @@ export class Plugin {
         ctx.pointer,
         this.id,
         s,
-        Buffer.byteLength(s, "utf-8"),
+        Buffer.byteLength(s, "utf-8")
       );
     }
   }
@@ -669,7 +669,7 @@ export class Plugin {
     manifest: ManifestData,
     wasi: boolean = false,
     functions: HostFunction[] = [],
-    config?: PluginConfig,
+    config?: PluginConfig
   ) {
     let dataRaw: string | Buffer;
     if (Buffer.isBuffer(manifest) || typeof manifest === "string") {
@@ -691,7 +691,7 @@ export class Plugin {
       Buffer.byteLength(dataRaw, "utf-8"),
       this.functions,
       functions.length,
-      wasi,
+      wasi
     );
     if (!ok) {
       var err = lib.extism_error(this.ctx.pointer, -1);
@@ -707,7 +707,7 @@ export class Plugin {
         this.ctx.pointer,
         this.id,
         s,
-        Buffer.byteLength(s, "utf-8"),
+        Buffer.byteLength(s, "utf-8")
       );
     }
   }
@@ -724,7 +724,7 @@ export class Plugin {
     return lib.extism_plugin_function_exists(
       this.ctx.pointer,
       this.id,
-      functionName,
+      functionName
     );
   }
 
@@ -752,7 +752,7 @@ export class Plugin {
         this.id,
         functionName,
         input.toString(),
-        Buffer.byteLength(input, "utf-8"),
+        Buffer.byteLength(input, "utf-8")
       );
       if (rc !== 0) {
         var err = lib.extism_error(this.ctx.pointer, this.id);
@@ -766,7 +766,7 @@ export class Plugin {
       var buf = Buffer.from(
         lib.extism_plugin_output_data(this.ctx.pointer, this.id).buffer,
         0,
-        out_len,
+        out_len
       );
       resolve(buf);
     });
