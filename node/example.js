@@ -1,6 +1,5 @@
 const {
-  withContext,
-  Context,
+  Plugin,
   HostFunction,
   ValType,
 } = require("./dist/index.js");
@@ -13,29 +12,31 @@ function f(currentPlugin, inputs, outputs, userData) {
   outputs[0] = inputs[0];
 }
 
-let hello_world = new HostFunction(
+const hello_world = new HostFunction(
   "hello_world",
   [ValType.I64],
   [ValType.I64],
   f,
-  "Hello again!"
+  "Hello again!",
 );
 
-let functions = [hello_world];
+async function main() {
+  const functions = [hello_world];
 
-withContext(async function (context) {
-  let wasm = readFileSync("../wasm/code-functions.wasm");
-  let p = context.plugin(wasm, true, functions);
+  const wasm = readFileSync("../wasm/code-functions.wasm");
+  const p = new Plugin(wasm, true, functions);
 
   if (!p.functionExists("count_vowels")) {
     console.log("no function 'count_vowels' in wasm");
     process.exit(1);
   }
 
-  let buf = await p.call("count_vowels", process.argv[2] || "this is a test");
+  const buf = await p.call("count_vowels", process.argv[2] || "this is a test");
   console.log(JSON.parse(buf.toString())["count"]);
   p.free();
-});
+}
+
+main();
 
 // or, use a context like this:
 // let ctx = new Context();

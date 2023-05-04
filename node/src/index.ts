@@ -323,7 +323,7 @@ export class Context {
     functions: HostFunction[] = [],
     config?: PluginConfig,
   ) {
-    return new Plugin(manifest, this, wasi, functions, config);
+    return new Plugin(manifest, wasi, functions, config, this);
   }
 
   /**
@@ -590,19 +590,19 @@ export class Plugin {
    * Constructor for a plugin. @see {@link Context#plugin}.
    *
    * @param manifest - The {@link Manifest}
-   * @param ctx - The context to manage this plugin, or null to use a new context
    * @param wasi - Set to true to enable WASI support
    * @param functions - An array of {@link HostFunction}
    * @param config - The plugin config
+   * @param ctx - The context to manage this plugin, or null to use a new context
    */
   constructor(
     manifest: ManifestData,
-    ctx: Context | null = null,
     wasi: boolean = false,
     functions: HostFunction[] = [],
     config?: PluginConfig,
+    ctx: Context | null = null,
   ) {
-    if (ctx === null) {
+    if (ctx == null) {
       ctx = new Context();
     }
     let dataRaw: string | Buffer;
