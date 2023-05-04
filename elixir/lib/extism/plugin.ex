@@ -16,11 +16,24 @@ defmodule Extism.Plugin do
   end
 
   @doc """
+  Creates a new plugin
+  """
+  def new(manifest, wasi \\ false, context \\ nil) do
+    ctx = context || Extism.Context.new()
+    {:ok, manifest_payload} = JSON.encode(manifest)
+
+    case Extism.Native.plugin_new_with_manifest(ctx.ptr, manifest_payload, wasi) do
+      {:error, err} -> {:error, err}
+      res -> {:ok, Extism.Plugin.wrap_resource(ctx, res)}
+    end
+  end
+
+  @doc """
   Call a plugin's function by name
 
   ## Examples
 
-      iex> {:ok, plugin} = Extism.Context.new_plugin(ctx, manifest, false)
+      iex> {:ok, plugin} = Extism.Plugin.new(manifest, false)
       iex> {:ok, output} = Extism.Plugin.call(plugin, "count_vowels", "this is a test")
          # {:ok, "{\"count\": 4}"}
 
