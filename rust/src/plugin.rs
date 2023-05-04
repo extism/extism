@@ -229,12 +229,20 @@ impl<'a> Plugin<'a> {
         CancelHandle(ptr)
     }
 
-    /// Call a function with the given input
-    pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
+    /// Call a function with the given input and call a callback with the output, this should be preferred when
+    /// a single plugin may be acessed from multiple threads because the lock on the plugin is held during the
+    /// callback, ensuring the output value is protected from modification.
+    pub fn call_map<T, F: FnOnce(&'a [u8]) -> Result<T, Error>>(
+        &mut self,
+        name: impl AsRef<str>,
+        input: impl AsRef<[u8]>,
+        f: F,
+    ) -> Result<T, Error> {
+        let context = &mut *self.context.as_ref().lock();
         let name = std::ffi::CString::new(name.as_ref()).expect("Invalid function name");
         let rc = unsafe {
             bindings::extism_plugin_call(
-                &mut *self.context.as_ref().lock(),
+                context,
                 self.id,
                 name.as_ptr() as *const _,
                 input.as_ref().as_ptr() as *const _,
@@ -243,8 +251,7 @@ impl<'a> Plugin<'a> {
         };
 
         if rc != 0 {
-            let err =
-                unsafe { bindings::extism_error(&mut *self.context.as_ref().lock(), self.id) };
+            let err = unsafe { bindings::extism_error(context, self.id) };
             if !err.is_null() {
                 let s = unsafe { std::ffi::CStr::from_ptr(err) };
                 return Err(Error::msg(s.to_str().unwrap()));
@@ -253,14 +260,20 @@ impl<'a> Plugin<'a> {
             return Err(Error::msg("extism_call failed"));
         }
 
-        let out_len = unsafe {
-            bindings::extism_plugin_output_length(&mut *self.context.as_ref().lock(), self.id)
-        };
+        let out_len = unsafe { bindings::extism_plugin_output_length(context, self.id) };
         unsafe {
-            let ptr =
-                bindings::extism_plugin_output_data(&mut *self.context.as_ref().lock(), self.id);
-            Ok(std::slice::from_raw_parts(ptr, out_len as usize))
+            let ptr = bindings::extism_plugin_output_data(context, self.id);
+            f(std::slice::from_raw_parts(ptr, out_len as usize))
         }
+    }
+
+    /// Call a function with the given input
+    pub fn call(
+        &mut self,
+        name: impl AsRef<str>,
+        input: impl AsRef<[u8]>,
+    ) -> Result<&'a [u8], Error> {
+        self.call_map(name, input, |x| Ok(x))
     }
 }
 
