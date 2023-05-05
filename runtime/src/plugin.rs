@@ -4,7 +4,7 @@ use crate::*;
 
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
-    pub module: Module,
+    pub modules: BTreeMap<String, Module>,
     pub linker: Linker<Internal>,
     pub instance: Instance,
     pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
@@ -200,14 +200,13 @@ impl Plugin {
         for (name, module) in modules.iter() {
             if name != main_name {
                 linker.module(&mut memory.store, name, module)?;
-                linker.alias_module(name, "env")?;
             }
         }
 
         let instance = linker.instantiate(&mut memory.store, main)?;
         let timer_id = uuid::Uuid::new_v4();
         let mut plugin = Plugin {
-            module: main.clone(),
+            modules,
             linker,
             memory,
             instance,
@@ -264,9 +263,21 @@ impl Plugin {
     }
 
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
-        let instance = self
-            .linker
-            .instantiate(&mut self.memory.store, &self.module)?;
+        // Get the `main` module, or the last one if `main` doesn't exist
+        let (main_name, main) = self
+            .modules
+            .get("main")
+            .map(|x| ("main", x))
+            .unwrap_or_else(|| {
+                let entry = self.modules.iter().last().unwrap();
+                (entry.0.as_str(), entry.1)
+            });
+        for (name, module) in self.modules.iter() {
+            if name != main_name {
+                self.linker.module(&mut self.memory.store, name, module)?;
+            }
+        }
+        let instance = self.linker.instantiate(&mut self.memory.store, &main)?;
         self.instance = instance;
         self.detect_runtime();
         Ok(())
