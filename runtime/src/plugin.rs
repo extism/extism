@@ -144,8 +144,7 @@ impl Plugin {
                 $(
                     concat!("extism_", stringify!($name)) => {
                         let t = FuncType::new([$($args),*], [$($($r),*)?]);
-                        let f = Func::new(&mut memory.store, t, pdk::$name);
-                        linker.define(&mut memory.store, EXPORT_MODULE_NAME, concat!("extism_", stringify!($name)), Extern::Func(f))?;
+                        linker.func_new(EXPORT_MODULE_NAME, concat!("extism_", stringify!($name)), t, pdk::$name)?;
                         continue
                     }
                 )*
@@ -189,10 +188,9 @@ impl Plugin {
                     for f in &mut imports {
                         let name = f.name().to_string();
                         let ns = f.namespace().unwrap_or(EXPORT_MODULE_NAME);
-                        let func = Func::new(&mut memory.store, f.ty().clone(), unsafe {
+                        linker.func_new(ns, &name, f.ty().clone(), unsafe {
                             &*std::sync::Arc::as_ptr(&f.f)
-                        });
-                        linker.define(&mut memory.store, ns, &name, func)?;
+                        })?;
                     }
                 }
             }
