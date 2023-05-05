@@ -506,6 +506,10 @@ pub unsafe extern "C" fn extism_plugin_call(
         Some(p) => p.init(data, data_len as usize),
     };
 
+    if plugin_ref.as_ref().last_error.borrow().is_some() {
+        return -1;
+    }
+
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
