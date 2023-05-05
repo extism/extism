@@ -16,11 +16,13 @@ impl<'a> PluginRef<'a> {
     pub fn init(mut self, data: *const u8, data_len: usize) -> Self {
         trace!("PluginRef::init: {}", self.id,);
         let plugin = self.as_mut();
-        plugin.memory.reset();
+        plugin.memory_mut().reset();
         if plugin.has_wasi() || plugin.runtime.is_some() {
             if let Err(e) = plugin.reinstantiate() {
                 error!("Failed to reinstantiate: {e:?}");
-                plugin.set_error(format!("Failed to reinstantiate: {e:?}"));
+                plugin
+                    .internal()
+                    .set_error(format!("Failed to reinstantiate: {e:?}"));
                 return self;
             }
         }
@@ -48,7 +50,7 @@ impl<'a> PluginRef<'a> {
             ctx.error = None;
             trace!("Clearing plugin error: {plugin_id}");
             unsafe {
-                (&*plugin).clear_error();
+                (&*plugin).internal().clear_error();
             }
         }
 

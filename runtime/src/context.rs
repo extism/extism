@@ -1,4 +1,3 @@
-use std::cell::UnsafeCell;
 use std::collections::{BTreeMap, VecDeque};
 
 use crate::*;
@@ -8,7 +7,7 @@ static mut TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
 /// A `Context` is used to store and manage plugins
 pub struct Context {
     /// Plugin registry
-    pub plugins: BTreeMap<PluginIndex, UnsafeCell<Plugin>>,
+    pub plugins: BTreeMap<PluginIndex, Plugin>,
 
     /// Error message
     pub error: Option<std::ffi::CString>,
@@ -91,7 +90,7 @@ impl Context {
                 return -1;
             }
         };
-        self.plugins.insert(id, UnsafeCell::new(plugin));
+        self.plugins.insert(id, plugin);
         id
     }
 
@@ -127,7 +126,7 @@ impl Context {
     /// Get a plugin from the context
     pub fn plugin(&mut self, id: PluginIndex) -> Option<*mut Plugin> {
         match self.plugins.get_mut(&id) {
-            Some(x) => Some(x.get_mut()),
+            Some(x) => Some(x),
             None => None,
         }
     }

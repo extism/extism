@@ -344,8 +344,7 @@ pub unsafe extern "C" fn extism_plugin_update(
         return false;
     }
 
-    ctx.plugins
-        .insert(index, std::cell::UnsafeCell::new(plugin));
+    ctx.plugins.insert(index, plugin);
 
     debug!("Plugin updated: {index}");
     true
@@ -417,45 +416,49 @@ pub unsafe extern "C" fn extism_plugin_config(
     json_size: Size,
 ) -> bool {
     let ctx = &mut *ctx;
-    let mut plugin = match PluginRef::new(ctx, plugin, true) {
+    let mut plugin_ref = match PluginRef::new(ctx, plugin, true) {
         None => return false,
         Some(p) => p,
     };
-
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
-        plugin.id,
+        plugin_ref.id,
         json
     );
+    let plugin = plugin_ref.as_mut();
 
     let data = std::slice::from_raw_parts(json, json_size as usize);
     let json: std::collections::BTreeMap<String, Option<String>> =
         match serde_json::from_slice(data) {
             Ok(x) => x,
             Err(e) => {
-                return plugin.as_mut().error(e, false);
+                return plugin.error(e, false);
             }
         };
 
-    let plugin = plugin.as_mut();
+    let wasi = &mut plugin.memory.get_mut().store_mut().data_mut().wasi;
+    if let Some(Wasi { ctx, .. }) = wasi {
+        for (k, v) in json.iter() {
+            match v {
+                Some(v) => {
+                    let _ = ctx.push_env(&k, &v);
+                }
+                None => {
+                    let _ = ctx.push_env(&k, "");
+                }
+            }
+        }
+    }
 
-    let internal = plugin.memory.store.as_mut().unwrap().data_mut();
-    let wasi = &mut internal.wasi;
-    let config = &mut plugin.memory.manifest.as_mut().config;
+    let config = &mut plugin.memory.get_mut().manifest.as_mut().config;
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {
                 trace!("Config, adding {k}");
-                if let Some(Wasi { ctx, .. }) = wasi {
-                    let _ = ctx.push_env(&k, &v);
-                }
                 config.insert(k, v);
             }
             None => {
                 trace!("Config, removing {k}");
-                if let Some(Wasi { ctx, .. }) = wasi {
-                    let _ = ctx.push_env(&k, "");
-                }
                 config.remove(&k);
             }
         }
@@ -511,16 +514,10 @@ pub unsafe extern "C" fn extism_plugin_call(
         None => return -1,
         Some(p) => p.init(data, data_len as usize),
     };
+    let tx = plugin_ref.epoch_timer_tx.clone();
+    let plugin = plugin_ref.as_mut();
 
-    if plugin_ref
-        .as_ref()
-        .memory
-        .store()
-        .data()
-        .last_error
-        .borrow()
-        .is_some()
-    {
+    if plugin.internal().last_error.borrow().is_some() {
         return -1;
     }
 
@@ -528,33 +525,28 @@ pub unsafe extern "C" fn extism_plugin_call(
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin_ref.as_ref().error(e, -1),
+        Err(e) => return plugin.error(e, -1),
     };
     let is_start = name == "_start";
 
-    let func = match plugin_ref.as_mut().get_func(name) {
+    let func = match plugin.get_func(name) {
         Some(x) => x,
-        None => {
-            return plugin_ref
-                .as_ref()
-                .error(format!("Function not found: {name}"), -1)
-        }
+        None => return plugin.error(format!("Function not found: {name}"), -1),
     };
 
     // Start timer
-    let tx = plugin_ref.epoch_timer_tx.clone();
-    if let Err(e) = plugin_ref.as_mut().start_timer(&tx) {
-        let id = plugin_ref.as_ref().timer_id;
-        return plugin_ref.as_ref().error(
+    if let Err(e) = plugin.start_timer(&tx) {
+        let id = plugin.timer_id;
+        return plugin.error(
             format!("Unable to start timeout manager for {id}: {e:?}"),
             -1,
         );
     }
 
     // Check the number of results, reject functions with more than 1 result
-    let n_results = func.ty(&plugin_ref.as_ref().memory.store()).results().len();
+    let n_results = func.ty(plugin.store()).results().len();
     if n_results > 1 {
-        return plugin_ref.as_ref().error(
+        return plugin.error(
             format!("Function {name} has {n_results} results, expected 0 or 1"),
             -1,
         );
@@ -562,10 +554,8 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Initialize runtime
     if !is_start {
-        if let Err(e) = plugin_ref.as_mut().initialize_runtime() {
-            return plugin_ref
-                .as_ref()
-                .error(format!("Failed to initialize runtime: {e:?}"), -1);
+        if let Err(e) = plugin.initialize_runtime() {
+            return plugin.error(format!("Failed to initialize runtime: {e:?}"), -1);
         }
     }
 
@@ -573,27 +563,21 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
-    let res = func.call(
-        &mut plugin_ref.as_mut().memory.store_mut(),
-        &[],
-        results.as_mut_slice(),
-    );
+    let res = func.call(&mut plugin.store_mut(), &[], results.as_mut_slice());
 
-    plugin_ref.as_ref().dump_memory();
+    plugin.dump_memory();
 
     // Cleanup runtime
     if !is_start {
-        if let Err(e) = plugin_ref.as_mut().cleanup_runtime() {
-            return plugin_ref
-                .as_ref()
-                .error(format!("Failed to cleanup runtime: {e:?}"), -1);
+        if let Err(e) = plugin.cleanup_runtime() {
+            return plugin.error(format!("Failed to cleanup runtime: {e:?}"), -1);
         }
     }
 
     // Stop timer
-    if let Err(e) = plugin_ref.as_mut().stop_timer() {
-        let id = plugin_ref.as_ref().timer_id;
-        return plugin_ref.as_ref().error(
+    if let Err(e) = plugin.stop_timer() {
+        let id = plugin.timer_id;
+        return plugin.error(
             format!("Failed to stop timeout manager for {id}: {e:?}"),
             -1,
         );
@@ -602,7 +586,6 @@ pub unsafe extern "C" fn extism_plugin_call(
     match res {
         Ok(()) => (),
         Err(e) => {
-            let plugin = plugin_ref.as_ref();
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
                 trace!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
@@ -652,12 +635,13 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
         return get_context_error(ctx);
     }
 
-    let plugin = match PluginRef::new(ctx, plugin, false) {
+    let plugin_ref = match PluginRef::new(ctx, plugin, false) {
         None => return std::ptr::null(),
         Some(p) => p,
     };
+    let plugin = plugin_ref.as_ref();
 
-    let err = plugin.as_ref().memory.store().data().last_error.borrow();
+    let err = plugin.internal().last_error.borrow();
     match err.as_ref() {
         Some(e) => e.as_ptr() as *const _,
         None => {
@@ -676,12 +660,13 @@ pub unsafe extern "C" fn extism_plugin_output_length(
     trace!("Call to extism_plugin_output_length for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin = match PluginRef::new(ctx, plugin, true) {
+    let plugin_ref = match PluginRef::new(ctx, plugin, true) {
         None => return 0,
         Some(p) => p,
     };
+    let plugin = plugin_ref.as_ref();
 
-    let len = plugin.as_ref().memory.store().data().output_length as Size;
+    let len = plugin.internal().output_length as Size;
     trace!("Output length: {len}");
     len
 }
@@ -695,16 +680,18 @@ pub unsafe extern "C" fn extism_plugin_output_data(
     trace!("Call to extism_plugin_output_data for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin = match PluginRef::new(ctx, plugin, true) {
+    let plugin_ref = match PluginRef::new(ctx, plugin, true) {
         None => return std::ptr::null(),
         Some(p) => p,
     };
-    let data = plugin.as_ref().memory.store().data();
-
+    let plugin = plugin_ref.as_ref();
+    let internal = plugin.internal();
     plugin
-        .as_ref()
-        .memory
-        .ptr(MemoryBlock::new(data.output_offset, data.output_length))
+        .memory()
+        .ptr(MemoryBlock::new(
+            internal.output_offset,
+            internal.output_length,
+        ))
         .map(|x| x as *const _)
         .unwrap_or(std::ptr::null())
 }
