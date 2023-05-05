@@ -106,7 +106,7 @@ impl Internal {
 
     /// Unset `last_error` field
     pub fn clear_error(&self) {
-        *self.memory().store().data().last_error.borrow_mut() = None;
+        *self.last_error.borrow_mut() = None;
     }
 }
 
@@ -255,6 +255,8 @@ impl Plugin {
                 epoch_timer_tx: None,
             },
         };
+        let ptr = plugin.memory.get();
+        plugin.internal_mut().memory = ptr;
         plugin.detect_runtime();
         Ok(plugin)
     }
