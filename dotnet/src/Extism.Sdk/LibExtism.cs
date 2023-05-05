@@ -8,19 +8,34 @@ namespace Extism.Sdk.Native;
 [StructLayout(LayoutKind.Explicit)]
 public struct ExtismValUnion
 {
+    /// <summary>
+    /// Set this for 32 bit integers
+    /// </summary>
     [FieldOffset(0)]
     public int i32;
 
+    /// <summary>
+    /// Set this for 64 bit integers
+    /// </summary>
     [FieldOffset(0)]
     public long i64;
 
+    /// <summary>
+    /// Set this for 32 bit floats
+    /// </summary>
     [FieldOffset(0)]
     public float f32;
 
+    /// <summary>
+    /// Set this for 64 bit floats
+    /// </summary>
     [FieldOffset(0)]
     public double f64;
 }
 
+/// <summary>
+/// Represents Wasm data types that Extism can understand
+/// </summary>
 public enum ExtismValType : byte
 {
     /// <summary>
@@ -65,7 +80,14 @@ public enum ExtismValType : byte
 [StructLayout(LayoutKind.Sequential)]
 public struct ExtismVal
 {
+    /// <summary>
+    /// The type for the argument
+    /// </summary>
     public ExtismValType t;
+
+    /// <summary>
+    /// The value for the argument
+    /// </summary>
     public ExtismValUnion v;
 }
 
