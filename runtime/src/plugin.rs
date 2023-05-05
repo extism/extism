@@ -4,120 +4,32 @@ use crate::*;
 
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
+    /// All modules that were provided to the linker
     pub modules: BTreeMap<String, Module>,
+
+    /// Used to define functions and create new instances
     pub linker: Linker<Internal>,
+
+    /// Instance provides the ability to call functions in a module
     pub instance: Instance,
+
+    /// Keep track of the number of times we're instantiated, this exists
+    /// to avoid issues with memory piling up since `Instance`s are only
+    /// actually cleaned up along with a `Store`
     pub instantiations: usize,
+
+    /// Handles interactions with WASM memory
     pub memory: std::cell::UnsafeCell<PluginMemory>,
+
+    /// The ID used to identify this plugin with the `Timer`
     pub timer_id: uuid::Uuid,
+
+    /// A handle used to cancel execution of a plugin
     pub(crate) cancel_handle: sdk::ExtismCancelHandle,
+
+    /// Runtime determines any initialization and cleanup functions needed
+    /// to run a module
     pub(crate) runtime: Option<Runtime>,
-}
-
-pub struct Internal {
-    pub input_length: usize,
-    pub input: *const u8,
-    pub output_offset: usize,
-    pub output_length: usize,
-    pub wasi: Option<Wasi>,
-    pub http_status: u16,
-    pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
-    pub vars: BTreeMap<String, Vec<u8>>,
-    pub memory: *mut PluginMemory,
-}
-
-pub trait InternalExt {
-    fn memory(&self) -> &PluginMemory;
-    fn memory_mut(&mut self) -> &mut PluginMemory;
-
-    fn store(&self) -> &Store<Internal> {
-        self.memory().store()
-    }
-
-    fn store_mut(&mut self) -> &mut Store<Internal> {
-        self.memory_mut().store_mut()
-    }
-
-    fn internal(&self) -> &Internal {
-        self.store().data()
-    }
-
-    fn internal_mut(&mut self) -> &mut Internal {
-        self.store_mut().data_mut()
-    }
-}
-
-pub struct Wasi {
-    pub ctx: wasmtime_wasi::WasiCtx,
-    #[cfg(feature = "nn")]
-    pub nn: wasmtime_wasi_nn::WasiNnCtx,
-    #[cfg(not(feature = "nn"))]
-    pub nn: (),
-}
-
-impl Internal {
-    fn new(manifest: &Manifest, wasi: bool) -> Result<Self, Error> {
-        let wasi = if wasi {
-            let auth = wasmtime_wasi::ambient_authority();
-            let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-            for (k, v) in manifest.as_ref().config.iter() {
-                ctx = ctx.env(k, v)?;
-            }
-
-            if let Some(a) = &manifest.as_ref().allowed_paths {
-                for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
-                    ctx = ctx.preopened_dir(d, v)?;
-                }
-            }
-
-            #[cfg(feature = "nn")]
-            let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
-
-            #[cfg(not(feature = "nn"))]
-            #[allow(clippy::let_unit_value)]
-            let nn = ();
-
-            Some(Wasi {
-                ctx: ctx.build(),
-                nn,
-            })
-        } else {
-            None
-        };
-
-        Ok(Internal {
-            input_length: 0,
-            output_offset: 0,
-            output_length: 0,
-            input: std::ptr::null(),
-            wasi,
-            memory: std::ptr::null_mut(),
-            http_status: 0,
-            last_error: std::cell::RefCell::new(None),
-            vars: BTreeMap::new(),
-        })
-    }
-
-    pub fn set_error(&self, e: impl std::fmt::Debug) {
-        debug!("Set error: {:?}", e);
-        *self.last_error.borrow_mut() = Some(error_string(e));
-    }
-
-    /// Unset `last_error` field
-    pub fn clear_error(&self) {
-        *self.last_error.borrow_mut() = None;
-    }
-}
-
-impl InternalExt for Internal {
-    fn memory(&self) -> &PluginMemory {
-        unsafe { &*self.memory }
-    }
-
-    fn memory_mut(&mut self) -> &mut PluginMemory {
-        unsafe { &mut *self.memory }
-    }
 }
 
 impl InternalExt for Plugin {
@@ -139,6 +51,8 @@ impl Plugin {
         imports: impl IntoIterator<Item = &'a Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
+        // Create a new engine, if the `EXITSM_DEBUG` environment variable is set
+        // then we enable debug info
         let engine = Engine::new(
             Config::new()
                 .epoch_interruption(true)
@@ -147,9 +61,9 @@ impl Plugin {
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
-
         store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
+        // Create memory
         let memory = Memory::new(
             &mut store,
             MemoryType::new(4, manifest.as_ref().memory.max_pages),
@@ -159,6 +73,7 @@ impl Plugin {
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
+        // If wasi is enabled then add it to the linker
         if with_wasi {
             wasmtime_wasi::add_to_linker(&mut linker, |x: &mut Internal| {
                 &mut x.wasi.as_mut().unwrap().ctx
@@ -175,6 +90,7 @@ impl Plugin {
             (entry.0.as_str(), entry.1)
         });
 
+        // Define PDK functions
         macro_rules! define_funcs {
             ($m:expr, { $($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?}) => {
                 match $m {
@@ -255,8 +171,11 @@ impl Plugin {
                 epoch_timer_tx: None,
             },
         };
-        let ptr = plugin.memory.get();
-        plugin.internal_mut().memory = ptr;
+
+        // Make sure `Internal::memory` is initialized
+        plugin.internal_mut().memory = plugin.memory.get();
+
+        // Then detect runtime before returning the new plugin
         plugin.detect_runtime();
         Ok(plugin)
     }
@@ -267,6 +186,7 @@ impl Plugin {
             .get_func(&mut self.memory.get_mut().store_mut(), function.as_ref())
     }
 
+    // A convenience method to set the plugin error and return a value
     pub fn error<E>(&self, e: impl std::fmt::Debug, x: E) -> E {
         self.store().data().set_error(e);
         x
@@ -284,10 +204,12 @@ impl Plugin {
         internal.memory = ptr
     }
 
+    /// Dump memory using trace! logging
     pub fn dump_memory(&self) {
         self.memory().dump();
     }
 
+    /// Create a new instance from the same modules
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
         let (main_name, main) = self
             .modules
@@ -322,6 +244,7 @@ impl Plugin {
         Ok(())
     }
 
+    /// Determine if wasi is enabled
     pub fn has_wasi(&self) -> bool {
         self.memory().store().data().wasi.is_some()
     }
@@ -442,6 +365,8 @@ impl Plugin {
         Ok(())
     }
 
+    /// Start the timer for a Plugin - this is used for both timeouts
+    /// and cancellation
     pub(crate) fn start_timer(
         &mut self,
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
@@ -463,18 +388,11 @@ impl Plugin {
         Ok(())
     }
 
+    /// Send TimerAction::Stop
     pub(crate) fn stop_timer(&mut self) -> Result<(), Error> {
         if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
             tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
-        Ok(())
-    }
-
-    pub fn cancel(&self) -> Result<(), Error> {
-        if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
-            tx.send(TimerAction::Cancel { id: self.timer_id })?;
-        }
-
         Ok(())
     }
 }

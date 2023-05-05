@@ -6,14 +6,26 @@ use pretty_hex::PrettyHex;
 
 /// Handles memory for plugins
 pub struct PluginMemory {
+    /// wasmtime Store
     pub store: Option<Store<Internal>>,
+
+    /// WASM memory
     pub memory: Memory,
+
+    /// Tracks allocated blocks
     pub live_blocks: BTreeMap<usize, usize>,
+
+    /// Tracks free blocks
     pub free: Vec<MemoryBlock>,
+
+    /// Tracks current offset in memory
     pub position: usize,
+
+    /// Extism manifest
     pub manifest: Manifest,
 }
 
+/// `ToMemoryBlock` is used to convert from Rust values to blocks of WASM memory
 pub trait ToMemoryBlock {
     fn to_memory_block(&self, mem: &PluginMemory) -> Result<MemoryBlock, Error>;
 }
@@ -69,11 +81,13 @@ impl PluginMemory {
         self.store.as_mut().unwrap()
     }
 
+    /// Moves module to a new store
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
         if let Some(store) = self.store.take() {
             let engine = store.engine().clone();
             let internal = store.into_data();
             let mut store = Store::new(&engine, internal);
+            store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
             self.memory = Memory::new(
                 &mut store,
                 MemoryType::new(4, self.manifest.as_ref().memory.max_pages),

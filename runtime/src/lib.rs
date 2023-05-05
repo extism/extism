@@ -3,6 +3,7 @@ pub(crate) use wasmtime::*;
 
 mod context;
 mod function;
+mod internal;
 pub mod manifest;
 mod memory;
 pub(crate) mod pdk;
@@ -13,9 +14,10 @@ mod timer;
 
 pub use context::Context;
 pub use function::{Function, UserData, Val, ValType};
+pub use internal::{Internal, InternalExt, Wasi};
 pub use manifest::Manifest;
 pub use memory::{MemoryBlock, PluginMemory, ToMemoryBlock};
-pub use plugin::{Internal, InternalExt, Plugin, Wasi};
+pub use plugin::Plugin;
 pub use plugin_ref::PluginRef;
 pub(crate) use timer::{Timer, TimerAction};
 
