@@ -434,7 +434,7 @@ pub unsafe extern "C" fn extism_plugin_config(
 
     let plugin = plugin.as_mut();
 
-    let wasi = &mut plugin.memory.store.data_mut().wasi;
+    let wasi = &mut plugin.memory.store_mut().data_mut().wasi;
     let config = &mut plugin.manifest.as_mut().config;
     for (k, v) in json.into_iter() {
         match v {
@@ -538,7 +538,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     }
 
     // Check the number of results, reject functions with more than 1 result
-    let n_results = func.ty(&plugin_ref.as_ref().memory.store).results().len();
+    let n_results = func.ty(&plugin_ref.as_ref().memory.store()).results().len();
     if n_results > 1 {
         return plugin_ref.as_ref().error(
             format!("Function {name} has {n_results} results, expected 0 or 1"),
@@ -560,7 +560,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
     let res = func.call(
-        &mut plugin_ref.as_mut().memory.store,
+        &mut plugin_ref.as_mut().memory.store_mut(),
         &[],
         results.as_mut_slice(),
     );
@@ -667,7 +667,7 @@ pub unsafe extern "C" fn extism_plugin_output_length(
         Some(p) => p,
     };
 
-    let len = plugin.as_ref().memory.store.data().output_length as Size;
+    let len = plugin.as_ref().memory.store().data().output_length as Size;
     trace!("Output length: {len}");
     len
 }
@@ -685,7 +685,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(
         None => return std::ptr::null(),
         Some(p) => p,
     };
-    let data = plugin.as_ref().memory.store.data();
+    let data = plugin.as_ref().memory.store().data();
 
     plugin
         .as_ref()

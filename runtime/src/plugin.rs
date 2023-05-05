@@ -7,6 +7,7 @@ pub struct Plugin {
     pub modules: BTreeMap<String, Module>,
     pub linker: Linker<Internal>,
     pub instance: Instance,
+    pub instantiations: usize,
     pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
     pub memory: PluginMemory,
     pub manifest: Manifest,
@@ -199,17 +200,18 @@ impl Plugin {
         // Add modules to linker
         for (name, module) in modules.iter() {
             if name != main_name {
-                linker.module(&mut memory.store, name, module)?;
+                linker.module(&mut memory.store_mut(), name, module)?;
             }
         }
 
-        let instance = linker.instantiate(&mut memory.store, main)?;
+        let instance = linker.instantiate(&mut memory.store_mut(), main)?;
         let timer_id = uuid::Uuid::new_v4();
         let mut plugin = Plugin {
             modules,
             linker,
             memory,
             instance,
+            instantiations: 1,
             last_error: std::cell::RefCell::new(None),
             manifest,
             vars: BTreeMap::new(),
@@ -227,7 +229,7 @@ impl Plugin {
     /// Get a function by name
     pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
         self.instance
-            .get_func(&mut self.memory.store, function.as_ref())
+            .get_func(&mut self.memory.store_mut(), function.as_ref())
     }
 
     /// Set `last_error` field
@@ -252,7 +254,7 @@ impl Plugin {
             len = 0;
         }
         let ptr = self as *mut _;
-        let internal = self.memory.store.data_mut();
+        let internal = self.memory.store_mut().data_mut();
         internal.input = input;
         internal.input_length = len;
         internal.plugin = ptr;
@@ -263,7 +265,6 @@ impl Plugin {
     }
 
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
-        // Get the `main` module, or the last one if `main` doesn't exist
         let (main_name, main) = self
             .modules
             .get("main")
@@ -272,19 +273,33 @@ impl Plugin {
                 let entry = self.modules.iter().last().unwrap();
                 (entry.0.as_str(), entry.1)
             });
-        for (name, module) in self.modules.iter() {
-            if name != main_name {
-                self.linker.module(&mut self.memory.store, name, module)?;
+
+        // Avoid running into resource limits, after 100 instantiations reset the store. This will
+        // release any old `Instance` objects
+        if self.instantiations > 100 {
+            self.memory.reinstantiate()?;
+
+            // Get the `main` module, or the last one if `main` doesn't exist
+            for (name, module) in self.modules.iter() {
+                if name != main_name {
+                    self.linker
+                        .module(&mut self.memory.store_mut(), name, module)?;
+                }
             }
+            self.instantiations = 0;
         }
-        let instance = self.linker.instantiate(&mut self.memory.store, &main)?;
+
+        let instance = self
+            .linker
+            .instantiate(&mut self.memory.store_mut(), &main)?;
         self.instance = instance;
         self.detect_runtime();
+        self.instantiations += 1;
         Ok(())
     }
 
     pub fn has_wasi(&self) -> bool {
-        self.memory.store.data().wasi.is_some()
+        self.memory.store().data().wasi.is_some()
     }
 
     fn detect_runtime(&mut self) {
@@ -293,10 +308,10 @@ impl Plugin {
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
             if let Some(cleanup) = self.get_func("hs_exit") {
-                if init.typed::<(i32, i32), ()>(&self.memory.store).is_err() {
+                if init.typed::<(i32, i32), ()>(&self.memory.store()).is_err() {
                     trace!(
                         "hs_init function found with type {:?}",
-                        init.ty(&self.memory.store)
+                        init.ty(&self.memory.store())
                     );
                 }
                 self.runtime = Some(Runtime::Haskell { init, cleanup });
@@ -308,19 +323,19 @@ impl Plugin {
         // initialize certain interfaces.
         if self.has_wasi() {
             if let Some(init) = self.get_func("__wasm_call_ctors") {
-                if init.typed::<(), ()>(&self.memory.store).is_err() {
+                if init.typed::<(), ()>(&self.memory.store()).is_err() {
                     trace!(
                         "__wasm_call_ctors function found with type {:?}",
-                        init.ty(&self.memory.store)
+                        init.ty(&self.memory.store())
                     );
                     return;
                 }
                 trace!("WASI runtime detected");
                 if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
-                    if cleanup.typed::<(), ()>(&self.memory.store).is_err() {
+                    if cleanup.typed::<(), ()>(&self.memory.store()).is_err() {
                         trace!(
                             "__wasm_call_dtors function found with type {:?}",
-                            cleanup.ty(&self.memory.store)
+                            cleanup.ty(&self.memory.store())
                         );
                         return;
                     }
@@ -348,9 +363,9 @@ impl Plugin {
             match runtime {
                 Runtime::Haskell { init, cleanup: _ } => {
                     let mut results =
-                        vec![Val::null(); init.ty(&self.memory.store).results().len()];
+                        vec![Val::null(); init.ty(&self.memory.store()).results().len()];
                     init.call(
-                        &mut self.memory.store,
+                        &mut self.memory.store_mut(),
                         &[Val::I32(0), Val::I32(0)],
                         results.as_mut_slice(),
                     )?;
@@ -358,7 +373,7 @@ impl Plugin {
                 }
                 Runtime::Wasi { init, cleanup: _ } => {
                     debug!("Calling __wasm_call_ctors");
-                    init.call(&mut self.memory.store, &[], &mut [])?;
+                    init.call(&mut self.memory.store_mut(), &[], &mut [])?;
                 }
             }
         }
@@ -376,7 +391,7 @@ impl Plugin {
                     cleanup: Some(cleanup),
                 } => {
                     debug!("Calling __wasm_call_dtors");
-                    cleanup.call(&mut self.memory.store, &[], &mut [])?;
+                    cleanup.call(&mut self.memory.store_mut(), &[], &mut [])?;
                 }
                 Runtime::Wasi {
                     init: _,
@@ -386,8 +401,8 @@ impl Plugin {
                 // by calling the `hs_exit` export
                 Runtime::Haskell { init: _, cleanup } => {
                     let mut results =
-                        vec![Val::null(); cleanup.ty(&self.memory.store).results().len()];
-                    cleanup.call(&mut self.memory.store, &[], results.as_mut_slice())?;
+                        vec![Val::null(); cleanup.ty(&self.memory.store()).results().len()];
+                    cleanup.call(&mut self.memory.store_mut(), &[], results.as_mut_slice())?;
                     debug!("Cleaned up Haskell language runtime");
                 }
             }
@@ -406,8 +421,8 @@ impl Plugin {
             .timeout_ms
             .map(std::time::Duration::from_millis);
         self.cancel_handle.epoch_timer_tx = Some(tx.clone());
-        self.memory.store.set_epoch_deadline(1);
-        let engine: Engine = self.memory.store.engine().clone();
+        self.memory.store_mut().set_epoch_deadline(1);
+        let engine: Engine = self.memory.store().engine().clone();
         tx.send(TimerAction::Start {
             id: self.timer_id,
             duration,
