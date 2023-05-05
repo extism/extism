@@ -11,6 +11,7 @@ pub struct PluginMemory {
     pub live_blocks: BTreeMap<usize, usize>,
     pub free: Vec<MemoryBlock>,
     pub position: usize,
+    pub manifest: Manifest,
 }
 
 pub trait ToMemoryBlock {
@@ -49,13 +50,14 @@ const BLOCK_SIZE_THRESHOLD: usize = 32;
 
 impl PluginMemory {
     /// Create memory for a plugin
-    pub fn new(store: Store<Internal>, memory: Memory) -> Self {
+    pub fn new(store: Store<Internal>, memory: Memory, manifest: Manifest) -> Self {
         PluginMemory {
             free: Vec::new(),
             live_blocks: BTreeMap::new(),
             store: Some(store),
             memory,
             position: 1,
+            manifest,
         }
     }
 
@@ -72,7 +74,10 @@ impl PluginMemory {
             let engine = store.engine().clone();
             let internal = store.into_data();
             let mut store = Store::new(&engine, internal);
-            self.memory = Memory::new(&mut store, MemoryType::new(4, None))?;
+            self.memory = Memory::new(
+                &mut store,
+                MemoryType::new(4, self.manifest.as_ref().memory.max_pages),
+            )?;
             self.store = Some(store);
         }
 

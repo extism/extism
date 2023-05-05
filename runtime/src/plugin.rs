@@ -8,10 +8,7 @@ pub struct Plugin {
     pub linker: Linker<Internal>,
     pub instance: Instance,
     pub instantiations: usize,
-    pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
     pub memory: PluginMemory,
-    pub manifest: Manifest,
-    pub vars: BTreeMap<String, Vec<u8>>,
     pub timer_id: uuid::Uuid,
     pub(crate) cancel_handle: sdk::ExtismCancelHandle,
     pub(crate) runtime: Option<Runtime>,
@@ -22,9 +19,11 @@ pub struct Internal {
     pub input: *const u8,
     pub output_offset: usize,
     pub output_length: usize,
-    pub plugin: *mut Plugin,
     pub wasi: Option<Wasi>,
     pub http_status: u16,
+    pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
+    pub vars: BTreeMap<String, Vec<u8>>,
+    pub memory: *mut PluginMemory,
 }
 
 pub struct Wasi {
@@ -72,25 +71,24 @@ impl Internal {
             output_length: 0,
             input: std::ptr::null(),
             wasi,
-            plugin: std::ptr::null_mut(),
+            memory: std::ptr::null_mut(),
             http_status: 0,
+            last_error: std::cell::RefCell::new(None),
+            vars: BTreeMap::new(),
         })
     }
 
-    pub fn plugin(&self) -> &Plugin {
-        unsafe { &*self.plugin }
-    }
-
-    pub fn plugin_mut(&mut self) -> &mut Plugin {
-        unsafe { &mut *self.plugin }
+    pub fn set_error(&self, e: impl std::fmt::Debug) {
+        debug!("Set error: {:?}", e);
+        *self.last_error.borrow_mut() = Some(error_string(e));
     }
 
     pub fn memory(&self) -> &PluginMemory {
-        &self.plugin().memory
+        unsafe { &*self.memory }
     }
 
     pub fn memory_mut(&mut self) -> &mut PluginMemory {
-        &mut self.plugin_mut().memory
+        unsafe { &mut *self.memory }
     }
 }
 
@@ -118,7 +116,7 @@ impl Plugin {
             &mut store,
             MemoryType::new(4, manifest.as_ref().memory.max_pages),
         )?;
-        let mut memory = PluginMemory::new(store, memory);
+        let mut memory = PluginMemory::new(store, memory, manifest);
 
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
@@ -212,9 +210,6 @@ impl Plugin {
             memory,
             instance,
             instantiations: 1,
-            last_error: std::cell::RefCell::new(None),
-            manifest,
-            vars: BTreeMap::new(),
             runtime: None,
             timer_id,
             cancel_handle: sdk::ExtismCancelHandle {
@@ -235,7 +230,7 @@ impl Plugin {
     /// Set `last_error` field
     pub fn set_error(&self, e: impl std::fmt::Debug) {
         debug!("Set error: {:?}", e);
-        *self.last_error.borrow_mut() = Some(error_string(e));
+        *self.memory.store().data().last_error.borrow_mut() = Some(error_string(e));
     }
 
     pub fn error<E>(&self, e: impl std::fmt::Debug, x: E) -> E {
@@ -245,7 +240,7 @@ impl Plugin {
 
     /// Unset `last_error` field
     pub fn clear_error(&self) {
-        *self.last_error.borrow_mut() = None;
+        *self.memory.store().data().last_error.borrow_mut() = None;
     }
 
     /// Store input in memory and initialize `Internal` pointer
@@ -253,11 +248,11 @@ impl Plugin {
         if input.is_null() {
             len = 0;
         }
-        let ptr = self as *mut _;
+        let ptr = &mut self.memory as *mut _;
         let internal = self.memory.store_mut().data_mut();
         internal.input = input;
         internal.input_length = len;
-        internal.plugin = ptr;
+        internal.memory = ptr;
     }
 
     pub fn dump_memory(&self) {
@@ -416,6 +411,7 @@ impl Plugin {
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
     ) -> Result<(), Error> {
         let duration = self
+            .memory
             .manifest
             .as_ref()
             .timeout_ms

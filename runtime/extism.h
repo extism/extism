@@ -46,17 +46,14 @@ typedef enum {
  */
 typedef struct ExtismContext ExtismContext;
 
+typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
+
 typedef struct ExtismCancelHandle ExtismCancelHandle;
 
 /**
  * Wraps host functions
  */
 typedef struct ExtismFunction ExtismFunction;
-
-/**
- * Plugin contains everything needed to execute a WASM function
- */
-typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 
 typedef uint64_t ExtismSize;
 

@@ -33,7 +33,7 @@ impl From<Function> for ExtismFunction {
 
 /// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
-    plugin: *mut Plugin,
+    plugin: *mut CurrentPlugin,
     inputs: *const ExtismVal,
     n_inputs: Size,
     outputs: *mut ExtismVal,
@@ -93,28 +93,34 @@ pub unsafe extern "C" fn extism_context_free(ctx: *mut Context) {
 /// Returns a pointer to the memory of the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Plugin) -> *mut u8 {
+pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut CurrentPlugin) -> *mut u8 {
     if plugin.is_null() {
         return std::ptr::null_mut();
     }
 
     let plugin = &mut *plugin;
-    plugin.memory.data_mut().as_mut_ptr()
+    plugin.internal.memory_mut().data_mut().as_mut_ptr()
 }
 
 /// Allocate a memory block in the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Plugin, n: Size) -> u64 {
+pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
+    plugin: *mut CurrentPlugin,
+    n: Size,
+) -> u64 {
     if plugin.is_null() {
         return 0;
     }
 
     let plugin = &mut *plugin;
 
-    let mem = match plugin.memory.alloc(n as usize) {
+    let mem = match plugin.internal.memory_mut().alloc(n as usize) {
         Ok(x) => x,
-        Err(e) => return plugin.error(e, 0),
+        Err(e) => {
+            plugin.internal.set_error(e);
+            return 0;
+        }
     };
 
     mem.offset as u64
@@ -123,14 +129,17 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Plugin,
 /// Get the length of an allocated block
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_length(plugin: *mut Plugin, n: Size) -> Size {
+pub unsafe extern "C" fn extism_current_plugin_memory_length(
+    plugin: *mut CurrentPlugin,
+    n: Size,
+) -> Size {
     if plugin.is_null() {
         return 0;
     }
 
     let plugin = &mut *plugin;
 
-    match plugin.memory.block_length(n as usize) {
+    match plugin.internal.memory().block_length(n as usize) {
         Some(x) => x as Size,
         None => 0,
     }
@@ -139,14 +148,13 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(plugin: *mut Plugin
 /// Free an allocated memory block
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Plugin, ptr: u64) {
+pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut CurrentPlugin, ptr: u64) {
     if plugin.is_null() {
         return;
     }
 
     let plugin = &mut *plugin;
-
-    plugin.memory.free(ptr as usize);
+    plugin.internal.memory_mut().free(ptr as usize);
 }
 
 /// Create a new host function
@@ -434,8 +442,9 @@ pub unsafe extern "C" fn extism_plugin_config(
 
     let plugin = plugin.as_mut();
 
-    let wasi = &mut plugin.memory.store_mut().data_mut().wasi;
-    let config = &mut plugin.manifest.as_mut().config;
+    let internal = plugin.memory.store.as_mut().unwrap().data_mut();
+    let wasi = &mut internal.wasi;
+    let config = &mut plugin.memory.manifest.as_mut().config;
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {
@@ -506,7 +515,15 @@ pub unsafe extern "C" fn extism_plugin_call(
         Some(p) => p.init(data, data_len as usize),
     };
 
-    if plugin_ref.as_ref().last_error.borrow().is_some() {
+    if plugin_ref
+        .as_ref()
+        .memory
+        .store()
+        .data()
+        .last_error
+        .borrow()
+        .is_some()
+    {
         return -1;
     }
 
@@ -643,7 +660,7 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
         Some(p) => p,
     };
 
-    let err = plugin.as_ref().last_error.borrow();
+    let err = plugin.as_ref().memory.store().data().last_error.borrow();
     match err.as_ref() {
         Some(e) => e.as_ptr() as *const _,
         None => {
