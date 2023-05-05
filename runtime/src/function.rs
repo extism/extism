@@ -159,10 +159,6 @@ pub struct Function {
     pub(crate) _user_data: std::sync::Arc<UserData>,
 }
 
-pub struct CurrentPlugin<'a> {
-    pub internal: &'a mut Internal,
-}
-
 impl Function {
     pub fn new<F>(
         name: impl Into<String>,
@@ -173,7 +169,7 @@ impl Function {
     ) -> Function
     where
         F: 'static
-            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData) -> Result<(), Error>
+            + Fn(&mut Internal, &[Val], &mut [Val], UserData) -> Result<(), Error>
             + Sync
             + Send,
     {
@@ -186,14 +182,7 @@ impl Function {
                 returns.into_iter().map(wasmtime::ValType::from),
             ),
             f: std::sync::Arc::new(move |mut caller, inp, outp| {
-                f(
-                    &mut CurrentPlugin {
-                        internal: caller.data_mut(),
-                    },
-                    inp,
-                    outp,
-                    data.make_copy(),
-                )
+                f(caller.data_mut(), inp, outp, data.make_copy())
             }),
             namespace: None,
             _user_data: std::sync::Arc::new(user_data),

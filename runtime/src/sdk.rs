@@ -33,7 +33,7 @@ impl From<Function> for ExtismFunction {
 
 /// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
-    plugin: *mut CurrentPlugin,
+    plugin: *mut Internal,
     inputs: *const ExtismVal,
     n_inputs: Size,
     outputs: *mut ExtismVal,
@@ -93,32 +93,29 @@ pub unsafe extern "C" fn extism_context_free(ctx: *mut Context) {
 /// Returns a pointer to the memory of the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut CurrentPlugin) -> *mut u8 {
+pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Internal) -> *mut u8 {
     if plugin.is_null() {
         return std::ptr::null_mut();
     }
 
     let plugin = &mut *plugin;
-    plugin.internal.memory_mut().data_mut().as_mut_ptr()
+    plugin.memory_mut().data_mut().as_mut_ptr()
 }
 
 /// Allocate a memory block in the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
-    plugin: *mut CurrentPlugin,
-    n: Size,
-) -> u64 {
+pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Internal, n: Size) -> u64 {
     if plugin.is_null() {
         return 0;
     }
 
     let plugin = &mut *plugin;
 
-    let mem = match plugin.internal.memory_mut().alloc(n as usize) {
+    let mem = match plugin.memory_mut().alloc(n as usize) {
         Ok(x) => x,
         Err(e) => {
-            plugin.internal.set_error(e);
+            plugin.set_error(e);
             return 0;
         }
     };
@@ -130,7 +127,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory_length(
-    plugin: *mut CurrentPlugin,
+    plugin: *mut Internal,
     n: Size,
 ) -> Size {
     if plugin.is_null() {
@@ -139,7 +136,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
 
     let plugin = &mut *plugin;
 
-    match plugin.internal.memory().block_length(n as usize) {
+    match plugin.memory().block_length(n as usize) {
         Some(x) => x as Size,
         None => 0,
     }
@@ -148,13 +145,13 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
 /// Free an allocated memory block
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut CurrentPlugin, ptr: u64) {
+pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Internal, ptr: u64) {
     if plugin.is_null() {
         return;
     }
 
     let plugin = &mut *plugin;
-    plugin.internal.memory_mut().free(ptr as usize);
+    plugin.memory_mut().free(ptr as usize);
 }
 
 /// Create a new host function

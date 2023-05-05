@@ -1,6 +1,6 @@
 pub use extism_manifest::{self as manifest, Manifest};
 pub use extism_runtime::{
-    sdk as bindings, Function, MemoryBlock, Plugin as CurrentPlugin, UserData, Val, ValType,
+    sdk as bindings, CurrentPlugin, Function, MemoryBlock, UserData, Val, ValType,
 };
 
 mod context;
