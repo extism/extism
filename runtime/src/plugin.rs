@@ -220,9 +220,9 @@ impl Plugin {
                 (entry.0.as_str(), entry.1)
             });
 
-        // Avoid running into resource limits, after 100 instantiations reset the store. This will
+        // Avoid running into resource limits, after 5 instantiations reset the store. This will
         // release any old `Instance` objects
-        if self.instantiations > 100 {
+        if self.instantiations > 5 {
             self.memory.get_mut().reinstantiate()?;
 
             // Get the `main` module, or the last one if `main` doesn't exist
