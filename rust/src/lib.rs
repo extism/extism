@@ -21,13 +21,27 @@ pub fn extism_version() -> String {
 
 /// Set the log file and level, this is a global setting
 pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) -> bool {
-    let log_level = log_level.map(|x| x.as_str());
-    unsafe {
-        return bindings::extism_log_file(
-            filename.as_ref().as_os_str().to_string_lossy().as_ptr() as *const _,
-            log_level.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()) as *const _,
-        );
+    if let Ok(filename) =
+        std::ffi::CString::new(filename.as_ref().as_os_str().to_string_lossy().as_bytes())
+    {
+        let log_level = log_level.map(|x| std::ffi::CString::new(x.as_str()));
+        unsafe {
+            return bindings::extism_log_file(
+                filename.as_ptr(),
+                log_level
+                    .map(|x| {
+                        if let Ok(x) = x {
+                            x.as_ptr()
+                        } else {
+                            std::ptr::null()
+                        }
+                    })
+                    .unwrap_or(std::ptr::null()) as *const _,
+            );
+        }
     }
+
+    false
 }
 
 #[cfg(test)]
