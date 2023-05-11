@@ -9,45 +9,45 @@ unwrap (Left (ExtismError msg)) =
 
 defaultManifest = manifest [wasmFile "../../wasm/code.wasm"]
 
-initPlugin :: Context -> IO Plugin
-initPlugin context =
-  Extism.pluginFromManifest context defaultManifest False >>= unwrap
+initPlugin :: Maybe Context -> IO Plugin
+initPlugin Nothing =
+  Extism.createPluginFromManifest defaultManifest False >>= unwrap
+initPlugin (Just ctx) =
+  Extism.pluginFromManifest ctx defaultManifest False >>= unwrap
 
 pluginFunctionExists = do
-  withContext (\ctx -> do
-    p <- initPlugin ctx
-    exists <- functionExists p "count_vowels"
-    assertBool "function exists" exists
-    exists' <- functionExists p "function_doesnt_exist"
-    assertBool "function doesn't exist" (not exists'))
+  p <- initPlugin Nothing
+  exists <- functionExists p "count_vowels"
+  assertBool "function exists" exists
+  exists' <- functionExists p "function_doesnt_exist"
+  assertBool "function doesn't exist" (not exists')
 
 checkCallResult p = do
-    res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
-    assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
+  res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
+  assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
 
 pluginCall = do
-  withContext (\ctx -> do
-    p <- initPlugin ctx
-    checkCallResult p)
+  p <- initPlugin Nothing
+  checkCallResult p
 
 pluginMultiple = do
-  withContext (\ctx -> do
-    p <- initPlugin ctx
+  withContext(\ctx -> do
+    p <- initPlugin (Just ctx)
     checkCallResult p
-    q <- initPlugin ctx
-    r <- initPlugin ctx
+    q <- initPlugin (Just ctx)
+    r <- initPlugin (Just ctx)
     checkCallResult q
     checkCallResult r)
 
 pluginUpdate = do
   withContext (\ctx -> do
-    p <- initPlugin ctx
+    p <- initPlugin (Just ctx)
     updateManifest p defaultManifest True >>= unwrap
     checkCallResult p)
 
 pluginConfig = do
   withContext (\ctx -> do
-    p <- initPlugin ctx
+    p <- initPlugin (Just ctx)
     b <- setConfig p [("a", Just "1"), ("b", Just "2"), ("c", Just "3"), ("d", Nothing)]
     assertBool "set config" b)
 
