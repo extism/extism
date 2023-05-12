@@ -715,9 +715,7 @@ pub unsafe extern "C" fn extism_log_file(
         "stderr"
     };
 
-    let level = if log_level.is_null() {
-        "error"
-    } else {
+    let level = if !log_level.is_null() {
         let level = std::ffi::CStr::from_ptr(log_level);
         match level.to_str() {
             Ok(x) => x,
@@ -725,6 +723,8 @@ pub unsafe extern "C" fn extism_log_file(
                 return false;
             }
         }
+    } else {
+        "error"
     };
 
     let level = match LevelFilter::from_str(level) {
