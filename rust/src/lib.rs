@@ -21,13 +21,20 @@ pub fn extism_version() -> String {
 
 /// Set the log file and level, this is a global setting
 pub fn set_log_file(filename: impl AsRef<std::path::Path>, log_level: Option<log::Level>) -> bool {
-    let log_level = log_level.map(|x| x.as_str());
-    unsafe {
-        return bindings::extism_log_file(
-            filename.as_ref().as_os_str().to_string_lossy().as_ptr() as *const _,
-            log_level.map(|x| x.as_ptr()).unwrap_or(std::ptr::null()) as *const _,
-        );
+    if let Ok(filename) = std::ffi::CString::new(filename.as_ref().to_string_lossy().as_bytes()) {
+        let log_level_s = log_level.map(|x| x.as_str());
+        let log_level_c = log_level_s.map(|x| std::ffi::CString::new(x));
+        if let Some(Ok(log_level_c)) = log_level_c {
+            unsafe {
+                return bindings::extism_log_file(filename.as_ptr(), log_level_c.as_ptr());
+            }
+        } else {
+            unsafe {
+                return bindings::extism_log_file(filename.as_ptr(), std::ptr::null());
+            }
+        }
     }
+    false
 }
 
 #[cfg(test)]
@@ -60,7 +67,7 @@ mod tests {
     #[test]
     fn it_works() {
         let wasm_start = Instant::now();
-        set_log_file("test.log", Some(log::Level::Info));
+        assert!(set_log_file("test.log", Some(log::Level::Trace)));
         let context = Context::new();
         let f = Function::new(
             "hello_world",
