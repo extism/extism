@@ -49,7 +49,7 @@ class Plugin
         $id = $this->lib->extism_plugin_new($ctx->pointer, $data, count($data), null, 0, (int)$wasi);
         if ($id < 0) {
             $err = $this->lib->extism_error($ctx->pointer, -1);
-            throw new \Exception("Extism: unable to load plugin: " . $err);
+            throw new \Exception("Extism: unable to load plugin: " . $err->toString());
         }
         $this->id = $id;
         $this->context = $ctx;
