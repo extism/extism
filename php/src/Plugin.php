@@ -91,7 +91,7 @@ class Plugin
             $msg = "code = " . $rc;
             $err = $this->lib->extism_error($this->context->pointer, $this->id);
             if ($err) {
-                $msg = $msg . ", error = " . $err;
+                $msg = $msg . ", error = " . $err->toString();
             }
             throw new \Exception("Extism: call to '".$name."' failed with " . $msg);
         }
@@ -121,7 +121,7 @@ class Plugin
         $ok = $this->lib->extism_plugin_update($this->context->pointer, $this->id, $data, count($data), null, 0, (int)$wasi);
         if (!$ok) {
             $err = $this->lib->extism_error($this->context->pointer, -1);
-            throw new \Exception("Extism: unable to update plugin: " . $err);
+            throw new \Exception("Extism: unable to update plugin: " . $err->toString());
         }
 
         if ($config != null) {
