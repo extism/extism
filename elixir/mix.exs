@@ -4,7 +4,7 @@ defmodule Extism.MixProject do
   def project do
     [
       app: :extism,
-      version: "0.3.0",
+      version: "0.3.2",
       elixir: "~> 1.12",
       start_permanent: Mix.env() == :prod,
       deps: deps(),

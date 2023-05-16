@@ -4,5 +4,4 @@ members = [
   "runtime",
   "rust",
   "libextism",
-  "elixir/native/extism_nif"
 ]

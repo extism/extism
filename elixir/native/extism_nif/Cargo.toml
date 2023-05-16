@@ -1,6 +1,6 @@
 [package]
 name = "extism_nif"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 authors = ["Benjamin Eckel <bhelx@simst.im>"]
 
@@ -9,7 +9,10 @@ name = "extism_nif"
 path = "src/lib.rs"
 crate-type = ["cdylib"]
 
+# need this to be here and be empty
+[workspace]
+
 [dependencies]
 rustler = "0.28.0"
-extism = { version = "0.3.0", path = "../../../rust", package = "extism" }
+extism = "0.3.0"
 log = "0.4"
