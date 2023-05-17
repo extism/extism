@@ -174,7 +174,7 @@ impl Function {
             + Send,
     {
         let user_data = user_data.unwrap_or_default();
-        let data = UserData::new_pointer(user_data.ptr, None);
+        let data = user_data.make_copy();
         Function {
             name: name.into(),
             ty: wasmtime::FuncType::new(
