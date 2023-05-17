@@ -9,8 +9,7 @@ unwrap (Left (ExtismError msg)) = do
 
 main = do
   let m = manifest [wasmFile "../wasm/code.wasm"]
-  context <- Extism.newContext
-  plugin <- unwrap <$> Extism.pluginFromManifest context m False
+  plugin <- unwrap <$> Extism.createPluginFromManifest m False
   res <- unwrap <$> Extism.call plugin "count_vowels" (Extism.toByteString "this is a test")
   putStrLn (Extism.fromByteString res)
   Extism.free plugin

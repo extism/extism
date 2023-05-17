@@ -62,8 +62,8 @@ fn plugin_new_with_manifest(
     manifest_payload: String,
     wasi: bool,
 ) -> Result<i32, rustler::Error> {
-    let context = &ctx.ctx.write().unwrap();
-    let result = match Plugin::new(context, manifest_payload, [], wasi) {
+    let context = ctx.ctx.write().unwrap();
+    let result = match Plugin::new(&context, manifest_payload, [], wasi) {
         Err(e) => Err(to_rustler_error(e)),
         Ok(plugin) => {
             let plugin_id = plugin.as_i32();

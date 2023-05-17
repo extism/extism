@@ -16,7 +16,7 @@ fn main() {
         .rename_item("Context", "ExtismContext")
         .rename_item("ValType", "ExtismValType")
         .rename_item("ValUnion", "ExtismValUnion")
-        .rename_item("Plugin", "ExtismCurrentPlugin")
+        .rename_item("Internal", "ExtismCurrentPlugin")
         .with_style(cbindgen::Style::Type)
         .generate()
     {

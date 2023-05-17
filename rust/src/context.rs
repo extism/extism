@@ -1,5 +1,6 @@
 use crate::*;
 
+#[derive(Clone)]
 pub struct Context(pub(crate) std::sync::Arc<std::sync::Mutex<extism_runtime::Context>>);
 
 impl Default for Context {
@@ -7,6 +8,9 @@ impl Default for Context {
         Context::new()
     }
 }
+
+unsafe impl Sync for Context {}
+unsafe impl Send for Context {}
 
 impl Context {
     /// Create a new context

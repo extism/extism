@@ -15,7 +15,6 @@ std::vector<uint8_t> read(const char *filename) {
 
 int main(int argc, char *argv[]) {
   auto wasm = read("../wasm/code-functions.wasm");
-  Context context = Context();
   std::string tmp = "Testing";
 
   // A lambda can be used as a host function
@@ -34,7 +33,7 @@ int main(int argc, char *argv[]) {
                [](void *x) { std::cout << "Free user data" << std::endl; }),
   };
 
-  Plugin plugin = context.plugin(wasm, true, functions);
+  Plugin plugin(wasm, true, functions);
 
   const char *input = argc > 1 ? argv[1] : "this is a test";
   ExtismSize length = strlen(input);

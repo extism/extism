@@ -26,7 +26,8 @@ let free t =
   if not (Ctypes.is_null t.ctx.pointer) then
     Bindings.extism_plugin_free t.ctx.pointer t.id
 
-let create ?config ?(wasi = false) ?(functions = []) ctx wasm =
+let create ?config ?(wasi = false) ?(functions = []) ?context wasm =
+  let ctx = match context with Some c -> c | None -> Context.create () in
   let func_ptrs = List.map (fun x -> x.Function.pointer) functions in
   let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
   let n_funcs = Ctypes.CArray.length arr in
@@ -48,16 +49,15 @@ let create ?config ?(wasi = false) ?(functions = []) ctx wasm =
       let () = Gc.finalise free t in
       Ok t
 
-let of_manifest ?wasi ?functions ctx manifest =
+let of_manifest ?wasi ?functions ?context manifest =
   let data = Manifest.to_json manifest in
-  create ctx ?wasi ?functions data
+  create ?wasi ?functions ?context data
 
 let%test "free plugin" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
-  with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Error.unwrap in
-      free plugin;
-      true)
+  let plugin = of_manifest manifest |> Error.unwrap in
+  free plugin;
+  true
 
 let update plugin ?config ?(wasi = false) ?(functions = []) wasm =
   let { id; ctx; _ } = plugin in
@@ -85,11 +85,10 @@ let update_manifest plugin ?wasi manifest =
 
 let%test "update plugin manifest and config" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
-  with_context (fun ctx ->
-      let config = [ ("a", Some "1") ] in
-      let plugin = of_manifest ctx manifest |> Error.unwrap in
-      let manifest = Manifest.with_config manifest config in
-      update_manifest plugin manifest |> Result.is_ok)
+  let config = [ ("a", Some "1") ] in
+  let plugin = of_manifest manifest |> Error.unwrap in
+  let manifest = Manifest.with_config manifest config in
+  update_manifest plugin manifest |> Result.is_ok
 
 let call' f { id; ctx; _ } ~name input len =
   let rc = f ctx.pointer id name input len in
@@ -114,11 +113,10 @@ let call_bigstring (t : t) ~name input =
 
 let%test "call_bigstring" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
-  with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Error.unwrap in
-      call_bigstring plugin ~name:"count_vowels"
-        (Bigstringaf.of_string ~off:0 ~len:14 "this is a test")
-      |> Error.unwrap |> Bigstringaf.to_string = "{\"count\": 4}")
+  let plugin = of_manifest manifest |> Error.unwrap in
+  call_bigstring plugin ~name:"count_vowels"
+    (Bigstringaf.of_string ~off:0 ~len:14 "this is a test")
+  |> Error.unwrap |> Bigstringaf.to_string = "{\"count\": 4}"
 
 let call (t : t) ~name input =
   let len = String.length input in
@@ -127,10 +125,9 @@ let call (t : t) ~name input =
 
 let%test "call" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
-  with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Error.unwrap in
-      call plugin ~name:"count_vowels" "this is a test"
-      |> Error.unwrap = "{\"count\": 4}")
+  let plugin = of_manifest manifest |> Error.unwrap in
+  call plugin ~name:"count_vowels" "this is a test"
+  |> Error.unwrap = "{\"count\": 4}"
 
 let%test "call_functions" =
   let open Types.Val_type in
@@ -147,22 +144,18 @@ let%test "call_functions" =
   in
   let functions = [ hello_world ] in
   let manifest = Manifest.(create [ Wasm.file "test/code-functions.wasm" ]) in
-  with_context (fun ctx ->
-      let plugin =
-        of_manifest ctx manifest ~functions ~wasi:true |> Error.unwrap
-      in
-      call plugin ~name:"count_vowels" "this is a test"
-      |> Error.unwrap = "{\"count\": 4}")
+  let plugin = of_manifest manifest ~functions ~wasi:true |> Error.unwrap in
+  call plugin ~name:"count_vowels" "this is a test"
+  |> Error.unwrap = "{\"count\": 4}"
 
 let function_exists { id; ctx; _ } name =
   Bindings.extism_plugin_function_exists ctx.pointer id name
 
 let%test "function exists" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
-  with_context (fun ctx ->
-      let plugin = of_manifest ctx manifest |> Error.unwrap in
-      function_exists plugin "count_vowels"
-      && not (function_exists plugin "function_does_not_exist"))
+  let plugin = of_manifest manifest |> Error.unwrap in
+  function_exists plugin "count_vowels"
+  && not (function_exists plugin "function_does_not_exist")
 
 module Cancel_handle = struct
   type t = { inner : unit Ctypes.ptr }

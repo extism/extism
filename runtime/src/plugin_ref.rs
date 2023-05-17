@@ -15,9 +15,18 @@ impl<'a> PluginRef<'a> {
     /// - Updates `input` pointer
     pub fn init(mut self, data: *const u8, data_len: usize) -> Self {
         trace!("PluginRef::init: {}", self.id,);
-        self.as_mut().memory.reset();
-        self.as_mut().set_input(data, data_len);
-
+        let plugin = self.as_mut();
+        plugin.memory_mut().reset();
+        if plugin.has_wasi() || plugin.runtime.is_some() {
+            if let Err(e) = plugin.reinstantiate() {
+                error!("Failed to reinstantiate: {e:?}");
+                plugin
+                    .internal()
+                    .set_error(format!("Failed to reinstantiate: {e:?}"));
+                return self;
+            }
+        }
+        plugin.set_input(data, data_len);
         self
     }
 
@@ -29,31 +38,19 @@ impl<'a> PluginRef<'a> {
 
         let epoch_timer_tx = ctx.epoch_timer_tx.clone();
 
-        if !ctx.plugin_exists(plugin_id) {
+        let plugin = if let Some(plugin) = ctx.plugin(plugin_id) {
+            plugin
+        } else {
             error!("Plugin does not exist: {plugin_id}");
             return ctx.error(format!("Plugin does not exist: {plugin_id}"), None);
-        }
+        };
 
         if clear_error {
             trace!("Clearing context error");
             ctx.error = None;
-        }
-
-        // `unwrap` is okay here because we already checked with `ctx.plugin_exists` above
-        let plugin = ctx.plugin(plugin_id).unwrap();
-
-        {
-            let plugin = unsafe { &mut *plugin };
-            if clear_error {
-                trace!("Clearing plugin error: {plugin_id}");
-                plugin.clear_error();
-            }
-
-            if plugin.has_wasi() || plugin.runtime.is_some() {
-                if let Err(e) = plugin.reinstantiate() {
-                    error!("Failed to reinstantiate: {e:?}");
-                    return plugin.error(format!("Failed to reinstantiate: {e:?}"), None);
-                }
+            trace!("Clearing plugin error: {plugin_id}");
+            unsafe {
+                (&*plugin).internal().clear_error();
             }
         }
 

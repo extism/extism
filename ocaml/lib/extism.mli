@@ -208,7 +208,7 @@ module Plugin : sig
     ?config:Manifest.config ->
     ?wasi:bool ->
     ?functions:Function.t list ->
-    Context.t ->
+    ?context:Context.t ->
     string ->
     (t, Error.t) result
   (** Make a new plugin from raw WebAssembly or JSON encoded manifest *)
@@ -216,7 +216,7 @@ module Plugin : sig
   val of_manifest :
     ?wasi:bool ->
     ?functions:Function.t list ->
-    Context.t ->
+    ?context:Context.t ->
     Manifest.t ->
     (t, Error.t) result
   (** Make a new plugin from a [Manifest] *)

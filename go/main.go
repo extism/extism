@@ -36,9 +36,6 @@ func main() {
 	version := extism.ExtismVersion()
 	fmt.Println("Extism Version: ", version)
 
-	ctx := extism.NewContext()
-	defer ctx.Free() // this will free the context and all associated plugins
-
 	// set some input data to provide to the plugin module
 	var data []byte
 	if len(os.Args) > 1 {
@@ -49,7 +46,7 @@ func main() {
 	manifest := extism.Manifest{Wasm: []extism.Wasm{extism.WasmFile{Path: "../wasm/code-functions.wasm"}}}
 	f := extism.NewFunction("hello_world", []extism.ValType{extism.I64}, []extism.ValType{extism.I64}, C.hello_world, "Hello again!")
 	defer f.Free()
-	plugin, err := ctx.PluginFromManifest(manifest, []extism.Function{f}, true)
+	plugin, err := extism.NewPluginFromManifest(manifest, []extism.Function{f}, true)
 	if err != nil {
 		fmt.Println(err)
 		os.Exit(1)

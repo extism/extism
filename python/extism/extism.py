@@ -193,7 +193,9 @@ class Context:
         Plugin
             The created plugin
         """
-        return Plugin(self, manifest, wasi, config, functions)
+        return Plugin(
+            manifest, context=self, wasi=wasi, config=config, functions=functions
+        )
 
 
 class Function:
@@ -247,15 +249,18 @@ class Plugin:
 
     def __init__(
         self,
-        context: Context,
         plugin: Union[str, bytes, dict],
+        context=None,
         wasi=False,
         config=None,
         functions=None,
     ):
         """
-        Construct a Plugin. Please use Context#plugin instead.
+        Construct a Plugin
         """
+
+        if context is None:
+            context = Context()
 
         wasm = _wasm(plugin)
 

@@ -14,6 +14,18 @@ public class Plugin : IDisposable
     private readonly HostFunction[] _functions;
     private int _disposed;
 
+    /// <summary>
+    /// Create a and load a plug-in
+    /// Using this constructor will give the plug-in it's own internal Context
+    /// </summary>
+    /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
+    /// <param name="functions">List of host functions expected by the plugin.</param>
+    /// <param name="withWasi">Enable/Disable WASI.</param>
+    public static Plugin Create(ReadOnlySpan<byte> wasm, HostFunction[] functions, bool withWasi) {
+        var context = new Context();
+        return context.CreatePlugin(wasm, functions, withWasi);
+    }
+
     internal Plugin(Context context, HostFunction[] functions, int index)
     {
         _context = context;

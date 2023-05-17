@@ -9,13 +9,14 @@ const utils = @import("utils.zig");
 const Self = @This();
 
 ctx: *Context,
+owns_context: bool,
 id: i32,
 
 // We have to use this until ziglang/zig#2647 is resolved.
 error_info: ?[]const u8,
 
 /// Create a new plugin from a WASM module
-pub fn init(allocator: std.mem.Allocator, ctx: *Context, data: []const u8, functions: []Function, wasi: bool) !Self {
+pub fn init(allocator: std.mem.Allocator, ctx: *Context, data: []const u8, functions: []const Function, wasi: bool) !Self {
     ctx.mutex.lock();
     defer ctx.mutex.unlock();
     var plugin: i32 = -1;
@@ -45,20 +46,39 @@ pub fn init(allocator: std.mem.Allocator, ctx: *Context, data: []const u8, funct
         .id = plugin,
         .ctx = ctx,
         .error_info = null,
+        .owns_context = false,
     };
 }
 
 /// Create a new plugin from the given manifest
-pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, manifest: Manifest, functions: []Function, wasi: bool) !Self {
+pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, manifest: Manifest, functions: []const Function, wasi: bool) !Self {
     const json = try utils.stringifyAlloc(allocator, manifest);
     defer allocator.free(json);
     return init(allocator, ctx, json, functions, wasi);
+}
+
+/// Create a new plugin from a WASM module in its own context
+pub fn create(allocator: std.mem.Allocator, data: []const u8, functions: []const Function, wasi: bool) !Self {
+    const ctx = Context.init();
+    var plugin = init(allocator, ctx, data, functions, wasi);
+    plugin.owns_context = true;
+    return plugin;
+}
+
+/// Create a new plugin from the given manifest in its own context
+pub fn createFromManifest(allocator: std.mem.Allocator, manifest: Manifest, functions: []const Function, wasi: bool) !Self {
+    const json = try utils.stringifyAlloc(allocator, manifest);
+    defer allocator.free(json);
+    return create(allocator, json, functions, wasi);
 }
 
 pub fn deinit(self: *Self) void {
     self.ctx.mutex.lock();
     defer self.ctx.mutex.unlock();
     c.extism_plugin_free(self.ctx.ctx, self.id);
+    if (self.owns_context) {
+        self.ctx.deinit();
+    }
 }
 
 pub fn cancelHandle(self: *Self) CancelHandle {

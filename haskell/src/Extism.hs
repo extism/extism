@@ -79,12 +79,24 @@ plugin c wasm useWasi =
         return $ Left (ExtismError e)
       else
         return $ Right (Plugin c p))
+      
+-- | Create a 'Plugin' with its own 'Context'
+createPlugin :: B.ByteString -> Bool -> IO (Result Plugin)
+createPlugin c useWasi = do
+  ctx <- newContext
+  plugin ctx c useWasi
 
 -- | Create a 'Plugin' from a 'Manifest'
 pluginFromManifest :: Context -> Manifest -> Bool -> IO (Result Plugin)
 pluginFromManifest ctx manifest useWasi =
   let wasm = toByteString $ toString manifest in
   plugin ctx wasm useWasi
+
+-- | Create a 'Plugin' with its own 'Context' from a 'Manifest'
+createPluginFromManifest :: Manifest -> Bool -> IO (Result Plugin)
+createPluginFromManifest manifest useWasi = do
+  ctx <- newContext
+  pluginFromManifest ctx manifest useWasi
 
 -- | Update a 'Plugin' with a new WASM module
 update :: Plugin -> B.ByteString -> Bool -> IO (Result ())

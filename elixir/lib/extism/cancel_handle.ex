@@ -5,7 +5,7 @@ defmodule Extism.CancelHandle do
   """
   defstruct [
     # The actual NIF Resource. PluginIndex and the context
-    handle: nil,
+    handle: nil
   ]
 
   def wrap_resource(handle) do

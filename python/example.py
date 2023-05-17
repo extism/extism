@@ -5,11 +5,11 @@ import hashlib
 import pathlib
 
 sys.path.append(".")
-from extism import Context, Function, host_fn, ValType
+from extism import Function, host_fn, ValType, Plugin
 
 
 @host_fn
-def hello_world(plugin, input_, output, context, a_string):
+def hello_world(plugin, input_, output, a_string):
     print("Hello from Python!")
     print(a_string)
     print(input_)
@@ -33,24 +33,20 @@ def main(args):
     )
     wasm = wasm_file_path.read_bytes()
     hash = hashlib.sha256(wasm).hexdigest()
-    config = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
+    manifest = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
 
-    # a Context provides a scope for plugins to be managed within. creating multiple contexts
-    # is expected and groups plugins based on source/tenant/lifetime etc.
-    with Context() as context:
-        functions = [
-            Function(
-                "hello_world",
-                [ValType.I64],
-                [ValType.I64],
-                hello_world,
-                context,
-                "Hello again!",
-            )
-        ]
-        plugin = context.plugin(config, wasi=True, functions=functions)
-        # Call `count_vowels`
-        wasm_vowel_count = json.loads(plugin.call("count_vowels", data))
+    functions = [
+        Function(
+            "hello_world",
+            [ValType.I64],
+            [ValType.I64],
+            hello_world,
+            "Hello again!",
+        )
+    ]
+    plugin = Plugin(manifest, wasi=True, functions=functions)
+    # Call `count_vowels`
+    wasm_vowel_count = json.loads(plugin.call("count_vowels", data))
 
     print("Number of vowels:", wasm_vowel_count["count"])
 

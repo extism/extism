@@ -54,7 +54,7 @@ typedef struct ExtismCancelHandle ExtismCancelHandle;
 typedef struct ExtismFunction ExtismFunction;
 
 /**
- * Plugin contains everything needed to execute a WASM function
+ * Internal stores data that is available to the caller in PDK functions
  */
 typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 
