@@ -342,9 +342,10 @@ class Plugin {
 
 public:
   // Create a new plugin
-  Plugin(std::shared_ptr<ExtismContext> ctx, const uint8_t *wasm,
-         ExtismSize length, bool with_wasi = false,
-         std::vector<Function> functions = std::vector<Function>())
+  Plugin(const uint8_t *wasm, ExtismSize length, bool with_wasi = false,
+         std::vector<Function> functions = std::vector<Function>(),
+         std::shared_ptr<ExtismContext> ctx = std::shared_ptr<ExtismContext>(
+             extism_context_new(), extism_context_free))
       : functions(functions) {
     std::vector<const ExtismFunction *> ptrs;
     for (auto i : this->functions) {
@@ -359,6 +360,19 @@ public:
     this->context = ctx;
   }
 
+  Plugin(const std::string &str, bool with_wasi = false,
+         std::vector<Function> functions = {},
+         std::shared_ptr<ExtismContext> ctx = std::shared_ptr<ExtismContext>(
+             extism_context_new(), extism_context_free))
+      : Plugin((const uint8_t *)str.c_str(), str.size(), with_wasi, functions,
+               ctx) {}
+
+  Plugin(const std::vector<uint8_t> &data, bool with_wasi = false,
+         std::vector<Function> functions = {},
+         std::shared_ptr<ExtismContext> ctx = std::shared_ptr<ExtismContext>(
+             extism_context_new(), extism_context_free))
+      : Plugin(data.data(), data.size(), with_wasi, functions, ctx) {}
+
   CancelHandle cancel_handle() {
     return CancelHandle(
         extism_plugin_cancel_handle(this->context.get(), this->id()));
@@ -366,8 +380,10 @@ public:
 
 #ifndef EXTISM_NO_JSON
   // Create a new plugin from Manifest
-  Plugin(std::shared_ptr<ExtismContext> ctx, const Manifest &manifest,
-         bool with_wasi = false, std::vector<Function> functions = {}) {
+  Plugin(const Manifest &manifest, bool with_wasi = false,
+         std::vector<Function> functions = {},
+         std::shared_ptr<ExtismContext> ctx = std::shared_ptr<ExtismContext>(
+             extism_context_new(), extism_context_free)) {
     std::vector<const ExtismFunction *> ptrs;
     for (auto i : this->functions) {
       ptrs.push_back(i.get());
@@ -506,28 +522,28 @@ public:
   // Create plugin from uint8_t*
   Plugin plugin(const uint8_t *wasm, size_t length, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
-    return Plugin(this->pointer, wasm, length, with_wasi, functions);
+    return Plugin(wasm, length, with_wasi, functions, this->pointer);
   }
 
   // Create plugin from std::string
   Plugin plugin(const std::string &str, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
-    return Plugin(this->pointer, (const uint8_t *)str.c_str(), str.size(),
-                  with_wasi, functions);
+    return Plugin((const uint8_t *)str.c_str(), str.size(), with_wasi,
+                  functions, this->pointer);
   }
 
   // Create plugin from uint8_t vector
   Plugin plugin(const std::vector<uint8_t> &data, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
-    return Plugin(this->pointer, data.data(), data.size(), with_wasi,
-                  functions);
+    return Plugin(data.data(), data.size(), with_wasi, functions,
+                  this->pointer);
   }
 
 #ifndef EXTISM_NO_JSON
   // Create plugin from Manifest
   Plugin plugin(const Manifest &manifest, bool with_wasi = false,
                 std::vector<Function> functions = {}) const {
-    return Plugin(this->pointer, manifest, with_wasi, functions);
+    return Plugin(manifest, with_wasi, functions, this->pointer);
   }
 #endif
 

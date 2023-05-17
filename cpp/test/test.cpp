@@ -21,21 +21,19 @@ TEST(Context, Basic) {
 }
 
 TEST(Plugin, Manifest) {
-  Context context;
   Manifest manifest = Manifest::path(code);
   manifest.set_config("a", "1");
 
-  ASSERT_NO_THROW(Plugin plugin = context.plugin(manifest));
-  Plugin plugin = context.plugin(manifest);
+  ASSERT_NO_THROW(Plugin plugin(manifest));
+  Plugin plugin(manifest);
 
   Buffer buf = plugin.call("count_vowels", "this is a test");
   ASSERT_EQ((std::string)buf, "{\"count\": 4}");
 }
 
 TEST(Plugin, BadManifest) {
-  Context context;
   Manifest manifest;
-  ASSERT_THROW(Plugin plugin = context.plugin(manifest), Error);
+  ASSERT_THROW(Plugin plugin(manifest), Error);
 }
 
 TEST(Plugin, Bytes) {
@@ -68,7 +66,6 @@ TEST(Plugin, FunctionExists) {
 }
 
 TEST(Plugin, HostFunction) {
-  Context context;
   auto wasm = read("../../wasm/code-functions.wasm");
   auto t = std::vector<ValType>{ValType::I64};
   Function hello_world =
@@ -82,7 +79,7 @@ TEST(Plugin, HostFunction) {
   auto functions = std::vector<Function>{
       hello_world,
   };
-  Plugin plugin = context.plugin(wasm, true, functions);
+  Plugin plugin(wasm, true, functions);
   auto buf = plugin.call("count_vowels", "aaa");
   ASSERT_EQ(buf.length, 4);
   ASSERT_EQ((std::string)buf, "test");
