@@ -31,8 +31,12 @@ class Plugin
 
     private $id;
 
-    public function __construct($ctx, $data, $wasi = false, $config = null) 
+    public function __construct($data, $wasi = false, $config = null, $ctx = null) 
     {
+        if ($ctx == null) {
+          $ctx = new Context();
+        }
+
         $this->lib = $ctx->lib;
 
         $this->wasi = $wasi;
