@@ -44,6 +44,17 @@ impl InternalExt for Plugin {
 
 const EXPORT_MODULE_NAME: &str = "env";
 
+fn profiling_strategy() -> ProfilingStrategy {
+    match std::env::var("EXTISM_PROFILE").as_deref() {
+        Ok("perf") => ProfilingStrategy::PerfMap,
+        Ok(x) => {
+            log::warn!("Invalid value for EXTISM_PROFILE: {x}");
+            ProfilingStrategy::None
+        }
+        Err(_) => ProfilingStrategy::None,
+    }
+}
+
 impl Plugin {
     /// Create a new plugin from the given WASM code
     pub fn new<'a>(
@@ -56,7 +67,8 @@ impl Plugin {
         let engine = Engine::new(
             Config::new()
                 .epoch_interruption(true)
-                .debug_info(std::env::var("EXTISM_DEBUG").is_ok()),
+                .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
+                .profiler(profiling_strategy()),
         )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
