@@ -19,15 +19,19 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
-      - name: Release Rust Host SDK
+      - name: Release Rust Manifest Crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
           # order of crate publication matter: manifest, runtime, rust
-
           cargo publish --manifest-path manifest/Cargo.toml
           # allow for crates.io to update so dependant crates can locate extism-manifest
           sleep 5 
+
+      - name: Release Rust Host SDK
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
 
           cargo publish --manifest-path runtime/Cargo.toml --no-verify
           cargo publish --manifest-path rust/Cargo.toml
