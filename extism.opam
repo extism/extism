@@ -16,7 +16,7 @@ depends: [
   "ctypes-foreign" {>= "0.18.0"}
   "bigstringaf" {>= "0.9.0"}
   "ppx_yojson_conv" {>= "v0.15.0"}
-  "extism-manifest"
+  "extism-manifest" {= version}
   "ppx_inline_test" {>= "v0.15.0"}
   "cmdliner" {>= "1.1.1"}
   "odoc" {with-doc}
