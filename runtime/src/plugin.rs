@@ -55,6 +55,37 @@ fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
+fn calculate_available_memory(
+    available_pages: &mut Option<u32>,
+    modules: &BTreeMap<String, Module>,
+) -> anyhow::Result<()> {
+    let available_pages = match available_pages {
+        Some(p) => p,
+        None => return Ok(()),
+    };
+
+    for (name, module) in modules.iter() {
+        let mut memories = 0;
+        for export in module.exports() {
+            if let Some(memory) = export.ty().memory() {
+                let memory_max = memory.maximum();
+                match memory_max {
+                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set all modules\
+                                           must have a maximum bound set on an exported memory"),
+                    Some(m) => *available_pages = available_pages.saturating_sub(m as u32),
+                }
+                memories += 1;
+            }
+        }
+
+        if memories == 0 {
+            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set all modules must\
+                           have a maximum bound set on an exported memory");
+        }
+    }
+    Ok(())
+}
+
 impl Plugin {
     /// Create a new plugin from the given WASM code
     pub fn new<'a>(
@@ -75,11 +106,14 @@ impl Plugin {
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
         store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
+        // Calculate how much memory is available based on the value of `max_pages` and the exported
+        // memory of the modules. An error will be returned if a module doesn't have an exported memory
+        // or there is no maximum set for a module's exported memory.
+        let mut available_pages = manifest.as_ref().memory.max_pages;
+        calculate_available_memory(&mut available_pages, &modules)?;
+
         // Create memory
-        let memory = Memory::new(
-            &mut store,
-            MemoryType::new(4, manifest.as_ref().memory.max_pages),
-        )?;
+        let memory = Memory::new(&mut store, MemoryType::new(2, available_pages))?;
         let mut memory = PluginMemory::new(store, memory, manifest);
 
         let mut linker = Linker::new(&engine);
