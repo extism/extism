@@ -81,9 +81,7 @@ fn stringify(
             try out_stream.writeByte('{');
             var field_output = false;
             var child_options = options;
-            if (child_options.whitespace) |*child_whitespace| {
-                child_whitespace.indent_level += 1;
-            }
+            child_options.whitespace.indent_level += 1;
             inline for (S.fields) |Field| {
                 // don't include void fields
                 if (Field.type == void) continue;
@@ -105,23 +103,17 @@ fn stringify(
                     } else {
                         try out_stream.writeByte(',');
                     }
-                    if (child_options.whitespace) |child_whitespace| {
-                        try child_whitespace.outputIndent(out_stream);
-                    }
+                    try child_options.whitespace.outputIndent(out_stream);
                     try json.encodeJsonString(Field.name, options, out_stream);
                     try out_stream.writeByte(':');
-                    if (child_options.whitespace) |child_whitespace| {
-                        if (child_whitespace.separator) {
-                            try out_stream.writeByte(' ');
-                        }
+                    if (child_options.whitespace.separator) {
+                        try out_stream.writeByte(' ');
                     }
                     try stringify(@field(value, Field.name), child_options, out_stream);
                 }
             }
             if (field_output) {
-                if (options.whitespace) |whitespace| {
-                    try whitespace.outputIndent(out_stream);
-                }
+                try options.whitespace.outputIndent(out_stream);
             }
             try out_stream.writeByte('}');
             return;
@@ -148,22 +140,16 @@ fn stringify(
 
                 try out_stream.writeByte('[');
                 var child_options = options;
-                if (child_options.whitespace) |*whitespace| {
-                    whitespace.indent_level += 1;
-                }
+                child_options.whitespace.indent_level += 1;
                 for (value, 0..) |x, i| {
                     if (i != 0) {
                         try out_stream.writeByte(',');
                     }
-                    if (child_options.whitespace) |child_whitespace| {
-                        try child_whitespace.outputIndent(out_stream);
-                    }
+                    try child_options.whitespace.outputIndent(out_stream);
                     try stringify(x, child_options, out_stream);
                 }
                 if (value.len != 0) {
-                    if (options.whitespace) |whitespace| {
-                        try whitespace.outputIndent(out_stream);
-                    }
+                    try options.whitespace.outputIndent(out_stream);
                 }
                 try out_stream.writeByte(']');
                 return;
