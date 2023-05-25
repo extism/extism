@@ -20,10 +20,10 @@ public class PluginTests {
 
     @Test
     public void shouldInvokeFunctionWithMemoryOptions() {
-        //FIXME check whether memory options are effective
         var manifest = new Manifest(List.of(CODE.pathWasmSource()), new MemoryOptions(0));
-        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
-        assertThat(output).isEqualTo("{\"count\": 3}");
+        assertThrows(ExtismException.class, () -> {
+            Extism.invokeFunction(manifest, "count_vowels", "Hello World");
+        });
     }
 
     @Test
