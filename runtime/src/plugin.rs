@@ -64,18 +64,26 @@ fn calculate_available_memory(
         None => return Ok(()),
     };
 
+    let max_pages = *available_pages;
+    let mut fail_memory_check = false;
+    let mut total_memory_needed = 0;
     for (name, module) in modules.iter() {
         let mut memories = 0;
         for export in module.exports() {
             if let Some(memory) = export.ty().memory() {
                 let memory_max = memory.maximum();
                 match memory_max {
-                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set all modules \
+                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set in the manifest all modules \
                                            must have a maximum bound set on an exported memory"),
                     Some(m) => {
+                        total_memory_needed += m;
+                        if !fail_memory_check {
+                            continue
+                        }
+
                         *available_pages = available_pages.saturating_sub(m as u32);
                         if *available_pages == 0 {
-                            anyhow::bail!("Not enough memory configured to run the provided plugin");
+                            fail_memory_check = true;
                         }
                     },
                 }
@@ -84,9 +92,14 @@ fn calculate_available_memory(
         }
 
         if memories == 0 {
-            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set all modules must \
+            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set in the manifest all modules must \
                            have a maximum bound set on an exported memory");
         }
+    }
+
+    if fail_memory_check {
+        anyhow::bail!("Not enough memory configured to run the provided plugin, `memory.max_pages` is set to {max_pages} in the manifest \
+                       but {total_memory_needed} pages are needed by the plugin");
     }
 
     Ok(())
