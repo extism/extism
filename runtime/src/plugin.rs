@@ -70,7 +70,7 @@ fn calculate_available_memory(
             if let Some(memory) = export.ty().memory() {
                 let memory_max = memory.maximum();
                 match memory_max {
-                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set all modules\
+                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set all modules \
                                            must have a maximum bound set on an exported memory"),
                     Some(m) => {
                         *available_pages = available_pages.saturating_sub(m as u32);
@@ -84,7 +84,7 @@ fn calculate_available_memory(
         }
 
         if memories == 0 {
-            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set all modules must\
+            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set all modules must \
                            have a maximum bound set on an exported memory");
         }
     }
