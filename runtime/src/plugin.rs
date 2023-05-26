@@ -72,7 +72,12 @@ fn calculate_available_memory(
                 match memory_max {
                     None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set all modules\
                                            must have a maximum bound set on an exported memory"),
-                    Some(m) => *available_pages = available_pages.saturating_sub(m as u32),
+                    Some(m) => {
+                        *available_pages = available_pages.saturating_sub(m as u32);
+                        if *available_pages == 0 {
+                            anyhow::bail!("Not enough memory configured to run the provided plugin");
+                        }
+                    },
                 }
                 memories += 1;
             }
@@ -83,6 +88,7 @@ fn calculate_available_memory(
                            have a maximum bound set on an exported memory");
         }
     }
+
     Ok(())
 }
 
@@ -103,14 +109,19 @@ impl Plugin {
         )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
-        let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
-        store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
         // Calculate how much memory is available based on the value of `max_pages` and the exported
         // memory of the modules. An error will be returned if a module doesn't have an exported memory
         // or there is no maximum set for a module's exported memory.
         let mut available_pages = manifest.as_ref().memory.max_pages;
         calculate_available_memory(&mut available_pages, &modules)?;
+        log::trace!("Available pages: {available_pages:?}");
+
+        let mut store = Store::new(
+            &engine,
+            Internal::new(&manifest, with_wasi, available_pages)?,
+        );
+        store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
         // Create memory
         let memory = Memory::new(&mut store, MemoryType::new(2, available_pages))?;

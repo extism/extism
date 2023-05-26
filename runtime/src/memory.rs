@@ -86,12 +86,10 @@ impl PluginMemory {
         if let Some(store) = self.store.take() {
             let engine = store.engine().clone();
             let internal = store.into_data();
+            let pages = internal.available_pages;
             let mut store = Store::new(&engine, internal);
             store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
-            self.memory = Memory::new(
-                &mut store,
-                MemoryType::new(4, self.manifest.as_ref().memory.max_pages),
-            )?;
+            self.memory = Memory::new(&mut store, MemoryType::new(2, pages))?;
             self.store = Some(store);
         }
 

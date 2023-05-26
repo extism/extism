@@ -30,6 +30,8 @@ pub struct Internal {
 
     /// A pointer to the plugin memory, this should mostly be used from the PDK
     pub memory: *mut PluginMemory,
+
+    pub(crate) available_pages: Option<u32>,
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values
@@ -67,7 +69,11 @@ pub struct Wasi {
 }
 
 impl Internal {
-    pub(crate) fn new(manifest: &Manifest, wasi: bool) -> Result<Self, Error> {
+    pub(crate) fn new(
+        manifest: &Manifest,
+        wasi: bool,
+        available_pages: Option<u32>,
+    ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasmtime_wasi::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
@@ -107,6 +113,7 @@ impl Internal {
             http_status: 0,
             last_error: std::cell::RefCell::new(None),
             vars: BTreeMap::new(),
+            available_pages,
         })
     }
 
