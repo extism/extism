@@ -7,10 +7,11 @@
     </PropertyGroup>
 
     <PropertyGroup>
-        <PackageId>Extism.runtime.win-x64</PackageId>
-        <Version>0.6.0</Version>
+        <!-- TODO: Temporal package name. Real one: Extism.runtime.win-x64 -->
+        <PackageId>Extism.runtime.wasm-threads.win-x64</PackageId>
+        <Version>0.6.0-threads01</Version>
         <Authors>Extism Contributors</Authors>
-        <Description>Internal implementation package for Extism to work on Windows x64</Description>
+        <Description>Fork of the original Windows Extism 0.6.0 runtime with WASM threads feature enabled for Wasmtime, when EXTISM_WASM_THREADS env is passed.</Description>
         <Tags>extism, wasm, plugin</Tags>
         <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
     </PropertyGroup>
