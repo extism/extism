@@ -66,6 +66,7 @@ impl Plugin {
         // then we enable debug info
         let engine = Engine::new(
             Config::new()
+                .wasm_threads(std::env::var("EXTISM_WASM_THREADS").is_ok())
                 .epoch_interruption(true)
                 .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
                 .profiler(profiling_strategy()),
