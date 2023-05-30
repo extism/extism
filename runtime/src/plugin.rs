@@ -1,4 +1,6 @@
 use std::collections::BTreeMap;
+use std::sync::{Arc, Mutex, RwLock};
+use wasmtime_wasi_threads::WasiThreadsCtx;
 
 use crate::*;
 
@@ -62,13 +64,18 @@ impl Plugin {
         imports: impl IntoIterator<Item = &'a Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
+        // Additional configuration (mostly experimental) coming from env variables.
+        let with_wasm_threads = std::env::var("EXTISM_WASM_THREADS").is_ok();
+        let with_debug = std::env::var("EXTISM_DEBUG").is_ok();
+        let with_wasi_threads = std::env::var("EXTISM_WASI_THREADS").is_ok();
+
         // Create a new engine, if the `EXITSM_DEBUG` environment variable is set
         // then we enable debug info
         let engine = Engine::new(
             Config::new()
-                .wasm_threads(std::env::var("EXTISM_WASM_THREADS").is_ok())
+                .wasm_threads(with_wasm_threads)
                 .epoch_interruption(true)
-                .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
+                .debug_info(with_debug)
                 .profiler(profiling_strategy()),
         )?;
         let mut imports = imports.into_iter();
@@ -102,6 +109,12 @@ impl Plugin {
             let entry = modules.iter().last().unwrap();
             (entry.0.as_str(), entry.1)
         });
+
+        if with_wasi && with_wasi_threads {
+            wasmtime_wasi_threads::add_to_linker(&mut linker, &mut store, &main,|x: &mut Internal| {
+                WasiThreadsCtx::new(main.clone(), Arc::new(linker.clone())).as_mut().unwrap()
+            })?;
+        }
 
         // Define PDK functions
         macro_rules! define_funcs {
@@ -186,7 +199,7 @@ impl Plugin {
         };
 
         // Make sure `Internal::memory` is initialized
-        plugin.internal_mut().memory = plugin.memory.get();
+        plugin.internal_mut().memory = Arc::new(Mutex::new(Some(unsafe { plugin.memory.into_inner() })));
 
         // Then detect runtime before returning the new plugin
         plugin.detect_runtime();
@@ -212,9 +225,10 @@ impl Plugin {
         }
         let ptr = self.memory.get();
         let internal = self.internal_mut();
-        internal.input = input;
         internal.input_length = len;
-        internal.memory = ptr
+        // Shit that is going here is required to ensure that input and memory is safely shared across WASI threads.
+        internal.input = Arc::new(RwLock::new(Some(unsafe { std::slice::from_raw_parts(input, len).to_vec() })));
+        internal.memory = Arc::new(Mutex::new(Some(*unsafe { Box::from_raw(ptr) })))
     }
 
     /// Dump memory using trace! logging
