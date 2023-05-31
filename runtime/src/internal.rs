@@ -1,14 +1,17 @@
 use std::collections::BTreeMap;
+use std::ptr::{null, null_mut};
+use std::sync::{Arc, Mutex, RwLock};
 
 use crate::*;
 
 /// Internal stores data that is available to the caller in PDK functions
+#[derive(Clone)]
 pub struct Internal {
     /// Call input length
     pub input_length: usize,
 
     /// Pointer to call input
-    pub input: *const u8,
+    pub input: Arc<RwLock<Option<Vec<u8>>>>,
 
     /// Memory offset that points to the output
     pub output_offset: usize,
@@ -29,7 +32,7 @@ pub struct Internal {
     pub vars: BTreeMap<String, Vec<u8>>,
 
     /// A pointer to the plugin memory, this should mostly be used from the PDK
-    pub memory: *mut PluginMemory,
+    pub memory: Arc<Mutex<Option<PluginMemory>>>,
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values
@@ -64,6 +67,18 @@ pub struct Wasi {
     pub nn: wasmtime_wasi_nn::WasiNnCtx,
     #[cfg(not(feature = "nn"))]
     pub nn: (),
+}
+impl Clone for Wasi {
+    fn clone(&self) -> Self {
+        Self {
+            ctx: self.ctx.clone(),
+            // I'm not sure how to handle cloning here correctly. So we will just create the new instance.
+            #[cfg(feature = "nn")]
+            nn: wasmtime_wasi_nn::WasiNnCtx::new().unwrap(),
+            #[cfg(not(feature = "nn"))]
+            nn: (),
+        }
+    }
 }
 
 impl Internal {
@@ -101,9 +116,9 @@ impl Internal {
             input_length: 0,
             output_offset: 0,
             output_length: 0,
-            input: std::ptr::null(),
+            input: Arc::new(RwLock::from(None)),
             wasi,
-            memory: std::ptr::null_mut(),
+            memory: Arc::new(Mutex::new(None)),
             http_status: 0,
             last_error: std::cell::RefCell::new(None),
             vars: BTreeMap::new(),
@@ -123,10 +138,12 @@ impl Internal {
 
 impl InternalExt for Internal {
     fn memory(&self) -> &PluginMemory {
-        unsafe { &*self.memory }
+        let lock = self.memory.lock().unwrap();
+        lock.as_ref().unwrap()
     }
 
     fn memory_mut(&mut self) -> &mut PluginMemory {
-        unsafe { &mut *self.memory }
+        let mut lock = self.memory.lock().unwrap();
+        lock.as_mut().unwrap()
     }
 }

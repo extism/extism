@@ -40,11 +40,14 @@ pub(crate) fn input_load_u8(
     output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &Internal = caller.data();
-    if data.input.is_null() {
-        return Ok(());
+    return match &*data.input.read().unwrap() {
+        None => Ok(()),
+        Some(inputData) => {
+            let val = inputData.get(input[0].unwrap_i64() as usize).unwrap_or(&0);
+            output[0] = Val::I32(*val as i32);
+            Ok(())
+        }
     }
-    output[0] = unsafe { Val::I32(*data.input.add(input[0].unwrap_i64() as usize) as i32) };
-    Ok(())
 }
 
 /// Load an unsigned 64 bit integer from input
@@ -56,14 +59,16 @@ pub(crate) fn input_load_u64(
     output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &Internal = caller.data();
-    if data.input.is_null() {
-        return Ok(());
+    return match &*data.input.read().unwrap() {
+        None => Ok(()),
+        Some(inputData) => {
+            let offs = args!(input, 0, i64) as usize;
+            let slice = &inputData[offs..offs+8];
+            let byte = u64::from_ne_bytes(slice.try_into().unwrap());
+            output[0] = Val::I64(byte as i64);
+            Ok(())
+        }
     }
-    let offs = args!(input, 0, i64) as usize;
-    let slice = unsafe { std::slice::from_raw_parts(data.input.add(offs), 8) };
-    let byte = u64::from_ne_bytes(slice.try_into().unwrap());
-    output[0] = Val::I64(byte as i64);
-    Ok(())
 }
 
 /// Store a byte in memory
