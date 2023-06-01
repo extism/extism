@@ -115,14 +115,13 @@ class TestExtism(unittest.TestCase):
     def _manifest(self, functions=False):
         wasm = self._count_vowels_wasm(functions)
         hash = hashlib.sha256(wasm).hexdigest()
-        return {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max_pages": 5}}
+        return {"wasm": [{"data": wasm, "hash": hash}]}
 
     def _loop_manifest(self):
         wasm = self._infinite_loop_wasm()
         hash = hashlib.sha256(wasm).hexdigest()
         return {
             "wasm": [{"data": wasm, "hash": hash}],
-            "memory": {"max_pages": 5},
             "timeout_ms": 1000,
         }
 

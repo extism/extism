@@ -33,7 +33,7 @@ def main(args):
     )
     wasm = wasm_file_path.read_bytes()
     hash = hashlib.sha256(wasm).hexdigest()
-    manifest = {"wasm": [{"data": wasm, "hash": hash}], "memory": {"max": 5}}
+    manifest = {"wasm": [{"data": wasm, "hash": hash}]}
 
     functions = [
         Function(

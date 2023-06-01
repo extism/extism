@@ -55,6 +55,56 @@ fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
+fn calculate_available_memory(
+    available_pages: &mut Option<u32>,
+    modules: &BTreeMap<String, Module>,
+) -> anyhow::Result<()> {
+    let available_pages = match available_pages {
+        Some(p) => p,
+        None => return Ok(()),
+    };
+
+    let max_pages = *available_pages;
+    let mut fail_memory_check = false;
+    let mut total_memory_needed = 0;
+    for (name, module) in modules.iter() {
+        let mut memories = 0;
+        for export in module.exports() {
+            if let Some(memory) = export.ty().memory() {
+                let memory_max = memory.maximum();
+                match memory_max {
+                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set in the manifest all modules \
+                                           must have a maximum bound set on an exported memory"),
+                    Some(m) => {
+                        total_memory_needed += m;
+                        if !fail_memory_check {
+                            continue
+                        }
+
+                        *available_pages = available_pages.saturating_sub(m as u32);
+                        if *available_pages == 0 {
+                            fail_memory_check = true;
+                        }
+                    },
+                }
+                memories += 1;
+            }
+        }
+
+        if memories == 0 {
+            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set in the manifest all modules must \
+                           have a maximum bound set on an exported memory");
+        }
+    }
+
+    if fail_memory_check {
+        anyhow::bail!("Not enough memory configured to run the provided plugin, `memory.max_pages` is set to {max_pages} in the manifest \
+                       but {total_memory_needed} pages are needed by the plugin");
+    }
+
+    Ok(())
+}
+
 impl Plugin {
     /// Create a new plugin from the given WASM code
     pub fn new<'a>(
@@ -72,14 +122,22 @@ impl Plugin {
         )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
-        let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
+
+        // Calculate how much memory is available based on the value of `max_pages` and the exported
+        // memory of the modules. An error will be returned if a module doesn't have an exported memory
+        // or there is no maximum set for a module's exported memory.
+        let mut available_pages = manifest.as_ref().memory.max_pages;
+        calculate_available_memory(&mut available_pages, &modules)?;
+        log::trace!("Available pages: {available_pages:?}");
+
+        let mut store = Store::new(
+            &engine,
+            Internal::new(&manifest, with_wasi, available_pages)?,
+        );
         store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
         // Create memory
-        let memory = Memory::new(
-            &mut store,
-            MemoryType::new(4, manifest.as_ref().memory.max_pages),
-        )?;
+        let memory = Memory::new(&mut store, MemoryType::new(2, available_pages))?;
         let mut memory = PluginMemory::new(store, memory, manifest);
 
         let mut linker = Linker::new(&engine);
