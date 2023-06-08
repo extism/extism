@@ -81,7 +81,12 @@ typedef struct {
 /**
  * Host function signature
  */
-typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin, const ExtismVal *inputs, ExtismSize n_inputs, ExtismVal *outputs, ExtismSize n_outputs, void *data);
+typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
+                                   const ExtismVal *inputs,
+                                   ExtismSize n_inputs,
+                                   ExtismVal *outputs,
+                                   ExtismSize n_outputs,
+                                   void *data);
 
 typedef int32_t ExtismPlugin;
 

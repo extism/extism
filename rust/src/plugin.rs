@@ -232,8 +232,8 @@ impl<'a> Plugin<'a> {
     /// Call a function with the given input and call a callback with the output, this should be preferred when
     /// a single plugin may be acessed from multiple threads because the lock on the plugin is held during the
     /// callback, ensuring the output value is protected from modification.
-    pub fn call_map<T, F: FnOnce(&'a [u8]) -> Result<T, Error>>(
-        &mut self,
+    pub fn call_map<'b, T, F: FnOnce(&'b [u8]) -> Result<T, Error>>(
+        &'b mut self,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
         f: F,
@@ -268,11 +268,11 @@ impl<'a> Plugin<'a> {
     }
 
     /// Call a function with the given input
-    pub fn call(
-        &mut self,
+    pub fn call<'b>(
+        &'b mut self,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
-    ) -> Result<&'a [u8], Error> {
+    ) -> Result<&'b [u8], Error> {
         self.call_map(name, input, |x| Ok(x))
     }
 }
