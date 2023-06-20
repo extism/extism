@@ -1,3 +1,5 @@
+open Ppx_yojson_conv_lib.Yojson_conv
+
 type base64 = string
 
 let yojson_of_base64 x = `String (Base64.encode_exn x)
