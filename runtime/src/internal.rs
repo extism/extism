@@ -2,19 +2,51 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
+impl wasmtime::ResourceLimiter for Internal {
+    fn memory_growing(
+        &mut self,
+        current: usize,
+        desired: usize,
+        maximum: Option<usize>,
+    ) -> Result<bool> {
+        let new = desired - current;
+        let mut ok = true;
+
+        if let Some(available) = &mut self.available_pages {
+            if new > *available as usize * 65536 {
+                ok = false;
+            } else {
+                *available -= (new / 65536) as u32;
+            }
+        }
+
+        // if let Some(max) = self.manifest.as_ref().memory.max_pages {
+        //     ok = ok && max as usize * 65536 >= desired
+        // }
+
+        if let Some(max) = maximum {
+            ok = ok && desired <= max;
+        }
+
+        Ok(ok)
+    }
+
+    fn table_growing(&mut self, _current: u32, desired: u32, maximum: Option<u32>) -> Result<bool> {
+        if let Some(max) = maximum {
+            return Ok(max >= desired);
+        }
+
+        Ok(true)
+    }
+}
+
 /// Internal stores data that is available to the caller in PDK functions
 pub struct Internal {
-    /// Call input length
-    pub input_length: usize,
+    /// Store
+    pub store: *mut Store<Internal>,
 
-    /// Pointer to call input
-    pub input: *const u8,
-
-    /// Memory offset that points to the output
-    pub output_offset: usize,
-
-    /// Length of output in memory
-    pub output_length: usize,
+    /// Linker
+    pub linker: *mut wasmtime::Linker<Internal>,
 
     /// WASI context
     pub wasi: Option<Wasi>,
@@ -23,29 +55,21 @@ pub struct Internal {
     pub http_status: u16,
 
     /// Store plugin-specific error messages
-    pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
+    // pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
 
     /// Plugin variables
     pub vars: BTreeMap<String, Vec<u8>>,
 
-    /// A pointer to the plugin memory, this should mostly be used from the PDK
-    pub memory: *mut PluginMemory,
+    pub manifest: Manifest,
 
-    pub(crate) available_pages: Option<u32>,
+    pub available_pages: Option<u32>,
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values
 pub trait InternalExt {
-    fn memory(&self) -> &PluginMemory;
-    fn memory_mut(&mut self) -> &mut PluginMemory;
+    fn store(&self) -> &Store<Internal>;
 
-    fn store(&self) -> &Store<Internal> {
-        self.memory().store()
-    }
-
-    fn store_mut(&mut self) -> &mut Store<Internal> {
-        self.memory_mut().store_mut()
-    }
+    fn store_mut(&mut self) -> &mut Store<Internal>;
 
     fn internal(&self) -> &Internal {
         self.store().data()
@@ -70,7 +94,7 @@ pub struct Wasi {
 
 impl Internal {
     pub(crate) fn new(
-        manifest: &Manifest,
+        manifest: Manifest,
         wasi: bool,
         available_pages: Option<u32>,
     ) -> Result<Self, Error> {
@@ -104,36 +128,73 @@ impl Internal {
         };
 
         Ok(Internal {
-            input_length: 0,
-            output_offset: 0,
-            output_length: 0,
-            input: std::ptr::null(),
             wasi,
-            memory: std::ptr::null_mut(),
+            manifest,
             http_status: 0,
-            last_error: std::cell::RefCell::new(None),
             vars: BTreeMap::new(),
+            linker: std::ptr::null_mut(),
+            store: std::ptr::null_mut(),
             available_pages,
         })
     }
 
-    pub fn set_error(&self, e: impl std::fmt::Debug) {
+    pub fn set_error(&mut self, e: impl std::fmt::Debug) {
         debug!("Set error: {:?}", e);
-        *self.last_error.borrow_mut() = Some(error_string(e));
+        let s = format!("{e:?}");
+        let output = &mut [Val::I64(0)];
+        let mut store = unsafe { &mut *self.store };
+        self.linker_mut()
+            .get(&mut store, "env", "extism_alloc")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut store, &[Val::I64(s.len() as i64)], &mut [])
+            .unwrap();
+
+        self.linker_mut()
+            .get(&mut store, "env", "memory")
+            .unwrap()
+            .into_memory()
+            .unwrap()
+            .write(&mut store, output[0].unwrap_i64() as usize, s.as_bytes())
+            .unwrap();
+
+        self.linker_mut()
+            .get(&mut store, "env", "extism_error_set")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut store, output, &mut [])
+            .unwrap();
     }
 
     /// Unset `last_error` field
-    pub fn clear_error(&self) {
-        *self.last_error.borrow_mut() = None;
+    pub fn clear_error(&mut self) {
+        // let mut store = unsafe { &mut *self.store };
+        // self.linker_mut()
+        //     .get(&mut store, "env", "extism_error_set")
+        //     .unwrap()
+        //     .into_func()
+        //     .unwrap()
+        //     .call(&mut store, &[Val::I64(0)], &mut [])
+        //     .unwrap();
+    }
+
+    pub fn linker(&self) -> &wasmtime::Linker<Internal> {
+        unsafe { &*self.linker }
+    }
+
+    pub fn linker_mut(&mut self) -> &mut wasmtime::Linker<Internal> {
+        unsafe { &mut *self.linker }
     }
 }
 
 impl InternalExt for Internal {
-    fn memory(&self) -> &PluginMemory {
-        unsafe { &*self.memory }
+    fn store(&self) -> &Store<Internal> {
+        unsafe { &*self.store }
     }
 
-    fn memory_mut(&mut self) -> &mut PluginMemory {
-        unsafe { &mut *self.memory }
+    fn store_mut(&mut self) -> &mut Store<Internal> {
+        unsafe { &mut *self.store }
     }
 }

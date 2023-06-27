@@ -60,6 +60,8 @@ fn check_hash(hash: &Option<String>, data: &[u8]) -> Result<(), Error> {
     }
 }
 
+const WASM: &'static [u8] = include_bytes!("extism-runtime.wasm");
+
 /// Convert from manifest to a wasmtime Module
 fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, Module), Error> {
     match wasm {
@@ -167,6 +169,7 @@ const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 impl Manifest {
     /// Create a new Manifest, returns the manifest and a map of modules
     pub fn new(engine: &Engine, data: &[u8]) -> Result<(Self, BTreeMap<String, Module>), Error> {
+        let extism_module = Module::new(engine, WASM)?;
         let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
         let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
         if !has_magic && !is_wast {
@@ -178,12 +181,14 @@ impl Manifest {
             }
 
             let t = serde_json::from_slice::<Self>(data)?;
-            let m = t.modules(engine)?;
+            let mut m = t.modules(engine)?;
+            m.insert("env".to_string(), extism_module);
             return Ok((t, m));
         }
 
         let m = Module::new(engine, data)?;
         let mut modules = BTreeMap::new();
+        modules.insert("env".to_string(), extism_module);
         modules.insert("main".to_string(), m);
         Ok((Manifest::default(), modules))
     }

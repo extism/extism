@@ -13,20 +13,18 @@ impl<'a> PluginRef<'a> {
     ///
     /// - Resets memory offsets
     /// - Updates `input` pointer
-    pub fn init(mut self, data: *const u8, data_len: usize) -> Self {
+    pub fn init(mut self) -> Self {
         trace!("PluginRef::init: {}", self.id,);
         let plugin = self.as_mut();
-        plugin.memory_mut().reset();
         if plugin.has_wasi() || plugin.runtime.is_some() {
             if let Err(e) = plugin.reinstantiate() {
                 error!("Failed to reinstantiate: {e:?}");
                 plugin
-                    .internal()
+                    .internal_mut()
                     .set_error(format!("Failed to reinstantiate: {e:?}"));
                 return self;
             }
         }
-        plugin.set_input(data, data_len);
         self
     }
 
@@ -50,7 +48,7 @@ impl<'a> PluginRef<'a> {
             ctx.error = None;
             trace!("Clearing plugin error: {plugin_id}");
             unsafe {
-                (&*plugin).internal().clear_error();
+                (&mut *plugin).internal_mut().clear_error();
             }
         }
 
