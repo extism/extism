@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
+use pretty_hex::PrettyHex;
+
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
     /// All modules that were provided to the linker
@@ -194,18 +196,6 @@ impl Plugin {
 
                 if module_name == EXPORT_MODULE_NAME {
                     define_funcs!(name,  {
-                        // alloc(I64) -> I64;
-                        // free(I64);
-                        // load_u8(I64) -> I32;
-                        // load_u64(I64) -> I64;
-                        // store_u8(I64, I32);
-                        // store_u64(I64, I64);
-                        // input_length() -> I64;
-                        // input_load_u8(I64) -> I32;
-                        // input_load_u64(I64) -> I64;
-                        // output_set(I64, I64);
-                        // length(I64) -> I64;
-                        // error_set(I64);
                         config_get(I64) -> I64;
                         var_get(I64) -> I64;
                         var_set(I64, I64);
@@ -244,6 +234,9 @@ impl Plugin {
             },
         };
 
+        plugin.internal_mut().store = &mut plugin.store;
+        plugin.internal_mut().linker = &mut plugin.linker;
+
         // Then detect runtime before returning the new plugin
         plugin.detect_runtime();
         Ok(plugin)
@@ -256,8 +249,97 @@ impl Plugin {
 
     // A convenience method to set the plugin error and return a value
     pub fn error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
-        self.internal_mut().set_error(e);
+        let s = format!("{e:?}");
+        let output = &mut [Val::I64(0)];
+        debug!("Set error: {:?} {output:?}", e);
+        self.linker
+            .get(&mut self.store, "env", "extism_alloc")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, &[Val::I64(s.len() as i64)], output)
+            .unwrap();
+
+        self.linker
+            .get(&mut self.store, "env", "memory")
+            .unwrap()
+            .into_memory()
+            .unwrap()
+            .write(
+                &mut self.store,
+                output[0].unwrap_i64() as usize,
+                s.as_bytes(),
+            )
+            .unwrap();
+
+        self.linker
+            .get(&mut self.store, "env", "extism_error_set")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, output, &mut [])
+            .unwrap();
         x
+    }
+
+    pub fn clear_error(&mut self) {
+        self.linker
+            .get(&mut self.store, "env", "extism_error_set")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, &[Val::I64(0)], &mut [])
+            .unwrap();
+    }
+
+    pub fn has_error(&mut self) -> bool {
+        let output = &mut [Val::I64(0)];
+        self.linker
+            .get(&mut self.store, "env", "extism_error_get")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, &[], output)
+            .unwrap();
+        output[0].unwrap_i64() != 0
+    }
+
+    pub fn get_error(&mut self) -> Option<&str> {
+        let output = &mut [Val::I64(0)];
+        self.linker
+            .get(&mut self.store, "env", "extism_error_get")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, &[], output)
+            .unwrap();
+        let offs = output[0].unwrap_i64() as usize;
+        if offs == 0 {
+            return None;
+        }
+
+        self.linker
+            .get(&mut self.store, "env", "extism_length")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, &[output[0].clone()], output)
+            .unwrap();
+        let length = output[0].unwrap_i64() as usize;
+
+        let data = &self
+            .linker
+            .get(&mut self.store, "env", "memory")
+            .unwrap()
+            .into_memory()
+            .unwrap()
+            .data(&self.store)[offs..offs + length];
+
+        let s = std::str::from_utf8(data);
+        match s {
+            Ok(s) => Some(s),
+            Err(_) => None,
+        }
     }
 
     /// Store input in memory and initialize `Internal` pointer
@@ -319,8 +401,19 @@ impl Plugin {
     }
 
     /// Dump memory using trace! logging
-    pub fn dump_memory(&self) {
-        // self.memory().dump();
+    pub fn dump_memory(&mut self) {
+        let data = self
+            .linker
+            .get(&mut self.store, "env", "memory")
+            .unwrap()
+            .into_memory()
+            .unwrap()
+            .data(&self.store);
+
+        // Reads the position directly from memory, skips the memory metadata section
+        let position = &data[1..9];
+        let position = u64::from_le_bytes(position.try_into().unwrap());
+        trace!("{:?}", data[16..position as usize].hex_dump());
     }
 
     /// Create a new instance from the same modules

@@ -2,44 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-impl wasmtime::ResourceLimiter for Internal {
-    fn memory_growing(
-        &mut self,
-        current: usize,
-        desired: usize,
-        maximum: Option<usize>,
-    ) -> Result<bool> {
-        let new = desired - current;
-        let mut ok = true;
-
-        if let Some(available) = &mut self.available_pages {
-            if new > *available as usize * 65536 {
-                ok = false;
-            } else {
-                *available -= (new / 65536) as u32;
-            }
-        }
-
-        // if let Some(max) = self.manifest.as_ref().memory.max_pages {
-        //     ok = ok && max as usize * 65536 >= desired
-        // }
-
-        if let Some(max) = maximum {
-            ok = ok && desired <= max;
-        }
-
-        Ok(ok)
-    }
-
-    fn table_growing(&mut self, _current: u32, desired: u32, maximum: Option<u32>) -> Result<bool> {
-        if let Some(max) = maximum {
-            return Ok(max >= desired);
-        }
-
-        Ok(true)
-    }
-}
-
 /// Internal stores data that is available to the caller in PDK functions
 pub struct Internal {
     /// Store
@@ -53,9 +15,6 @@ pub struct Internal {
 
     /// Keep track of the status from the last HTTP request
     pub http_status: u16,
-
-    /// Store plugin-specific error messages
-    // pub last_error: std::cell::RefCell<Option<std::ffi::CString>>,
 
     /// Plugin variables
     pub vars: BTreeMap<String, Vec<u8>>,
@@ -136,48 +95,6 @@ impl Internal {
             store: std::ptr::null_mut(),
             available_pages,
         })
-    }
-
-    pub fn set_error(&mut self, e: impl std::fmt::Debug) {
-        debug!("Set error: {:?}", e);
-        let s = format!("{e:?}");
-        let output = &mut [Val::I64(0)];
-        let mut store = unsafe { &mut *self.store };
-        self.linker_mut()
-            .get(&mut store, "env", "extism_alloc")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(s.len() as i64)], &mut [])
-            .unwrap();
-
-        self.linker_mut()
-            .get(&mut store, "env", "memory")
-            .unwrap()
-            .into_memory()
-            .unwrap()
-            .write(&mut store, output[0].unwrap_i64() as usize, s.as_bytes())
-            .unwrap();
-
-        self.linker_mut()
-            .get(&mut store, "env", "extism_error_set")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, output, &mut [])
-            .unwrap();
-    }
-
-    /// Unset `last_error` field
-    pub fn clear_error(&mut self) {
-        // let mut store = unsafe { &mut *self.store };
-        // self.linker_mut()
-        //     .get(&mut store, "env", "extism_error_set")
-        //     .unwrap()
-        //     .into_func()
-        //     .unwrap()
-        //     .call(&mut store, &[Val::I64(0)], &mut [])
-        //     .unwrap();
     }
 
     pub fn linker(&self) -> &wasmtime::Linker<Internal> {

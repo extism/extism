@@ -535,15 +535,10 @@ pub unsafe extern "C" fn extism_plugin_call(
     // needed before a new call
     let mut plugin_ref = match PluginRef::new(ctx, plugin_id, true) {
         None => return -1,
-        Some(p) => p.init(),
+        Some(p) => p.start_call(),
     };
     let tx = plugin_ref.epoch_timer_tx.clone();
     let plugin = plugin_ref.as_mut();
-
-    // TODO: check for error before continuing
-    // if plugin.internal().last_error.borrow().is_some() {
-    //     return -1;
-    // }
 
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
@@ -557,15 +552,6 @@ pub unsafe extern "C" fn extism_plugin_call(
         Some(x) => x,
         None => return plugin.error(format!("Function not found: {name}"), -1),
     };
-
-    // Start timer
-    if let Err(e) = plugin.start_timer(&tx) {
-        let id = plugin.timer_id;
-        return plugin.error(
-            format!("Unable to start timeout manager for {id}: {e:?}"),
-            -1,
-        );
-    }
 
     // Check the number of results, reject functions with more than 1 result
     let n_results = func.ty(plugin.store()).results().len();
@@ -585,6 +571,10 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     plugin.set_input(data, data_len as usize, tx);
 
+    if plugin.has_error() {
+        return -1;
+    }
+
     debug!("Calling function: {name} in plugin {plugin_id}");
 
     // Call the function
@@ -598,15 +588,6 @@ pub unsafe extern "C" fn extism_plugin_call(
         if let Err(e) = plugin.cleanup_runtime() {
             return plugin.error(format!("Failed to cleanup runtime: {e:?}"), -1);
         }
-    }
-
-    // Stop timer
-    if let Err(e) = plugin.stop_timer() {
-        let id = plugin.timer_id;
-        return plugin.error(
-            format!("Failed to stop timeout manager for {id}: {e:?}"),
-            -1,
-        );
     }
 
     match res {
@@ -667,7 +648,7 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
     };
     let plugin = plugin_ref.as_mut();
     let output = &mut [Val::I64(0)];
-    let err = plugin
+    plugin
         .linker
         .get(&mut plugin.store, "env", "extism_error_get")
         .unwrap()
