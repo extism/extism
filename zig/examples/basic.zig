@@ -9,7 +9,7 @@ const manifest = sdk.manifest;
 
 export fn hello_world(plugin_ptr: ?*sdk.c.ExtismCurrentPlugin, inputs: [*c]const sdk.c.ExtismVal, n_inputs: u64, outputs: [*c]sdk.c.ExtismVal, n_outputs: u64, user_data: ?*anyopaque) callconv(.C) void {
     std.debug.print("Hello from Zig!\n", .{});
-    const str_ud = @ptrCast([*:0]const u8, user_data orelse unreachable);
+    const str_ud = @as([*:0]const u8, @ptrCast(user_data orelse unreachable));
     std.debug.print("User data: {s}\n", .{str_ud});
     var input_slice = inputs[0..n_inputs];
     var output_slice = outputs[0..n_outputs];
@@ -33,7 +33,7 @@ pub fn main() !void {
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &[_]sdk.c.ExtismValType{sdk.c.I64},
         &hello_world,
-        @constCast(@ptrCast(*const anyopaque, "user data")),
+        @constCast(@as(*const anyopaque, @ptrCast("user data"))),
     );
     defer f.deinit();
     var my_plugin = try Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
