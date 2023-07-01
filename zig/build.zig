@@ -1,8 +1,15 @@
 const std = @import("std");
+const builtin = @import("builtin");
 
 pub fn build(b: *std.Build) void {
-    // Standard release options allow the person running `zig build` to select
-    // between Debug, ReleaseSafe, ReleaseFast, and ReleaseSmall.
+    comptime {
+        const current_zig = builtin.zig_version;
+        const min_zig = std.SemanticVersion.parse("0.11.0-dev.3834+d98147414") catch unreachable; // std.builtin.Version -> std.SemanticVersion
+        if (current_zig.order(min_zig) == .lt) {
+            @compileError(std.fmt.comptimePrint("Your Zig version v{} does not meet the minimum build requirement of v{}", .{ current_zig, min_zig }));
+        }
+    }
+
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
 
