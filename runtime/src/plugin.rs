@@ -279,6 +279,16 @@ impl Plugin {
             .call(&mut self.store, &[], &mut [])
             .unwrap();
 
+        if let Some(max) = self.internal().available_pages {
+            self.linker
+                .get(&mut self.store, "env", "extism_memory_max_set")
+                .unwrap()
+                .into_func()
+                .unwrap()
+                .call(&mut self.store, &[Val::I64(max as i64)], &mut [])
+                .unwrap();
+        }
+
         let offs = self.memory_alloc(len as u64);
         unsafe {
             self.memory()
@@ -305,12 +315,25 @@ impl Plugin {
 
     /// Dump memory using trace! logging
     pub fn dump_memory(&mut self) {
-        let data = self.memory();
+        let output = &mut [Val::I64(0)];
+        let _ = self
+            .linker
+            .get(&mut self.store, "env", "extism_memory_bytes")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut self.store, &[], output);
 
-        // Reads the position directly from memory, skips the memory metadata section
-        let position = &data[1..9];
-        let position = u64::from_le_bytes(position.try_into().unwrap());
-        trace!("{:?}", data[16..position as usize].hex_dump());
+        let n = output[0].unwrap_i64() as u64;
+        if n == 0 {
+            return;
+        }
+
+        trace!(
+            "{:?}",
+            self.memory_read(16, 16 + output[0].unwrap_i64() as u64)
+                .hex_dump()
+        );
     }
 
     /// Create a new instance from the same modules
