@@ -693,7 +693,6 @@ pub unsafe extern "C" fn extism_plugin_output_length(
         .into_func()
         .unwrap()
         .call(&mut plugin.store_mut(), &[], out);
-    println!("TODO, length {:?}", out[0]);
     let len = out[0].unwrap_i64() as Size;
     trace!("Output length: {len}");
     len
@@ -730,20 +729,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(
         .unwrap()
         .call(&mut store, &[], out)
         .unwrap();
-    println!(
-        "TODO, offset {}, mem size {}",
-        out[0].unwrap_i64(),
-        mem.data_size(&store)
-    );
     mem.data_ptr(&mut store).add(out[0].unwrap_i64() as usize)
-    // plugin
-    //     .memory()
-    //     .ptr(MemoryBlock::new(
-    //         internal.output_offset,
-    //         internal.output_length,
-    //     ))
-    //     .map(|x| x as *const _)
-    //     .unwrap_or(std::ptr::null())
 }
 
 /// Set log file and level
