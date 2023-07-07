@@ -330,7 +330,7 @@ impl Plugin {
             }
         }
 
-        let instance = self.linker.instantiate(&mut self.store, &main)?;
+        let instance = self.linker.instantiate(&mut self.store, main)?;
         self.instance = instance;
         self.detect_runtime();
         self.instantiations += 1;
@@ -351,7 +351,7 @@ impl Plugin {
                 if init.typed::<(i32, i32), ()>(&self.store()).is_err() {
                     trace!(
                         "hs_init function found with type {:?}",
-                        init.ty(&self.store())
+                        init.ty(self.store())
                     );
                 }
                 self.runtime = Some(Runtime::Haskell { init, cleanup });
@@ -366,7 +366,7 @@ impl Plugin {
                 if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
                         "__wasm_call_ctors function found with type {:?}",
-                        init.ty(&self.store())
+                        init.ty(self.store())
                     );
                     return;
                 }
@@ -375,7 +375,7 @@ impl Plugin {
                     if cleanup.typed::<(), ()>(&self.store()).is_err() {
                         trace!(
                             "__wasm_call_dtors function found with type {:?}",
-                            cleanup.ty(&self.store())
+                            cleanup.ty(self.store())
                         );
                         return;
                     }
@@ -431,7 +431,7 @@ impl Plugin {
                     cleanup: Some(cleanup),
                 } => {
                     debug!("Calling __wasm_call_dtors");
-                    cleanup.call(&mut self.store_mut(), &[], &mut [])?;
+                    cleanup.call(self.store_mut(), &[], &mut [])?;
                 }
                 Runtime::Wasi {
                     init: _,
@@ -440,8 +440,8 @@ impl Plugin {
                 // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
                 // by calling the `hs_exit` export
                 Runtime::Haskell { init: _, cleanup } => {
-                    let mut results = vec![Val::null(); cleanup.ty(&self.store()).results().len()];
-                    cleanup.call(&mut self.store_mut(), &[], results.as_mut_slice())?;
+                    let mut results = vec![Val::null(); cleanup.ty(self.store()).results().len()];
+                    cleanup.call(self.store_mut(), &[], results.as_mut_slice())?;
                     debug!("Cleaned up Haskell language runtime");
                 }
             }

@@ -59,7 +59,7 @@ impl<'a> PluginRef<'a> {
             ctx.error = None;
             trace!("Clearing plugin error: {plugin_id}");
             unsafe {
-                (&mut *plugin).clear_error();
+                (*plugin).clear_error();
             }
         }
 

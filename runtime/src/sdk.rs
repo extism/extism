@@ -463,10 +463,10 @@ pub unsafe extern "C" fn extism_plugin_config(
         for (k, v) in json.iter() {
             match v {
                 Some(v) => {
-                    let _ = ctx.push_env(&k, &v);
+                    let _ = ctx.push_env(k, v);
                 }
                 None => {
-                    let _ = ctx.push_env(&k, "");
+                    let _ = ctx.push_env(k, "");
                 }
             }
         }
@@ -578,7 +578,7 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
-    let res = func.call(&mut plugin.store_mut(), &[], results.as_mut_slice());
+    let res = func.call(plugin.store_mut(), &[], results.as_mut_slice());
 
     plugin.dump_memory();
 

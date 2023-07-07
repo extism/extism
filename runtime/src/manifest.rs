@@ -60,7 +60,7 @@ fn check_hash(hash: &Option<String>, data: &[u8]) -> Result<(), Error> {
     }
 }
 
-const WASM: &'static [u8] = include_bytes!("extism-runtime.wasm");
+const WASM: &[u8] = include_bytes!("extism-runtime.wasm");
 
 /// Convert from manifest to a wasmtime Module
 fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, Module), Error> {
