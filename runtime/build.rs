@@ -1,25 +1,4 @@
 fn main() {
-    let manifest_dir = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
-    println!("{:?}", manifest_dir);
-    std::process::Command::new("cargo")
-        .args(&[
-            "build",
-            "--release",
-            "--target",
-            "wasm32-unknown-unknown",
-            "-p",
-            "extism-runtime-kernel",
-        ])
-        .current_dir(manifest_dir.join("../kernel"))
-        .status()
-        .unwrap();
-
-    std::fs::copy(
-        manifest_dir.join("../kernel/target/wasm32-unknown-unknown/release/extism-runtime.wasm"),
-        manifest_dir.join("src/extism-runtime.wasm"),
-    )
-    .unwrap();
-
     println!("cargo:rerun-if-changed=src/extism-runtime.wasm");
 
     let fn_macro = "

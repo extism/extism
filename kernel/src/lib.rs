@@ -9,7 +9,6 @@ pub static mut OUTPUT_LENGTH: Length = 0;
 pub static mut INITIALIZED: bool = false;
 pub static mut ERROR: Pointer = 0;
 pub static mut START_PAGE: usize = 0;
-pub static mut MEMORY_MAX: Length = 0;
 
 pub type Pointer = u64;
 pub type Length = u64;
@@ -40,11 +39,7 @@ pub struct MemoryBlock {
 pub fn num_pages(nbytes: u64) -> usize {
     let nbytes = nbytes as f64;
     let page = PAGE_SIZE as f64;
-    let mut n = (nbytes / page + 0.5) as usize;
-    if n < 1 {
-        n = 1
-    }
-    return n;
+    ((nbytes / page) + 0.5) as usize
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -82,7 +77,7 @@ impl MemoryRegion {
 
         let ptr = (START_PAGE * PAGE_SIZE) as *mut MemoryRegion;
         let region = &mut *ptr;
-        region.length = PAGE_SIZE as u64 - core::mem::size_of::<MemoryRegion>() as u64 - 1;
+        region.length = PAGE_SIZE as u64 - core::mem::size_of::<MemoryRegion>() as u64;
         region.position = 0;
         core::ptr::write_bytes(
             region.blocks.as_mut_ptr() as *mut _,
@@ -157,16 +152,13 @@ impl MemoryRegion {
         // we will need to try to grow the memory
         if length >= mem_left {
             // Calculate the number of pages needed to cover the remaining bytes
-            let npages = num_pages(length - mem_left);
-            if MEMORY_MAX > 0 && self.length / PAGE_SIZE as u64 + npages as u64 > MEMORY_MAX as u64
-            {
-                panic!("Out of memory, limit reached")
-            }
+            let npages = num_pages(length);
             let x = memory_grow::<0>(npages);
             if x == usize::MAX {
                 // TODO: how should an out of memory error be handled?
                 panic!("Out of memory, cannot grow")
             }
+            self.length += npages as u64 * PAGE_SIZE as u64;
         }
 
         // Initialize a new block at the current position
@@ -288,14 +280,6 @@ pub fn extism_output_offset() -> Length {
 pub unsafe fn extism_reset() {
     ERROR = 0;
     MemoryRegion::new().reset()
-}
-
-#[no_mangle]
-pub unsafe fn extism_memory_max_set(size: Length) {
-    if MEMORY_MAX != 0 {
-        panic!("Cannot set memory limit twice")
-    }
-    MEMORY_MAX = size;
 }
 
 #[no_mangle]

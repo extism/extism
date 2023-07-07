@@ -196,6 +196,13 @@ impl Plugin {
             }
         }
 
+        let min = main.get_export("memory").unwrap().unwrap_memory().minimum();
+        let mem = Memory::new(
+            &mut store,
+            wasmtime::MemoryType::new(min as u32, available_pages),
+        )?;
+        linker.define(&mut store, "env", "memory", mem)?;
+
         // Add builtins
         for (name, module) in modules.iter() {
             if name != main_name {
@@ -331,7 +338,7 @@ impl Plugin {
 
         trace!(
             "{:?}",
-            self.memory_read(16, 16 + output[0].unwrap_i64() as u64)
+            self.memory_read(8, output[0].unwrap_i64() as u64)
                 .hex_dump()
         );
     }
