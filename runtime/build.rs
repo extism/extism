@@ -1,5 +1,13 @@
 fn main() {
     println!("cargo:rerun-if-changed=src/extism-runtime.wasm");
+    let dir = std::path::PathBuf::from(std::env::var("CARGO_MANIFEST_DIR").unwrap());
+
+    #[cfg(not(target_os = "windows"))]
+    std::process::Command::new("bash")
+        .args(&["build.sh"])
+        .current_dir(dir.join("../kernel"))
+        .status()
+        .unwrap();
 
     let fn_macro = "
 #define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)

@@ -18,7 +18,7 @@ else
 	FEATURE_FLAGS=--features $(FEATURES)
 endif
 
-build: kernel
+build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
 .PHONY: kernel
