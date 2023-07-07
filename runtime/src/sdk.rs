@@ -568,7 +568,9 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     }
 
-    plugin.set_input(data, data_len as usize, tx);
+    if let Err(e) = plugin.set_input(data, data_len as usize, tx) {
+        return plugin.error(e, -1);
+    }
 
     if plugin.has_error() {
         return -1;

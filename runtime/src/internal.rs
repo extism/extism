@@ -22,6 +22,8 @@ pub struct Internal {
     pub manifest: Manifest,
 
     pub available_pages: Option<u32>,
+
+    pub(crate) memory_limiter: Option<MemoryLimiter>,
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values
@@ -84,7 +86,7 @@ pub trait InternalExt {
         self.memory()[offs..offs + len].copy_from_slice(bytes.as_ref());
     }
 
-    fn memory_alloc(&mut self, n: Size) -> u64 {
+    fn memory_alloc(&mut self, n: Size) -> Result<u64, Error> {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         linker
@@ -94,14 +96,18 @@ pub trait InternalExt {
             .unwrap()
             .call(&mut store, &[Val::I64(n as i64)], output)
             .unwrap();
-        output[0].unwrap_i64() as u64
+        let offs = output[0].unwrap_i64() as u64;
+        if offs == 0 {
+            anyhow::bail!("Out of memory")
+        }
+        Ok(offs)
     }
 
-    fn memory_alloc_bytes(&mut self, bytes: impl AsRef<[u8]>) -> u64 {
+    fn memory_alloc_bytes(&mut self, bytes: impl AsRef<[u8]>) -> Result<u64, Error> {
         let b = bytes.as_ref();
-        let offs = self.memory_alloc(b.len() as Size);
+        let offs = self.memory_alloc(b.len() as Size)?;
         self.memory_write(offs, b);
-        offs
+        Ok(offs)
     }
 
     fn memory_free(&mut self, offs: u64) {
@@ -132,15 +138,16 @@ pub trait InternalExt {
     fn error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
-        let offs = self.memory_alloc_bytes(&s);
-        let (linker, mut store) = self.linker_and_store();
-        linker
-            .get(&mut store, "env", "extism_error_set")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(offs as i64)], &mut [])
-            .unwrap();
+        if let Ok(offs) = self.memory_alloc_bytes(&s) {
+            let (linker, mut store) = self.linker_and_store();
+            linker
+                .get(&mut store, "env", "extism_error_set")
+                .unwrap()
+                .into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(offs as i64)], &mut [])
+                .unwrap();
+        }
         x
     }
 
@@ -240,6 +247,16 @@ impl Internal {
             None
         };
 
+        let memory_limiter = if let Some(pgs) = available_pages {
+            let n = pgs as usize * 65536;
+            Some(MemoryLimiter {
+                max_bytes: n,
+                bytes_left: n,
+            })
+        } else {
+            None
+        };
+
         Ok(Internal {
             wasi,
             manifest,
@@ -248,6 +265,7 @@ impl Internal {
             linker: std::ptr::null_mut(),
             store: std::ptr::null_mut(),
             available_pages,
+            memory_limiter,
         })
     }
 
@@ -279,5 +297,47 @@ impl InternalExt for Internal {
 
     fn linker_and_store(&mut self) -> (&mut Linker<Internal>, &mut Store<Internal>) {
         unsafe { (&mut *self.linker, &mut *self.store) }
+    }
+}
+
+pub(crate) struct MemoryLimiter {
+    bytes_left: usize,
+    max_bytes: usize,
+}
+
+impl MemoryLimiter {
+    pub(crate) fn reset(&mut self) {
+        self.bytes_left = self.max_bytes;
+    }
+}
+
+impl wasmtime::ResourceLimiter for MemoryLimiter {
+    fn memory_growing(
+        &mut self,
+        current: usize,
+        desired: usize,
+        maximum: Option<usize>,
+    ) -> Result<bool> {
+        if let Some(max) = maximum {
+            if desired > max {
+                return Ok(false);
+            }
+        }
+
+        let d = desired - current;
+        if d > self.bytes_left {
+            return Ok(false);
+        }
+
+        self.bytes_left -= d;
+        Ok(true)
+    }
+
+    fn table_growing(&mut self, _current: u32, desired: u32, maximum: Option<u32>) -> Result<bool> {
+        if let Some(max) = maximum {
+            return Ok(desired <= max);
+        }
+
+        Ok(true)
     }
 }

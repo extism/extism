@@ -154,6 +154,9 @@ impl Plugin {
         );
         store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
+        if available_pages.is_some() {
+            store.limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+        }
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
@@ -189,19 +192,6 @@ impl Plugin {
                 }
             };
         }
-
-        for (name, module) in modules.iter() {
-            if name != main_name {
-                linker.module(&mut store, name, module)?;
-            }
-        }
-
-        let min = main.get_export("memory").unwrap().unwrap_memory().minimum();
-        let mem = Memory::new(
-            &mut store,
-            wasmtime::MemoryType::new(min as u32, available_pages),
-        )?;
-        linker.define(&mut store, "env", "memory", mem)?;
 
         // Add builtins
         for (name, module) in modules.iter() {
@@ -272,7 +262,7 @@ impl Plugin {
         input: *const u8,
         mut len: usize,
         tx: std::sync::mpsc::SyncSender<TimerAction>,
-    ) {
+    ) -> Result<(), Error> {
         if input.is_null() {
             len = 0;
         }
@@ -286,17 +276,7 @@ impl Plugin {
             .call(&mut self.store, &[], &mut [])
             .unwrap();
 
-        if let Some(max) = self.internal().available_pages {
-            let _ = self
-                .linker
-                .get(&mut self.store, "env", "extism_memory_max_set")
-                .unwrap()
-                .into_func()
-                .unwrap()
-                .call(&mut self.store, &[Val::I64(max as i64)], &mut []);
-        }
-
-        let offs = self.memory_alloc(len as u64);
+        let offs = self.memory_alloc(len as u64)?;
         unsafe {
             self.memory()
                 .as_mut_ptr()
@@ -318,6 +298,7 @@ impl Plugin {
 
         self.internal_mut().store = &mut self.store;
         self.internal_mut().linker = &mut self.linker;
+        Ok(())
     }
 
     /// Dump memory using trace! logging
@@ -345,6 +326,10 @@ impl Plugin {
 
     /// Create a new instance from the same modules
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
+        if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
+            limiter.reset();
+        }
+
         let (main_name, main) = self
             .modules
             .get("main")

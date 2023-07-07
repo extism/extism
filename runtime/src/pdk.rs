@@ -38,7 +38,7 @@ pub(crate) fn config_get(
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_alloc_bytes(bytes)
+            data.memory_alloc_bytes(bytes)?
         }
         None => {
             output[0] = Val::I64(0);
@@ -69,7 +69,7 @@ pub(crate) fn var_get(
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_alloc_bytes(bytes)
+            data.memory_alloc_bytes(bytes)?
         }
         None => {
             output[0] = Val::I64(0);
@@ -215,8 +215,7 @@ pub(crate) fn http_request(
                 .take(1024 * 1024 * 50) // TODO: make this limit configurable
                 .read_to_end(&mut buf)?;
 
-            let mem = data.memory_alloc_bytes(buf);
-
+            let mem = data.memory_alloc_bytes(buf)?;
             output[0] = Val::I64(mem as i64);
         } else {
             output[0] = Val::I64(0);

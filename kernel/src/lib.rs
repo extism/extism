@@ -132,14 +132,14 @@ impl MemoryRegion {
         None
     }
 
-    pub unsafe fn alloc(&mut self, length: Length) -> &'static mut MemoryBlock {
+    pub unsafe fn alloc(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
         let b = self.find_free_block(length);
 
         // If there's a free block then re-use it
         if let Some(b) = b {
             b.used = length as usize;
             b.status = MemoryStatus::Active;
-            return b;
+            return Some(b);
         }
 
         // Get the current index for a new block
@@ -155,8 +155,7 @@ impl MemoryRegion {
             let npages = num_pages(length);
             let x = memory_grow::<0>(npages);
             if x == usize::MAX {
-                // TODO: how should an out of memory error be handled?
-                panic!("Out of memory, cannot grow")
+                return None;
             }
             self.length += npages as u64 * PAGE_SIZE as u64;
         }
@@ -169,7 +168,7 @@ impl MemoryRegion {
         block.used = length as usize;
         // Bump the position byte the size of the actual data + the size of the MemoryBlock structure
         self.position += length + core::mem::size_of::<MemoryBlock>() as u64;
-        block
+        Some(block)
     }
 }
 
@@ -190,7 +189,10 @@ impl MemoryBlock {
 pub unsafe fn extism_alloc(n: Length) -> Pointer {
     let region = MemoryRegion::new();
     let block = region.alloc(n);
-    block.data.as_mut_ptr() as Pointer
+    match block {
+        Some(block) => block.data.as_mut_ptr() as Pointer,
+        None => 0,
+    }
 }
 
 #[no_mangle]
