@@ -89,6 +89,7 @@ fn calculate_available_memory(
         let mut memories = 0;
         for export in module.exports() {
             if let Some(memory) = export.ty().memory() {
+                memories += 1;
                 let memory_max = memory.maximum();
                 match memory_max {
                     None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set in the manifest all modules \
@@ -105,7 +106,6 @@ fn calculate_available_memory(
                         }
                     }
                 }
-                memories += 1;
             }
         }
 
@@ -280,13 +280,13 @@ impl Plugin {
             .unwrap();
 
         if let Some(max) = self.internal().available_pages {
-            self.linker
+            let _ = self
+                .linker
                 .get(&mut self.store, "env", "extism_memory_max_set")
                 .unwrap()
                 .into_func()
                 .unwrap()
-                .call(&mut self.store, &[Val::I64(max as i64)], &mut [])
-                .unwrap();
+                .call(&mut self.store, &[Val::I64(max as i64)], &mut []);
         }
 
         let offs = self.memory_alloc(len as u64);
