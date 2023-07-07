@@ -265,30 +265,22 @@ impl Plugin {
             len = 0;
         }
 
-        self.start_timer(&tx).unwrap();
-        self.linker
-            .get(&mut self.store, "env", "extism_reset")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut self.store, &[], &mut [])
-            .unwrap();
+        self.start_timer(&tx)?;
+        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
+            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+        }
 
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
         trace!("Input size: {}", bytes.len());
         let offs = self.memory_alloc_bytes(bytes)?;
 
-        self.linker
-            .get(&mut self.store, "env", "extism_input_set")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(
+        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
+            f.into_func().unwrap().call(
                 &mut self.store,
                 &[Val::I64(offs as i64), Val::I64(len as i64)],
                 &mut [],
-            )
-            .unwrap();
+            )?;
+        }
 
         self.internal_mut().store = &mut self.store;
         self.internal_mut().linker = &mut self.linker;

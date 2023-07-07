@@ -99,14 +99,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Internal) -> 
     }
 
     let plugin = &mut *plugin;
-    let mut store = &mut *plugin.store;
-    plugin
-        .linker()
-        .get(&mut store, "env", "memory")
-        .unwrap()
-        .into_memory()
-        .unwrap()
-        .data_ptr(&mut store)
+    plugin.memory_ptr()
 }
 
 /// Allocate a memory block in the currently running plugin
@@ -118,17 +111,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Interna
     }
 
     let plugin = &mut *plugin;
-    let mut store = &mut *plugin.store;
-    let output = &mut [Val::I64(0)];
-    plugin
-        .linker()
-        .get(&mut store, "env", "extism_alloc")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .call(&mut store, &[Val::I64(n as i64)], output)
-        .unwrap();
-    output[0].unwrap_i64() as u64
+    plugin.memory_alloc(n as u64).unwrap_or_default()
 }
 
 /// Get the length of an allocated block
@@ -143,17 +126,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
     }
 
     let plugin = &mut *plugin;
-    let mut store = &mut *plugin.store;
-    let output = &mut [Val::I64(0)];
-    plugin
-        .linker()
-        .get(&mut store, "env", "extism_length")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .call(&mut store, &[Val::I64(n as i64)], output)
-        .unwrap();
-    output[0].unwrap_i64() as u64
+    plugin.memory_length(n)
 }
 
 /// Free an allocated memory block
@@ -165,15 +138,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Internal
     }
 
     let plugin = &mut *plugin;
-    let mut store = &mut *plugin.store;
-    plugin
-        .linker()
-        .get(&mut store, "env", "extism_free")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .call(&mut store, &[Val::I64(ptr as i64)], &mut [])
-        .unwrap();
+    plugin.memory_free(ptr);
 }
 
 /// Create a new host function
@@ -648,27 +613,21 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
     };
     let plugin = plugin_ref.as_mut();
     let output = &mut [Val::I64(0)];
-    plugin
+    if let Some(f) = plugin
         .linker
         .get(&mut plugin.store, "env", "extism_error_get")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .call(&mut plugin.store, &[], output)
-        .unwrap();
+    {
+        f.into_func()
+            .unwrap()
+            .call(&mut plugin.store, &[], output)
+            .unwrap();
+    }
     if output[0].unwrap_i64() == 0 {
         trace!("Error is NULL");
         return std::ptr::null();
     }
 
-    plugin
-        .linker
-        .get(&mut plugin.store, "env", "memory")
-        .unwrap()
-        .into_memory()
-        .unwrap()
-        .data_ptr(&plugin.store)
-        .add(output[0].unwrap_i64() as usize) as *const _
+    plugin.memory_ptr().add(output[0].unwrap_i64() as usize) as *const _
 }
 
 /// Get the length of a plugin's output data
