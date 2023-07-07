@@ -13,7 +13,7 @@ pub fn getMemory(self: Self, offset: u64) []const u8 {
     const len = c.extism_current_plugin_memory_length(self.c_currplugin, offset);
     const c_data = c.extism_current_plugin_memory(self.c_currplugin);
     const data: [*:0]u8 = std.mem.span(c_data);
-    return data[offset .. len + 1];
+    return data[offset .. offset + len];
 }
 
 pub fn alloc(self: *Self, n: u64) u64 {
