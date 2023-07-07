@@ -4,7 +4,7 @@ use std::path::{Path, PathBuf};
 #[deprecated]
 pub type ManifestMemory = MemoryOptions;
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct MemoryOptions {
@@ -12,7 +12,7 @@ pub struct MemoryOptions {
     pub max_pages: Option<u32>,
 }
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct HttpRequest {
@@ -43,7 +43,7 @@ impl HttpRequest {
     }
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct WasmMetadata {
@@ -81,7 +81,7 @@ impl From<Vec<u8>> for Wasm {
 #[deprecated]
 pub type ManifestWasm = Wasm;
 
-#[derive(serde::Serialize, serde::Deserialize)]
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 #[serde(deny_unknown_fields)]
@@ -153,7 +153,7 @@ fn base64_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::
     schema.into()
 }
 
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {

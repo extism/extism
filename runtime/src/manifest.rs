@@ -7,7 +7,7 @@ use sha2::Digest;
 use crate::*;
 
 /// Manifest wraps the manifest exported by `extism_manifest`
-#[derive(Default, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[serde(transparent)]
 pub struct Manifest(extism_manifest::Manifest);
 

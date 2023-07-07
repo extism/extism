@@ -582,8 +582,6 @@ pub unsafe extern "C" fn extism_plugin_call(
     let mut results = vec![wasmtime::Val::null(); n_results];
     let res = func.call(plugin.store_mut(), &[], results.as_mut_slice());
 
-    plugin.dump_memory();
-
     // Cleanup runtime
     if !is_start {
         if let Err(e) = plugin.cleanup_runtime() {

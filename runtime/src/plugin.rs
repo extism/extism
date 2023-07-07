@@ -2,8 +2,6 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-use pretty_hex::PrettyHex;
-
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
     /// All modules that were provided to the linker
@@ -276,13 +274,9 @@ impl Plugin {
             .call(&mut self.store, &[], &mut [])
             .unwrap();
 
-        let offs = self.memory_alloc(len as u64)?;
-        unsafe {
-            self.memory()
-                .as_mut_ptr()
-                .add(offs as usize)
-                .copy_from(input, len);
-        }
+        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
+        trace!("Input: {:?}", bytes);
+        let offs = self.memory_alloc_bytes(bytes)?;
 
         self.linker
             .get(&mut self.store, "env", "extism_input_set")
@@ -301,29 +295,6 @@ impl Plugin {
         Ok(())
     }
 
-    /// Dump memory using trace! logging
-    pub fn dump_memory(&mut self) {
-        let output = &mut [Val::I64(0)];
-        let _ = self
-            .linker
-            .get(&mut self.store, "env", "extism_memory_bytes")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut self.store, &[], output);
-
-        let n = output[0].unwrap_i64() as u64;
-        if n == 0 {
-            return;
-        }
-
-        trace!(
-            "{:?}",
-            self.memory_read(8, output[0].unwrap_i64() as u64)
-                .hex_dump()
-        );
-    }
-
     /// Create a new instance from the same modules
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
         if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
@@ -339,10 +310,31 @@ impl Plugin {
                 (entry.0.as_str(), entry.1)
             });
 
-        for (name, module) in self.modules.iter() {
-            if name != main_name {
-                self.linker.module(&mut self.store, name, module)?;
+        if self.instantiations > 5 {
+            let engine = self.store.engine().clone();
+            let internal = self.internal();
+            self.store = Store::new(
+                &engine,
+                Internal::new(
+                    internal.manifest.clone(),
+                    internal.wasi.is_some(),
+                    internal.available_pages,
+                )?,
+            );
+            self.store
+                .epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
+
+            if self.internal().available_pages.is_some() {
+                self.store
+                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
+
+            for (name, module) in self.modules.iter() {
+                if name != main_name {
+                    self.linker.module(&mut self.store, name, module)?;
+                }
+            }
+            self.instantiations = 0;
         }
 
         let instance = self.linker.instantiate(&mut self.store, main)?;
