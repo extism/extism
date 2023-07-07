@@ -275,7 +275,7 @@ impl Plugin {
             .unwrap();
 
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
-        trace!("Input: {:?}", bytes);
+        trace!("Input size: {}", bytes.len());
         let offs = self.memory_alloc_bytes(bytes)?;
 
         self.linker
