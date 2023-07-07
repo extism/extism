@@ -98,7 +98,7 @@ pub trait InternalExt {
             .unwrap();
         let offs = output[0].unwrap_i64() as u64;
         if offs == 0 {
-            anyhow::bail!("Out of memory")
+            anyhow::bail!("out of memory")
         }
         Ok(offs)
     }
