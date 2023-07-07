@@ -437,57 +437,56 @@ pub unsafe extern "C" fn extism_plugin_config(
     json: *const u8,
     json_size: Size,
 ) -> bool {
-    // let ctx = &mut *ctx;
-    // let mut plugin_ref = match PluginRef::new(ctx, plugin, true) {
-    //     None => return false,
-    //     Some(p) => p,
-    // };
-    // trace!(
-    //     "Call to extism_plugin_config for {} with json pointer {:?}",
-    //     plugin_ref.id,
-    //     json
-    // );
-    // let plugin = plugin_ref.as_mut();
+    let ctx = &mut *ctx;
+    let mut plugin_ref = match PluginRef::new(ctx, plugin, true) {
+        None => return false,
+        Some(p) => p,
+    };
+    trace!(
+        "Call to extism_plugin_config for {} with json pointer {:?}",
+        plugin_ref.id,
+        json
+    );
+    let plugin = plugin_ref.as_mut();
 
-    // let data = std::slice::from_raw_parts(json, json_size as usize);
-    // let json: std::collections::BTreeMap<String, Option<String>> =
-    //     match serde_json::from_slice(data) {
-    //         Ok(x) => x,
-    //         Err(e) => {
-    //             return plugin.error(e, false);
-    //         }
-    //     };
+    let data = std::slice::from_raw_parts(json, json_size as usize);
+    let json: std::collections::BTreeMap<String, Option<String>> =
+        match serde_json::from_slice(data) {
+            Ok(x) => x,
+            Err(e) => {
+                return plugin.error(e, false);
+            }
+        };
 
-    // let wasi = &mut plugin.memory.get_mut().store_mut().data_mut().wasi;
-    // if let Some(Wasi { ctx, .. }) = wasi {
-    //     for (k, v) in json.iter() {
-    //         match v {
-    //             Some(v) => {
-    //                 let _ = ctx.push_env(&k, &v);
-    //             }
-    //             None => {
-    //                 let _ = ctx.push_env(&k, "");
-    //             }
-    //         }
-    //     }
-    // }
+    let wasi = &mut plugin.internal_mut().wasi;
+    if let Some(Wasi { ctx, .. }) = wasi {
+        for (k, v) in json.iter() {
+            match v {
+                Some(v) => {
+                    let _ = ctx.push_env(&k, &v);
+                }
+                None => {
+                    let _ = ctx.push_env(&k, "");
+                }
+            }
+        }
+    }
 
-    // let config = &mut plugin.memory.get_mut().manifest.as_mut().config;
-    // for (k, v) in json.into_iter() {
-    //     match v {
-    //         Some(v) => {
-    //             trace!("Config, adding {k}");
-    //             config.insert(k, v);
-    //         }
-    //         None => {
-    //             trace!("Config, removing {k}");
-    //             config.remove(&k);
-    //         }
-    //     }
-    // }
+    let config = &mut plugin.internal_mut().manifest.as_mut().config;
+    for (k, v) in json.into_iter() {
+        match v {
+            Some(v) => {
+                trace!("Config, adding {k}");
+                config.insert(k, v);
+            }
+            None => {
+                trace!("Config, removing {k}");
+                config.remove(&k);
+            }
+        }
+    }
 
-    // true
-    false
+    true
 }
 
 /// Returns true if `func_name` exists
@@ -593,6 +592,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     match res {
         Ok(()) => (),
         Err(e) => {
+            plugin.store.set_epoch_deadline(1);
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
                 trace!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {

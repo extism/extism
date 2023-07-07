@@ -26,23 +26,26 @@ pub(crate) fn config_get(
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    // let data: &mut Internal = caller.data_mut();
+    let data: &mut Internal = caller.data_mut();
 
-    // let offset = args!(input, 0, i64) as usize;
-    // let key = data.memory().get_str(offset)?;
-    // let val = data.memory().manifest.as_ref().config.get(key);
-    // let ptr = val.map(|x| (x.len(), x.as_ptr()));
-    // let mem = match ptr {
-    //     Some((len, ptr)) => {
-    //         let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-    //         data.memory_mut().alloc_bytes(bytes)?
-    //     }
-    //     None => {
-    //         output[0] = Val::I64(0);
-    //         return Ok(());
-    //     }
-    // };
-    // output[0] = Val::I64(mem.offset as i64);
+    let offset = args!(input, 0, i64) as u64;
+    let key = data.memory_read_str(offset)?;
+    let key = unsafe {
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
+    };
+    let val = data.internal().manifest.as_ref().config.get(key);
+    let ptr = val.map(|x| (x.len(), x.as_ptr()));
+    let mem = match ptr {
+        Some((len, ptr)) => {
+            let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
+            data.memory_alloc_bytes(bytes)
+        }
+        None => {
+            output[0] = Val::I64(0);
+            return Ok(());
+        }
+    };
+    output[0] = Val::I64(mem as i64);
     Ok(())
 }
 
@@ -54,25 +57,26 @@ pub(crate) fn var_get(
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    // let data: &mut Internal = caller.data_mut();
+    let data: &mut Internal = caller.data_mut();
 
-    // let offset = args!(input, 0, i64) as usize;
-    // let key = data.memory().get_str(offset)?;
-    // let val = data.vars.get(key);
-    // let ptr = val.map(|x| (x.len(), x.as_ptr()));
-
-    // let mem = match ptr {
-    //     Some((len, ptr)) => {
-    //         let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-    //         data.memory_mut().alloc_bytes(bytes)?
-    //     }
-    //     None => {
-    //         output[0] = Val::I64(0);
-    //         return Ok(());
-    //     }
-    // };
-
-    // output[0] = Val::I64(mem.offset as i64);
+    let offset = args!(input, 0, i64) as u64;
+    let key = data.memory_read_str(offset)?;
+    let key = unsafe {
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
+    };
+    let val = data.internal().vars.get(key);
+    let ptr = val.map(|x| (x.len(), x.as_ptr()));
+    let mem = match ptr {
+        Some((len, ptr)) => {
+            let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
+            data.memory_alloc_bytes(bytes)
+        }
+        None => {
+            output[0] = Val::I64(0);
+            return Ok(());
+        }
+    };
+    output[0] = Val::I64(mem as i64);
     Ok(())
 }
 
@@ -84,38 +88,39 @@ pub(crate) fn var_set(
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    // let data: &mut Internal = caller.data_mut();
+    let data: &mut Internal = caller.data_mut();
 
-    // let mut size = 0;
-    // for v in data.vars.values() {
-    //     size += v.len();
-    // }
+    let mut size = 0;
+    for v in data.vars.values() {
+        size += v.len();
+    }
 
-    // let voffset = args!(input, 1, i64) as usize;
+    let voffset = args!(input, 1, i64) as u64;
 
-    // // If the store is larger than 100MB then stop adding things
-    // if size > 1024 * 1024 * 100 && voffset != 0 {
-    //     return Err(Error::msg("Variable store is full"));
-    // }
+    // If the store is larger than 100MB then stop adding things
+    if size > 1024 * 1024 * 100 && voffset != 0 {
+        return Err(Error::msg("Variable store is full"));
+    }
 
-    // let key_offs = args!(input, 0, i64) as usize;
-    // let key = {
-    //     let key = data.memory().get_str(key_offs)?;
-    //     let key_len = key.len();
-    //     let key_ptr = key.as_ptr();
-    //     unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
-    // };
+    let key_offs = args!(input, 0, i64) as u64;
+    let key = {
+        let key = data.memory_read_str(key_offs)?;
+        let key_len = key.len();
+        let key_ptr = key.as_ptr();
+        unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
+    };
 
-    // // Remove if the value offset is 0
-    // if voffset == 0 {
-    //     data.vars.remove(key);
-    //     return Ok(());
-    // }
+    // Remove if the value offset is 0
+    if voffset == 0 {
+        data.vars.remove(key);
+        return Ok(());
+    }
 
-    // let value = data.memory().get(voffset)?;
+    let vlen = data.memory_length(voffset);
+    let value = data.memory_read(voffset, vlen).to_vec();
 
-    // // Insert the value from memory into the `vars` map
-    // data.vars.insert(key.to_string(), value.to_vec());
+    // Insert the value from memory into the `vars` map
+    data.vars.insert(key.to_string(), value);
 
     Ok(())
 }
@@ -128,7 +133,7 @@ pub(crate) fn http_request(
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    // #[cfg(not(feature = "http"))]
+    #[cfg(not(feature = "http"))]
     {
         let _ = (caller, input);
 
@@ -137,86 +142,88 @@ pub(crate) fn http_request(
         return Ok(());
     }
 
-    // #[cfg(feature = "http")]
-    // {
-    //     use std::io::Read;
-    //     let data: &mut Internal = caller.data_mut();
-    //     let http_req_offset = args!(input, 0, i64) as usize;
+    #[cfg(feature = "http")]
+    {
+        use std::io::Read;
+        let data: &mut Internal = caller.data_mut();
+        let http_req_offset = args!(input, 0, i64) as u64;
 
-    //     let req: extism_manifest::HttpRequest =
-    //         serde_json::from_slice(data.memory().get(http_req_offset)?)?;
+        let http_req_len = data.memory_length(http_req_offset);
+        let req: extism_manifest::HttpRequest =
+            serde_json::from_slice(data.memory_read(http_req_offset, http_req_len))?;
 
-    //     let body_offset = args!(input, 1, i64) as usize;
+        let body_offset = args!(input, 1, i64) as u64;
 
-    //     let url = match url::Url::parse(&req.url) {
-    //         Ok(u) => u,
-    //         Err(e) => return Err(Error::msg(format!("Invalid URL: {e:?}"))),
-    //     };
-    //     let allowed_hosts = &data.memory().manifest.as_ref().allowed_hosts;
-    //     let host_str = url.host_str().unwrap_or_default();
-    //     let host_matches = if let Some(allowed_hosts) = allowed_hosts {
-    //         allowed_hosts.iter().any(|url| {
-    //             let pat = match glob::Pattern::new(url) {
-    //                 Ok(x) => x,
-    //                 Err(_) => return url == host_str,
-    //             };
+        let url = match url::Url::parse(&req.url) {
+            Ok(u) => u,
+            Err(e) => return Err(Error::msg(format!("Invalid URL: {e:?}"))),
+        };
+        let allowed_hosts = &data.internal().manifest.as_ref().allowed_hosts;
+        let host_str = url.host_str().unwrap_or_default();
+        let host_matches = if let Some(allowed_hosts) = allowed_hosts {
+            allowed_hosts.iter().any(|url| {
+                let pat = match glob::Pattern::new(url) {
+                    Ok(x) => x,
+                    Err(_) => return url == host_str,
+                };
 
-    //             pat.matches(host_str)
-    //         })
-    //     } else {
-    //         false
-    //     };
+                pat.matches(host_str)
+            })
+        } else {
+            false
+        };
 
-    //     if !host_matches {
-    //         return Err(Error::msg(format!(
-    //             "HTTP request to {} is not allowed",
-    //             req.url
-    //         )));
-    //     }
+        if !host_matches {
+            return Err(Error::msg(format!(
+                "HTTP request to {} is not allowed",
+                req.url
+            )));
+        }
 
-    //     let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
+        let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
 
-    //     for (k, v) in req.headers.iter() {
-    //         r = r.set(k, v);
-    //     }
+        for (k, v) in req.headers.iter() {
+            r = r.set(k, v);
+        }
 
-    //     let res = if body_offset > 0 {
-    //         let buf = data.memory().get(body_offset)?;
-    //         r.send_bytes(buf)
-    //     } else {
-    //         r.call()
-    //     };
+        let res = if body_offset > 0 {
+            let len = data.memory_length(body_offset);
+            let buf = data.memory_read(body_offset, len);
+            r.send_bytes(buf)
+        } else {
+            r.call()
+        };
 
-    //     let reader = match res {
-    //         Ok(res) => {
-    //             data.http_status = res.status();
-    //             Some(res.into_reader())
-    //         }
-    //         Err(e) => {
-    //             if let Some(res) = e.into_response() {
-    //                 data.http_status = res.status();
-    //                 Some(res.into_reader())
-    //             } else {
-    //                 None
-    //             }
-    //         }
-    //     };
+        let reader = match res {
+            Ok(res) => {
+                data.http_status = res.status();
+                Some(res.into_reader())
+            }
+            Err(e) => {
+                if let Some(res) = e.into_response() {
+                    data.http_status = res.status();
+                    Some(res.into_reader())
+                } else {
+                    None
+                }
+            }
+        };
 
-    //     if let Some(reader) = reader {
-    //         let mut buf = Vec::new();
-    //         reader
-    //             .take(1024 * 1024 * 50) // TODO: make this limit configurable
-    //             .read_to_end(&mut buf)?;
+        if let Some(reader) = reader {
+            let mut buf = Vec::new();
+            reader
+                .take(1024 * 1024 * 50) // TODO: make this limit configurable
+                .read_to_end(&mut buf)?;
 
-    //         let mem = data.memory_mut().alloc_bytes(buf)?;
+            let mem = data.memory_alloc_bytes(buf);
 
-    //         output[0] = Val::I64(mem.offset as i64);
-    //     } else {
-    //         output[0] = Val::I64(0);
-    //     }
+            output[0] = Val::I64(mem as i64);
+        } else {
+            output[0] = Val::I64(0);
+        }
 
-    //   Ok(())
-    //}
+        Ok(())
+    }
 }
 
 /// Get the status code of the last HTTP request
@@ -234,18 +241,18 @@ pub(crate) fn http_status_code(
 
 pub fn log(
     level: log::Level,
-    caller: Caller<Internal>,
+    mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    // let data: &Internal = caller.data();
-    // let offset = args!(input, 0, i64) as usize;
-    // let buf = data.memory().get(offset)?;
+    let data: &mut Internal = caller.data_mut();
+    let offset = args!(input, 0, i64) as u64;
+    let buf = data.memory_read_str(offset);
 
-    // match std::str::from_utf8(buf) {
-    //     Ok(buf) => log::log!(level, "{}", buf),
-    //     Err(_) => log::log!(level, "{:?}", buf),
-    // }
+    match buf {
+        Ok(buf) => log::log!(level, "{}", buf),
+        Err(_) => log::log!(level, "{:?}", buf),
+    }
     Ok(())
 }
 
