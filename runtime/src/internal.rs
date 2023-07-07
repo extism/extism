@@ -2,6 +2,16 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
+/// WASI context
+pub struct Wasi {
+    /// wasi
+    pub ctx: wasmtime_wasi::WasiCtx,
+
+    /// wasi-nn
+    #[cfg(feature = "nn")]
+    pub nn: wasmtime_wasi_nn::WasiNnCtx,
+}
+
 /// Internal stores data that is available to the caller in PDK functions
 pub struct Internal {
     /// Store
@@ -48,12 +58,13 @@ pub trait InternalExt {
 
     fn memory_ptr(&mut self) -> *mut u8 {
         let (linker, mut store) = self.linker_and_store();
-        linker
-            .get(&mut store, "env", "memory")
-            .unwrap()
-            .into_memory()
-            .unwrap()
-            .data_ptr(&mut store)
+        if let Some(mem) = linker.get(&mut store, "env", "memory") {
+            if let Some(mem) = mem.into_memory() {
+                return mem.data_ptr(&mut store);
+            }
+        }
+
+        std::ptr::null_mut()
     }
 
     fn memory(&mut self) -> &mut [u8] {
@@ -64,6 +75,9 @@ pub trait InternalExt {
             .into_memory()
             .unwrap();
         let ptr = mem.data_ptr(&store);
+        if ptr.is_null() {
+            return &mut [];
+        }
         let size = mem.data_size(&store);
         unsafe { std::slice::from_raw_parts_mut(ptr, size) }
     }
@@ -71,7 +85,8 @@ pub trait InternalExt {
     fn memory_read(&mut self, offs: u64, len: Size) -> &[u8] {
         let offs = offs as usize;
         let len = len as usize;
-        &self.memory()[offs..offs + len]
+        let mem = self.memory();
+        &mem[offs..offs + len]
     }
 
     fn memory_read_str(&mut self, offs: u64) -> Result<&str, std::str::Utf8Error> {
@@ -140,26 +155,24 @@ pub trait InternalExt {
         debug!("Set error: {:?}", s);
         if let Ok(offs) = self.memory_alloc_bytes(&s) {
             let (linker, mut store) = self.linker_and_store();
-            linker
-                .get(&mut store, "env", "extism_error_set")
-                .unwrap()
-                .into_func()
-                .unwrap()
-                .call(&mut store, &[Val::I64(offs as i64)], &mut [])
-                .unwrap();
+            if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+                f.into_func()
+                    .unwrap()
+                    .call(&mut store, &[Val::I64(offs as i64)], &mut [])
+                    .unwrap();
+            }
         }
         x
     }
 
     fn clear_error(&mut self) {
         let (linker, mut store) = self.linker_and_store();
-        linker
-            .get(&mut store, "env", "extism_error_set")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(0)], &mut [])
-            .unwrap();
+        if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(0)], &mut [])
+                .unwrap();
+        }
     }
 
     fn has_error(&mut self) -> bool {
@@ -200,18 +213,6 @@ pub trait InternalExt {
     }
 }
 
-/// WASI context
-pub struct Wasi {
-    /// wasi
-    pub ctx: wasmtime_wasi::WasiCtx,
-
-    /// wasi-nn
-    #[cfg(feature = "nn")]
-    pub nn: wasmtime_wasi_nn::WasiNnCtx,
-    #[cfg(not(feature = "nn"))]
-    pub nn: (),
-}
-
 impl Internal {
     pub(crate) fn new(
         manifest: Manifest,
@@ -235,12 +236,9 @@ impl Internal {
             #[cfg(feature = "nn")]
             let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 
-            #[cfg(not(feature = "nn"))]
-            #[allow(clippy::let_unit_value)]
-            let nn = ();
-
             Some(Wasi {
                 ctx: ctx.build(),
+                #[cfg(feature = "nn")]
                 nn,
             })
         } else {
