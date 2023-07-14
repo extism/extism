@@ -32,7 +32,7 @@ pub struct MemoryRegion {
 
 #[repr(C)]
 pub struct MemoryBlock {
-    pub status: MemoryStatus,
+    pub status: AtomicU8,
     pub size: usize,
     pub used: usize,
     pub data: [u8; 0],
@@ -113,13 +113,15 @@ impl MemoryRegion {
         while (block as u64) < self.blocks.as_ptr() as u64 + self_position {
             let b = &mut *block;
 
+            let status = b.status.load(Ordering::SeqCst);
+
             // An unknown block is safe to use
-            if b.status == MemoryStatus::Unknown {
+            if status == MemoryStatus::Unknown as u8 {
                 return Some(b);
             }
 
             // Re-use freed blocks when they're large enough
-            if b.status == MemoryStatus::Free && b.size >= length as usize {
+            if status == MemoryStatus::Free as u8 && b.size >= length as usize {
                 // Split block if there is too much excess
                 if b.size as usize - length as usize >= BLOCK_SPLIT_SIZE {
                     b.size -= length as usize;
@@ -129,7 +131,7 @@ impl MemoryRegion {
                     let b1 = &mut *block1;
                     b1.size = length as usize;
                     b1.used = 0;
-                    b1.status = MemoryStatus::Free;
+                    b1.status.store(MemoryStatus::Free as u8, Ordering::SeqCst);
                     return Some(b1);
                 }
 
@@ -150,7 +152,7 @@ impl MemoryRegion {
         // If there's a free block then re-use it
         if let Some(b) = b {
             b.used = length as usize;
-            b.status = MemoryStatus::Active;
+            b.status.store(MemoryStatus::Active as u8, Ordering::SeqCst);
             return Some(b);
         }
 
@@ -179,7 +181,9 @@ impl MemoryRegion {
         // Initialize a new block at the current position
         let ptr = curr as *mut MemoryBlock;
         let block = &mut *ptr;
-        block.status = MemoryStatus::Active;
+        block
+            .status
+            .store(MemoryStatus::Active as u8, Ordering::SeqCst);
         block.size = length as usize;
         block.used = length as usize;
         // Bump the position byte the size of the actual data + the size of the MemoryBlock structure
@@ -200,7 +204,8 @@ impl MemoryBlock {
     }
 
     pub fn free(&mut self) {
-        self.status = MemoryStatus::Free;
+        self.status
+            .store(MemoryStatus::Free as u8, Ordering::SeqCst);
     }
 }
 
