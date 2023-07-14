@@ -1,13 +1,15 @@
 #![no_std]
 
+use core::sync::atomic::*;
+
 pub const PAGE_SIZE: usize = 65536;
 pub const BLOCK_SPLIT_SIZE: usize = 128;
 pub static mut INPUT_OFFSET: Pointer = 0;
 pub static mut INPUT_LENGTH: Length = 0;
 pub static mut OUTPUT_OFFSET: Pointer = 0;
 pub static mut OUTPUT_LENGTH: Length = 0;
-pub static mut INITIALIZED: bool = false;
-pub static mut ERROR: Pointer = 0;
+pub static mut INITIALIZED: AtomicBool = AtomicBool::new(false);
+pub static mut ERROR: AtomicU64 = AtomicU64::new(0);
 pub static mut START_PAGE: usize = 0;
 
 pub type Pointer = u64;
@@ -23,8 +25,8 @@ pub enum MemoryStatus {
 
 #[repr(C)]
 pub struct MemoryRegion {
-    pub position: u64,
-    pub length: u64,
+    pub position: AtomicU64,
+    pub length: AtomicU64,
     pub blocks: [MemoryBlock; 0],
 }
 
@@ -64,8 +66,11 @@ pub fn memory_size<const MEM: u32>() -> usize {
 
 impl MemoryRegion {
     pub unsafe fn new() -> &'static mut MemoryRegion {
-        unsafe {
-            if INITIALIZED {
+        if INITIALIZED
+            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .is_ok()
+        {
+            unsafe {
                 return &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRegion);
             }
         }
@@ -77,28 +82,35 @@ impl MemoryRegion {
 
         let ptr = (START_PAGE * PAGE_SIZE) as *mut MemoryRegion;
         let region = &mut *ptr;
-        region.length = PAGE_SIZE as u64 - core::mem::size_of::<MemoryRegion>() as u64;
-        region.position = 0;
+        region.length.store(
+            PAGE_SIZE as u64 - core::mem::size_of::<MemoryRegion>() as u64,
+            Ordering::SeqCst,
+        );
+        region.position.store(0, Ordering::SeqCst);
         core::ptr::write_bytes(
             region.blocks.as_mut_ptr() as *mut _,
             MemoryStatus::Unknown as u8,
             core::mem::size_of::<MemoryBlock>(),
         );
-        INITIALIZED = true;
         region
     }
 
     pub unsafe fn reset(&mut self) {
-        self.position = 0;
-        core::ptr::write_bytes(self.blocks.as_mut_ptr() as *mut u8, 0, self.length as usize);
+        self.position.store(0, Ordering::SeqCst);
+        core::ptr::write_bytes(
+            self.blocks.as_mut_ptr() as *mut u8,
+            0,
+            self.length.load(Ordering::SeqCst) as usize,
+        );
     }
 
     pub unsafe fn find_free_block(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
+        let self_position = self.position.load(Ordering::SeqCst);
         // Get the first block
         let mut block = self.blocks.as_mut_ptr();
 
         // Only loop while the block pointer is less then the current position
-        while (block as u64) < self.blocks.as_ptr() as u64 + self.position {
+        while (block as u64) < self.blocks.as_ptr() as u64 + self_position {
             let b = &mut *block;
 
             // An unknown block is safe to use
@@ -142,11 +154,14 @@ impl MemoryRegion {
             return Some(b);
         }
 
+        let self_position = self.position.load(Ordering::SeqCst);
+        let self_length = self.length.load(Ordering::SeqCst);
+
         // Get the current index for a new block
-        let curr = self.blocks.as_ptr() as u64 + self.position;
+        let curr = self.blocks.as_ptr() as u64 + self_position;
 
         // Get the number of bytes available
-        let mem_left = self.length - self.position;
+        let mem_left = self_length - self_position;
 
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
@@ -157,7 +172,8 @@ impl MemoryRegion {
             if x == usize::MAX {
                 return None;
             }
-            self.length += npages as u64 * PAGE_SIZE as u64;
+            self.length
+                .fetch_add(npages as u64 * PAGE_SIZE as u64, Ordering::SeqCst);
         }
 
         // Initialize a new block at the current position
@@ -167,7 +183,10 @@ impl MemoryRegion {
         block.size = length as usize;
         block.used = length as usize;
         // Bump the position byte the size of the actual data + the size of the MemoryBlock structure
-        self.position += length + core::mem::size_of::<MemoryBlock>() as u64;
+        self.position.fetch_add(
+            length + core::mem::size_of::<MemoryBlock>() as u64,
+            Ordering::SeqCst,
+        );
         Some(block)
     }
 }
@@ -280,21 +299,21 @@ pub fn extism_output_offset() -> Length {
 
 #[no_mangle]
 pub unsafe fn extism_reset() {
-    ERROR = 0;
+    ERROR.store(0, Ordering::SeqCst);
     MemoryRegion::new().reset()
 }
 
 #[no_mangle]
 pub unsafe fn extism_error_set(ptr: Pointer) {
-    ERROR = ptr;
+    ERROR.store(ptr, Ordering::SeqCst);
 }
 
 #[no_mangle]
 pub unsafe fn extism_error_get() -> Pointer {
-    ERROR
+    ERROR.load(Ordering::SeqCst)
 }
 
 #[no_mangle]
 pub unsafe fn extism_memory_bytes() -> Length {
-    MemoryRegion::new().position
+    MemoryRegion::new().position.load(Ordering::SeqCst)
 }
