@@ -671,15 +671,9 @@ pub unsafe extern "C" fn extism_plugin_output_data(
         Some(p) => p,
     };
     let plugin = plugin_ref.as_mut();
-    let mut store = &mut *(plugin.store_mut() as *mut Store<_>);
-    // let internal = &mut *(plugin.internal_mut() as *mut Internal);
-    let mem = plugin
-        .linker
-        .get(&mut store, "env", "memory")
-        .unwrap()
-        .into_memory()
-        .unwrap();
+    let ptr = plugin.memory_ptr();
     let out = &mut [Val::I64(0)];
+    let mut store = &mut *(plugin.store_mut() as *mut Store<_>);
     plugin
         .linker
         .get(&mut store, "env", "extism_output_offset")
@@ -688,7 +682,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(
         .unwrap()
         .call(&mut store, &[], out)
         .unwrap();
-    mem.data_ptr(&mut store).add(out[0].unwrap_i64() as usize)
+    ptr.add(out[0].unwrap_i64() as usize)
 }
 
 /// Set log file and level
