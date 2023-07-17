@@ -44,49 +44,31 @@ pub fn num_pages(nbytes: u64) -> usize {
     ((nbytes / page) + 0.5) as usize
 }
 
-#[cfg(target_arch = "wasm32")]
-pub fn memory_grow<const MEM: u32>(delta: usize) -> usize {
-    core::arch::wasm32::memory_grow(MEM, delta)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn memory_grow<const MEM: u32>(_: usize) -> usize {
-    unreachable!()
-}
-
-#[cfg(target_arch = "wasm32")]
-pub fn memory_size<const MEM: u32>() -> usize {
-    core::arch::wasm32::memory_size(MEM)
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-pub fn memory_size<const MEM: u32>() -> usize {
-    unreachable!()
+#[inline]
+unsafe fn memory_region() -> &'static mut MemoryRegion {
+    &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRegion)
 }
 
 impl MemoryRegion {
     pub unsafe fn new() -> &'static mut MemoryRegion {
         if INITIALIZED
-            .compare_exchange(false, true, Ordering::SeqCst, Ordering::SeqCst)
+            .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_ok()
         {
-            unsafe {
-                return &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRegion);
-            }
+            return memory_region();
         }
 
-        START_PAGE = memory_grow::<0>(1);
+        START_PAGE = core::arch::wasm32::memory_grow(0, 1);
         if START_PAGE == usize::MAX {
             panic!("Out of memory");
         }
 
-        let ptr = (START_PAGE * PAGE_SIZE) as *mut MemoryRegion;
-        let region = &mut *ptr;
+        let region = memory_region();
         region.length.store(
             PAGE_SIZE as u64 - core::mem::size_of::<MemoryRegion>() as u64,
-            Ordering::SeqCst,
+            Ordering::Release,
         );
-        region.position.store(0, Ordering::SeqCst);
+        region.position.store(0, Ordering::Release);
         core::ptr::write_bytes(
             region.blocks.as_mut_ptr() as *mut _,
             MemoryStatus::Unknown as u8,
@@ -96,12 +78,12 @@ impl MemoryRegion {
     }
 
     pub unsafe fn reset(&mut self) {
-        self.position.store(0, Ordering::SeqCst);
         core::ptr::write_bytes(
             self.blocks.as_mut_ptr() as *mut u8,
             0,
-            self.length.load(Ordering::SeqCst) as usize,
+            self.length.load(Ordering::Acquire) as usize,
         );
+        self.position.store(0, Ordering::Release);
     }
 
     unsafe fn find_free_block(
@@ -116,7 +98,7 @@ impl MemoryRegion {
         while (block as u64) < self.blocks.as_ptr() as u64 + self_position {
             let b = &mut *block;
 
-            let status = b.status.load(Ordering::SeqCst);
+            let status = b.status.load(Ordering::Acquire);
 
             // An unknown block is safe to use
             if status == MemoryStatus::Unknown as u8 {
@@ -134,7 +116,7 @@ impl MemoryRegion {
                     let b1 = &mut *block1;
                     b1.size = length as usize;
                     b1.used = 0;
-                    b1.status.store(MemoryStatus::Free as u8, Ordering::SeqCst);
+                    b1.status.store(MemoryStatus::Free as u8, Ordering::Release);
                     return Some(b1);
                 }
 
@@ -150,14 +132,15 @@ impl MemoryRegion {
     }
 
     pub unsafe fn alloc(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
-        let self_position = self.position.load(Ordering::SeqCst);
-        let self_length = self.length.load(Ordering::SeqCst);
+        let self_position = self.position.load(Ordering::Acquire);
+        let self_length = self.length.load(Ordering::Acquire);
         let b = self.find_free_block(length, self_position);
 
         // If there's a free block then re-use it
         if let Some(b) = b {
             b.used = length as usize;
-            b.status.store(MemoryStatus::Active as u8, Ordering::SeqCst);
+            b.status
+                .store(MemoryStatus::Active as u8, Ordering::Release);
             return Some(b);
         }
 
@@ -172,7 +155,7 @@ impl MemoryRegion {
         if length >= mem_left {
             // Calculate the number of pages needed to cover the remaining bytes
             let npages = num_pages(length);
-            let x = memory_grow::<0>(npages);
+            let x = core::arch::wasm32::memory_grow(0, npages);
             if x == usize::MAX {
                 return None;
             }
@@ -191,7 +174,7 @@ impl MemoryRegion {
         let block = &mut *ptr;
         block
             .status
-            .store(MemoryStatus::Active as u8, Ordering::SeqCst);
+            .store(MemoryStatus::Active as u8, Ordering::Release);
         block.size = length as usize;
         block.used = length as usize;
         Some(block)
@@ -199,7 +182,8 @@ impl MemoryRegion {
 
     /// Finds the block at an offset in memory
     pub unsafe fn find_block(&mut self, offs: Pointer) -> Option<&mut MemoryBlock> {
-        if offs >= self.blocks.as_ptr() as Pointer + self.length.load(Ordering::SeqCst) as Pointer {
+        if offs >= self.blocks.as_ptr() as Pointer + self.length.load(Ordering::Acquire) as Pointer
+        {
             return None;
         }
         let ptr = offs - core::mem::size_of::<MemoryBlock>() as u64;
@@ -219,7 +203,7 @@ impl MemoryBlock {
 
     pub fn free(&mut self) {
         self.status
-            .store(MemoryStatus::Free as u8, Ordering::SeqCst);
+            .store(MemoryStatus::Free as u8, Ordering::Release);
     }
 }
 
@@ -339,5 +323,5 @@ pub unsafe fn extism_error_get() -> Pointer {
 
 #[no_mangle]
 pub unsafe fn extism_memory_bytes() -> Length {
-    MemoryRegion::new().position.load(Ordering::SeqCst)
+    MemoryRegion::new().position.load(Ordering::Acquire)
 }
