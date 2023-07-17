@@ -104,8 +104,11 @@ impl MemoryRegion {
         );
     }
 
-    pub unsafe fn find_free_block(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
-        let self_position = self.position.load(Ordering::SeqCst);
+    unsafe fn find_free_block(
+        &mut self,
+        length: Length,
+        self_position: u64,
+    ) -> Option<&'static mut MemoryBlock> {
         // Get the first block
         let mut block = self.blocks.as_mut_ptr();
 
@@ -140,14 +143,16 @@ impl MemoryRegion {
             }
 
             // Get the next block
-            block = block.add(b.size as usize + core::mem::size_of::<MemoryBlock>());
+            block = b.next_ptr();
         }
 
         None
     }
 
     pub unsafe fn alloc(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
-        let b = self.find_free_block(length);
+        let self_position = self.position.load(Ordering::SeqCst);
+        let self_length = self.length.load(Ordering::SeqCst);
+        let b = self.find_free_block(length, self_position);
 
         // If there's a free block then re-use it
         if let Some(b) = b {
@@ -155,9 +160,6 @@ impl MemoryRegion {
             b.status.store(MemoryStatus::Active as u8, Ordering::SeqCst);
             return Some(b);
         }
-
-        let self_position = self.position.load(Ordering::SeqCst);
-        let self_length = self.length.load(Ordering::SeqCst);
 
         // Get the current index for a new block
         let curr = self.blocks.as_ptr() as u64 + self_position;
@@ -178,6 +180,12 @@ impl MemoryRegion {
                 .fetch_add(npages as u64 * PAGE_SIZE as u64, Ordering::SeqCst);
         }
 
+        // Bump the position by the size of the actual data + the size of the MemoryBlock structure
+        self.position.fetch_add(
+            length + core::mem::size_of::<MemoryBlock>() as u64,
+            Ordering::SeqCst,
+        );
+
         // Initialize a new block at the current position
         let ptr = curr as *mut MemoryBlock;
         let block = &mut *ptr;
@@ -186,21 +194,27 @@ impl MemoryRegion {
             .store(MemoryStatus::Active as u8, Ordering::SeqCst);
         block.size = length as usize;
         block.used = length as usize;
-        // Bump the position byte the size of the actual data + the size of the MemoryBlock structure
-        self.position.fetch_add(
-            length + core::mem::size_of::<MemoryBlock>() as u64,
-            Ordering::SeqCst,
-        );
         Some(block)
+    }
+
+    /// Finds the block at an offset in memory
+    pub unsafe fn find_block(&mut self, offs: Pointer) -> Option<&mut MemoryBlock> {
+        if offs >= self.blocks.as_ptr() as Pointer + self.length.load(Ordering::SeqCst) as Pointer {
+            return None;
+        }
+        let ptr = offs - core::mem::size_of::<MemoryBlock>() as u64;
+        let ptr = ptr as *mut MemoryBlock;
+        Some(&mut *ptr)
     }
 }
 
 impl MemoryBlock {
-    /// Finds the block at an offset in memory
-    pub unsafe fn find(offs: Pointer) -> &'static mut MemoryBlock {
-        let ptr = offs - core::mem::size_of::<MemoryBlock>() as u64;
-        let ptr = ptr as *mut MemoryBlock;
-        &mut *ptr
+    #[inline]
+    pub unsafe fn next_ptr(&mut self) -> *mut MemoryBlock {
+        self.data
+            .as_mut_ptr()
+            .add(self.size as usize + core::mem::size_of::<MemoryBlock>())
+            as *mut MemoryBlock
     }
 
     pub fn free(&mut self) {
@@ -221,8 +235,10 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
 
 #[no_mangle]
 pub unsafe fn extism_free(p: Pointer) {
-    let block = MemoryBlock::find(p);
-    block.free();
+    let block = MemoryRegion::new().find_block(p);
+    if let Some(block) = block {
+        block.free();
+    }
 }
 
 #[no_mangle]
@@ -230,8 +246,11 @@ pub unsafe fn extism_length(p: Pointer) -> Length {
     if p == 0 {
         return 0;
     }
-    let block = MemoryBlock::find(p);
-    block.used as Length
+    if let Some(block) = MemoryRegion::new().find_block(p) {
+        block.used as Length
+    } else {
+        0
+    }
 }
 
 #[no_mangle]
