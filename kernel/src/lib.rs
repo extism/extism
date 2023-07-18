@@ -1,82 +1,166 @@
+//! # Extism kernel
+//!
+//! - Isolated memory from both host and plugin
+//! - An allocator for managing that memory
+//! - Input/output handling
+//! - Error message handling
+//! - Backward compatible `extism_*` functions
+//!
+//! ## Allocator
+//!
+//! The Extism allocator is a bump allocator that tracks the `length` of the total number of bytes
+//! available to the allocator and `position` to track how much of the data has been used. Things like memory
+//! have not really been optimized at all. When a new allocation that is larger than the remaning size is made,
+//! the allocator attempts to call `memory.grow` if that fails a `0` offset is returned, which should be interpreted
+//! as a failed allocation.
+//!
+//! ## Input/Output
+//!
+//! Input and output are just allocated blocks of memory that are marked as either input or output using
+//! the `extism_input_set` or `extism_output_set` functions. The global variables `INPUT_OFFSET` contains
+//! the offset in memory to the input data and `INPUT_LENGTH` contains the size of the input data. `OUTPUT_OFFSET`
+//! and `OUTPUT_LENGTH` are used for the output data.
+//!
+//! ## Error handling
+//!
+//! The `ERROR` global is used to track the current error message. If it is set to `0` then there is no error.
+//! The length of the error message can be retreived using `extism_length`.
+//!
+//! ## Memory offsets
+//! An offset of `0` is similar to a `NULL` pointer in C - it implies an allocation failure or memory error
+//! of some kind
+//!
+//! ## Extism functions
+//!
+//! These functions are backward compatible with the pre-kernel runtime, but a few new functions are added to
+//! give runtimes more access to the internals necesarry to load data in and out of a plugin.
 #![no_std]
 
 use core::sync::atomic::*;
 
-pub const PAGE_SIZE: usize = 65536;
-pub const BLOCK_SPLIT_SIZE: usize = 128;
-pub static mut INPUT_OFFSET: Pointer = 0;
-pub static mut INPUT_LENGTH: Length = 0;
-pub static mut OUTPUT_OFFSET: Pointer = 0;
-pub static mut OUTPUT_LENGTH: Length = 0;
-pub static mut INITIALIZED: AtomicBool = AtomicBool::new(false);
-pub static mut ERROR: AtomicU64 = AtomicU64::new(0);
-pub static mut START_PAGE: usize = 0;
-
 pub type Pointer = u64;
 pub type Length = u64;
 
+/// WebAssembly page size
+const PAGE_SIZE: usize = 65536;
+
+/// Determines the amount of bytes that can be wasted by re-using a block. If more than this number is wasted by re-using
+/// a block then it will be split into two smaller blocks.
+const BLOCK_SPLIT_SIZE: usize = 128;
+
+/// Offset to the input data
+static mut INPUT_OFFSET: Pointer = 0;
+
+/// Length of the input data
+static mut INPUT_LENGTH: Length = 0;
+
+/// Offset to the output data
+static mut OUTPUT_OFFSET: Pointer = 0;
+
+/// Offset to the input data
+static mut OUTPUT_LENGTH: Length = 0;
+
+/// Current error message
+static mut ERROR: AtomicU64 = AtomicU64::new(0);
+
+/// Determines if the kernel has been initialized already
+static mut INITIALIZED: AtomicBool = AtomicBool::new(false);
+
+/// A pointer to the first page that will be managed by Extism, this is set during initialization
+static mut START_PAGE: usize = 0;
+
+/// Provides information about the usage status of a `MemoryBlock`
 #[repr(u8)]
 #[derive(PartialEq)]
 pub enum MemoryStatus {
-    Unknown = 0,
+    /// Unused memory that is available b
+    Unused = 0,
+    /// In-use memory
     Active = 1,
+    /// Free memory that is available for re-use
     Free = 2,
 }
 
+/// A single `MemoryRoot` exists at the start of the memory to track information about the total
+/// size of the allocated memory and the position of the bump allocator.
+///
+/// The overall layout of the Extism-manged memory is organized like this:
+/// 0     128
+/// |------|-------
+/// | Root | Block
+/// |------|-------  
+///
 #[repr(C)]
-pub struct MemoryRegion {
+pub struct MemoryRoot {
+    /// Position of the bump allocator, relative to `START_PAGE`
     pub position: AtomicU64,
+    /// The total size of all data allocated using this allocator
     pub length: AtomicU64,
+    /// A pointer to where the blocks begin
     pub blocks: [MemoryBlock; 0],
 }
 
+/// A `MemoryBlock` contains some metadata about a single allocation
 #[repr(C)]
 pub struct MemoryBlock {
+    /// The usage status of the block, `Unused` or `Free` blocks can be re-used.
     pub status: AtomicU8,
+    /// The total size of the allocation
     pub size: usize,
+    /// The number of bytes currently being used. If this block is a fresh allocation then `size` and `used` will
+    /// always be the same. If a block is re-used then these numbers may differ.
     pub used: usize,
+    /// A pointer to the block data
     pub data: [u8; 0],
 }
 
+/// Returns the number of pages needed for the given number of bytes
 pub fn num_pages(nbytes: u64) -> usize {
     let nbytes = nbytes as f64;
     let page = PAGE_SIZE as f64;
     ((nbytes / page) + 0.5) as usize
 }
 
+// Get the `MemoryRoot` at the correct offset in memory
 #[inline]
-unsafe fn memory_region() -> &'static mut MemoryRegion {
-    &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRegion)
+unsafe fn memory_root() -> &'static mut MemoryRoot {
+    &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRoot)
 }
 
-impl MemoryRegion {
-    pub unsafe fn new() -> &'static mut MemoryRegion {
+impl MemoryRoot {
+    /// Initialize or load the `MemoryRoot` from the correct position in memory
+    pub unsafe fn new() -> &'static mut MemoryRoot {
+        // If this fails then `INITIALIZED` is already `true` and we can just return the
+        // already initialized `MemoryRoot`
         if INITIALIZED
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
-            return memory_region();
+            return memory_root();
         }
 
+        // Ensure that at least one page is allocated to store the `MemoryRoot` data
         START_PAGE = core::arch::wasm32::memory_grow(0, 1);
         if START_PAGE == usize::MAX {
             panic!("Out of memory");
         }
 
-        let region = memory_region();
-        region.length.store(
-            PAGE_SIZE as u64 - core::mem::size_of::<MemoryRegion>() as u64,
+        // Initialize the `MemoryRoot` length, position and data
+        let root = memory_root();
+        root.length.store(
+            PAGE_SIZE as u64 - core::mem::size_of::<MemoryRoot>() as u64,
             Ordering::Release,
         );
-        region.position.store(0, Ordering::Release);
+        root.position.store(0, Ordering::Release);
         core::ptr::write_bytes(
-            region.blocks.as_mut_ptr() as *mut _,
-            MemoryStatus::Unknown as u8,
+            root.blocks.as_mut_ptr() as *mut _,
+            MemoryStatus::Unused as u8,
             core::mem::size_of::<MemoryBlock>(),
         );
-        region
+        root
     }
 
+    /// Resets the position of the allocator and zeroes out all allocations
     pub unsafe fn reset(&mut self) {
         core::ptr::write_bytes(
             self.blocks.as_mut_ptr() as *mut u8,
@@ -86,6 +170,8 @@ impl MemoryRegion {
         self.position.store(0, Ordering::Release);
     }
 
+    // Find a block that is free to use, this can be a new block or an existing freed block. The `self_position` argument
+    // is used to avoid loading the allocators position more than once when performing an allocation.
     unsafe fn find_free_block(
         &mut self,
         length: Length,
@@ -100,8 +186,8 @@ impl MemoryRegion {
 
             let status = b.status.load(Ordering::Acquire);
 
-            // An unknown block is safe to use
-            if status == MemoryStatus::Unknown as u8 {
+            // An unused block is safe to use
+            if status == MemoryStatus::Unused as u8 {
                 return Some(b);
             }
 
@@ -131,6 +217,8 @@ impl MemoryRegion {
         None
     }
 
+    /// Create a new `MemoryBlock`, when `Some(block)` is returned, `block` will contain at least enough room for `length` bytes
+    /// but may be as large as `length` + `BLOCK_SPLIT_SIZE` bytes. When `None` is returned the allocation has failed.
     pub unsafe fn alloc(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
         let self_position = self.position.load(Ordering::Acquire);
         let self_length = self.length.load(Ordering::Acquire);
@@ -193,6 +281,10 @@ impl MemoryRegion {
 }
 
 impl MemoryBlock {
+    /// Get a pointer to the next block
+    ///
+    /// NOTE: This does no checking to ensure the resulting pointer is valid, the offset
+    /// is calculated based on metadata provided by the current block
     #[inline]
     pub unsafe fn next_ptr(&mut self) -> *mut MemoryBlock {
         self.data
@@ -201,15 +293,19 @@ impl MemoryBlock {
             as *mut MemoryBlock
     }
 
+    /// Mark a block as free
     pub fn free(&mut self) {
         self.status
             .store(MemoryStatus::Free as u8, Ordering::Release);
     }
 }
 
+// Extism functions - these functions should be
+
+/// Allocate a block of memory and return the offset
 #[no_mangle]
 pub unsafe fn extism_alloc(n: Length) -> Pointer {
-    let region = MemoryRegion::new();
+    let region = MemoryRoot::new();
     let block = region.alloc(n);
     match block {
         Some(block) => block.data.as_mut_ptr() as Pointer,
@@ -217,51 +313,59 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
     }
 }
 
+/// Free allocated memory
 #[no_mangle]
 pub unsafe fn extism_free(p: Pointer) {
-    let block = MemoryRegion::new().find_block(p);
+    let block = MemoryRoot::new().find_block(p);
     if let Some(block) = block {
         block.free();
     }
 }
 
+/// Get the length of an allocated memory block
 #[no_mangle]
 pub unsafe fn extism_length(p: Pointer) -> Length {
     if p == 0 {
         return 0;
     }
-    if let Some(block) = MemoryRegion::new().find_block(p) {
+    if let Some(block) = MemoryRoot::new().find_block(p) {
         block.used as Length
     } else {
         0
     }
 }
 
+/// Load a byte from Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
     *(p as *mut u8)
 }
 
+/// Load a u64 from Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
     *(p as *mut u64)
 }
 
+/// Load a byte from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
     *((INPUT_OFFSET + p) as *mut u8)
 }
 
+/// Load a u64 from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
     *((INPUT_OFFSET + p) as *mut u64)
 }
 
+/// Write a byte in Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
     *(p as *mut u8) = x;
 }
 
+/// Write a u64 in Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
     unsafe {
@@ -269,6 +373,7 @@ pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
     }
 }
 
+/// Set the range of the input data in memory
 #[no_mangle]
 pub fn extism_input_set(p: Pointer, len: Length) {
     unsafe {
@@ -277,6 +382,7 @@ pub fn extism_input_set(p: Pointer, len: Length) {
     }
 }
 
+/// Set the range of the output data in memory
 #[no_mangle]
 pub fn extism_output_set(p: Pointer, len: Length) {
     unsafe {
@@ -285,43 +391,51 @@ pub fn extism_output_set(p: Pointer, len: Length) {
     }
 }
 
+/// Get the input length
 #[no_mangle]
 pub fn extism_input_length() -> Length {
     unsafe { INPUT_LENGTH }
 }
 
+/// Get the input offset in Exitsm-managed memory
 #[no_mangle]
 pub fn extism_input_offset() -> Length {
     unsafe { INPUT_OFFSET }
 }
 
+/// Get the output length
 #[no_mangle]
 pub fn extism_output_length() -> Length {
     unsafe { OUTPUT_LENGTH }
 }
 
+/// Get the output offset in Extism-managed memory
 #[no_mangle]
 pub fn extism_output_offset() -> Length {
     unsafe { OUTPUT_OFFSET }
 }
 
+/// Reset the allocator
 #[no_mangle]
 pub unsafe fn extism_reset() {
     ERROR.store(0, Ordering::SeqCst);
-    MemoryRegion::new().reset()
+    MemoryRoot::new().reset()
 }
 
+/// Set the error message offset
 #[no_mangle]
 pub unsafe fn extism_error_set(ptr: Pointer) {
     ERROR.store(ptr, Ordering::SeqCst);
 }
 
+/// Get the error message offset, if it's `0` then no error has been set
 #[no_mangle]
 pub unsafe fn extism_error_get() -> Pointer {
     ERROR.load(Ordering::SeqCst)
 }
 
+/// Get the position of the allocator, this can be used as an indication of how many bytes are currently in-use
 #[no_mangle]
 pub unsafe fn extism_memory_bytes() -> Length {
-    MemoryRegion::new().position.load(Ordering::Acquire)
+    MemoryRoot::new().position.load(Ordering::Acquire)
 }
