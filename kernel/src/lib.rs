@@ -35,6 +35,7 @@
 //! These functions are backward compatible with the pre-kernel runtime, but a few new functions are added to
 //! give runtimes more access to the internals necesarry to load data in and out of a plugin.
 #![no_std]
+#![allow(clippy::missing_safety_doc)]
 
 use core::sync::atomic::*;
 
@@ -154,6 +155,9 @@ impl MemoryRoot {
             Ordering::Release,
         );
         root.position.store(0, Ordering::Release);
+
+        // Ensure the first block is marked as `Unused`
+        #[allow(clippy::size_of_in_element_count)]
         core::ptr::write_bytes(
             root.blocks.as_mut_ptr() as *mut _,
             MemoryStatus::Unused as u8,
@@ -196,11 +200,11 @@ impl MemoryRoot {
             // Re-use freed blocks when they're large enough
             if status == MemoryStatus::Free as u8 && b.size >= length as usize {
                 // Split block if there is too much excess
-                if b.size as usize - length as usize >= BLOCK_SPLIT_SIZE {
+                if b.size - length as usize >= BLOCK_SPLIT_SIZE {
                     b.size -= length as usize;
                     b.used = 0;
 
-                    let block1 = b.data.as_mut_ptr().add(b.size as usize) as *mut MemoryBlock;
+                    let block1 = b.data.as_mut_ptr().add(b.size) as *mut MemoryBlock;
                     let b1 = &mut *block1;
                     b1.size = length as usize;
                     b1.used = 0;
@@ -291,8 +295,7 @@ impl MemoryBlock {
     pub unsafe fn next_ptr(&mut self) -> *mut MemoryBlock {
         self.data
             .as_mut_ptr()
-            .add(self.size as usize + core::mem::size_of::<MemoryBlock>())
-            as *mut MemoryBlock
+            .add(self.size + core::mem::size_of::<MemoryBlock>()) as *mut MemoryBlock
     }
 
     /// Mark a block as free
