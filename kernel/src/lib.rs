@@ -85,11 +85,13 @@ pub enum MemoryStatus {
 /// size of the allocated memory and the position of the bump allocator.
 ///
 /// The overall layout of the Extism-manged memory is organized like this:
-/// 0     128
-/// |------|-------
-/// | Root | Block
-/// |------|-------  
+
+/// |------|-------|---------|-------|--------------|
+/// | Root | Block |  Data   | Block |     Data     | ...
+/// |------|-------|---------|-------|--------------|
 ///
+/// Where `Root` and `Block` are fixed to the size of the `MemoryRoot` and `MemoryBlock` structs. But
+/// the size of `Data` is dependent on the allocation size.
 #[repr(C)]
 pub struct MemoryRoot {
     /// Position of the bump allocator, relative to `START_PAGE`
