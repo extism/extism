@@ -53,7 +53,7 @@ impl MemoryRegion {
     pub unsafe fn new() -> &'static mut MemoryRegion {
         if INITIALIZED
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
-            .is_ok()
+            .is_err()
         {
             return memory_region();
         }

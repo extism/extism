@@ -109,8 +109,7 @@ pub trait InternalExt {
             .unwrap()
             .into_func()
             .unwrap()
-            .call(&mut store, &[Val::I64(n as i64)], output)
-            .unwrap();
+            .call(&mut store, &[Val::I64(n as i64)], output)?;
         let offs = output[0].unwrap_i64() as u64;
         if offs == 0 {
             anyhow::bail!("out of memory")
