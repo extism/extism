@@ -262,13 +262,22 @@ impl Plugin {
             len = 0;
         }
 
+        {
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let internal = self.internal_mut();
+            internal.store = store;
+            internal.linker = linker;
+        }
+
+        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
+        trace!("Input size: {}", bytes.len());
+
         self.start_timer(&tx)?;
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
         }
 
-        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
-        trace!("Input size: {}", bytes.len());
         let offs = self.memory_alloc_bytes(bytes)?;
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
@@ -279,8 +288,6 @@ impl Plugin {
             )?;
         }
 
-        self.internal_mut().store = &mut self.store;
-        self.internal_mut().linker = &mut self.linker;
         Ok(())
     }
 
