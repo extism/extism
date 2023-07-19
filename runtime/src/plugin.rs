@@ -9,6 +9,7 @@ pub struct Plugin {
 
     /// Used to define functions and create new instances
     pub linker: Linker<Internal>,
+    pub store: Store<Internal>,
 
     /// Instance provides the ability to call functions in a module
     pub instance: Instance,
@@ -17,10 +18,6 @@ pub struct Plugin {
     /// to avoid issues with memory piling up since `Instance`s are only
     /// actually cleaned up along with a `Store`
     pub instantiations: usize,
-
-    /// Handles interactions with WASM memory
-    // pub memory: std::cell::UnsafeCell<PluginMemory>,
-    pub store: Store<Internal>,
 
     /// The ID used to identify this plugin with the `Timer`
     pub timer_id: uuid::Uuid,
