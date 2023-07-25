@@ -81,7 +81,7 @@ fn stringify(
             try out_stream.writeByte('{');
             var field_output = false;
             var child_options = options;
-            child_options.whitespace.indent_level += 1;
+            child_options.whitespace = .indent_2;
             inline for (S.fields) |Field| {
                 // don't include void fields
                 if (Field.type == void) continue;
@@ -103,17 +103,13 @@ fn stringify(
                     } else {
                         try out_stream.writeByte(',');
                     }
-                    try child_options.whitespace.outputIndent(out_stream);
                     try json.encodeJsonString(Field.name, options, out_stream);
                     try out_stream.writeByte(':');
-                    if (child_options.whitespace.separator) {
+                    if (child_options.whitespace != .minified) {
                         try out_stream.writeByte(' ');
                     }
                     try stringify(@field(value, Field.name), child_options, out_stream);
                 }
-            }
-            if (field_output) {
-                try options.whitespace.outputIndent(out_stream);
             }
             try out_stream.writeByte('}');
             return;
@@ -133,23 +129,18 @@ fn stringify(
             },
             // TODO: .Many when there is a sentinel (waiting for https://github.com/ziglang/zig/pull/3972)
             .Slice => {
-                if (ptr_info.child == u8 and options.string == .String and std.unicode.utf8ValidateSlice(value)) {
+                if (ptr_info.child == u8 and std.unicode.utf8ValidateSlice(value)) {
                     try json.encodeJsonString(value, options, out_stream);
                     return;
                 }
 
                 try out_stream.writeByte('[');
                 var child_options = options;
-                child_options.whitespace.indent_level += 1;
                 for (value, 0..) |x, i| {
                     if (i != 0) {
                         try out_stream.writeByte(',');
                     }
-                    try child_options.whitespace.outputIndent(out_stream);
                     try stringify(x, child_options, out_stream);
-                }
-                if (value.len != 0) {
-                    try options.whitespace.outputIndent(out_stream);
                 }
                 try out_stream.writeByte(']');
                 return;
