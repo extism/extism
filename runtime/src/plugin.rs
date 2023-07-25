@@ -362,10 +362,10 @@ impl Plugin {
             return;
         }
 
-        // Check for `__wasm__call_ctors` and `__wasm_call_dtors`, this is used by WASI to
+        // Check for `__wasm_call_ctors` and `__wasm_call_dtors`, this is used by WASI to
         // initialize certain interfaces.
         if self.has_wasi() {
-            if let Some(init) = self.get_func("__wasm_call_ctors") {
+            let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
                 if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
                         "__wasm_call_ctors function found with type {:?}",
@@ -374,26 +374,36 @@ impl Plugin {
                     return;
                 }
                 trace!("WASI runtime detected");
-                if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
-                    if cleanup.typed::<(), ()>(&self.store()).is_err() {
-                        trace!(
-                            "__wasm_call_dtors function found with type {:?}",
-                            cleanup.ty(self.store())
-                        );
-                        return;
-                    }
-                    self.runtime = Some(Runtime::Wasi {
-                        init,
-                        cleanup: Some(cleanup),
-                    });
+                init
+            } else if let Some(init) = self.get_func("_initialize") {
+                if init.typed::<(), ()>(&self.store()).is_err() {
+                    trace!(
+                        "_initialize function found with type {:?}",
+                        init.ty(self.store())
+                    );
                     return;
                 }
+                trace!("WASI reactor module detected");
+                init
+            } else {
+                return;
+            };
 
-                self.runtime = Some(Runtime::Wasi {
-                    init,
-                    cleanup: None,
-                });
-            }
+            let cleanup = if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
+                if cleanup.typed::<(), ()>(&self.store()).is_err() {
+                    trace!(
+                        "__wasm_call_dtors function found with type {:?}",
+                        cleanup.ty(self.store())
+                    );
+                    None
+                } else {
+                    Some(cleanup)
+                }
+            } else {
+                None
+            };
+
+            self.runtime = Some(Runtime::Wasi { init, cleanup });
             return;
         }
 
