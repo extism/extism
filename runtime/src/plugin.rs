@@ -425,8 +425,8 @@ impl Plugin {
                     debug!("Initialized Haskell language runtime");
                 }
                 Runtime::Wasi { init, cleanup: _ } => {
-                    debug!("Calling __wasm_call_ctors");
                     init.call(&mut store, &[], &mut [])?;
+                    debug!("Initialied WASI runtime");
                 }
             }
         }
