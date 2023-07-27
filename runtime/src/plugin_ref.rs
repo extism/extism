@@ -3,6 +3,7 @@ use crate::*;
 // PluginRef is used to access a plugin from a context-scoped plugin registry
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
+    running: bool,
     pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
     plugin: *mut Plugin,
     _t: std::marker::PhantomData<&'a ()>,
@@ -10,23 +11,18 @@ pub struct PluginRef<'a> {
 
 impl<'a> PluginRef<'a> {
     /// Initialize the plugin for a new call
-    ///
-    /// - Resets memory offsets
-    /// - Updates `input` pointer
-    pub fn init(mut self, data: *const u8, data_len: usize) -> Self {
-        trace!("PluginRef::init: {}", self.id,);
+    pub fn start_call(mut self) -> Self {
+        trace!("PluginRef::start_call: {}", self.id,);
         let plugin = self.as_mut();
-        plugin.memory_mut().reset();
+
         if plugin.has_wasi() || plugin.runtime.is_some() {
             if let Err(e) = plugin.reinstantiate() {
                 error!("Failed to reinstantiate: {e:?}");
-                plugin
-                    .internal()
-                    .set_error(format!("Failed to reinstantiate: {e:?}"));
+                plugin.error(format!("Failed to reinstantiate: {e:?}"), ());
                 return self;
             }
         }
-        plugin.set_input(data, data_len);
+        self.running = true;
         self
     }
 
@@ -45,12 +41,25 @@ impl<'a> PluginRef<'a> {
             return ctx.error(format!("Plugin does not exist: {plugin_id}"), None);
         };
 
+        {
+            let plugin = unsafe { &mut *plugin };
+            // Start timer
+            if let Err(e) = plugin.start_timer(&epoch_timer_tx) {
+                let id = plugin.timer_id;
+                plugin.error(
+                    format!("Unable to start timeout manager for {id}: {e:?}"),
+                    (),
+                );
+                return None;
+            }
+        }
+
         if clear_error {
             trace!("Clearing context error");
             ctx.error = None;
             trace!("Clearing plugin error: {plugin_id}");
             unsafe {
-                (&*plugin).internal().clear_error();
+                (*plugin).clear_error();
             }
         }
 
@@ -59,6 +68,7 @@ impl<'a> PluginRef<'a> {
             plugin,
             epoch_timer_tx,
             _t: std::marker::PhantomData,
+            running: false,
         })
     }
 }
@@ -78,6 +88,14 @@ impl<'a> AsMut<Plugin> for PluginRef<'a> {
 impl<'a> Drop for PluginRef<'a> {
     fn drop(&mut self) {
         trace!("Dropping PluginRef {}", self.id);
-        // Cleanup?
+        if self.running {
+            let plugin = self.as_mut();
+
+            // Stop timer
+            if let Err(e) = plugin.stop_timer() {
+                let id = plugin.timer_id;
+                error!("Failed to stop timeout manager for {id}: {e:?}");
+            }
+        }
     }
 }

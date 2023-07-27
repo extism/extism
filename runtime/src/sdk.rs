@@ -99,7 +99,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Internal) -> 
     }
 
     let plugin = &mut *plugin;
-    plugin.memory_mut().data_mut().as_mut_ptr()
+    plugin.memory_ptr()
 }
 
 /// Allocate a memory block in the currently running plugin
@@ -111,16 +111,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Interna
     }
 
     let plugin = &mut *plugin;
-
-    let mem = match plugin.memory_mut().alloc(n as usize) {
-        Ok(x) => x,
-        Err(e) => {
-            plugin.set_error(e);
-            return 0;
-        }
-    };
-
-    mem.offset as u64
+    plugin.memory_alloc(n as u64).unwrap_or_default()
 }
 
 /// Get the length of an allocated block
@@ -135,11 +126,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
     }
 
     let plugin = &mut *plugin;
-
-    match plugin.memory().block_length(n as usize) {
-        Some(x) => x as Size,
-        None => 0,
-    }
+    plugin.memory_length(n)
 }
 
 /// Free an allocated memory block
@@ -151,7 +138,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Internal
     }
 
     let plugin = &mut *plugin;
-    plugin.memory_mut().free(ptr as usize);
+    plugin.memory_free(ptr);
 }
 
 /// Create a new host function
@@ -436,21 +423,21 @@ pub unsafe extern "C" fn extism_plugin_config(
             }
         };
 
-    let wasi = &mut plugin.memory.get_mut().store_mut().data_mut().wasi;
+    let wasi = &mut plugin.internal_mut().wasi;
     if let Some(Wasi { ctx, .. }) = wasi {
         for (k, v) in json.iter() {
             match v {
                 Some(v) => {
-                    let _ = ctx.push_env(&k, &v);
+                    let _ = ctx.push_env(k, v);
                 }
                 None => {
-                    let _ = ctx.push_env(&k, "");
+                    let _ = ctx.push_env(k, "");
                 }
             }
         }
     }
 
-    let config = &mut plugin.memory.get_mut().manifest.as_mut().config;
+    let config = &mut plugin.internal_mut().manifest.as_mut().config;
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {
@@ -512,14 +499,10 @@ pub unsafe extern "C" fn extism_plugin_call(
     // needed before a new call
     let mut plugin_ref = match PluginRef::new(ctx, plugin_id, true) {
         None => return -1,
-        Some(p) => p.init(data, data_len as usize),
+        Some(p) => p.start_call(),
     };
     let tx = plugin_ref.epoch_timer_tx.clone();
     let plugin = plugin_ref.as_mut();
-
-    if plugin.internal().last_error.borrow().is_some() {
-        return -1;
-    }
 
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
@@ -533,15 +516,6 @@ pub unsafe extern "C" fn extism_plugin_call(
         Some(x) => x,
         None => return plugin.error(format!("Function not found: {name}"), -1),
     };
-
-    // Start timer
-    if let Err(e) = plugin.start_timer(&tx) {
-        let id = plugin.timer_id;
-        return plugin.error(
-            format!("Unable to start timeout manager for {id}: {e:?}"),
-            -1,
-        );
-    }
 
     // Check the number of results, reject functions with more than 1 result
     let n_results = func.ty(plugin.store()).results().len();
@@ -559,13 +533,19 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     }
 
+    if let Err(e) = plugin.set_input(data, data_len as usize, tx) {
+        return plugin.error(e, -1);
+    }
+
+    if plugin.has_error() {
+        return -1;
+    }
+
     debug!("Calling function: {name} in plugin {plugin_id}");
 
     // Call the function
     let mut results = vec![wasmtime::Val::null(); n_results];
-    let res = func.call(&mut plugin.store_mut(), &[], results.as_mut_slice());
-
-    plugin.dump_memory();
+    let res = func.call(plugin.store_mut(), &[], results.as_mut_slice());
 
     // Cleanup runtime
     if !is_start {
@@ -574,18 +554,10 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     }
 
-    // Stop timer
-    if let Err(e) = plugin.stop_timer() {
-        let id = plugin.timer_id;
-        return plugin.error(
-            format!("Failed to stop timeout manager for {id}: {e:?}"),
-            -1,
-        );
-    }
-
     match res {
         Ok(()) => (),
         Err(e) => {
+            plugin.store.set_epoch_deadline(1);
             if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
                 trace!("WASI return code: {}", exit.0);
                 if exit.0 != 0 {
@@ -635,20 +607,27 @@ pub unsafe extern "C" fn extism_error(ctx: *mut Context, plugin: PluginIndex) ->
         return get_context_error(ctx);
     }
 
-    let plugin_ref = match PluginRef::new(ctx, plugin, false) {
+    let mut plugin_ref = match PluginRef::new(ctx, plugin, false) {
         None => return std::ptr::null(),
         Some(p) => p,
     };
-    let plugin = plugin_ref.as_ref();
-
-    let err = plugin.internal().last_error.borrow();
-    match err.as_ref() {
-        Some(e) => e.as_ptr() as *const _,
-        None => {
-            trace!("Error is NULL");
-            std::ptr::null()
-        }
+    let plugin = plugin_ref.as_mut();
+    let output = &mut [Val::I64(0)];
+    if let Some(f) = plugin
+        .linker
+        .get(&mut plugin.store, "env", "extism_error_get")
+    {
+        f.into_func()
+            .unwrap()
+            .call(&mut plugin.store, &[], output)
+            .unwrap();
     }
+    if output[0].unwrap_i64() == 0 {
+        trace!("Error is NULL");
+        return std::ptr::null();
+    }
+
+    plugin.memory_ptr().add(output[0].unwrap_i64() as usize) as *const _
 }
 
 /// Get the length of a plugin's output data
@@ -660,13 +639,20 @@ pub unsafe extern "C" fn extism_plugin_output_length(
     trace!("Call to extism_plugin_output_length for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin_ref = match PluginRef::new(ctx, plugin, true) {
+    let mut plugin_ref = match PluginRef::new(ctx, plugin, true) {
         None => return 0,
         Some(p) => p,
     };
-    let plugin = plugin_ref.as_ref();
-
-    let len = plugin.internal().output_length as Size;
+    let plugin = plugin_ref.as_mut();
+    let out = &mut [Val::I64(0)];
+    let _ = plugin
+        .linker
+        .get(&mut plugin.store, "env", "extism_output_length")
+        .unwrap()
+        .into_func()
+        .unwrap()
+        .call(&mut plugin.store_mut(), &[], out);
+    let len = out[0].unwrap_i64() as Size;
     trace!("Output length: {len}");
     len
 }
@@ -680,20 +666,23 @@ pub unsafe extern "C" fn extism_plugin_output_data(
     trace!("Call to extism_plugin_output_data for plugin {plugin}");
 
     let ctx = &mut *ctx;
-    let plugin_ref = match PluginRef::new(ctx, plugin, true) {
+    let mut plugin_ref = match PluginRef::new(ctx, plugin, true) {
         None => return std::ptr::null(),
         Some(p) => p,
     };
-    let plugin = plugin_ref.as_ref();
-    let internal = plugin.internal();
+    let plugin = plugin_ref.as_mut();
+    let ptr = plugin.memory_ptr();
+    let out = &mut [Val::I64(0)];
+    let mut store = &mut *(plugin.store_mut() as *mut Store<_>);
     plugin
-        .memory()
-        .ptr(MemoryBlock::new(
-            internal.output_offset,
-            internal.output_length,
-        ))
-        .map(|x| x as *const _)
-        .unwrap_or(std::ptr::null())
+        .linker
+        .get(&mut store, "env", "extism_output_offset")
+        .unwrap()
+        .into_func()
+        .unwrap()
+        .call(&mut store, &[], out)
+        .unwrap();
+    ptr.add(out[0].unwrap_i64() as usize)
 }
 
 /// Set log file and level

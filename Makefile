@@ -21,6 +21,10 @@ endif
 build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
+.PHONY: kernel
+kernel:
+	cd kernel && bash build.sh
+
 lint:
 	cargo clippy --release --no-deps --manifest-path runtime/Cargo.toml
 

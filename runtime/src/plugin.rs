@@ -9,6 +9,7 @@ pub struct Plugin {
 
     /// Used to define functions and create new instances
     pub linker: Linker<Internal>,
+    pub store: Store<Internal>,
 
     /// Instance provides the ability to call functions in a module
     pub instance: Instance,
@@ -17,9 +18,6 @@ pub struct Plugin {
     /// to avoid issues with memory piling up since `Instance`s are only
     /// actually cleaned up along with a `Store`
     pub instantiations: usize,
-
-    /// Handles interactions with WASM memory
-    pub memory: std::cell::UnsafeCell<PluginMemory>,
 
     /// The ID used to identify this plugin with the `Timer`
     pub timer_id: uuid::Uuid,
@@ -33,12 +31,24 @@ pub struct Plugin {
 }
 
 impl InternalExt for Plugin {
-    fn memory(&self) -> &PluginMemory {
-        unsafe { &*self.memory.get() }
+    fn store(&self) -> &Store<Internal> {
+        &self.store
     }
 
-    fn memory_mut(&mut self) -> &mut PluginMemory {
-        self.memory.get_mut()
+    fn store_mut(&mut self) -> &mut Store<Internal> {
+        &mut self.store
+    }
+
+    fn linker(&self) -> &Linker<Internal> {
+        &self.linker
+    }
+
+    fn linker_mut(&mut self) -> &mut Linker<Internal> {
+        &mut self.linker
+    }
+
+    fn linker_and_store(&mut self) -> (&mut Linker<Internal>, &mut Store<Internal>) {
+        (&mut self.linker, &mut self.store)
     }
 }
 
@@ -68,9 +78,13 @@ fn calculate_available_memory(
     let mut fail_memory_check = false;
     let mut total_memory_needed = 0;
     for (name, module) in modules.iter() {
+        if name == "env" {
+            continue;
+        }
         let mut memories = 0;
         for export in module.exports() {
             if let Some(memory) = export.ty().memory() {
+                memories += 1;
                 let memory_max = memory.maximum();
                 match memory_max {
                     None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set in the manifest all modules \
@@ -78,16 +92,15 @@ fn calculate_available_memory(
                     Some(m) => {
                         total_memory_needed += m;
                         if !fail_memory_check {
-                            continue
+                            continue;
                         }
 
                         *available_pages = available_pages.saturating_sub(m as u32);
                         if *available_pages == 0 {
                             fail_memory_check = true;
                         }
-                    },
+                    }
                 }
-                memories += 1;
             }
         }
 
@@ -132,14 +145,13 @@ impl Plugin {
 
         let mut store = Store::new(
             &engine,
-            Internal::new(&manifest, with_wasi, available_pages)?,
+            Internal::new(manifest, with_wasi, available_pages)?,
         );
         store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
-        // Create memory
-        let memory = Memory::new(&mut store, MemoryType::new(2, available_pages))?;
-        let mut memory = PluginMemory::new(store, memory, manifest);
-
+        if available_pages.is_some() {
+            store.limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+        }
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
@@ -177,7 +189,10 @@ impl Plugin {
         }
 
         // Add builtins
-        for (_name, module) in modules.iter() {
+        for (name, module) in modules.iter() {
+            if name != main_name {
+                linker.module(&mut store, name, module)?;
+            }
             for import in module.imports() {
                 let module_name = import.module();
                 let name = import.name();
@@ -185,23 +200,11 @@ impl Plugin {
 
                 if module_name == EXPORT_MODULE_NAME {
                     define_funcs!(name,  {
-                        alloc(I64) -> I64;
-                        free(I64);
-                        load_u8(I64) -> I32;
-                        load_u64(I64) -> I64;
-                        store_u8(I64, I32);
-                        store_u64(I64, I64);
-                        input_length() -> I64;
-                        input_load_u8(I64) -> I32;
-                        input_load_u64(I64) -> I64;
-                        output_set(I64, I64);
-                        error_set(I64);
                         config_get(I64) -> I64;
                         var_get(I64) -> I64;
                         var_set(I64, I64);
                         http_request(I64, I64) -> I64;
                         http_status_code() -> I32;
-                        length(I64) -> I64;
                         log_warn(I64);
                         log_info(I64);
                         log_debug(I64);
@@ -219,20 +222,13 @@ impl Plugin {
             }
         }
 
-        // Add modules to linker
-        for (name, module) in modules.iter() {
-            if name != main_name {
-                linker.module(&mut memory.store_mut(), name, module)?;
-            }
-        }
-
-        let instance = linker.instantiate(&mut memory.store_mut(), main)?;
+        let instance = linker.instantiate(&mut store, main)?;
         let timer_id = uuid::Uuid::new_v4();
         let mut plugin = Plugin {
             modules,
             linker,
-            memory: std::cell::UnsafeCell::new(memory),
             instance,
+            store,
             instantiations: 1,
             runtime: None,
             timer_id,
@@ -242,8 +238,8 @@ impl Plugin {
             },
         };
 
-        // Make sure `Internal::memory` is initialized
-        plugin.internal_mut().memory = plugin.memory.get();
+        plugin.internal_mut().store = &mut plugin.store;
+        plugin.internal_mut().linker = &mut plugin.linker;
 
         // Then detect runtime before returning the new plugin
         plugin.detect_runtime();
@@ -252,35 +248,55 @@ impl Plugin {
 
     /// Get a function by name
     pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
-        self.instance
-            .get_func(&mut self.memory.get_mut().store_mut(), function.as_ref())
-    }
-
-    // A convenience method to set the plugin error and return a value
-    pub fn error<E>(&self, e: impl std::fmt::Debug, x: E) -> E {
-        self.store().data().set_error(e);
-        x
+        self.instance.get_func(&mut self.store, function.as_ref())
     }
 
     /// Store input in memory and initialize `Internal` pointer
-    pub fn set_input(&mut self, input: *const u8, mut len: usize) {
+    pub(crate) fn set_input(
+        &mut self,
+        input: *const u8,
+        mut len: usize,
+        tx: std::sync::mpsc::SyncSender<TimerAction>,
+    ) -> Result<(), Error> {
         if input.is_null() {
             len = 0;
         }
-        let ptr = self.memory.get();
-        let internal = self.internal_mut();
-        internal.input = input;
-        internal.input_length = len;
-        internal.memory = ptr
-    }
 
-    /// Dump memory using trace! logging
-    pub fn dump_memory(&self) {
-        self.memory().dump();
+        {
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let internal = self.internal_mut();
+            internal.store = store;
+            internal.linker = linker;
+        }
+
+        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
+        trace!("Input size: {}", bytes.len());
+
+        self.start_timer(&tx)?;
+        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
+            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+        }
+
+        let offs = self.memory_alloc_bytes(bytes)?;
+
+        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
+            f.into_func().unwrap().call(
+                &mut self.store,
+                &[Val::I64(offs as i64), Val::I64(len as i64)],
+                &mut [],
+            )?;
+        }
+
+        Ok(())
     }
 
     /// Create a new instance from the same modules
     pub fn reinstantiate(&mut self) -> Result<(), Error> {
+        if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
+            limiter.reset();
+        }
+
         let (main_name, main) = self
             .modules
             .get("main")
@@ -290,24 +306,34 @@ impl Plugin {
                 (entry.0.as_str(), entry.1)
             });
 
-        // Avoid running into resource limits, after 5 instantiations reset the store. This will
-        // release any old `Instance` objects
         if self.instantiations > 5 {
-            self.memory.get_mut().reinstantiate()?;
+            let engine = self.store.engine().clone();
+            let internal = self.internal();
+            self.store = Store::new(
+                &engine,
+                Internal::new(
+                    internal.manifest.clone(),
+                    internal.wasi.is_some(),
+                    internal.available_pages,
+                )?,
+            );
+            self.store
+                .epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
 
-            // Get the `main` module, or the last one if `main` doesn't exist
+            if self.internal().available_pages.is_some() {
+                self.store
+                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+            }
+
             for (name, module) in self.modules.iter() {
                 if name != main_name {
-                    self.linker
-                        .module(&mut self.memory.get_mut().store_mut(), name, module)?;
+                    self.linker.module(&mut self.store, name, module)?;
                 }
             }
             self.instantiations = 0;
         }
 
-        let instance = self
-            .linker
-            .instantiate(&mut self.memory.get_mut().store_mut(), &main)?;
+        let instance = self.linker.instantiate(&mut self.store, main)?;
         self.instance = instance;
         self.detect_runtime();
         self.instantiations += 1;
@@ -316,7 +342,7 @@ impl Plugin {
 
     /// Determine if wasi is enabled
     pub fn has_wasi(&self) -> bool {
-        self.memory().store().data().wasi.is_some()
+        self.internal().wasi.is_some()
     }
 
     fn detect_runtime(&mut self) {
@@ -325,13 +351,10 @@ impl Plugin {
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
             if let Some(cleanup) = self.get_func("hs_exit") {
-                if init
-                    .typed::<(i32, i32), ()>(&self.memory().store())
-                    .is_err()
-                {
+                if init.typed::<(i32, i32), ()>(&self.store()).is_err() {
                     trace!(
                         "hs_init function found with type {:?}",
-                        init.ty(&self.memory().store())
+                        init.ty(self.store())
                     );
                 }
                 self.runtime = Some(Runtime::Haskell { init, cleanup });
@@ -339,38 +362,48 @@ impl Plugin {
             return;
         }
 
-        // Check for `__wasm__call_ctors` and `__wasm_call_dtors`, this is used by WASI to
+        // Check for `__wasm_call_ctors` and `__wasm_call_dtors`, this is used by WASI to
         // initialize certain interfaces.
         if self.has_wasi() {
-            if let Some(init) = self.get_func("__wasm_call_ctors") {
-                if init.typed::<(), ()>(&self.memory().store()).is_err() {
+            let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
+                if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
                         "__wasm_call_ctors function found with type {:?}",
-                        init.ty(&self.memory().store())
+                        init.ty(self.store())
                     );
                     return;
                 }
                 trace!("WASI runtime detected");
-                if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
-                    if cleanup.typed::<(), ()>(&self.memory().store()).is_err() {
-                        trace!(
-                            "__wasm_call_dtors function found with type {:?}",
-                            cleanup.ty(&self.memory().store())
-                        );
-                        return;
-                    }
-                    self.runtime = Some(Runtime::Wasi {
-                        init,
-                        cleanup: Some(cleanup),
-                    });
+                init
+            } else if let Some(init) = self.get_func("_initialize") {
+                if init.typed::<(), ()>(&self.store()).is_err() {
+                    trace!(
+                        "_initialize function found with type {:?}",
+                        init.ty(self.store())
+                    );
                     return;
                 }
+                trace!("WASI reactor module detected");
+                init
+            } else {
+                return;
+            };
 
-                self.runtime = Some(Runtime::Wasi {
-                    init,
-                    cleanup: None,
-                });
-            }
+            let cleanup = if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
+                if cleanup.typed::<(), ()>(&self.store()).is_err() {
+                    trace!(
+                        "__wasm_call_dtors function found with type {:?}",
+                        cleanup.ty(self.store())
+                    );
+                    None
+                } else {
+                    Some(cleanup)
+                }
+            } else {
+                None
+            };
+
+            self.runtime = Some(Runtime::Wasi { init, cleanup });
             return;
         }
 
@@ -378,22 +411,22 @@ impl Plugin {
     }
 
     pub(crate) fn initialize_runtime(&mut self) -> Result<(), Error> {
+        let mut store = &mut self.store;
         if let Some(runtime) = &self.runtime {
             trace!("Plugin::initialize_runtime");
             match runtime {
                 Runtime::Haskell { init, cleanup: _ } => {
-                    let mut results =
-                        vec![Val::null(); init.ty(&self.memory().store()).results().len()];
+                    let mut results = vec![Val::null(); init.ty(&store).results().len()];
                     init.call(
-                        &mut self.memory.get_mut().store_mut(),
+                        &mut store,
                         &[Val::I32(0), Val::I32(0)],
                         results.as_mut_slice(),
                     )?;
                     debug!("Initialized Haskell language runtime");
                 }
                 Runtime::Wasi { init, cleanup: _ } => {
-                    debug!("Calling __wasm_call_ctors");
-                    init.call(&mut self.memory.get_mut().store_mut(), &[], &mut [])?;
+                    init.call(&mut store, &[], &mut [])?;
+                    debug!("Initialied WASI runtime");
                 }
             }
         }
@@ -411,7 +444,7 @@ impl Plugin {
                     cleanup: Some(cleanup),
                 } => {
                     debug!("Calling __wasm_call_dtors");
-                    cleanup.call(&mut self.memory_mut().store_mut(), &[], &mut [])?;
+                    cleanup.call(self.store_mut(), &[], &mut [])?;
                 }
                 Runtime::Wasi {
                     init: _,
@@ -420,13 +453,8 @@ impl Plugin {
                 // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
                 // by calling the `hs_exit` export
                 Runtime::Haskell { init: _, cleanup } => {
-                    let mut results =
-                        vec![Val::null(); cleanup.ty(&self.memory().store()).results().len()];
-                    cleanup.call(
-                        &mut self.memory_mut().store_mut(),
-                        &[],
-                        results.as_mut_slice(),
-                    )?;
+                    let mut results = vec![Val::null(); cleanup.ty(self.store()).results().len()];
+                    cleanup.call(self.store_mut(), &[], results.as_mut_slice())?;
                     debug!("Cleaned up Haskell language runtime");
                 }
             }
@@ -442,14 +470,14 @@ impl Plugin {
         tx: &std::sync::mpsc::SyncSender<TimerAction>,
     ) -> Result<(), Error> {
         let duration = self
-            .memory()
+            .internal()
             .manifest
             .as_ref()
             .timeout_ms
             .map(std::time::Duration::from_millis);
         self.cancel_handle.epoch_timer_tx = Some(tx.clone());
-        self.memory_mut().store_mut().set_epoch_deadline(1);
-        let engine: Engine = self.memory().store().engine().clone();
+        self.store_mut().set_epoch_deadline(1);
+        let engine: Engine = self.store().engine().clone();
         tx.send(TimerAction::Start {
             id: self.timer_id,
             duration,

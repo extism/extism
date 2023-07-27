@@ -5,7 +5,9 @@ import hashlib
 import pathlib
 
 sys.path.append(".")
-from extism import Function, host_fn, ValType, Plugin
+from extism import Function, host_fn, ValType, Plugin, set_log_file
+
+set_log_file("stderr", "trace")
 
 
 @host_fn
@@ -26,7 +28,7 @@ def main(args):
     if len(args) > 1:
         data = args[1].encode()
     else:
-        data = b"some data from python!"
+        data = b"a" * 1024
 
     wasm_file_path = (
         pathlib.Path(__file__).parent.parent / "wasm" / "code-functions.wasm"
@@ -46,11 +48,13 @@ def main(args):
     ]
     plugin = Plugin(manifest, wasi=True, functions=functions)
     # Call `count_vowels`
-    wasm_vowel_count = json.loads(plugin.call("count_vowels", data))
+    wasm_vowel_count = plugin.call("count_vowels", data)
+    print(wasm_vowel_count)
+    j = json.loads(wasm_vowel_count)
 
-    print("Number of vowels:", wasm_vowel_count["count"])
+    print("Number of vowels:", j["count"])
 
-    assert wasm_vowel_count["count"] == count_vowels(data)
+    assert j["count"] == count_vowels(data)
 
 
 if __name__ == "__main__":

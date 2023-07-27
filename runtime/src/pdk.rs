@@ -18,177 +18,6 @@ macro_rules! args {
     };
 }
 
-/// Get the input length
-/// Params: none
-/// Returns: i64 (length)
-pub(crate) fn input_length(
-    caller: Caller<Internal>,
-    _input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &Internal = caller.data();
-    output[0] = Val::I64(data.input_length as i64);
-    Ok(())
-}
-
-/// Load a byte from input
-/// Params: i64 (offset)
-/// Returns: i32 (byte)
-pub(crate) fn input_load_u8(
-    caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &Internal = caller.data();
-    if data.input.is_null() {
-        return Ok(());
-    }
-    output[0] = unsafe { Val::I32(*data.input.add(input[0].unwrap_i64() as usize) as i32) };
-    Ok(())
-}
-
-/// Load an unsigned 64 bit integer from input
-/// Params: i64 (offset)
-/// Returns: i64 (int)
-pub(crate) fn input_load_u64(
-    caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &Internal = caller.data();
-    if data.input.is_null() {
-        return Ok(());
-    }
-    let offs = args!(input, 0, i64) as usize;
-    let slice = unsafe { std::slice::from_raw_parts(data.input.add(offs), 8) };
-    let byte = u64::from_ne_bytes(slice.try_into().unwrap());
-    output[0] = Val::I64(byte as i64);
-    Ok(())
-}
-
-/// Store a byte in memory
-/// Params: i64 (offset), i32 (byte)
-/// Returns: none
-pub(crate) fn store_u8(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let (offset, byte) = args!(input, (0, i64), (1, i32));
-    data.memory_mut().store_u8(offset as usize, byte as u8)?;
-    Ok(())
-}
-
-/// Load a byte from memory
-/// Params: i64 (offset)
-/// Returns: i32 (byte)
-pub(crate) fn load_u8(
-    caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &Internal = caller.data();
-    let offset = args!(input, 0, i64) as usize;
-    let byte = data.memory().load_u8(offset)?;
-    output[0] = Val::I32(byte as i32);
-    Ok(())
-}
-
-/// Store an unsigned 64 bit integer in memory
-/// Params: i64 (offset), i64 (int)
-/// Returns: none
-pub(crate) fn store_u64(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let (offset, b) = args!(input, (0, i64), (1, i64));
-    data.memory_mut().store_u64(offset as usize, b as u64)?;
-    Ok(())
-}
-
-/// Load an unsigned 64 bit integer from memory
-/// Params: i64 (offset)
-/// Returns: i64 (int)
-pub(crate) fn load_u64(
-    caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &Internal = caller.data();
-    let offset = args!(input, 0, i64) as usize;
-    let byte = data.memory().load_u64(offset)?;
-    output[0] = Val::I64(byte as i64);
-    Ok(())
-}
-
-/// Set output offset and length
-/// Params: i64 (offset), i64 (length)
-/// Returns: none
-pub(crate) fn output_set(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let (offset, length) = args!(input, (0, i64), (1, i64));
-    data.output_offset = offset as usize;
-    data.output_length = length as usize;
-    Ok(())
-}
-
-/// Allocate bytes
-/// Params: i64 (length)
-/// Returns: i64 (offset)
-pub(crate) fn alloc(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let offs = data.memory_mut().alloc(input[0].unwrap_i64() as _)?;
-    output[0] = Val::I64(offs.offset as i64);
-
-    Ok(())
-}
-
-/// Free memory
-/// Params: i64 (offset)
-/// Returns: none
-pub(crate) fn free(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let offset = args!(input, 0, i64) as usize;
-    data.memory_mut().free(offset);
-    Ok(())
-}
-
-/// Set the error message, this can be checked by the host program
-/// Params: i64 (offset)
-/// Returns: none
-pub(crate) fn error_set(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    _output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let offset = args!(input, 0, i64) as usize;
-
-    if offset == 0 {
-        *data.last_error.borrow_mut() = None;
-        return Ok(());
-    }
-
-    let s = data.memory().get_str(offset)?;
-    data.set_error(s);
-    Ok(())
-}
-
 /// Get a configuration value
 /// Params: i64 (offset)
 /// Returns: i64 (offset)
@@ -199,21 +28,24 @@ pub(crate) fn config_get(
 ) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
 
-    let offset = args!(input, 0, i64) as usize;
-    let key = data.memory().get_str(offset)?;
-    let val = data.memory().manifest.as_ref().config.get(key);
+    let offset = args!(input, 0, i64) as u64;
+    let key = data.memory_read_str(offset)?;
+    let key = unsafe {
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
+    };
+    let val = data.internal().manifest.as_ref().config.get(key);
     let ptr = val.map(|x| (x.len(), x.as_ptr()));
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_mut().alloc_bytes(bytes)?
+            data.memory_alloc_bytes(bytes)?
         }
         None => {
             output[0] = Val::I64(0);
             return Ok(());
         }
     };
-    output[0] = Val::I64(mem.offset as i64);
+    output[0] = Val::I64(mem as i64);
     Ok(())
 }
 
@@ -227,23 +59,24 @@ pub(crate) fn var_get(
 ) -> Result<(), Error> {
     let data: &mut Internal = caller.data_mut();
 
-    let offset = args!(input, 0, i64) as usize;
-    let key = data.memory().get_str(offset)?;
-    let val = data.vars.get(key);
+    let offset = args!(input, 0, i64) as u64;
+    let key = data.memory_read_str(offset)?;
+    let key = unsafe {
+        std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
+    };
+    let val = data.internal().vars.get(key);
     let ptr = val.map(|x| (x.len(), x.as_ptr()));
-
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_mut().alloc_bytes(bytes)?
+            data.memory_alloc_bytes(bytes)?
         }
         None => {
             output[0] = Val::I64(0);
             return Ok(());
         }
     };
-
-    output[0] = Val::I64(mem.offset as i64);
+    output[0] = Val::I64(mem as i64);
     Ok(())
 }
 
@@ -262,16 +95,16 @@ pub(crate) fn var_set(
         size += v.len();
     }
 
-    let voffset = args!(input, 1, i64) as usize;
+    let voffset = args!(input, 1, i64) as u64;
 
     // If the store is larger than 100MB then stop adding things
     if size > 1024 * 1024 * 100 && voffset != 0 {
         return Err(Error::msg("Variable store is full"));
     }
 
-    let key_offs = args!(input, 0, i64) as usize;
+    let key_offs = args!(input, 0, i64) as u64;
     let key = {
-        let key = data.memory().get_str(key_offs)?;
+        let key = data.memory_read_str(key_offs)?;
         let key_len = key.len();
         let key_ptr = key.as_ptr();
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
@@ -283,10 +116,11 @@ pub(crate) fn var_set(
         return Ok(());
     }
 
-    let value = data.memory().get(voffset)?;
+    let vlen = data.memory_length(voffset);
+    let value = data.memory_read(voffset, vlen).to_vec();
 
     // Insert the value from memory into the `vars` map
-    data.vars.insert(key.to_string(), value.to_vec());
+    data.vars.insert(key.to_string(), value);
 
     Ok(())
 }
@@ -312,18 +146,19 @@ pub(crate) fn http_request(
     {
         use std::io::Read;
         let data: &mut Internal = caller.data_mut();
-        let http_req_offset = args!(input, 0, i64) as usize;
+        let http_req_offset = args!(input, 0, i64) as u64;
 
+        let http_req_len = data.memory_length(http_req_offset);
         let req: extism_manifest::HttpRequest =
-            serde_json::from_slice(data.memory().get(http_req_offset)?)?;
+            serde_json::from_slice(data.memory_read(http_req_offset, http_req_len))?;
 
-        let body_offset = args!(input, 1, i64) as usize;
+        let body_offset = args!(input, 1, i64) as u64;
 
         let url = match url::Url::parse(&req.url) {
             Ok(u) => u,
             Err(e) => return Err(Error::msg(format!("Invalid URL: {e:?}"))),
         };
-        let allowed_hosts = &data.memory().manifest.as_ref().allowed_hosts;
+        let allowed_hosts = &data.internal().manifest.as_ref().allowed_hosts;
         let host_str = url.host_str().unwrap_or_default();
         let host_matches = if let Some(allowed_hosts) = allowed_hosts {
             allowed_hosts.iter().any(|url| {
@@ -352,7 +187,8 @@ pub(crate) fn http_request(
         }
 
         let res = if body_offset > 0 {
-            let buf = data.memory().get(body_offset)?;
+            let len = data.memory_length(body_offset);
+            let buf = data.memory_read(body_offset, len);
             r.send_bytes(buf)
         } else {
             r.call()
@@ -379,9 +215,8 @@ pub(crate) fn http_request(
                 .take(1024 * 1024 * 50) // TODO: make this limit configurable
                 .read_to_end(&mut buf)?;
 
-            let mem = data.memory_mut().alloc_bytes(buf)?;
-
-            output[0] = Val::I64(mem.offset as i64);
+            let mem = data.memory_alloc_bytes(buf)?;
+            output[0] = Val::I64(mem as i64);
         } else {
             output[0] = Val::I64(0);
         }
@@ -403,39 +238,17 @@ pub(crate) fn http_status_code(
     Ok(())
 }
 
-/// Get the length of an allocated block given the offset
-/// Params: i64 (offset)
-/// Returns: i64 (length or 0)
-pub(crate) fn length(
-    mut caller: Caller<Internal>,
-    input: &[Val],
-    output: &mut [Val],
-) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
-    let offset = args!(input, 0, i64) as usize;
-    if offset == 0 {
-        output[0] = Val::I64(0);
-        return Ok(());
-    }
-    let length = match data.memory().block_length(offset) {
-        Some(x) => x,
-        None => return Err(Error::msg("Unable to find length for offset")),
-    };
-    output[0] = Val::I64(length as i64);
-    Ok(())
-}
-
 pub fn log(
     level: log::Level,
-    caller: Caller<Internal>,
+    mut caller: Caller<Internal>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    let data: &Internal = caller.data();
-    let offset = args!(input, 0, i64) as usize;
-    let buf = data.memory().get(offset)?;
+    let data: &mut Internal = caller.data_mut();
+    let offset = args!(input, 0, i64) as u64;
+    let buf = data.memory_read_str(offset);
 
-    match std::str::from_utf8(buf) {
+    match buf {
         Ok(buf) => log::log!(level, "{}", buf),
         Err(_) => log::log!(level, "{:?}", buf),
     }
