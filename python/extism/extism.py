@@ -263,6 +263,7 @@ class Plugin:
             context = Context()
 
         wasm = _wasm(plugin)
+        self.functions = functions
 
         # Register plugin
         if functions is not None:
@@ -310,6 +311,7 @@ class Plugin:
         """
         wasm = _wasm(manifest)
         if functions is not None:
+            self.functions = functions
             functions = [f.pointer for f in functions]
             ptr = _ffi.new("ExtismFunction*[]", functions)
             ok = _lib.extism_plugin_update(
