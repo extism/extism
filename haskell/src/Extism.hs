@@ -1,10 +1,21 @@
-module Extism (module Extism, module Extism.Manifest) where
+module Extism (
+  module Extism, 
+  module Extism.Manifest, 
+  ValType(I32, I64, F32, F64, FuncRef, ExternRef), 
+  Val(ValI32, ValI64, ValF32, ValF64)
+) where
+
 import Data.Int
 import Data.Word
 import Control.Monad (void)
 import Foreign.ForeignPtr
 import Foreign.C.String
 import Foreign.Ptr
+import Foreign.Marshal.Array
+import Foreign.Storable
+import Foreign.StablePtr
+import Foreign.Concurrent
+import Foreign.Marshal.Utils (copyBytes)
 import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
@@ -16,8 +27,11 @@ import Extism.Bindings
 -- | Context for managing plugins
 newtype Context = Context (ForeignPtr ExtismContext)
 
+-- | Host function
+data Function = Function (ForeignPtr ExtismFunction) (StablePtr ()) (FunPtr(CCallback))
+
 -- | Plugins can be used to call WASM function
-data Plugin = Plugin Context Int32
+data Plugin = Plugin Context Int32 [Function]
 
 data CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
 
@@ -29,6 +43,8 @@ newtype Error = ExtismError String deriving Show
 
 -- | Result type
 type Result a = Either Error a
+
+type CurrentPlugin = Ptr ExtismCurrentPlugin
 
 -- | Helper function to convert a 'String' to a 'ByteString'
 toByteString :: String -> ByteString
@@ -53,7 +69,7 @@ reset (Context ctx) =
 newContext :: IO Context
 newContext = do
   ptr <- extism_context_new
-  fptr <- newForeignPtr extism_context_free ptr
+  fptr <- Foreign.ForeignPtr.newForeignPtr extism_context_free ptr
   return (Context fptr)
  
 -- | Execute a function with a new 'Context' that is destroyed when it returns
@@ -64,69 +80,75 @@ withContext f = do
 
 -- | Create a 'Plugin' from a WASM module, `useWasi` determines if WASI should
 -- | be linked
-plugin :: Context -> B.ByteString -> Bool -> IO (Result Plugin)
-plugin c wasm useWasi =
+plugin :: Context -> B.ByteString -> [Function] -> Bool -> IO (Result Plugin)
+plugin c wasm functions useWasi =
+  let nfunctions = fromIntegral (Prelude.length functions) in
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
   let Context ctx = c in
   do
+    funcs <- Prelude.mapM (\(Function ptr _ __) -> withForeignPtr ptr (\x -> do return x)) functions
     withForeignPtr ctx (\ctx -> do
       p <- unsafeUseAsCString wasm (\s ->
-        extism_plugin_new ctx (castPtr s) length nullPtr 0 wasi )
+        withArray funcs (\funcs ->
+          extism_plugin_new ctx (castPtr s) length funcs nfunctions wasi ))
       if p < 0 then do
         err <- extism_error ctx (-1)
         e <- peekCString err
         return $ Left (ExtismError e)
       else
-        return $ Right (Plugin c p))
+        return $ Right (Plugin c p functions))
       
 -- | Create a 'Plugin' with its own 'Context'
-createPlugin :: B.ByteString -> Bool -> IO (Result Plugin)
-createPlugin c useWasi = do
+createPlugin :: B.ByteString -> [Function] -> Bool -> IO (Result Plugin)
+createPlugin c functions useWasi = do
   ctx <- newContext
-  plugin ctx c useWasi
+  plugin ctx c functions useWasi
 
 -- | Create a 'Plugin' from a 'Manifest'
-pluginFromManifest :: Context -> Manifest -> Bool -> IO (Result Plugin)
-pluginFromManifest ctx manifest useWasi =
+pluginFromManifest :: Context -> Manifest -> [Function] -> Bool -> IO (Result Plugin)
+pluginFromManifest ctx manifest functions useWasi =
   let wasm = toByteString $ toString manifest in
-  plugin ctx wasm useWasi
+  plugin ctx wasm functions useWasi
 
 -- | Create a 'Plugin' with its own 'Context' from a 'Manifest'
-createPluginFromManifest :: Manifest -> Bool -> IO (Result Plugin)
-createPluginFromManifest manifest useWasi = do
+createPluginFromManifest :: Manifest -> [Function] -> Bool -> IO (Result Plugin)
+createPluginFromManifest manifest functions useWasi = do
   ctx <- newContext
-  pluginFromManifest ctx manifest useWasi
+  pluginFromManifest ctx manifest functions useWasi
 
 -- | Update a 'Plugin' with a new WASM module
-update :: Plugin -> B.ByteString -> Bool -> IO (Result ())
-update (Plugin (Context ctx) id) wasm useWasi =
+update :: Plugin -> B.ByteString -> [Function] -> Bool -> IO (Result Plugin)
+update (Plugin (Context ctx) id _) wasm functions useWasi =
+  let nfunctions = fromIntegral (Prelude.length functions) in
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
   do
-    withForeignPtr ctx (\ctx -> do
+    funcs <- Prelude.mapM (\(Function ptr _ __) -> withForeignPtr ptr (\x -> do return x)) functions
+    withForeignPtr ctx (\ctx' -> do
       b <- unsafeUseAsCString wasm (\s ->
-        extism_plugin_update ctx id (castPtr s) length nullPtr 0 wasi)
+        withArray funcs (\funcs ->
+          extism_plugin_update ctx' id (castPtr s) length funcs nfunctions wasi))
       if b <= 0 then do
-        err <- extism_error ctx (-1)
+        err <- extism_error ctx' (-1)
         e <- peekCString err
         return $ Left (ExtismError e)
       else
-        return (Right ()))
+        return (Right (Plugin (Context ctx) id functions)))
 
 -- | Update a 'Plugin' with a new 'Manifest'
-updateManifest :: Plugin -> Manifest -> Bool -> IO (Result ())
-updateManifest plugin manifest useWasi =
+updateManifest :: Plugin -> Manifest -> [Function] -> Bool -> IO (Result Plugin)
+updateManifest plugin manifest functions useWasi =
   let wasm = toByteString $ toString manifest in
-  update plugin wasm useWasi
+  update plugin wasm functions useWasi
 
 -- | Check if a 'Plugin' is valid
 isValid :: Plugin -> Bool
-isValid (Plugin _ p) = p >= 0
+isValid (Plugin _ p _) = p >= 0
 
 -- | Set configuration values for a plugin
 setConfig :: Plugin -> [(String, Maybe String)] -> IO Bool
-setConfig (Plugin (Context ctx) plugin) x =
+setConfig (Plugin (Context ctx) plugin _) x =
   if plugin < 0
     then return False
   else
@@ -155,14 +177,14 @@ setLogFile filename level =
 
 -- | Check if a function exists in the given plugin
 functionExists :: Plugin -> String -> IO Bool
-functionExists (Plugin (Context ctx) plugin) name = do
+functionExists (Plugin (Context ctx) plugin _) name = do
   withForeignPtr ctx (\ctx -> do
     b <- withCString name (extism_plugin_function_exists ctx plugin)
     if b == 1 then return True else return False)
 
 --- | Call a function provided by the given plugin
 call :: Plugin -> String -> B.ByteString -> IO (Result B.ByteString)
-call (Plugin (Context ctx) plugin) name input =
+call (Plugin (Context ctx) plugin _) name input =
   let length = fromIntegral (B.length input) in
   do
     withForeignPtr ctx (\ctx -> do
@@ -184,15 +206,115 @@ call (Plugin (Context ctx) plugin) name input =
 -- | Free a 'Plugin', this will automatically be called for every plugin
 -- | associated with a 'Context' when that 'Context' is freed
 free :: Plugin -> IO ()
-free (Plugin (Context ctx) plugin) =
+free (Plugin (Context ctx) plugin _) =
   withForeignPtr ctx (`extism_plugin_free` plugin)
 
 cancelHandle :: Plugin -> IO CancelHandle
-cancelHandle (Plugin (Context ctx) plugin) = do
+cancelHandle (Plugin (Context ctx) plugin _) = do
   handle <- withForeignPtr ctx (\ctx -> extism_plugin_cancel_handle ctx plugin)
   return (CancelHandle handle)
 
 cancel :: CancelHandle -> IO Bool
 cancel (CancelHandle handle) = 
   extism_plugin_cancel handle
+
+freePtr ptr = do
+  let s = castPtrToStablePtr ptr
+  (a, b) <- deRefStablePtr s
+  freeHaskellFunPtr b
+  freeStablePtr s
+
+foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCallback) 
+
+foreign import ccall "wrapper" callbackWrap :: CCallback -> IO (FunPtr CCallback)
+
+callback :: (CurrentPlugin -> [Val] -> a -> IO [Val]) -> (CurrentPlugin -> Ptr Val -> Word64 -> Ptr Val -> Word64 -> Ptr () -> IO ())
+callback f  =
+  \plugin params nparams results nresults ptr -> do
+    p <- peekArray (fromIntegral nparams) params
+    userData  <- deRefStablePtr (castPtrToStablePtr ptr)
+    res <- f plugin p (fst userData)
+    pokeArray results res
+
+hostFunction :: Storable a => String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
+hostFunction name params results f v = 
+  let nparams = fromIntegral $ Prelude.length params in
+  let nresults = fromIntegral $ Prelude.length results in
+  do
+    cb <- callbackWrap $ (callback f :: CCallback)
+    free <- freePtrWrap freePtr
+    userData <- newStablePtr (v, free)
+    let userDataPtr = castStablePtrToPtr userData
+    x <- withCString name (\name ->  do
+      withArray params (\params ->
+        withArray results (\results -> do
+          extism_function_new name params nparams results nresults cb userDataPtr free)))
+    let freeFn = extism_function_free x 
+    fptr <- Foreign.Concurrent.newForeignPtr x freeFn
+    return $ (Function fptr (castPtrToStablePtr userDataPtr) cb)
+
+currentPluginMemoryAlloc :: CurrentPlugin -> Word64 -> IO Word64
+currentPluginMemoryAlloc plugin n =
+  extism_current_plugin_memory_alloc plugin n
+
+  
+currentPluginMemoryLength :: CurrentPlugin -> Word64 -> IO Word64
+currentPluginMemoryLength plugin ptr =
+  extism_current_plugin_memory_length plugin ptr
+
+  
+currentPluginMemoryFree :: CurrentPlugin -> Word64 -> IO ()
+currentPluginMemoryFree plugin ptr =
+  extism_current_plugin_memory_free plugin ptr
+
+currentPluginMemory :: CurrentPlugin -> IO (Ptr Word8)
+currentPluginMemory plugin =
+  extism_current_plugin_memory plugin
+
+currentPluginMemoryBlock :: CurrentPlugin -> Word64 -> IO (Ptr Word8, Word64)
+currentPluginMemoryBlock plugin offs = do
+  length <- currentPluginMemoryLength plugin offs
+  ptr <- currentPluginMemory plugin
+  return ((plusPtr ptr (fromIntegral offs)), length)
+
+currentPluginAllocBytes :: CurrentPlugin -> B.ByteString -> IO Word64
+currentPluginAllocBytes plugin s = do
+  let length = B.length s
+  offs <- currentPluginMemoryAlloc plugin (fromIntegral length)
+  ptr <- currentPluginMemory plugin
+  let p = plusPtr ptr (fromIntegral offs)
+  unsafeUseAsCString s (\x ->
+    copyBytes (castPtr p) x length)
+  return offs
+
+toI32 :: Int32 -> Val
+toI32 x = ValI32 x
+
+toI64 :: Int64 -> Val
+toI64 x = ValI64 x
+
+
+toF32 :: Float -> Val
+toF32 x = ValF32 x
+
+toF64 :: Double -> Val
+toF64 x = ValF64 x
+
+
+fromI32 :: Val -> Maybe Int32
+fromI32 (ValI32 x) = Just x
+fromI32 _ = Nothing
+
+fromI64 :: Val -> Maybe Int64
+fromI64 (ValI64 x) = Just x
+fromI64 _ = Nothing
+
+fromF32 :: Val -> Maybe Float
+fromF32 (ValF32 x) = Just x
+fromF32 _ = Nothing
+
+fromF64 :: Val -> Maybe Double
+fromF64 (ValF64 x) = Just x
+fromF64 _ = Nothing
+
 

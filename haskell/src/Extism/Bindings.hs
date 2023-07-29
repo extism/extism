@@ -7,10 +7,70 @@ import Foreign.Ptr
 import Foreign.C.String
 import Data.Int
 import Data.Word
+import Foreign.Storable
+
+type FreeCallback = Ptr () -> IO ()
 
 newtype ExtismContext = ExtismContext () deriving Show
 newtype ExtismFunction = ExtismFunction () deriving Show
 newtype ExtismCancelHandle = ExtismCancelHandle () deriving Show
+newtype ExtismCurrentPlugin = ExtismCurrentPlugin () deriving Show
+data ValType = I32 | I64 | F32 | F64 | V128 | FuncRef | ExternRef
+data Val = ValI32 Int32 | ValI64 Int64 | ValF32 Float | ValF64 Double
+
+typeOfVal (ValI32 _) = I32
+typeOfVal (ValI64 _) = I64
+typeOfVal (ValF32 _) = F32
+typeOfVal (ValF64 _) = F64
+
+type CCallback = Ptr ExtismCurrentPlugin -> Ptr Val -> Word64 -> Ptr Val -> Word64 -> Ptr () -> IO ()
+
+instance Storable Val where
+  sizeOf _ =  sizeOf (I32 :: ValType) + sizeOf (0 :: Int64)
+  alignment _ = 1
+  peek ptr = do
+    t <- peekByteOff ptr 0
+    v <- case t of
+         I32 -> ValI32 <$> (peekByteOff ptr $ sizeOf (I32 :: ValType))
+         I64 -> ValI64 <$> (peekByteOff ptr $ sizeOf (I32 :: ValType))
+         F32 -> ValF32 <$> (peekByteOff ptr $ sizeOf (I32 :: ValType))
+         F64 -> ValF64 <$> (peekByteOff ptr $ sizeOf (I32 :: ValType))
+    return $ v
+  poke ptr x = do
+    pokeByteOff ptr 0 (intOfValType (typeOfVal x))
+    case x of
+      ValI32 x -> pokeByteOff ptr (sizeOf (I32 :: ValType)) x
+      ValI64 x -> pokeByteOff ptr (sizeOf (I32 :: ValType)) x
+      ValF32 x -> pokeByteOff ptr (sizeOf (I32 :: ValType)) x
+      ValF64 x -> pokeByteOff ptr (sizeOf (I32 :: ValType)) x
+
+
+intOfValType :: ValType -> CInt
+intOfValType I32 = 0
+intOfValType I64 = 1
+intOfValType F32 = 2
+intOfValType F64 = 3
+intOfValType V128 = 4
+intOfValType FuncRef = 5
+intOfValType ExternRef = 6
+
+valTypeOfInt 0 = I32
+valTypeOfInt 1 = I64
+valTypeOfInt 2 = F32
+valTypeOfInt 3 = F64
+valTypeOfInt 4 = V128
+valTypeOfInt 5 = FuncRef
+valTypeOfInt 6 = ExternRef
+valTypeOfInt _ = error "Invalid ValType"
+
+instance Storable ValType where
+  sizeOf _ = sizeOf (0 :: CInt)
+  alignment _ = 1
+  peek ptr = do
+    x <- peekByteOff ptr 0
+    return $ valTypeOfInt (x :: CInt)
+  poke ptr x = do
+    pokeByteOff ptr 0 (intOfValType x)
 
 foreign import ccall safe "extism.h extism_context_new" extism_context_new :: IO (Ptr ExtismContext)
 foreign import ccall safe "extism.h &extism_context_free" extism_context_free :: FunPtr (Ptr ExtismContext -> IO ())
@@ -28,3 +88,11 @@ foreign import ccall safe "extism.h extism_context_reset" extism_context_reset :
 foreign import ccall safe "extism.h extism_version" extism_version :: IO CString
 foreign import ccall safe "extism.h extism_plugin_cancel_handle" extism_plugin_cancel_handle :: Ptr ExtismContext -> Int32 -> IO (Ptr ExtismCancelHandle)
 foreign import ccall safe "extism.h extism_plugin_cancel" extism_plugin_cancel :: Ptr ExtismCancelHandle -> IO Bool
+
+foreign import ccall safe "extism.h extism_function_new" extism_function_new :: CString -> Ptr ValType -> Word64 -> Ptr ValType -> Word64 -> FunPtr CCallback -> Ptr () -> FunPtr FreeCallback -> IO (Ptr ExtismFunction)
+foreign import ccall safe "extism.h extism_function_free" extism_function_free :: Ptr ExtismFunction -> IO ()
+foreign import ccall safe "extism.h extism_current_plugin_memory" extism_current_plugin_memory :: Ptr ExtismCurrentPlugin -> IO (Ptr Word8)
+foreign import ccall safe "extism.h extism_current_plugin_memory_alloc" extism_current_plugin_memory_alloc :: Ptr ExtismCurrentPlugin -> Word64 -> IO Word64
+foreign import ccall safe "extism.h extism_current_plugin_memory_length" extism_current_plugin_memory_length :: Ptr ExtismCurrentPlugin -> Word64 -> IO Word64
+foreign import ccall safe "extism.h extism_current_plugin_memory_alloc" extism_current_plugin_memory_free :: Ptr ExtismCurrentPlugin -> Word64 -> IO ()
+

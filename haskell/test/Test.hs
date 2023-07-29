@@ -11,9 +11,9 @@ defaultManifest = manifest [wasmFile "../../wasm/code.wasm"]
 
 initPlugin :: Maybe Context -> IO Plugin
 initPlugin Nothing =
-  Extism.createPluginFromManifest defaultManifest False >>= unwrap
+  Extism.createPluginFromManifest defaultManifest [] False >>= unwrap
 initPlugin (Just ctx) =
-  Extism.pluginFromManifest ctx defaultManifest False >>= unwrap
+  Extism.pluginFromManifest ctx defaultManifest [] False >>= unwrap
 
 pluginFunctionExists = do
   p <- initPlugin Nothing
@@ -42,7 +42,7 @@ pluginMultiple = do
 pluginUpdate = do
   withContext (\ctx -> do
     p <- initPlugin (Just ctx)
-    updateManifest p defaultManifest True >>= unwrap
+    updateManifest p defaultManifest [] True >>= unwrap
     checkCallResult p)
 
 pluginConfig = do
