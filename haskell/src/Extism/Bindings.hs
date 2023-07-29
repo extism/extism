@@ -25,24 +25,29 @@ typeOfVal (ValF64 _) = F64
 
 type CCallback = Ptr ExtismCurrentPlugin -> Ptr Val -> Word64 -> Ptr Val -> Word64 -> Ptr () -> IO ()
 
+_32Bit = sizeOf (undefined :: Int) == 4
+
 instance Storable Val where
-  sizeOf _ =  16
+  sizeOf _ =
+    if _32Bit then 12 else 16
   alignment _ = 1
   peek ptr = do
+    let offs = if _32Bit then 4 else 8
     t <- valTypeOfInt <$> peekByteOff ptr 0
     v <- case t of
-         I32 -> ValI32 <$> (peekByteOff ptr 8)
-         I64 -> ValI64 <$> (peekByteOff ptr 8)
-         F32 -> ValF32 <$> (peekByteOff ptr 8)
-         F64 -> ValF64 <$> (peekByteOff ptr 8)
+         I32 -> ValI32 <$> (peekByteOff ptr offs)
+         I64 -> ValI64 <$> (peekByteOff ptr offs)
+         F32 -> ValF32 <$> (peekByteOff ptr offs)
+         F64 -> ValF64 <$> (peekByteOff ptr offs)
     return $ v
   poke ptr x = do
+    let offs = if _32Bit then 4 else 8
     pokeByteOff ptr 0 (typeOfVal x)
     case x of
-      ValI32 x -> pokeByteOff ptr 8 x
-      ValI64 x -> pokeByteOff ptr 8 x
-      ValF32 x -> pokeByteOff ptr 8 x
-      ValF64 x -> pokeByteOff ptr 8 x
+      ValI32 x -> pokeByteOff ptr offs x
+      ValI64 x -> pokeByteOff ptr offs x
+      ValF32 x -> pokeByteOff ptr offs x
+      ValF64 x -> pokeByteOff ptr offs x
 
 
 intOfValType :: ValType -> CInt
