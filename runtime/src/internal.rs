@@ -83,6 +83,7 @@ pub trait InternalExt {
     }
 
     fn memory_read(&mut self, offs: u64, len: Size) -> &[u8] {
+        trace!("memory_read: {}, {}", offs, len);
         let offs = offs as usize;
         let len = len as usize;
         let mem = self.memory();
@@ -95,6 +96,7 @@ pub trait InternalExt {
     }
 
     fn memory_write(&mut self, offs: u64, bytes: impl AsRef<[u8]>) {
+        trace!("memory_write: {}", offs);
         let b = bytes.as_ref();
         let offs = offs as usize;
         let len = b.len();
@@ -114,6 +116,7 @@ pub trait InternalExt {
         if offs == 0 {
             anyhow::bail!("out of memory")
         }
+        trace!("memory_alloc: {}, {}", offs, n);
         Ok(offs)
     }
 
@@ -145,7 +148,9 @@ pub trait InternalExt {
             .unwrap()
             .call(&mut store, &[Val::I64(offs as i64)], output)
             .unwrap();
-        output[0].unwrap_i64() as u64
+        let len = output[0].unwrap_i64() as u64;
+        trace!("memory_length: {}, {}", offs, len);
+        len
     }
 
     // A convenience method to set the plugin error and return a value

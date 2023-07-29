@@ -250,7 +250,7 @@ const char *extism_error(ExtismContext *ctx, ExtismPlugin plugin);
 ExtismSize extism_plugin_output_length(ExtismContext *ctx, ExtismPlugin plugin);
 
 /**
- * Get the length of a plugin's output data
+ * Get a pointer to the output data
  */
 const uint8_t *extism_plugin_output_data(ExtismContext *ctx, ExtismPlugin plugin);
 

@@ -657,7 +657,7 @@ pub unsafe extern "C" fn extism_plugin_output_length(
     len
 }
 
-/// Get the length of a plugin's output data
+/// Get a pointer to the output data
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_output_data(
     ctx: *mut Context,
@@ -682,7 +682,10 @@ pub unsafe extern "C" fn extism_plugin_output_data(
         .unwrap()
         .call(&mut store, &[], out)
         .unwrap();
-    ptr.add(out[0].unwrap_i64() as usize)
+
+    let offs = out[0].unwrap_i64() as usize;
+    trace!("Output offset: {}", offs);
+    ptr.add(offs)
 }
 
 /// Set log file and level
