@@ -1,7 +1,7 @@
 module Extism (
-  module Extism, 
-  module Extism.Manifest, 
-  ValType(..), 
+  module Extism,
+  module Extism.Manifest,
+  ValType(..),
   Val(..)
 ) where
 
@@ -72,7 +72,7 @@ newContext = do
   ptr <- extism_context_new
   fptr <- Foreign.ForeignPtr.newForeignPtr extism_context_free ptr
   return (Context fptr)
- 
+
 -- | Execute a function with a new 'Context' that is destroyed when it returns
 withContext :: (Context -> IO a) -> IO a
 withContext f = do
@@ -99,7 +99,7 @@ plugin c wasm functions useWasi =
         return $ Left (ExtismError e)
       else
         return $ Right (Plugin c p functions))
-      
+
 -- | Create a 'Plugin' with its own 'Context'
 createPlugin :: B.ByteString -> [Function] -> Bool -> IO (Result Plugin)
 createPlugin c functions useWasi = do
@@ -216,7 +216,7 @@ cancelHandle (Plugin (Context ctx) plugin _) = do
   return (CancelHandle handle)
 
 cancel :: CancelHandle -> IO Bool
-cancel (CancelHandle handle) = 
+cancel (CancelHandle handle) =
   extism_plugin_cancel handle
 
 freePtr ptr = do
@@ -226,7 +226,7 @@ freePtr ptr = do
   freeHaskellFunPtr c
   freeStablePtr s
 
-foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCallback) 
+foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCallback)
 
 foreign import ccall "wrapper" callbackWrap :: CCallback -> IO (FunPtr CCallback)
 
@@ -239,7 +239,7 @@ callback f  =
     pokeArray results res
 
 hostFunction :: Storable a => String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
-hostFunction name params results f v = 
+hostFunction name params results f v =
   let nparams = fromIntegral $ Prelude.length params in
   let nresults = fromIntegral $ Prelude.length results in
   do
@@ -251,19 +251,18 @@ hostFunction name params results f v =
       withArray params (\params ->
         withArray results (\results -> do
           extism_function_new name params nparams results nresults cb userDataPtr free)))
-    let freeFn = extism_function_free x 
+    let freeFn = extism_function_free x
     fptr <- Foreign.Concurrent.newForeignPtr x freeFn
     return $ (Function fptr (castPtrToStablePtr userDataPtr))
 
 currentPluginMemoryAlloc :: CurrentPlugin -> Word64 -> IO Word64
 currentPluginMemoryAlloc plugin n =
   extism_current_plugin_memory_alloc plugin n
-  
+
 currentPluginMemoryLength :: CurrentPlugin -> Word64 -> IO Word64
 currentPluginMemoryLength plugin ptr =
   extism_current_plugin_memory_length plugin ptr
 
-  
 currentPluginMemoryFree :: CurrentPlugin -> Word64 -> IO ()
 currentPluginMemoryFree plugin ptr =
   extism_current_plugin_memory_free plugin ptr
@@ -271,6 +270,19 @@ currentPluginMemoryFree plugin ptr =
 currentPluginMemory :: CurrentPlugin -> IO (Ptr Word8)
 currentPluginMemory plugin =
   extism_current_plugin_memory plugin
+
+
+currentPluginMemoryOffset :: CurrentPlugin -> Word64 -> IO (Ptr Word8)
+currentPluginMemoryOffset plugin offs = do
+  x <- extism_current_plugin_memory plugin
+  return $ plusPtr x (fromIntegral offs)
+
+currentPluginMemoryBytes :: CurrentPlugin -> Word64 ->  IO B.ByteString
+currentPluginMemoryBytes plugin offs = do
+  ptr <- currentPluginMemoryOffset plugin offs
+  len <- currentPluginMemoryLength plugin offs
+  arr <- peekArray (fromIntegral len) ptr
+  return $ B.pack arr
 
 currentPluginAllocBytes :: CurrentPlugin -> B.ByteString -> IO Word64
 currentPluginAllocBytes plugin s = do

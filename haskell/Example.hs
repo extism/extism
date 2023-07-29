@@ -9,7 +9,7 @@ unwrap (Left (ExtismError msg)) = do
 
 hello plugin params () = do
   putStrLn "Hello from Haskell!"
-  offs <- currentPluginAllocBytes plugin (Extism.toByteString "{\"count\": 999}")
+  offs <- currentPluginAllocBytes plugin (toByteString "{\"count\": 999}")
   return [toI64 offs]
 
 main = do
