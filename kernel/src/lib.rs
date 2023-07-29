@@ -228,15 +228,15 @@ impl MemoryRoot {
     pub unsafe fn alloc(&mut self, length: Length) -> Option<&'static mut MemoryBlock> {
         let self_position = self.position.load(Ordering::Acquire);
         let self_length = self.length.load(Ordering::Acquire);
-        let b = self.find_free_block(length, self_position);
+        // let b = self.find_free_block(length, self_position);
 
-        // If there's a free block then re-use it
-        if let Some(b) = b {
-            b.used = length as usize;
-            b.status
-                .store(MemoryStatus::Active as u8, Ordering::Release);
-            return Some(b);
-        }
+        // // // If there's a free block then re-use it
+        // if let Some(b) = b {
+        //     b.used = length as usize;
+        //     b.status
+        //         .store(MemoryStatus::Active as u8, Ordering::Release);
+        //     return Some(b);
+        // }
 
         // Get the current index for a new block
         let curr = self.blocks.as_ptr() as u64 + self_position;

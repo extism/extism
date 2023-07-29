@@ -9,15 +9,14 @@ unwrap (Left (ExtismError msg)) = do
 
 hello plugin params () = do
   putStrLn "Hello from Haskell!"
-  offs <- currentPluginMemoryAlloc plugin 7
-  print (fromI64 $ (params!!0))
-  print offs
-  return [toI64 (fromIntegral offs)]
+  offs <- currentPluginAllocBytes plugin (Extism.toByteString "{\"count\": 999}")
+  return [toI64 offs]
 
 main = do
+  setLogFile "stdout" Error
   let m = manifest [wasmFile "../wasm/code-functions.wasm"]
   f <- hostFunction "hello_world" [I64] [I64] hello ()
-  plugin <- unwrap <$> Extism.createPluginFromManifest m [f] True
-  res <- unwrap <$> Extism.call plugin "count_vowels" (Extism.toByteString "this is a test")
-  putStrLn (Extism.fromByteString res)
-  Extism.free plugin
+  plugin <- unwrap <$> createPluginFromManifest m [f] True
+  res <- unwrap <$> call plugin "count_vowels" (toByteString "this is a test")
+  putStrLn (fromByteString res)
+  free plugin

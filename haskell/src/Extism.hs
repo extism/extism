@@ -1,8 +1,8 @@
 module Extism (
   module Extism, 
   module Extism.Manifest, 
-  ValType(I32, I64, F32, F64, FuncRef, ExternRef), 
-  Val(ValI32, ValI64, ValF32, ValF64)
+  ValType(..), 
+  Val(..)
 ) where
 
 import Data.Int
@@ -15,7 +15,7 @@ import Foreign.Marshal.Array
 import Foreign.Storable
 import Foreign.StablePtr
 import Foreign.Concurrent
-import Foreign.Marshal.Utils (copyBytes)
+import Foreign.Marshal.Utils (copyBytes, moveBytes)
 import Data.ByteString as B
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
@@ -28,11 +28,12 @@ import Extism.Bindings
 newtype Context = Context (ForeignPtr ExtismContext)
 
 -- | Host function
-data Function = Function (ForeignPtr ExtismFunction) (StablePtr ()) (FunPtr(CCallback))
+data Function = Function (ForeignPtr ExtismFunction) (StablePtr ())
 
 -- | Plugins can be used to call WASM function
 data Plugin = Plugin Context Int32 [Function]
 
+-- | Cancellation handle for Plugins
 data CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
 
 -- | Log level
@@ -87,7 +88,7 @@ plugin c wasm functions useWasi =
   let wasi = fromInteger (if useWasi then 1 else 0) in
   let Context ctx = c in
   do
-    funcs <- Prelude.mapM (\(Function ptr _ __) -> withForeignPtr ptr (\x -> do return x)) functions
+    funcs <- Prelude.mapM (\(Function ptr _) -> withForeignPtr ptr (\x -> do return x)) functions
     withForeignPtr ctx (\ctx -> do
       p <- unsafeUseAsCString wasm (\s ->
         withArray funcs (\funcs ->
@@ -124,7 +125,7 @@ update (Plugin (Context ctx) id _) wasm functions useWasi =
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
   do
-    funcs <- Prelude.mapM (\(Function ptr _ __) -> withForeignPtr ptr (\x -> do return x)) functions
+    funcs <- Prelude.mapM (\(Function ptr _ ) -> withForeignPtr ptr (\x -> do return x)) functions
     withForeignPtr ctx (\ctx' -> do
       b <- unsafeUseAsCString wasm (\s ->
         withArray funcs (\funcs ->
@@ -220,8 +221,9 @@ cancel (CancelHandle handle) =
 
 freePtr ptr = do
   let s = castPtrToStablePtr ptr
-  (a, b) <- deRefStablePtr s
+  (a, b, c) <- deRefStablePtr s
   freeHaskellFunPtr b
+  freeHaskellFunPtr c
   freeStablePtr s
 
 foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCallback) 
@@ -232,8 +234,8 @@ callback :: (CurrentPlugin -> [Val] -> a -> IO [Val]) -> (CurrentPlugin -> Ptr V
 callback f  =
   \plugin params nparams results nresults ptr -> do
     p <- peekArray (fromIntegral nparams) params
-    userData  <- deRefStablePtr (castPtrToStablePtr ptr)
-    res <- f plugin p (fst userData)
+    (userData, _, _)  <- deRefStablePtr (castPtrToStablePtr ptr)
+    res <- f plugin p userData
     pokeArray results res
 
 hostFunction :: Storable a => String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
@@ -243,7 +245,7 @@ hostFunction name params results f v =
   do
     cb <- callbackWrap $ (callback f :: CCallback)
     free <- freePtrWrap freePtr
-    userData <- newStablePtr (v, free)
+    userData <- newStablePtr (v, free, cb)
     let userDataPtr = castStablePtrToPtr userData
     x <- withCString name (\name ->  do
       withArray params (\params ->
@@ -251,12 +253,11 @@ hostFunction name params results f v =
           extism_function_new name params nparams results nresults cb userDataPtr free)))
     let freeFn = extism_function_free x 
     fptr <- Foreign.Concurrent.newForeignPtr x freeFn
-    return $ (Function fptr (castPtrToStablePtr userDataPtr) cb)
+    return $ (Function fptr (castPtrToStablePtr userDataPtr))
 
 currentPluginMemoryAlloc :: CurrentPlugin -> Word64 -> IO Word64
 currentPluginMemoryAlloc plugin n =
   extism_current_plugin_memory_alloc plugin n
-
   
 currentPluginMemoryLength :: CurrentPlugin -> Word64 -> IO Word64
 currentPluginMemoryLength plugin ptr =
@@ -271,27 +272,20 @@ currentPluginMemory :: CurrentPlugin -> IO (Ptr Word8)
 currentPluginMemory plugin =
   extism_current_plugin_memory plugin
 
-currentPluginMemoryBlock :: CurrentPlugin -> Word64 -> IO (Ptr Word8, Word64)
-currentPluginMemoryBlock plugin offs = do
-  length <- currentPluginMemoryLength plugin offs
-  ptr <- currentPluginMemory plugin
-  return ((plusPtr ptr (fromIntegral offs)), length)
-
 currentPluginAllocBytes :: CurrentPlugin -> B.ByteString -> IO Word64
 currentPluginAllocBytes plugin s = do
   let length = B.length s
   offs <- currentPluginMemoryAlloc plugin (fromIntegral length)
   ptr <- currentPluginMemory plugin
   let p = plusPtr ptr (fromIntegral offs)
-  unsafeUseAsCString s (\x ->
-    copyBytes (castPtr p) x length)
+  pokeArray p (B.unpack s)
   return offs
 
-toI32 :: Int32 -> Val
-toI32 x = ValI32 x
+toI32 :: Integral a => a -> Val
+toI32 x = ValI32 (fromIntegral x)
 
-toI64 :: Int64 -> Val
-toI64 x = ValI64 x
+toI64 :: Integral a => a -> Val
+toI64 x = ValI64 (fromIntegral x)
 
 
 toF32 :: Float -> Val
@@ -301,12 +295,12 @@ toF64 :: Double -> Val
 toF64 x = ValF64 x
 
 
-fromI32 :: Val -> Maybe Int32
-fromI32 (ValI32 x) = Just x
+fromI32 :: Integral a => Val -> Maybe a
+fromI32 (ValI32 x) = Just (fromIntegral x)
 fromI32 _ = Nothing
 
-fromI64 :: Val -> Maybe Int64
-fromI64 (ValI64 x) = Just x
+fromI64 :: Integral a => Val -> Maybe a
+fromI64 (ValI64 x) = Just (fromIntegral x)
 fromI64 _ = Nothing
 
 fromF32 :: Val -> Maybe Float
