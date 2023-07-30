@@ -1,6 +1,7 @@
 module Main where
 
 import Extism
+import Extism.CurrentPlugin
 import Extism.Manifest(manifest, wasmFile)
 
 unwrap (Right x) = x
@@ -9,7 +10,7 @@ unwrap (Left (ExtismError msg)) = do
 
 hello plugin params () = do
   putStrLn "Hello from Haskell!"
-  offs <- currentPluginAllocBytes plugin (toByteString "{\"count\": 999}")
+  offs <- allocBytes plugin (toByteString "{\"count\": 999}")
   return [toI64 offs]
 
 main = do

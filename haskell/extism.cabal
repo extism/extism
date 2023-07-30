@@ -11,7 +11,7 @@ category:           Plugins, WebAssembly
 extra-doc-files: CHANGELOG.md
 
 library
-    exposed-modules:    Extism
+    exposed-modules:    Extism Extism.CurrentPlugin
     reexported-modules: Extism.Manifest
     hs-source-dirs:     src
     other-modules:      Extism.Bindings

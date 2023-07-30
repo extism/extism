@@ -254,39 +254,6 @@ hostFunction name params results f v =
     fptr <- Foreign.Concurrent.newForeignPtr x freeFn
     return $ Function fptr (castPtrToStablePtr userDataPtr)
 
-currentPluginMemoryAlloc :: CurrentPlugin -> Word64 -> IO Word64
-currentPluginMemoryAlloc = extism_current_plugin_memory_alloc
-
-currentPluginMemoryLength :: CurrentPlugin -> Word64 -> IO Word64
-currentPluginMemoryLength = extism_current_plugin_memory_length
-
-currentPluginMemoryFree :: CurrentPlugin -> Word64 -> IO ()
-currentPluginMemoryFree = extism_current_plugin_memory_free
-
-currentPluginMemory :: CurrentPlugin -> IO (Ptr Word8)
-currentPluginMemory = extism_current_plugin_memory
-
-
-currentPluginMemoryOffset :: CurrentPlugin -> Word64 -> IO (Ptr Word8)
-currentPluginMemoryOffset plugin offs = do
-  x <- extism_current_plugin_memory plugin
-  return $ plusPtr x (fromIntegral offs)
-
-currentPluginMemoryBytes :: CurrentPlugin -> Word64 ->  IO B.ByteString
-currentPluginMemoryBytes plugin offs = do
-  ptr <- currentPluginMemoryOffset plugin offs
-  len <- currentPluginMemoryLength plugin offs
-  arr <- peekArray (fromIntegral len) ptr
-  return $ B.pack arr
-
-currentPluginAllocBytes :: CurrentPlugin -> B.ByteString -> IO Word64
-currentPluginAllocBytes plugin s = do
-  let length = B.length s
-  offs <- currentPluginMemoryAlloc plugin (fromIntegral length)
-  ptr <- currentPluginMemory plugin
-  let p = plusPtr ptr (fromIntegral offs)
-  pokeArray p (B.unpack s)
-  return offs
 
 toI32 :: Integral a => a -> Val
 toI32 x = ValI32 (fromIntegral x)
@@ -294,13 +261,11 @@ toI32 x = ValI32 (fromIntegral x)
 toI64 :: Integral a => a -> Val
 toI64 x = ValI64 (fromIntegral x)
 
-
 toF32 :: Float -> Val
 toF32 = ValF32
 
 toF64 :: Double -> Val
 toF64 = ValF64
-
 
 fromI32 :: Integral a => Val -> Maybe a
 fromI32 (ValI32 x) = Just (fromIntegral x)
@@ -317,5 +282,3 @@ fromF32 _ = Nothing
 fromF64 :: Val -> Maybe Double
 fromF64 (ValF64 x) = Just x
 fromF64 _ = Nothing
-
-
