@@ -34,12 +34,11 @@ instance Storable Val where
   peek ptr = do
     let offs = if _32Bit then 4 else 8
     t <- valTypeOfInt <$> peekByteOff ptr 0
-    v <- case t of
-         I32 -> ValI32 <$> (peekByteOff ptr offs)
-         I64 -> ValI64 <$> (peekByteOff ptr offs)
-         F32 -> ValF32 <$> (peekByteOff ptr offs)
-         F64 -> ValF64 <$> (peekByteOff ptr offs)
-    return $ v
+    case t of
+      I32 -> ValI32 <$> peekByteOff ptr offs
+      I64 -> ValI64 <$> peekByteOff ptr offs
+      F32 -> ValF32 <$> peekByteOff ptr offs
+      F64 -> ValF64 <$> peekByteOff ptr offs
   poke ptr x = do
     let offs = if _32Bit then 4 else 8
     pokeByteOff ptr 0 (typeOfVal x)

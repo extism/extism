@@ -34,7 +34,7 @@ data Function = Function (ForeignPtr ExtismFunction) (StablePtr ())
 data Plugin = Plugin Context Int32 [Function]
 
 -- | Cancellation handle for Plugins
-data CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
+newtype CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
 
 -- | Log level
 data LogLevel = Error | Warn | Info | Debug | Trace deriving (Show)
@@ -212,7 +212,7 @@ free (Plugin (Context ctx) plugin _) =
 
 cancelHandle :: Plugin -> IO CancelHandle
 cancelHandle (Plugin (Context ctx) plugin _) = do
-  handle <- withForeignPtr ctx (\ctx -> extism_plugin_cancel_handle ctx plugin)
+  handle <- withForeignPtr ctx (`extism_plugin_cancel_handle` plugin)
   return (CancelHandle handle)
 
 cancel :: CancelHandle -> IO Bool
@@ -231,8 +231,7 @@ foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCal
 foreign import ccall "wrapper" callbackWrap :: CCallback -> IO (FunPtr CCallback)
 
 callback :: (CurrentPlugin -> [Val] -> a -> IO [Val]) -> (CurrentPlugin -> Ptr Val -> Word64 -> Ptr Val -> Word64 -> Ptr () -> IO ())
-callback f  =
-  \plugin params nparams results nresults ptr -> do
+callback f plugin params nparams results nresults ptr = do
     p <- peekArray (fromIntegral nparams) params
     (userData, _, _)  <- deRefStablePtr (castPtrToStablePtr ptr)
     res <- f plugin p userData
@@ -243,7 +242,7 @@ hostFunction name params results f v =
   let nparams = fromIntegral $ Prelude.length params in
   let nresults = fromIntegral $ Prelude.length results in
   do
-    cb <- callbackWrap $ (callback f :: CCallback)
+    cb <- callbackWrap (callback f :: CCallback)
     free <- freePtrWrap freePtr
     userData <- newStablePtr (v, free, cb)
     let userDataPtr = castStablePtrToPtr userData
@@ -253,23 +252,19 @@ hostFunction name params results f v =
           extism_function_new name params nparams results nresults cb userDataPtr free)))
     let freeFn = extism_function_free x
     fptr <- Foreign.Concurrent.newForeignPtr x freeFn
-    return $ (Function fptr (castPtrToStablePtr userDataPtr))
+    return $ Function fptr (castPtrToStablePtr userDataPtr)
 
 currentPluginMemoryAlloc :: CurrentPlugin -> Word64 -> IO Word64
-currentPluginMemoryAlloc plugin n =
-  extism_current_plugin_memory_alloc plugin n
+currentPluginMemoryAlloc = extism_current_plugin_memory_alloc
 
 currentPluginMemoryLength :: CurrentPlugin -> Word64 -> IO Word64
-currentPluginMemoryLength plugin ptr =
-  extism_current_plugin_memory_length plugin ptr
+currentPluginMemoryLength = extism_current_plugin_memory_length
 
 currentPluginMemoryFree :: CurrentPlugin -> Word64 -> IO ()
-currentPluginMemoryFree plugin ptr =
-  extism_current_plugin_memory_free plugin ptr
+currentPluginMemoryFree = extism_current_plugin_memory_free
 
 currentPluginMemory :: CurrentPlugin -> IO (Ptr Word8)
-currentPluginMemory plugin =
-  extism_current_plugin_memory plugin
+currentPluginMemory = extism_current_plugin_memory
 
 
 currentPluginMemoryOffset :: CurrentPlugin -> Word64 -> IO (Ptr Word8)
@@ -301,10 +296,10 @@ toI64 x = ValI64 (fromIntegral x)
 
 
 toF32 :: Float -> Val
-toF32 x = ValF32 x
+toF32 = ValF32
 
 toF64 :: Double -> Val
-toF64 x = ValF64 x
+toF64 = ValF64
 
 
 fromI32 :: Integral a => Val -> Maybe a
