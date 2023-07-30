@@ -19,7 +19,6 @@ memoryFree = extism_current_plugin_memory_free
 memory :: CurrentPlugin -> IO (Ptr Word8)
 memory = extism_current_plugin_memory
 
-
 memoryOffset :: CurrentPlugin -> Word64 -> IO (Ptr Word8)
 memoryOffset plugin offs = do
   x <- extism_current_plugin_memory plugin
