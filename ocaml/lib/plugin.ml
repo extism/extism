@@ -77,7 +77,9 @@ let update plugin ?config ?(wasi = false) ?(functions = []) wasm =
     | Some msg -> Error (`Msg msg)
   else if not (set_config plugin config) then
     Error (`Msg "call to set_config failed")
-  else Ok ()
+  else
+    let () = plugin.functions <- functions in
+    Ok ()
 
 let update_manifest plugin ?wasi manifest =
   let data = Manifest.to_json manifest in
