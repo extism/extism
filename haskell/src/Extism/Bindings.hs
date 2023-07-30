@@ -8,6 +8,8 @@ import Foreign.C.String
 import Data.Int
 import Data.Word
 import Foreign.Storable
+import Foreign.Marshal.Array
+import Foreign.StablePtr
 
 type FreeCallback = Ptr () -> IO ()
 
@@ -101,3 +103,20 @@ foreign import ccall safe "extism.h extism_current_plugin_memory_alloc" extism_c
 foreign import ccall safe "extism.h extism_current_plugin_memory_length" extism_current_plugin_memory_length :: Ptr ExtismCurrentPlugin -> Word64 -> IO Word64
 foreign import ccall safe "extism.h extism_current_plugin_memory_free" extism_current_plugin_memory_free :: Ptr ExtismCurrentPlugin -> Word64 -> IO ()
 
+freePtr ptr = do
+  let s = castPtrToStablePtr ptr
+  (a, b, c) <- deRefStablePtr s
+  freeHaskellFunPtr b
+  freeHaskellFunPtr c
+  freeStablePtr s
+
+foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCallback)
+
+foreign import ccall "wrapper" callbackWrap :: CCallback -> IO (FunPtr CCallback)
+
+callback :: (Ptr ExtismCurrentPlugin -> [Val] -> a -> IO [Val]) -> (Ptr ExtismCurrentPlugin -> Ptr Val -> Word64 -> Ptr Val -> Word64 -> Ptr () -> IO ())
+callback f plugin params nparams results nresults ptr = do
+    p <- peekArray (fromIntegral nparams) params
+    (userData, _, _)  <- deRefStablePtr (castPtrToStablePtr ptr)
+    res <- f plugin p userData
+    pokeArray results res

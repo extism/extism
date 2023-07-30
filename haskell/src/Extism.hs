@@ -36,6 +36,9 @@ data Plugin = Plugin Context Int32 [Function]
 -- | Cancellation handle for Plugins
 newtype CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
 
+-- | Access the plugin that is currently executing from inside a host function
+type CurrentPlugin = Ptr ExtismCurrentPlugin
+
 -- | Log level
 data LogLevel = Error | Warn | Info | Debug | Trace deriving (Show)
 
@@ -44,8 +47,6 @@ newtype Error = ExtismError String deriving Show
 
 -- | Result type
 type Result a = Either Error a
-
-type CurrentPlugin = Ptr ExtismCurrentPlugin
 
 -- | Helper function to convert a 'String' to a 'ByteString'
 toByteString :: String -> ByteString
@@ -78,6 +79,14 @@ withContext :: (Context -> IO a) -> IO a
 withContext f = do
   ctx <- newContext
   f ctx
+
+-- | Execute a function with the provided 'Plugin' as a parameter, then frees the 'Plugin'
+-- | before returning the result.
+withPlugin :: (Plugin -> IO a) -> Plugin -> IO a
+withPlugin f plugin = do
+  res <- f plugin
+  free plugin
+  return res
 
 -- | Create a 'Plugin' from a WASM module, `useWasi` determines if WASI should
 -- | be linked
@@ -210,33 +219,20 @@ free :: Plugin -> IO ()
 free (Plugin (Context ctx) plugin _) =
   withForeignPtr ctx (`extism_plugin_free` plugin)
 
+-- | Create a new 'CancelHandle' that can be used to cancel a running plugin
+-- | from another thread.
 cancelHandle :: Plugin -> IO CancelHandle
 cancelHandle (Plugin (Context ctx) plugin _) = do
   handle <- withForeignPtr ctx (`extism_plugin_cancel_handle` plugin)
   return (CancelHandle handle)
 
+-- | Cancel a running plugin using a 'CancelHandle'
 cancel :: CancelHandle -> IO Bool
 cancel (CancelHandle handle) =
   extism_plugin_cancel handle
 
-freePtr ptr = do
-  let s = castPtrToStablePtr ptr
-  (a, b, c) <- deRefStablePtr s
-  freeHaskellFunPtr b
-  freeHaskellFunPtr c
-  freeStablePtr s
 
-foreign import ccall "wrapper" freePtrWrap :: FreeCallback -> IO (FunPtr FreeCallback)
-
-foreign import ccall "wrapper" callbackWrap :: CCallback -> IO (FunPtr CCallback)
-
-callback :: (CurrentPlugin -> [Val] -> a -> IO [Val]) -> (CurrentPlugin -> Ptr Val -> Word64 -> Ptr Val -> Word64 -> Ptr () -> IO ())
-callback f plugin params nparams results nresults ptr = do
-    p <- peekArray (fromIntegral nparams) params
-    (userData, _, _)  <- deRefStablePtr (castPtrToStablePtr ptr)
-    res <- f plugin p userData
-    pokeArray results res
-
+-- | Create a new 'Function' that can be called from a 'Plugin'
 hostFunction :: Storable a => String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
 hostFunction name params results f v =
   let nparams = fromIntegral $ Prelude.length params in
@@ -255,30 +251,38 @@ hostFunction name params results f v =
     return $ Function fptr (castPtrToStablePtr userDataPtr)
 
 
+-- | Create a new I32 'Val'
 toI32 :: Integral a => a -> Val
 toI32 x = ValI32 (fromIntegral x)
 
+-- | Create a new I64 'Val'
 toI64 :: Integral a => a -> Val
 toI64 x = ValI64 (fromIntegral x)
 
+-- | Create a new F32 'Val'
 toF32 :: Float -> Val
 toF32 = ValF32
 
+-- | Create a new F64 'Val'
 toF64 :: Double -> Val
 toF64 = ValF64
 
+-- | Get I32 'Val'
 fromI32 :: Integral a => Val -> Maybe a
 fromI32 (ValI32 x) = Just (fromIntegral x)
 fromI32 _ = Nothing
 
+-- | Get I64 'Val'
 fromI64 :: Integral a => Val -> Maybe a
 fromI64 (ValI64 x) = Just (fromIntegral x)
 fromI64 _ = Nothing
 
+-- | Get F32 'Val'
 fromF32 :: Val -> Maybe Float
 fromF32 (ValF32 x) = Just x
 fromF32 _ = Nothing
 
+-- | Get F64 'Val'
 fromF64 :: Val -> Maybe Double
 fromF64 (ValF64 x) = Just x
 fromF64 _ = Nothing
