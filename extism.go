@@ -173,8 +173,9 @@ func (ctx *Context) Free() {
 
 // Plugin is used to call WASM functions
 type Plugin struct {
-	ctx *Context
-	id  int32
+	ctx       *Context
+	id        int32
+	functions []Function
 }
 
 type WasmData struct {
@@ -272,7 +273,7 @@ func register(ctx *Context, data []byte, functions []Function, wasi bool) (Plugi
 		)
 	}
 
-	return Plugin{id: int32(plugin), ctx: ctx}, nil
+	return Plugin{id: int32(plugin), ctx: ctx, functions: functions}, nil
 }
 
 func update(ctx *Context, plugin int32, data []byte, functions []Function, wasi bool) error {
@@ -361,7 +362,7 @@ func (p *Plugin) Update(module io.Reader, functions []Function, wasi bool) error
 	if err != nil {
 		return err
 	}
-
+	p.functions = functions
 	return update(p.ctx, p.id, wasm, functions, wasi)
 }
 
@@ -372,6 +373,7 @@ func (p *Plugin) UpdateManifest(manifest Manifest, functions []Function, wasi bo
 		return err
 	}
 
+	p.functions = functions
 	return update(p.ctx, p.id, data, functions, wasi)
 }
 
