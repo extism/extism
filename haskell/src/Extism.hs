@@ -233,7 +233,7 @@ cancel (CancelHandle handle) =
 
 
 -- | Create a new 'Function' that can be called from a 'Plugin'
-hostFunction :: Storable a => String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
+hostFunction :: String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
 hostFunction name params results f v =
   let nparams = fromIntegral $ Prelude.length params in
   let nresults = fromIntegral $ Prelude.length results in
