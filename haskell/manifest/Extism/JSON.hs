@@ -16,8 +16,8 @@ isNull JSNull = True
 isNull _ = False
 filterNulls obj = [(a, b) | (a, b) <- obj, not (isNull b)]
 object x = makeObj $ filterNulls x
-objectWithNulls x = makeObj x
-nonNull x = NotNull x
+objectWithNulls = makeObj
+nonNull = NotNull
 null' = Null
 (.=) a b = (a, showJSON b)
 toNullable (Just x) = NotNull x
@@ -40,7 +40,7 @@ find :: JSON a => String -> JSValue -> Nullable a
 find k obj = obj .? k
 
 update :: JSON a => String -> a -> JSValue -> JSValue
-update k v (JSObject obj) = object $ (fromJSObject obj) ++ [k .= v]
+update k v (JSObject obj) = object $ fromJSObject obj ++ [k .= v]
 
 instance JSON a => JSON (Nullable a) where
   showJSON (NotNull x) = showJSON x

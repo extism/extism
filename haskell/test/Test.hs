@@ -1,6 +1,7 @@
 import Test.HUnit
 import Extism
 import Extism.Manifest
+import Extism.CurrentPlugin
 
 
 unwrap (Right x) = return x
@@ -8,12 +9,13 @@ unwrap (Left (ExtismError msg)) =
   assertFailure msg
 
 defaultManifest = manifest [wasmFile "../../wasm/code.wasm"]
+hostFunctionManifest = manifest [wasmFile "../../wasm/code-functions.wasm"]
 
 initPlugin :: Maybe Context -> IO Plugin
 initPlugin Nothing =
-  Extism.createPluginFromManifest defaultManifest False >>= unwrap
+  Extism.createPluginFromManifest defaultManifest [] False >>= unwrap
 initPlugin (Just ctx) =
-  Extism.pluginFromManifest ctx defaultManifest False >>= unwrap
+  Extism.pluginFromManifest ctx defaultManifest [] False >>= unwrap
 
 pluginFunctionExists = do
   p <- initPlugin Nothing
@@ -30,6 +32,17 @@ pluginCall = do
   p <- initPlugin Nothing
   checkCallResult p
 
+
+hello plugin params () = do
+  putStrLn "Hello from Haskell!"
+  offs <- allocBytes plugin (toByteString "{\"count\": 999}")
+  return [toI64 offs]
+
+pluginCallHostFunction = do
+  p <- Extism.createPluginFromManifest hostFunctionManifest [] False >>= unwrap
+  res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
+  assertEqual "count vowels output" "{\"count\": 999}" (fromByteString res)
+
 pluginMultiple = do
   withContext(\ctx -> do
     p <- initPlugin (Just ctx)
@@ -42,7 +55,7 @@ pluginMultiple = do
 pluginUpdate = do
   withContext (\ctx -> do
     p <- initPlugin (Just ctx)
-    updateManifest p defaultManifest True >>= unwrap
+    updateManifest p defaultManifest [] True >>= unwrap
     checkCallResult p)
 
 pluginConfig = do
@@ -62,6 +75,7 @@ main = do
     [
       t "Plugin.FunctionExists" pluginFunctionExists
       , t "Plugin.Call" pluginCall
+      , t "Plugin.CallHostFunction" pluginCallHostFunction
       , t "Plugin.Multiple" pluginMultiple
       , t "Plugin.Update" pluginUpdate
       , t "Plugin.Config" pluginConfig
