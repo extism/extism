@@ -30,8 +30,8 @@ pub fn build(b: *std.Build) void {
 
     tests.addAnonymousModule("extism", .{ .source_file = .{ .path = "src/main.zig" } });
     tests.linkLibC();
-    tests.addIncludePath("/usr/local/include");
-    tests.addLibraryPath("/usr/local/lib");
+    tests.addIncludePath(.{ .path = "/usr/local/include" });
+    tests.addLibraryPath(.{ .path = "/usr/local/lib" });
     tests.linkSystemLibrary("extism");
     const tests_run_step = b.addRunArtifact(tests);
 
@@ -47,8 +47,8 @@ pub fn build(b: *std.Build) void {
 
     example.addAnonymousModule("extism", .{ .source_file = .{ .path = "src/main.zig" } });
     example.linkLibC();
-    example.addIncludePath("/usr/local/include");
-    example.addLibraryPath("/usr/local/lib");
+    example.addIncludePath(.{ .path = "/usr/local/include" });
+    example.addLibraryPath(.{ .path = "/usr/local/lib" });
     example.linkSystemLibrary("extism");
     const example_run_step = b.addRunArtifact(example);
 
