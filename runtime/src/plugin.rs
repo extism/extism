@@ -148,7 +148,7 @@ impl Plugin {
             &engine,
             Internal::new(manifest, with_wasi, available_pages)?,
         );
-        store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
+        store.epoch_deadline_callback(|_internal| Ok(wasmtime::UpdateDeadline::Continue(1)));
 
         if available_pages.is_some() {
             store.limiter(|internal| internal.memory_limiter.as_mut().unwrap());
@@ -322,7 +322,7 @@ impl Plugin {
                 )?,
             );
             self.store
-                .epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
+                .epoch_deadline_callback(|_internal| Ok(UpdateDeadline::Continue(1)));
 
             if self.internal().available_pages.is_some() {
                 self.store
@@ -486,6 +486,8 @@ impl Plugin {
             .map(std::time::Duration::from_millis);
         self.cancel_handle.epoch_timer_tx = Some(tx.clone());
         self.store_mut().set_epoch_deadline(1);
+        self.store
+            .epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
         let engine: Engine = self.store().engine().clone();
         tx.send(TimerAction::Start {
             id: self.timer_id,
@@ -500,6 +502,8 @@ impl Plugin {
         if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
             tx.send(TimerAction::Stop { id: self.timer_id })?;
         }
+        self.store
+            .epoch_deadline_callback(|_internal| Ok(wasmtime::UpdateDeadline::Continue(1)));
         Ok(())
     }
 }
