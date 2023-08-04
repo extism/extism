@@ -42,15 +42,6 @@ impl<'a> PluginRef<'a> {
         };
 
         let plugin = unsafe { &mut *plugin };
-        // Start timer
-        // if let Err(e) = plugin.start_timer(&epoch_timer_tx) {
-        //     let id = plugin.timer_id;
-        //     ctx.error(
-        //         format!("Unable to start timeout manager for {id}: {e:?}"),
-        //         (),
-        //     );
-        //     return None;
-        // }
 
         if clear_error {
             trace!("Clearing context error");

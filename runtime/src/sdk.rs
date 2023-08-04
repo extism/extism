@@ -504,11 +504,6 @@ pub unsafe extern "C" fn extism_plugin_call(
     let tx = plugin_ref.epoch_timer_tx.clone();
     let plugin = plugin_ref.as_mut();
 
-    // Start timer, this will be stopped when PluginRef goes out of scope
-    if let Err(e) = plugin.start_timer(&tx) {
-        return plugin.error(e, -1);
-    }
-
     // Find function
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
@@ -531,6 +526,10 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
+    if let Err(e) = plugin.set_input(data, data_len as usize) {
+        return plugin.error(e, -1);
+    }
+
     // Initialize runtime
     if !is_start {
         if let Err(e) = plugin.initialize_runtime() {
@@ -538,12 +537,13 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     }
 
-    if let Err(e) = plugin.set_input(data, data_len as usize) {
-        return plugin.error(e, -1);
-    }
-
     if plugin.has_error() {
         return -1;
+    }
+
+    // Start timer, this will be stopped when PluginRef goes out of scope
+    if let Err(e) = plugin.start_timer(&tx) {
+        return plugin.error(e, -1);
     }
 
     debug!("Calling function: {name} in plugin {plugin_id}");
