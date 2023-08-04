@@ -12,7 +12,8 @@ pub struct Plugin {
     pub store: Store<Internal>,
 
     /// Instance provides the ability to call functions in a module
-    pub instance: Instance,
+    pub instance: Option<Instance>,
+    pub instance_pre: InstancePre<Internal>,
 
     /// Keep track of the number of times we're instantiated, this exists
     /// to avoid issues with memory piling up since `Instance`s are only
@@ -222,12 +223,13 @@ impl Plugin {
             }
         }
 
-        let instance = linker.instantiate(&mut store, main)?;
+        let instance_pre = linker.instantiate_pre(&main)?;
         let timer_id = uuid::Uuid::new_v4();
         let mut plugin = Plugin {
             modules,
             linker,
-            instance,
+            instance: None,
+            instance_pre,
             store,
             instantiations: 1,
             runtime: None,
@@ -240,24 +242,27 @@ impl Plugin {
 
         plugin.internal_mut().store = &mut plugin.store;
         plugin.internal_mut().linker = &mut plugin.linker;
-
-        // Then detect runtime before returning the new plugin
-        plugin.detect_runtime();
         Ok(plugin)
     }
 
     /// Get a function by name
     pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
-        self.instance.get_func(&mut self.store, function.as_ref())
+        if let None = &self.instance {
+            if let Ok(x) = self.instance_pre.instantiate(&mut self.store) {
+                self.instance = Some(x);
+                self.detect_runtime();
+            }
+        }
+
+        if let Some(instance) = &mut self.instance {
+            instance.get_func(&mut self.store, function.as_ref())
+        } else {
+            None
+        }
     }
 
     /// Store input in memory and initialize `Internal` pointer
-    pub(crate) fn set_input(
-        &mut self,
-        input: *const u8,
-        mut len: usize,
-        tx: std::sync::mpsc::SyncSender<TimerAction>,
-    ) -> Result<(), Error> {
+    pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
         if input.is_null() {
             len = 0;
         }
@@ -273,7 +278,6 @@ impl Plugin {
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
         trace!("Input size: {}", bytes.len());
 
-        self.start_timer(&tx)?;
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
         }
@@ -331,11 +335,16 @@ impl Plugin {
                 }
             }
             self.instantiations = 0;
+            self.instance_pre = self.linker.instantiate_pre(&main)?;
+            self.instance = None;
+
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let internal = self.internal_mut();
+            internal.store = store;
+            internal.linker = linker;
         }
 
-        let instance = self.linker.instantiate(&mut self.store, main)?;
-        self.instance = instance;
-        self.detect_runtime();
         self.instantiations += 1;
         Ok(())
     }
