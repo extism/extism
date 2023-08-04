@@ -336,7 +336,6 @@ impl Plugin {
             }
             self.instantiations = 0;
             self.instance_pre = self.linker.instantiate_pre(&main)?;
-            self.instance = None;
 
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
@@ -345,6 +344,7 @@ impl Plugin {
             internal.linker = linker;
         }
 
+        self.instance = None;
         self.instantiations += 1;
         Ok(())
     }
