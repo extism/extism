@@ -41,26 +41,13 @@ impl<'a> PluginRef<'a> {
             return ctx.error(format!("Plugin does not exist: {plugin_id}"), None);
         };
 
-        {
-            let plugin = unsafe { &mut *plugin };
-            // Start timer
-            if let Err(e) = plugin.start_timer(&epoch_timer_tx) {
-                let id = plugin.timer_id;
-                plugin.error(
-                    format!("Unable to start timeout manager for {id}: {e:?}"),
-                    (),
-                );
-                return None;
-            }
-        }
+        let plugin = unsafe { &mut *plugin };
 
         if clear_error {
             trace!("Clearing context error");
             ctx.error = None;
             trace!("Clearing plugin error: {plugin_id}");
-            unsafe {
-                (*plugin).clear_error();
-            }
+            plugin.clear_error();
         }
 
         Some(PluginRef {

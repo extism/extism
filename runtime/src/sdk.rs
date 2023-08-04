@@ -526,6 +526,10 @@ pub unsafe extern "C" fn extism_plugin_call(
         );
     }
 
+    if let Err(e) = plugin.set_input(data, data_len as usize) {
+        return plugin.error(e, -1);
+    }
+
     // Initialize runtime
     if !is_start {
         if let Err(e) = plugin.initialize_runtime() {
@@ -533,12 +537,13 @@ pub unsafe extern "C" fn extism_plugin_call(
         }
     }
 
-    if let Err(e) = plugin.set_input(data, data_len as usize, tx) {
-        return plugin.error(e, -1);
-    }
-
     if plugin.has_error() {
         return -1;
+    }
+
+    // Start timer, this will be stopped when PluginRef goes out of scope
+    if let Err(e) = plugin.start_timer(&tx) {
+        return plugin.error(e, -1);
     }
 
     debug!("Calling function: {name} in plugin {plugin_id}");

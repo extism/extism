@@ -283,4 +283,24 @@ mod tests {
         println!("Cancelled plugin ran for {:?}", time);
         // std::io::stdout().write_all(output).unwrap();
     }
+
+    #[test]
+    fn test_multiple_instantiations() {
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+
+        let context = Context::new();
+        let mut plugin = Plugin::new(&context, WASM, [f], true).unwrap();
+
+        // This is 10,001 because the wasmtime store limit is 10,000 - we want to test
+        // that our reinstantiation process is working and that limit is never hit.
+        for _ in 0..10001 {
+            let _output = plugin.call("count_vowels", "abc123").unwrap();
+        }
+    }
 }
