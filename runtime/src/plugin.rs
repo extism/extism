@@ -366,8 +366,26 @@ impl Plugin {
                         init.ty(self.store())
                     );
                 }
-                self.runtime = Some(Runtime::Haskell { init, cleanup });
+                let reactor_init = if let Some(init) = self.get_func("_initialize") {
+                    if init.typed::<(), ()>(&self.store()).is_err() {
+                        trace!(
+                            "_initialize function found with type {:?}",
+                            init.ty(self.store())
+                        );
+                        return;
+                    }
+                    trace!("WASI reactor module detected");
+                    Some(init)
+                } else {
+                    None
+                };
+                self.runtime = Some(Runtime::Haskell {
+                    init,
+                    cleanup,
+                    reactor_init,
+                });
             }
+
             return;
         }
 
@@ -424,7 +442,14 @@ impl Plugin {
         if let Some(runtime) = &self.runtime {
             trace!("Plugin::initialize_runtime");
             match runtime {
-                Runtime::Haskell { init, cleanup: _ } => {
+                Runtime::Haskell {
+                    init,
+                    cleanup: _,
+                    reactor_init,
+                } => {
+                    if let Some(reactor_init) = reactor_init {
+                        reactor_init.call(&mut store, &[], &mut [])?;
+                    }
                     let mut results = vec![Val::null(); init.ty(&store).results().len()];
                     init.call(
                         &mut store,
@@ -461,7 +486,7 @@ impl Plugin {
                 } => (),
                 // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
                 // by calling the `hs_exit` export
-                Runtime::Haskell { init: _, cleanup } => {
+                Runtime::Haskell { cleanup, .. } => {
                     let mut results = vec![Val::null(); cleanup.ty(self.store()).results().len()];
                     cleanup.call(self.store_mut(), &[], results.as_mut_slice())?;
                     debug!("Cleaned up Haskell language runtime");
@@ -511,6 +536,13 @@ impl Plugin {
 // Enumerates the supported PDK language runtimes
 #[derive(Clone)]
 pub(crate) enum Runtime {
-    Haskell { init: Func, cleanup: Func },
-    Wasi { init: Func, cleanup: Option<Func> },
+    Haskell {
+        init: Func,
+        reactor_init: Option<Func>,
+        cleanup: Func,
+    },
+    Wasi {
+        init: Func,
+        cleanup: Option<Func>,
+    },
 }
