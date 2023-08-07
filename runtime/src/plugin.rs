@@ -348,7 +348,6 @@ impl Plugin {
         }
 
         self.instance = None;
-        self.instantiations += 1;
         Ok(())
     }
 
