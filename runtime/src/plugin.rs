@@ -358,7 +358,7 @@ impl Plugin {
 
     fn detect_runtime(&mut self) {
         // Check for Haskell runtime initialization functions
-        // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
+        // Initialize Haskell runtime if `hs_init` is present,
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
             let reactor_init = if let Some(init) = self.get_func("_initialize") {
@@ -379,36 +379,33 @@ impl Plugin {
             return;
         }
 
-        // Check for `__wasm_call_ctors` and `__wasm_call_dtors`, this is used by WASI to
+        // Check for `__wasm_call_ctors` or `_initialize`, this is used by WASI to
         // initialize certain interfaces.
-        if self.has_wasi() {
-            let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
-                if init.typed::<(), ()>(&self.store()).is_err() {
-                    trace!(
-                        "__wasm_call_ctors function found with type {:?}",
-                        init.ty(self.store())
-                    );
-                    return;
-                }
-                trace!("WASI runtime detected");
-                init
-            } else if let Some(init) = self.get_func("_initialize") {
-                if init.typed::<(), ()>(&self.store()).is_err() {
-                    trace!(
-                        "_initialize function found with type {:?}",
-                        init.ty(self.store())
-                    );
-                    return;
-                }
-                trace!("WASI reactor module detected");
-                init
-            } else {
+        let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
+            if init.typed::<(), ()>(&self.store()).is_err() {
+                trace!(
+                    "__wasm_call_ctors function found with type {:?}",
+                    init.ty(self.store())
+                );
                 return;
-            };
-
-            self.runtime = Some(Runtime::Wasi { init });
+            }
+            trace!("WASI runtime detected");
+            init
+        } else if let Some(init) = self.get_func("_initialize") {
+            if init.typed::<(), ()>(&self.store()).is_err() {
+                trace!(
+                    "_initialize function found with type {:?}",
+                    init.ty(self.store())
+                );
+                return;
+            }
+            trace!("Reactor module detected");
+            init
+        } else {
             return;
-        }
+        };
+
+        self.runtime = Some(Runtime::Wasi { init });
 
         trace!("No runtime detected");
     }
