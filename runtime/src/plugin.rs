@@ -26,7 +26,7 @@ pub struct Plugin {
     /// A handle used to cancel execution of a plugin
     pub(crate) cancel_handle: sdk::ExtismCancelHandle,
 
-    /// Runtime determines any initialization and cleanup functions needed
+    /// Runtime determines any initialization functions needed
     /// to run a module
     pub(crate) runtime: Option<Runtime>,
 }
@@ -252,6 +252,9 @@ impl Plugin {
                 self.instantiations += 1;
                 self.instance = Some(x);
                 self.detect_runtime();
+                if let Err(e) = self.initialize_runtime() {
+                    error!("Unable to initialize runtime: {e}")
+                }
             }
         }
 
@@ -296,7 +299,7 @@ impl Plugin {
         Ok(())
     }
 
-    pub(crate) fn setup_runtime(&mut self) -> Result<(), Error> {
+    pub(crate) fn reinstantiate(&mut self) -> Result<(), Error> {
         if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
             limiter.reset();
         }
@@ -359,34 +362,21 @@ impl Plugin {
         // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
-            if let Some(cleanup) = self.get_func("hs_exit") {
-                if init.typed::<(i32, i32), ()>(&self.store()).is_err() {
+            let reactor_init = if let Some(init) = self.get_func("_initialize") {
+                if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
-                        "hs_init function found with type {:?}",
+                        "_initialize function found with type {:?}",
                         init.ty(self.store())
                     );
-                }
-                let reactor_init = if let Some(init) = self.get_func("_initialize") {
-                    if init.typed::<(), ()>(&self.store()).is_err() {
-                        trace!(
-                            "_initialize function found with type {:?}",
-                            init.ty(self.store())
-                        );
-                        None
-                    } else {
-                        trace!("WASI reactor module detected");
-                        Some(init)
-                    }
-                } else {
                     None
-                };
-                self.runtime = Some(Runtime::Haskell {
-                    init,
-                    cleanup,
-                    reactor_init,
-                });
-            }
-
+                } else {
+                    trace!("WASI reactor module detected");
+                    Some(init)
+                }
+            } else {
+                None
+            };
+            self.runtime = Some(Runtime::Haskell { init, reactor_init });
             return;
         }
 
@@ -417,21 +407,7 @@ impl Plugin {
                 return;
             };
 
-            let cleanup = if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
-                if cleanup.typed::<(), ()>(&self.store()).is_err() {
-                    trace!(
-                        "__wasm_call_dtors function found with type {:?}",
-                        cleanup.ty(self.store())
-                    );
-                    None
-                } else {
-                    Some(cleanup)
-                }
-            } else {
-                None
-            };
-
-            self.runtime = Some(Runtime::Wasi { init, cleanup });
+            self.runtime = Some(Runtime::Wasi { init });
             return;
         }
 
@@ -443,11 +419,7 @@ impl Plugin {
         if let Some(runtime) = &self.runtime {
             trace!("Plugin::initialize_runtime");
             match runtime {
-                Runtime::Haskell {
-                    init,
-                    cleanup: _,
-                    reactor_init,
-                } => {
+                Runtime::Haskell { init, reactor_init } => {
                     if let Some(reactor_init) = reactor_init {
                         reactor_init.call(&mut store, &[], &mut [])?;
                     }
@@ -459,38 +431,9 @@ impl Plugin {
                     )?;
                     debug!("Initialized Haskell language runtime");
                 }
-                Runtime::Wasi { init, cleanup: _ } => {
+                Runtime::Wasi { init } => {
                     init.call(&mut store, &[], &mut [])?;
                     debug!("Initialied WASI runtime");
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    pub(crate) fn cleanup_runtime(&mut self) -> Result<(), Error> {
-        if let Some(runtime) = self.runtime.clone() {
-            trace!("Plugin::cleanup_runtime");
-            match runtime {
-                Runtime::Wasi {
-                    init: _,
-                    cleanup: Some(cleanup),
-                } => {
-                    debug!("Calling __wasm_call_dtors");
-                    cleanup.call(self.store_mut(), &[], &mut [])?;
-                }
-                Runtime::Wasi {
-                    init: _,
-                    cleanup: None,
-                } => (),
-                // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
-                // by calling the `hs_exit` export
-                Runtime::Haskell { cleanup, .. } => {
-                    let mut results = vec![Val::null(); cleanup.ty(self.store()).results().len()];
-                    cleanup.call(self.store_mut(), &[], results.as_mut_slice())?;
-                    debug!("Cleaned up Haskell language runtime");
                 }
             }
         }
@@ -540,10 +483,8 @@ pub(crate) enum Runtime {
     Haskell {
         init: Func,
         reactor_init: Option<Func>,
-        cleanup: Func,
     },
     Wasi {
         init: Func,
-        cleanup: Option<Func>,
     },
 }

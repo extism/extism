@@ -15,8 +15,8 @@ impl<'a> PluginRef<'a> {
         trace!("PluginRef::start_call: {}", self.id,);
         let plugin = self.as_mut();
 
-        if is_start || plugin.instantiations == 0 {
-            if let Err(e) = plugin.setup_runtime() {
+        if !is_start && plugin.instantiations == 0 {
+            if let Err(e) = plugin.reinstantiate() {
                 error!("Failed to reinstantiate: {e:?}");
                 plugin.error(format!("Failed to reinstantiate: {e:?}"), ());
                 return self;
