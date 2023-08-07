@@ -495,22 +495,22 @@ pub unsafe extern "C" fn extism_plugin_call(
 ) -> i32 {
     let ctx = &mut *ctx;
 
+    // Get function name
+    let name = std::ffi::CStr::from_ptr(func_name);
+    let name = match name.to_str() {
+        Ok(name) => name,
+        Err(e) => return ctx.error(e, -1),
+    };
+    let is_start = name == "_start";
+
     // Get a `PluginRef` and call `init` to set up the plugin input and memory, this is only
     // needed before a new call
     let mut plugin_ref = match PluginRef::new(ctx, plugin_id, true) {
         None => return -1,
-        Some(p) => p.start_call(),
+        Some(p) => p.start_call(is_start),
     };
     let tx = plugin_ref.epoch_timer_tx.clone();
     let plugin = plugin_ref.as_mut();
-
-    // Find function
-    let name = std::ffi::CStr::from_ptr(func_name);
-    let name = match name.to_str() {
-        Ok(name) => name,
-        Err(e) => return plugin.error(e, -1),
-    };
-    let is_start = name == "_start";
 
     let func = match plugin.get_func(name) {
         Some(x) => x,

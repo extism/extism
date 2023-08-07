@@ -231,7 +231,7 @@ impl Plugin {
             instance: None,
             instance_pre,
             store,
-            instantiations: 1,
+            instantiations: 0,
             runtime: None,
             timer_id,
             cancel_handle: sdk::ExtismCancelHandle {
@@ -249,6 +249,7 @@ impl Plugin {
     pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
         if let None = &self.instance {
             if let Ok(x) = self.instance_pre.instantiate(&mut self.store) {
+                self.instantiations += 1;
                 self.instance = Some(x);
                 self.detect_runtime();
             }
@@ -295,8 +296,7 @@ impl Plugin {
         Ok(())
     }
 
-    /// Create a new instance from the same modules
-    pub fn reinstantiate(&mut self) -> Result<(), Error> {
+    pub(crate) fn setup_runtime(&mut self) -> Result<(), Error> {
         if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
             limiter.reset();
         }
