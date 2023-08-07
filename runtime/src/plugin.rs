@@ -372,10 +372,11 @@ impl Plugin {
                             "_initialize function found with type {:?}",
                             init.ty(self.store())
                         );
-                        return;
+                        None
+                    } else {
+                        trace!("WASI reactor module detected");
+                        Some(init)
                     }
-                    trace!("WASI reactor module detected");
-                    Some(init)
                 } else {
                     None
                 };
