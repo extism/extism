@@ -19,9 +19,9 @@ library
     extra-libraries:    extism
     extra-lib-dirs:     /usr/local/lib
     build-depends:
-        base              >= 4.16.1 && < 4.20.0,
-        bytestring        >= 0.11.3 && < 0.12,
-        json              >= 0.10 && < 0.11,
+        base              >= 4.16.1 && < 5,
+        bytestring        >= 0.11.3 && <= 0.12,
+        json              >= 0.10 && <= 0.11,
         extism-manifest   >= 0.0.0 && < 0.3.0
 
 test-suite extism-example
