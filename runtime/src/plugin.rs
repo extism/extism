@@ -245,19 +245,24 @@ impl Plugin {
         Ok(plugin)
     }
 
+    pub(crate) fn instantiate(&mut self) -> Result<(), Error> {
+        let x = self.instance_pre.instantiate(&mut self.store)?;
+        self.instantiations += 1;
+        self.instance = Some(x);
+        if let Some(limiter) = &mut self.internal_mut().memory_limiter {
+            limiter.reset();
+        }
+        self.detect_runtime();
+        self.initialize_runtime()?;
+        Ok(())
+    }
+
     /// Get a function by name
     pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
         if let None = &self.instance {
-            if let Ok(x) = self.instance_pre.instantiate(&mut self.store) {
-                self.instantiations += 1;
-                self.instance = Some(x);
-                if let Some(limiter) = &mut self.internal_mut().memory_limiter {
-                    limiter.reset();
-                }
-                self.detect_runtime();
-                if let Err(e) = self.initialize_runtime() {
-                    error!("Unable to initialize runtime: {e}")
-                }
+            if let Err(e) = self.instantiate() {
+                error!("Unable to instantiate: {e}");
+                return None;
             }
         }
 

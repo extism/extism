@@ -11,8 +11,15 @@ pub struct PluginRef<'a> {
 
 impl<'a> PluginRef<'a> {
     /// Initialize the plugin for a new call
-    pub(crate) fn start_call(mut self) -> Self {
+    pub(crate) fn start_call(mut self, is_start: bool) -> Self {
         trace!("PluginRef::start_call: {}", self.id,);
+
+        let plugin = unsafe { &mut *self.plugin };
+        if !is_start && plugin.instantiations == 0 {
+            if let Err(e) = plugin.instantiate() {
+                plugin.error(e, ());
+            }
+        }
         self.running = true;
         self
     }
