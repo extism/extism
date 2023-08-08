@@ -11,17 +11,8 @@ pub struct PluginRef<'a> {
 
 impl<'a> PluginRef<'a> {
     /// Initialize the plugin for a new call
-    pub(crate) fn start_call(mut self, is_start: bool) -> Self {
+    pub(crate) fn start_call(mut self) -> Self {
         trace!("PluginRef::start_call: {}", self.id,);
-        let plugin = self.as_mut();
-
-        if !is_start && plugin.instantiations == 0 {
-            if let Err(e) = plugin.reinstantiate() {
-                error!("Failed to reinstantiate: {e:?}");
-                plugin.error(format!("Failed to reinstantiate: {e:?}"), ());
-                return self;
-            }
-        }
         self.running = true;
         self
     }

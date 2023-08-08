@@ -251,6 +251,9 @@ impl Plugin {
             if let Ok(x) = self.instance_pre.instantiate(&mut self.store) {
                 self.instantiations += 1;
                 self.instance = Some(x);
+                if let Some(limiter) = &mut self.internal_mut().memory_limiter {
+                    limiter.reset();
+                }
                 self.detect_runtime();
                 if let Err(e) = self.initialize_runtime() {
                     error!("Unable to initialize runtime: {e}")
@@ -296,58 +299,6 @@ impl Plugin {
             )?;
         }
 
-        Ok(())
-    }
-
-    pub(crate) fn reinstantiate(&mut self) -> Result<(), Error> {
-        if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
-            limiter.reset();
-        }
-
-        let (main_name, main) = self
-            .modules
-            .get("main")
-            .map(|x| ("main", x))
-            .unwrap_or_else(|| {
-                let entry = self.modules.iter().last().unwrap();
-                (entry.0.as_str(), entry.1)
-            });
-
-        if self.instantiations > 5 {
-            let engine = self.store.engine().clone();
-            let internal = self.internal();
-            self.store = Store::new(
-                &engine,
-                Internal::new(
-                    internal.manifest.clone(),
-                    internal.wasi.is_some(),
-                    internal.available_pages,
-                )?,
-            );
-            self.store
-                .epoch_deadline_callback(|_internal| Ok(UpdateDeadline::Continue(1)));
-
-            if self.internal().available_pages.is_some() {
-                self.store
-                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
-            }
-
-            for (name, module) in self.modules.iter() {
-                if name != main_name {
-                    self.linker.module(&mut self.store, name, module)?;
-                }
-            }
-            self.instantiations = 0;
-            self.instance_pre = self.linker.instantiate_pre(&main)?;
-
-            let store = &mut self.store as *mut _;
-            let linker = &mut self.linker as *mut _;
-            let internal = self.internal_mut();
-            internal.store = store;
-            internal.linker = linker;
-        }
-
-        self.instance = None;
         Ok(())
     }
 
