@@ -18,7 +18,7 @@ pub struct Plugin {
     /// Keep track of the number of times we're instantiated, this exists
     /// to avoid issues with memory piling up since `Instance`s are only
     /// actually cleaned up along with a `Store`
-    pub instantiations: usize,
+    instantiations: usize,
 
     /// The ID used to identify this plugin with the `Timer`
     pub timer_id: uuid::Uuid,
@@ -26,7 +26,7 @@ pub struct Plugin {
     /// A handle used to cancel execution of a plugin
     pub(crate) cancel_handle: sdk::ExtismCancelHandle,
 
-    /// Runtime determines any initialization and cleanup functions needed
+    /// Runtime determines any initialization functions needed
     /// to run a module
     pub(crate) runtime: Option<Runtime>,
 }
@@ -231,13 +231,13 @@ impl Plugin {
             instance: None,
             instance_pre,
             store,
-            instantiations: 1,
             runtime: None,
             timer_id,
             cancel_handle: sdk::ExtismCancelHandle {
                 id: timer_id,
                 epoch_timer_tx: None,
             },
+            instantiations: 0,
         };
 
         plugin.internal_mut().store = &mut plugin.store;
@@ -245,72 +245,18 @@ impl Plugin {
         Ok(plugin)
     }
 
-    /// Get a function by name
-    pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
-        if let None = &self.instance {
-            if let Ok(x) = self.instance_pre.instantiate(&mut self.store) {
-                self.instance = Some(x);
-                self.detect_runtime();
-            }
-        }
-
-        if let Some(instance) = &mut self.instance {
-            instance.get_func(&mut self.store, function.as_ref())
-        } else {
-            None
-        }
-    }
-
-    /// Store input in memory and initialize `Internal` pointer
-    pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
-        if input.is_null() {
-            len = 0;
-        }
-
-        {
-            let store = &mut self.store as *mut _;
-            let linker = &mut self.linker as *mut _;
-            let internal = self.internal_mut();
-            internal.store = store;
-            internal.linker = linker;
-        }
-
-        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
-        trace!("Input size: {}", bytes.len());
-
-        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
-            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
-        }
-
-        let offs = self.memory_alloc_bytes(bytes)?;
-
-        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
-            f.into_func().unwrap().call(
-                &mut self.store,
-                &[Val::I64(offs as i64), Val::I64(len as i64)],
-                &mut [],
-            )?;
-        }
-
-        Ok(())
-    }
-
-    /// Create a new instance from the same modules
-    pub fn reinstantiate(&mut self) -> Result<(), Error> {
-        if let Some(limiter) = self.internal_mut().memory_limiter.as_mut() {
-            limiter.reset();
-        }
-
-        let (main_name, main) = self
-            .modules
-            .get("main")
-            .map(|x| ("main", x))
-            .unwrap_or_else(|| {
-                let entry = self.modules.iter().last().unwrap();
-                (entry.0.as_str(), entry.1)
-            });
-
+    pub(crate) fn reset_store(&mut self) -> Result<(), Error> {
+        self.instance = None;
         if self.instantiations > 5 {
+            let (main_name, main) = self
+                .modules
+                .get("main")
+                .map(|x| ("main", x))
+                .unwrap_or_else(|| {
+                    let entry = self.modules.iter().last().unwrap();
+                    (entry.0.as_str(), entry.1)
+                });
+
             let engine = self.store.engine().clone();
             let internal = self.internal();
             self.store = Store::new(
@@ -344,8 +290,69 @@ impl Plugin {
             internal.linker = linker;
         }
 
-        self.instance = None;
+        Ok(())
+    }
+
+    pub(crate) fn instantiate(&mut self) -> Result<(), Error> {
+        self.instance = Some(self.instance_pre.instantiate(&mut self.store)?);
         self.instantiations += 1;
+        if let Some(limiter) = &mut self.internal_mut().memory_limiter {
+            limiter.reset();
+        }
+        self.detect_runtime();
+        self.initialize_runtime()?;
+        Ok(())
+    }
+
+    /// Get a function by name
+    pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
+        if let None = &self.instance {
+            if let Err(e) = self.instantiate() {
+                error!("Unable to instantiate: {e}");
+                return None;
+            }
+        }
+
+        if let Some(instance) = &mut self.instance {
+            instance.get_func(&mut self.store, function.as_ref())
+        } else {
+            None
+        }
+    }
+
+    /// Store input in memory and initialize `Internal` pointer
+    pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
+        if input.is_null() {
+            len = 0;
+        }
+
+        {
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let internal = self.internal_mut();
+            internal.store = store;
+            internal.linker = linker;
+        }
+
+        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
+        trace!("Input size: {}", bytes.len());
+
+        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
+            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+        } else {
+            error!("Call to extism_reset failed");
+        }
+
+        let offs = self.memory_alloc_bytes(bytes)?;
+
+        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
+            f.into_func().unwrap().call(
+                &mut self.store,
+                &[Val::I64(offs as i64), Val::I64(len as i64)],
+                &mut [],
+            )?;
+        }
+
         Ok(())
     }
 
@@ -356,65 +363,54 @@ impl Plugin {
 
     fn detect_runtime(&mut self) {
         // Check for Haskell runtime initialization functions
-        // Initialize Haskell runtime if `hs_init` and `hs_exit` are present,
+        // Initialize Haskell runtime if `hs_init` is present,
         // by calling the `hs_init` export
         if let Some(init) = self.get_func("hs_init") {
-            if let Some(cleanup) = self.get_func("hs_exit") {
-                if init.typed::<(i32, i32), ()>(&self.store()).is_err() {
-                    trace!(
-                        "hs_init function found with type {:?}",
-                        init.ty(self.store())
-                    );
-                }
-                self.runtime = Some(Runtime::Haskell { init, cleanup });
-            }
-            return;
-        }
-
-        // Check for `__wasm_call_ctors` and `__wasm_call_dtors`, this is used by WASI to
-        // initialize certain interfaces.
-        if self.has_wasi() {
-            let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
-                if init.typed::<(), ()>(&self.store()).is_err() {
-                    trace!(
-                        "__wasm_call_ctors function found with type {:?}",
-                        init.ty(self.store())
-                    );
-                    return;
-                }
-                trace!("WASI runtime detected");
-                init
-            } else if let Some(init) = self.get_func("_initialize") {
+            let reactor_init = if let Some(init) = self.get_func("_initialize") {
                 if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
                         "_initialize function found with type {:?}",
                         init.ty(self.store())
                     );
-                    return;
-                }
-                trace!("WASI reactor module detected");
-                init
-            } else {
-                return;
-            };
-
-            let cleanup = if let Some(cleanup) = self.get_func("__wasm_call_dtors") {
-                if cleanup.typed::<(), ()>(&self.store()).is_err() {
-                    trace!(
-                        "__wasm_call_dtors function found with type {:?}",
-                        cleanup.ty(self.store())
-                    );
                     None
                 } else {
-                    Some(cleanup)
+                    trace!("WASI reactor module detected");
+                    Some(init)
                 }
             } else {
                 None
             };
-
-            self.runtime = Some(Runtime::Wasi { init, cleanup });
+            self.runtime = Some(Runtime::Haskell { init, reactor_init });
             return;
         }
+
+        // Check for `__wasm_call_ctors` or `_initialize`, this is used by WASI to
+        // initialize certain interfaces.
+        let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
+            if init.typed::<(), ()>(&self.store()).is_err() {
+                trace!(
+                    "__wasm_call_ctors function found with type {:?}",
+                    init.ty(self.store())
+                );
+                return;
+            }
+            trace!("WASI runtime detected");
+            init
+        } else if let Some(init) = self.get_func("_initialize") {
+            if init.typed::<(), ()>(&self.store()).is_err() {
+                trace!(
+                    "_initialize function found with type {:?}",
+                    init.ty(self.store())
+                );
+                return;
+            }
+            trace!("Reactor module detected");
+            init
+        } else {
+            return;
+        };
+
+        self.runtime = Some(Runtime::Wasi { init });
 
         trace!("No runtime detected");
     }
@@ -424,7 +420,10 @@ impl Plugin {
         if let Some(runtime) = &self.runtime {
             trace!("Plugin::initialize_runtime");
             match runtime {
-                Runtime::Haskell { init, cleanup: _ } => {
+                Runtime::Haskell { init, reactor_init } => {
+                    if let Some(reactor_init) = reactor_init {
+                        reactor_init.call(&mut store, &[], &mut [])?;
+                    }
                     let mut results = vec![Val::null(); init.ty(&store).results().len()];
                     init.call(
                         &mut store,
@@ -433,38 +432,9 @@ impl Plugin {
                     )?;
                     debug!("Initialized Haskell language runtime");
                 }
-                Runtime::Wasi { init, cleanup: _ } => {
+                Runtime::Wasi { init } => {
                     init.call(&mut store, &[], &mut [])?;
                     debug!("Initialied WASI runtime");
-                }
-            }
-        }
-
-        Ok(())
-    }
-
-    #[inline(always)]
-    pub(crate) fn cleanup_runtime(&mut self) -> Result<(), Error> {
-        if let Some(runtime) = self.runtime.clone() {
-            trace!("Plugin::cleanup_runtime");
-            match runtime {
-                Runtime::Wasi {
-                    init: _,
-                    cleanup: Some(cleanup),
-                } => {
-                    debug!("Calling __wasm_call_dtors");
-                    cleanup.call(self.store_mut(), &[], &mut [])?;
-                }
-                Runtime::Wasi {
-                    init: _,
-                    cleanup: None,
-                } => (),
-                // Cleanup Haskell runtime if `hs_exit` and `hs_exit` are present,
-                // by calling the `hs_exit` export
-                Runtime::Haskell { init: _, cleanup } => {
-                    let mut results = vec![Val::null(); cleanup.ty(self.store()).results().len()];
-                    cleanup.call(self.store_mut(), &[], results.as_mut_slice())?;
-                    debug!("Cleaned up Haskell language runtime");
                 }
             }
         }
@@ -511,6 +481,11 @@ impl Plugin {
 // Enumerates the supported PDK language runtimes
 #[derive(Clone)]
 pub(crate) enum Runtime {
-    Haskell { init: Func, cleanup: Func },
-    Wasi { init: Func, cleanup: Option<Func> },
+    Haskell {
+        init: Func,
+        reactor_init: Option<Func>,
+    },
+    Wasi {
+        init: Func,
+    },
 }

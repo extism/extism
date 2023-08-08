@@ -44,6 +44,7 @@ mod tests {
 
     const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
     const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
+    const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
 
     fn hello_world(
         _plugin: &mut CurrentPlugin,
@@ -301,6 +302,17 @@ mod tests {
         // that our reinstantiation process is working and that limit is never hit.
         for _ in 0..10001 {
             let _output = plugin.call("count_vowels", "abc123").unwrap();
+        }
+    }
+
+    #[test]
+    fn test_globals() {
+        let context = Context::new();
+        let mut plugin = Plugin::new(&context, WASM_GLOBALS, [], true).unwrap();
+        for i in 0..1000 {
+            let output = plugin.call("globals", "").unwrap();
+            let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
+            assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
         }
     }
 }
