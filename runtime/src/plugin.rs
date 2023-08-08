@@ -18,7 +18,7 @@ pub struct Plugin {
     /// Keep track of the number of times we're instantiated, this exists
     /// to avoid issues with memory piling up since `Instance`s are only
     /// actually cleaned up along with a `Store`
-    pub instantiations: usize,
+    instantiations: usize,
 
     /// The ID used to identify this plugin with the `Timer`
     pub timer_id: uuid::Uuid,
@@ -231,13 +231,13 @@ impl Plugin {
             instance: None,
             instance_pre,
             store,
-            instantiations: 0,
             runtime: None,
             timer_id,
             cancel_handle: sdk::ExtismCancelHandle {
                 id: timer_id,
                 epoch_timer_tx: None,
             },
+            instantiations: 0,
         };
 
         plugin.internal_mut().store = &mut plugin.store;
@@ -245,10 +245,57 @@ impl Plugin {
         Ok(plugin)
     }
 
+    pub(crate) fn reset_store(&mut self) -> Result<(), Error> {
+        self.instance = None;
+        if self.instantiations > 5 {
+            let (main_name, main) = self
+                .modules
+                .get("main")
+                .map(|x| ("main", x))
+                .unwrap_or_else(|| {
+                    let entry = self.modules.iter().last().unwrap();
+                    (entry.0.as_str(), entry.1)
+                });
+
+            let engine = self.store.engine().clone();
+            let internal = self.internal();
+            self.store = Store::new(
+                &engine,
+                Internal::new(
+                    internal.manifest.clone(),
+                    internal.wasi.is_some(),
+                    internal.available_pages,
+                )?,
+            );
+            self.store
+                .epoch_deadline_callback(|_internal| Ok(UpdateDeadline::Continue(1)));
+
+            if self.internal().available_pages.is_some() {
+                self.store
+                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+            }
+
+            for (name, module) in self.modules.iter() {
+                if name != main_name {
+                    self.linker.module(&mut self.store, name, module)?;
+                }
+            }
+            self.instantiations = 0;
+            self.instance_pre = self.linker.instantiate_pre(&main)?;
+
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let internal = self.internal_mut();
+            internal.store = store;
+            internal.linker = linker;
+        }
+
+        Ok(())
+    }
+
     pub(crate) fn instantiate(&mut self) -> Result<(), Error> {
-        let x = self.instance_pre.instantiate(&mut self.store)?;
+        self.instance = Some(self.instance_pre.instantiate(&mut self.store)?);
         self.instantiations += 1;
-        self.instance = Some(x);
         if let Some(limiter) = &mut self.internal_mut().memory_limiter {
             limiter.reset();
         }
@@ -292,6 +339,8 @@ impl Plugin {
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+        } else {
+            error!("Call to extism_reset failed");
         }
 
         let offs = self.memory_alloc_bytes(bytes)?;

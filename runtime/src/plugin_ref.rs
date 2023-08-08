@@ -15,11 +15,20 @@ impl<'a> PluginRef<'a> {
         trace!("PluginRef::start_call: {}", self.id,);
 
         let plugin = unsafe { &mut *self.plugin };
-        if !is_start && plugin.instantiations == 0 {
+        if is_start {
+            if let Err(e) = plugin.reset_store() {
+                error!("Call to Plugin::reset_store failed: {e:?}");
+            }
+        }
+
+        if plugin.instance.is_none() {
+            trace!("Plugin::instance is none, instantiating");
             if let Err(e) = plugin.instantiate() {
+                error!("Plugin::instantiate failed: {e:?}");
                 plugin.error(e, ());
             }
         }
+
         self.running = true;
         self
     }
