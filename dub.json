@@ -1,0 +1,24 @@
+{
+	"name": "extism",
+	"description": "The Universal Plug-in System. Extend anything with WebAssembly (wasm).",
+	"license": "BSD-3-Clause",
+	"authors": [
+		"Chance Snow <git@chancesnow.me>",
+		"Extism contributors"
+	],
+	"copyright": "Copyright © 2023, Extism contributors",
+	"sourcePaths": ["d"],
+	"importPaths": ["d"],
+	"systemDependencies": "extism >= 0.4.0",
+	"targetType": "sourceLibrary",
+	"libs": ["extism"],
+	"preGenerateCommands-linux": [
+		"gcc -E runtime/extism.h > d/runtime.i"
+	],
+	"preGenerateCommands-osx": [
+		"clang -E runtime/extism.h -o d/runtime.i"
+	],
+	"preGenerateCommands-windows": [
+		"cl /P /Zc:preprocessor runtime/extism.h -Fid/runtime.i"
+	]
+}
