@@ -3,15 +3,13 @@ use crate::*;
 // PluginRef is used to access a plugin from a context-scoped plugin registry
 pub struct PluginRef<'a> {
     pub id: PluginIndex,
-    running: bool,
-    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
     plugin: *mut Plugin,
     _t: std::marker::PhantomData<&'a ()>,
 }
 
 impl<'a> PluginRef<'a> {
     /// Initialize the plugin for a new call
-    pub(crate) fn start_call(mut self, is_start: bool) -> Self {
+    pub(crate) fn start_call(self, is_start: bool) -> Self {
         trace!("PluginRef::start_call: {}", self.id,);
 
         let plugin = unsafe { &mut *self.plugin };
@@ -29,7 +27,6 @@ impl<'a> PluginRef<'a> {
             }
         }
 
-        self.running = true;
         self
     }
 
@@ -38,8 +35,6 @@ impl<'a> PluginRef<'a> {
     /// - Reinstantiates the plugin if `should_reinstantiate` is set to `true` and WASI is enabled
     pub fn new(ctx: &'a mut Context, plugin_id: PluginIndex, clear_error: bool) -> Option<Self> {
         trace!("Loading plugin {plugin_id}");
-
-        let epoch_timer_tx = ctx.epoch_timer_tx.clone();
 
         let plugin = if let Some(plugin) = ctx.plugin(plugin_id) {
             plugin
@@ -60,9 +55,7 @@ impl<'a> PluginRef<'a> {
         Some(PluginRef {
             id: plugin_id,
             plugin,
-            epoch_timer_tx,
             _t: std::marker::PhantomData,
-            running: false,
         })
     }
 }
@@ -82,14 +75,5 @@ impl<'a> AsMut<Plugin> for PluginRef<'a> {
 impl<'a> Drop for PluginRef<'a> {
     fn drop(&mut self) {
         trace!("Dropping PluginRef {}", self.id);
-        if self.running {
-            let plugin = self.as_mut();
-
-            // Stop timer
-            if let Err(e) = plugin.stop_timer() {
-                let id = plugin.timer_id;
-                error!("Failed to stop timeout manager for {id}: {e:?}");
-            }
-        }
     }
 }

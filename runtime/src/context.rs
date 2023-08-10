@@ -2,8 +2,6 @@ use std::collections::{BTreeMap, VecDeque};
 
 use crate::*;
 
-static mut TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
-
 /// A `Context` is used to store and manage plugins
 pub struct Context {
     /// Plugin registry
@@ -13,9 +11,6 @@ pub struct Context {
     pub error: Option<std::ffi::CString>,
     next_id: std::sync::atomic::AtomicI32,
     reclaimed_ids: VecDeque<PluginIndex>,
-
-    // Timeout thread
-    pub(crate) epoch_timer_tx: std::sync::mpsc::SyncSender<TimerAction>,
 }
 
 impl Default for Context {
@@ -27,28 +22,13 @@ impl Default for Context {
 const START_REUSING_IDS: usize = 25;
 
 impl Context {
-    pub(crate) fn timer() -> std::sync::MutexGuard<'static, Option<Timer>> {
-        match unsafe { TIMER.lock() } {
-            Ok(x) => x,
-            Err(e) => e.into_inner(),
-        }
-    }
-
     /// Create a new context
     pub fn new() -> Context {
-        let timer = &mut *Self::timer();
-
-        let tx = match timer {
-            None => Timer::init(timer),
-            Some(t) => t.tx.clone(),
-        };
-
         Context {
             plugins: BTreeMap::new(),
             error: None,
             next_id: std::sync::atomic::AtomicI32::new(0),
             reclaimed_ids: VecDeque::new(),
-            epoch_timer_tx: tx,
         }
     }
 

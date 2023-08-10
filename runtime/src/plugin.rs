@@ -4,31 +4,33 @@ use crate::*;
 
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
-    /// All modules that were provided to the linker
-    pub modules: BTreeMap<String, Module>,
-
     /// Used to define functions and create new instances
     pub linker: Linker<Internal>,
     pub store: Store<Internal>,
 
+    /// A unique ID for each plugin
+    pub id: uuid::Uuid,
+
+    /// A handle used to cancel execution of a plugin
+    pub cancel_handle: sdk::ExtismCancelHandle,
+
+    /// All modules that were provided to the linker
+    pub(crate) modules: BTreeMap<String, Module>,
+
     /// Instance provides the ability to call functions in a module
-    pub instance: Option<Instance>,
-    pub instance_pre: InstancePre<Internal>,
+    pub(crate) instance: Option<Instance>,
+    pub(crate) instance_pre: InstancePre<Internal>,
 
     /// Keep track of the number of times we're instantiated, this exists
     /// to avoid issues with memory piling up since `Instance`s are only
     /// actually cleaned up along with a `Store`
     instantiations: usize,
 
-    /// The ID used to identify this plugin with the `Timer`
-    pub timer_id: uuid::Uuid,
-
-    /// A handle used to cancel execution of a plugin
-    pub(crate) cancel_handle: sdk::ExtismCancelHandle,
-
     /// Runtime determines any initialization functions needed
     /// to run a module
     pub(crate) runtime: Option<Runtime>,
+
+    _functions: Vec<Function>,
 }
 
 impl InternalExt for Plugin {
@@ -119,11 +121,22 @@ fn calculate_available_memory(
     Ok(())
 }
 
+fn deadline_callback(caller: StoreContextMut<Internal>) -> Result<UpdateDeadline, Error> {
+    if let Ok(Some(deadline)) = &caller.data().deadline.lock().as_deref() {
+        let now = std::time::Instant::now();
+        if *deadline <= now {
+            return Err(Error::msg("timeout"));
+        }
+    }
+
+    Ok(wasmtime::UpdateDeadline::Continue(1))
+}
+
 impl Plugin {
     /// Create a new plugin from the given WASM code
     pub fn new<'a>(
         wasm: impl AsRef<[u8]>,
-        imports: impl IntoIterator<Item = &'a Function>,
+        imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
         // Create a new engine, if the `EXITSM_DEBUG` environment variable is set
@@ -144,11 +157,14 @@ impl Plugin {
         calculate_available_memory(&mut available_pages, &modules)?;
         log::trace!("Available pages: {available_pages:?}");
 
+        let deadline = std::sync::Arc::new(std::sync::Mutex::new(None));
         let mut store = Store::new(
             &engine,
-            Internal::new(manifest, with_wasi, available_pages)?,
+            Internal::new(manifest, with_wasi, available_pages, deadline.clone())?,
         );
-        store.epoch_deadline_callback(|_internal| Ok(wasmtime::UpdateDeadline::Continue(1)));
+
+        store.set_epoch_deadline(0);
+        store.epoch_deadline_callback(deadline_callback);
 
         if available_pages.is_some() {
             store.limiter(|internal| internal.memory_limiter.as_mut().unwrap());
@@ -224,7 +240,7 @@ impl Plugin {
         }
 
         let instance_pre = linker.instantiate_pre(&main)?;
-        let timer_id = uuid::Uuid::new_v4();
+        let id = uuid::Uuid::new_v4();
         let mut plugin = Plugin {
             modules,
             linker,
@@ -232,12 +248,14 @@ impl Plugin {
             instance_pre,
             store,
             runtime: None,
-            timer_id,
+            id,
             cancel_handle: sdk::ExtismCancelHandle {
-                id: timer_id,
-                epoch_timer_tx: None,
+                deadline,
+                id: id.clone(),
+                engine,
             },
             instantiations: 0,
+            _functions: imports.collect(),
         };
 
         plugin.internal_mut().store = &mut plugin.store;
@@ -248,6 +266,26 @@ impl Plugin {
     pub(crate) fn reset_store(&mut self) -> Result<(), Error> {
         self.instance = None;
         if self.instantiations > 5 {
+            let engine = self.store.engine().clone();
+            let internal = self.internal_mut();
+            self.store = Store::new(
+                &engine,
+                Internal::new(
+                    internal.manifest.clone(),
+                    internal.wasi.is_some(),
+                    internal.available_pages,
+                    internal.deadline.clone(),
+                )?,
+            );
+
+            self.store.set_epoch_deadline(0);
+            self.store.epoch_deadline_callback(deadline_callback);
+
+            if self.internal().available_pages.is_some() {
+                self.store
+                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+            }
+
             let (main_name, main) = self
                 .modules
                 .get("main")
@@ -256,24 +294,6 @@ impl Plugin {
                     let entry = self.modules.iter().last().unwrap();
                     (entry.0.as_str(), entry.1)
                 });
-
-            let engine = self.store.engine().clone();
-            let internal = self.internal();
-            self.store = Store::new(
-                &engine,
-                Internal::new(
-                    internal.manifest.clone(),
-                    internal.wasi.is_some(),
-                    internal.available_pages,
-                )?,
-            );
-            self.store
-                .epoch_deadline_callback(|_internal| Ok(UpdateDeadline::Continue(1)));
-
-            if self.internal().available_pages.is_some() {
-                self.store
-                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
-            }
 
             for (name, module) in self.modules.iter() {
                 if name != main_name {
@@ -294,7 +314,8 @@ impl Plugin {
     }
 
     pub(crate) fn instantiate(&mut self) -> Result<(), Error> {
-        self.instance = Some(self.instance_pre.instantiate(&mut self.store)?);
+        let instance = self.instance_pre.instantiate(&mut self.store)?;
+        self.instance = Some(instance);
         self.instantiations += 1;
         if let Some(limiter) = &mut self.internal_mut().memory_limiter {
             limiter.reset();
@@ -305,18 +326,22 @@ impl Plugin {
     }
 
     /// Get a function by name
-    pub fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
-        if let None = &self.instance {
-            if let Err(e) = self.instantiate() {
-                error!("Unable to instantiate: {e}");
-                return None;
-            }
-        }
-
+    pub(crate) fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
         if let Some(instance) = &mut self.instance {
             instance.get_func(&mut self.store, function.as_ref())
         } else {
             None
+        }
+    }
+
+    /// Returns `true` if the given function exists, otherwise `false`
+    pub fn function_exists(&mut self, function: impl AsRef<str>) -> bool {
+        if let Some(instance) = &mut self.instance {
+            instance
+                .get_func(&mut self.store, function.as_ref())
+                .is_some()
+        } else {
+            false
         }
     }
 
@@ -442,38 +467,112 @@ impl Plugin {
         Ok(())
     }
 
-    /// Start the timer for a Plugin - this is used for both timeouts
-    /// and cancellation
-    pub(crate) fn start_timer(
-        &mut self,
-        tx: &std::sync::mpsc::SyncSender<TimerAction>,
-    ) -> Result<(), Error> {
-        let duration = self
-            .internal()
-            .manifest
-            .timeout_ms
-            .map(std::time::Duration::from_millis);
-        self.cancel_handle.epoch_timer_tx = Some(tx.clone());
-        self.store_mut().set_epoch_deadline(1);
-        self.store
-            .epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
-        let engine: Engine = self.store().engine().clone();
-        tx.send(TimerAction::Start {
-            id: self.timer_id,
-            duration,
-            engine,
-        })?;
-        Ok(())
+    pub fn output(&mut self) -> &[u8] {
+        let out = &mut [Val::I64(0)];
+        let out_len = &mut [Val::I64(0)];
+        let mut store = &mut self.store;
+        self.linker
+            .get(&mut store, "env", "extism_output_offset")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut store, &[], out)
+            .unwrap();
+        self.linker
+            .get(&mut store, "env", "extism_output_length")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut store, &[], out_len)
+            .unwrap();
+
+        let offs = out[0].unwrap_i64() as u64;
+        let len = out_len[0].unwrap_i64() as u64;
+        trace!("Output offset: {}", offs);
+        self.memory_read(offs, len)
     }
 
-    /// Send TimerAction::Stop
-    pub(crate) fn stop_timer(&mut self) -> Result<(), Error> {
-        if let Some(tx) = &self.cancel_handle.epoch_timer_tx {
-            tx.send(TimerAction::Stop { id: self.timer_id })?;
+    pub fn raw_call(
+        &mut self,
+        name: impl AsRef<str>,
+        input: impl AsRef<[u8]>,
+    ) -> Result<i32, (Error, i32)> {
+        let name = name.as_ref();
+        let input = input.as_ref();
+
+        if self.instance.is_none() {
+            trace!("Plugin::instance is none, instantiating");
+            self.instantiate().map_err(|e| (e, -1))?;
         }
-        self.store
-            .epoch_deadline_callback(|_internal| Ok(wasmtime::UpdateDeadline::Continue(1)));
-        Ok(())
+
+        let func = match self.get_func(name) {
+            Some(x) => x,
+            None => return Err((anyhow::anyhow!("Function not found: {name}"), -1)),
+        };
+
+        // Check the number of results, reject functions with more than 1 result
+        let n_results = func.ty(self.store()).results().len();
+        if n_results > 1 {
+            return Err((
+                anyhow::anyhow!("Function {name} has {n_results} results, expected 0 or 1"),
+                -1,
+            ));
+        }
+        self.set_input(input.as_ptr(), input.len())
+            .map_err(|x| (x, -1))?;
+
+        // Set the timeout
+        if let Some(ms) = self.internal().manifest.timeout_ms {
+            *self.internal_mut().deadline.lock().unwrap() =
+                Some(std::time::Instant::now() + std::time::Duration::from_millis(ms));
+        }
+
+        // Call the function
+        let mut results = vec![wasmtime::Val::null(); n_results];
+        let res = func.call(self.store_mut(), &[], results.as_mut_slice());
+        *self.internal_mut().deadline.lock().unwrap() = None;
+
+        if name == "_start" {
+            if let Err(e) = self.reset_store() {
+                error!("Call to Plugin::reset_store failed: {e:?}");
+            }
+        }
+
+        match res {
+            Ok(()) => (),
+            Err(e) => match e.downcast::<wasmtime_wasi::I32Exit>() {
+                Ok(exit) => {
+                    trace!("WASI return code: {}", exit.0);
+                    if exit.0 != 0 {
+                        return Err((Error::msg("WASI return code"), exit.0));
+                    }
+                    return Ok(0);
+                }
+                Err(e) => {
+                    if e.root_cause().to_string() == "timeout" {
+                        return Err((Error::msg("timeout"), -1));
+                    }
+
+                    error!("Call: {e:?}");
+                    return Err((e.context("Call failed"), -1));
+                }
+            },
+        };
+
+        // If `results` is empty and the return value wasn't a WASI exit code then
+        // the call succeeded
+        if results.is_empty() {
+            return Ok(0);
+        }
+
+        // Return result to caller
+        Ok(0)
+    }
+
+    pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
+        self.raw_call(name, input)
+            .map(|_| self.output())
+            .map_err(|e| e.0)
     }
 }
 

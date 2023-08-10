@@ -3,11 +3,9 @@ pub use extism_runtime::{
     sdk as bindings, Function, Internal as CurrentPlugin, InternalExt, UserData, Val, ValType,
 };
 
-mod context;
 mod plugin;
 mod plugin_builder;
 
-pub use context::Context;
 pub use plugin::{CancelHandle, Plugin};
 pub use plugin_builder::PluginBuilder;
 pub type Error = anyhow::Error;
@@ -73,7 +71,6 @@ mod tests {
     fn it_works() {
         let wasm_start = Instant::now();
         assert!(set_log_file("test.log", Some(log::Level::Trace)));
-        let context = Context::new();
         let f = Function::new(
             "hello_world",
             [ValType::I64],
@@ -91,7 +88,7 @@ mod tests {
         )
         .with_namespace("test");
 
-        let mut plugin = Plugin::new(&context, WASM, [f, g], true).unwrap();
+        let mut plugin = Plugin::new(WASM, [f, g], true).unwrap();
         println!("register loaded plugin: {:?}", wasm_start.elapsed());
 
         let repeat = 1182;
@@ -115,13 +112,12 @@ mod tests {
 
         println!("--------------");
 
-        let test_times = (0..100)
-            .map(|_| {
-                let test_start = Instant::now();
-                plugin.call("count_vowels", &input).unwrap();
-                test_start.elapsed()
-            })
-            .collect::<Vec<_>>();
+        let mut test_times = vec![];
+        for _ in 0..100 {
+            let test_start = Instant::now();
+            plugin.call("count_vowels", &input).unwrap();
+            test_times.push(test_start.elapsed());
+        }
 
         let native_test = || {
             let native_start = Instant::now();
@@ -179,69 +175,18 @@ mod tests {
     }
 
     #[test]
-    fn test_context_threads() {
-        use std::io::Write;
-        std::thread::spawn(|| {
-            let context = Context::new();
-            let f = Function::new(
-                "hello_world",
-                [ValType::I64],
-                [ValType::I64],
-                None,
-                hello_world,
-            );
-            let mut plugin = Plugin::new(&context, WASM, [f], true).unwrap();
-            let output = plugin.call("count_vowels", "this is a test").unwrap();
-            std::io::stdout().write_all(output).unwrap();
-        });
-
-        let f = Function::new(
-            "hello_world",
-            [ValType::I64],
-            [ValType::I64],
-            None,
-            hello_world,
-        );
-
-        // One context shared between two threads
-        let context = Context::new();
-        let mut threads = vec![];
-        for _ in 0..3 {
-            let ctx = context.clone();
-            let g = f.clone();
-            let a = std::thread::spawn(move || {
-                let mut plugin = PluginBuilder::new_with_module(WASM)
-                    .with_function(g)
-                    .with_wasi(true)
-                    .build(Some(&ctx))
-                    .unwrap();
-                for _ in 0..10 {
-                    let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
-                    assert_eq!(b"{\"count\": 7}", output);
-                }
-            });
-            threads.push(a);
-        }
-        for thread in threads {
-            thread.join().unwrap();
-        }
-    }
-
-    #[test]
     fn test_plugin_threads() {
-        let f = Function::new(
-            "hello_world",
-            [ValType::I64],
-            [ValType::I64],
-            None,
-            hello_world,
-        );
-
         let p = std::sync::Arc::new(std::sync::Mutex::new(
             PluginBuilder::new_with_module(WASM)
-                .with_function(f)
+                .with_function(
+                    "hello_world",
+                    [ValType::I64],
+                    [ValType::I64],
+                    None,
+                    hello_world,
+                )
                 .with_wasi(true)
-                .build(None)
+                .build()
                 .unwrap(),
         ));
 
@@ -272,16 +217,14 @@ mod tests {
             hello_world,
         );
 
-        let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM_LOOP, [f], true).unwrap();
+        let mut plugin = Plugin::new(WASM_LOOP, [f], true).unwrap();
         let handle = plugin.cancel_handle();
 
+        let start = std::time::Instant::now();
         std::thread::spawn(move || {
             std::thread::sleep(std::time::Duration::from_secs(1));
-            handle.cancel();
+            assert!(handle.cancel());
         });
-
-        let start = std::time::Instant::now();
         let _output = plugin.call("infinite_loop", "abc123");
         let end = std::time::Instant::now();
         let time = end - start;
@@ -299,8 +242,7 @@ mod tests {
             hello_world,
         );
 
-        let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM, [f], true).unwrap();
+        let mut plugin = Plugin::new(WASM, [f], true).unwrap();
 
         // This is 10,001 because the wasmtime store limit is 10,000 - we want to test
         // that our reinstantiation process is working and that limit is never hit.
@@ -311,8 +253,7 @@ mod tests {
 
     #[test]
     fn test_globals() {
-        let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM_GLOBALS, [], true).unwrap();
+        let mut plugin = Plugin::new(WASM_GLOBALS, [], true).unwrap();
         for i in 0..1000 {
             let output = plugin.call("globals", "").unwrap();
             let count: serde_json::Value = serde_json::from_slice(&output).unwrap();

@@ -15,10 +15,11 @@ fn main() {
         .with_after_include(fn_macro)
         .rename_item("Size", "ExtismSize")
         .rename_item("PluginIndex", "ExtismPlugin")
-        .rename_item("Context", "ExtismContext")
         .rename_item("ValType", "ExtismValType")
         .rename_item("ValUnion", "ExtismValUnion")
         .rename_item("Internal", "ExtismCurrentPlugin")
+        .rename_item("Plugin", "ExtismPlugin")
+        .rename_item("Function", "ExtismFunction")
         .with_style(cbindgen::Style::Type)
         .generate()
     {

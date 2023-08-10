@@ -14,27 +14,24 @@ pub struct Wasi {
 
 /// Internal stores data that is available to the caller in PDK functions
 pub struct Internal {
-    /// Store
-    pub store: *mut Store<Internal>,
-
-    /// Linker
-    pub linker: *mut wasmtime::Linker<Internal>,
-
-    /// WASI context
-    pub wasi: Option<Wasi>,
-
-    /// Keep track of the status from the last HTTP request
-    pub http_status: u16,
-
     /// Plugin variables
     pub vars: BTreeMap<String, Vec<u8>>,
 
+    /// Extism manifest
     pub manifest: extism_manifest::Manifest,
 
-    pub available_pages: Option<u32>,
-
+    pub(crate) store: *mut Store<Internal>,
+    pub(crate) linker: *mut wasmtime::Linker<Internal>,
+    pub(crate) wasi: Option<Wasi>,
+    pub(crate) http_status: u16,
+    pub(crate) deadline: std::sync::Arc<std::sync::Mutex<Option<std::time::Instant>>>,
+    pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
 }
+
+unsafe impl Sync for Internal {}
+
+unsafe impl Send for Internal {}
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values
 pub trait InternalExt {
@@ -222,6 +219,7 @@ impl Internal {
         manifest: extism_manifest::Manifest,
         wasi: bool,
         available_pages: Option<u32>,
+        deadline: std::sync::Arc<std::sync::Mutex<Option<std::time::Instant>>>,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasmtime_wasi::ambient_authority();
@@ -268,6 +266,7 @@ impl Internal {
             store: std::ptr::null_mut(),
             available_pages,
             memory_limiter,
+            deadline,
         })
     }
 
