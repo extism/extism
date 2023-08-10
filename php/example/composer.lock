@@ -8,11 +8,11 @@
     "packages": [
         {
             "name": "extism/extism",
-            "version": "dev-main",
+            "version": "dev-remove-context",
             "dist": {
                 "type": "path",
                 "url": "../..",
-                "reference": "de24fffc7c553118dacfc8e11c84b30953f4d55c"
+                "reference": "d4fbcac3216e4bd1e8e0bcb89c5c1ea970c858bb"
             },
             "require": {
                 "ircmaxell/ffime": "dev-master",
@@ -24,7 +24,6 @@
                     "Extism\\": "php/src/"
                 },
                 "files": [
-                    "php/src/Context.php",
                     "php/src/Plugin.php"
                 ]
             },
@@ -63,12 +62,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/FFIMe.git",
-                "reference": "f6911d7a6a7090a9782a21a946819a2efa9a2ff7"
+                "reference": "431a3c13d9906b974d50b13bf8295097ea000c5e"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/f6911d7a6a7090a9782a21a946819a2efa9a2ff7",
-                "reference": "f6911d7a6a7090a9782a21a946819a2efa9a2ff7",
+                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/431a3c13d9906b974d50b13bf8295097ea000c5e",
+                "reference": "431a3c13d9906b974d50b13bf8295097ea000c5e",
                 "shasum": ""
             },
             "require": {
@@ -101,7 +100,7 @@
                 "issues": "https://github.com/ircmaxell/FFIMe/issues",
                 "source": "https://github.com/ircmaxell/FFIMe/tree/master"
             },
-            "time": "2022-09-25T18:13:59+00:00"
+            "time": "2023-04-03T00:43:12+00:00"
         },
         {
             "name": "ircmaxell/php-c-parser",
@@ -109,12 +108,12 @@
             "source": {
                 "type": "git",
                 "url": "https://github.com/ircmaxell/php-c-parser.git",
-                "reference": "fd8f5efefd0fcc6c5119d945694acaa3a6790ada"
+                "reference": "29e0223704e4ee00c66f43506f5f52db151b3517"
             },
             "dist": {
                 "type": "zip",
-                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/fd8f5efefd0fcc6c5119d945694acaa3a6790ada",
-                "reference": "fd8f5efefd0fcc6c5119d945694acaa3a6790ada",
+                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/29e0223704e4ee00c66f43506f5f52db151b3517",
+                "reference": "29e0223704e4ee00c66f43506f5f52db151b3517",
                 "shasum": ""
             },
             "require": {
@@ -150,7 +149,7 @@
                 "issues": "https://github.com/ircmaxell/php-c-parser/issues",
                 "source": "https://github.com/ircmaxell/php-c-parser/tree/master"
             },
-            "time": "2022-09-23T19:39:35+00:00"
+            "time": "2023-03-23T10:58:24+00:00"
         },
         {
             "name": "ircmaxell/php-object-symbolresolver",
