@@ -166,64 +166,55 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
 const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 
-impl Manifest {
-    /// Create a new Manifest, returns the manifest and a map of modules
-    pub fn new(engine: &Engine, data: &[u8]) -> Result<(Self, BTreeMap<String, Module>), Error> {
-        let extism_module = Module::new(engine, WASM)?;
-        let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-        let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
-        if !has_magic && !is_wast {
-            if let Ok(s) = std::str::from_utf8(data) {
-                if let Ok(t) = toml::from_str::<Self>(s) {
-                    let m = t.modules(engine)?;
-                    return Ok((t, m));
-                }
+pub fn load(
+    engine: &Engine,
+    data: &[u8],
+) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
+    let extism_module = Module::new(engine, WASM)?;
+    let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
+    let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
+    if !has_magic && !is_wast {
+        if let Ok(s) = std::str::from_utf8(data) {
+            if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
+                let m = modules(&t, engine)?;
+                return Ok((t, m));
             }
-
-            let t = serde_json::from_slice::<Self>(data)?;
-            let mut m = t.modules(engine)?;
-            m.insert("env".to_string(), extism_module);
-            return Ok((t, m));
         }
 
-        let m = Module::new(engine, data)?;
-        let mut modules = BTreeMap::new();
-        modules.insert("env".to_string(), extism_module);
+        let t = serde_json::from_slice::<extism_manifest::Manifest>(data)?;
+        let mut m = modules(&t, engine)?;
+        m.insert("env".to_string(), extism_module);
+        return Ok((t, m));
+    }
+
+    let m = Module::new(engine, data)?;
+    let mut modules = BTreeMap::new();
+    modules.insert("env".to_string(), extism_module);
+    modules.insert("main".to_string(), m);
+    Ok((Default::default(), modules))
+}
+
+pub fn modules(
+    manifest: &extism_manifest::Manifest,
+    engine: &Engine,
+) -> Result<BTreeMap<String, Module>, Error> {
+    if manifest.wasm.is_empty() {
+        return Err(anyhow::format_err!("No wasm files specified"));
+    }
+
+    let mut modules = BTreeMap::new();
+
+    // If there's only one module, it should be called `main`
+    if manifest.wasm.len() == 1 {
+        let (_, m) = to_module(engine, &manifest.wasm[0])?;
         modules.insert("main".to_string(), m);
-        Ok((Manifest::default(), modules))
+        return Ok(modules);
     }
 
-    fn modules(&self, engine: &Engine) -> Result<BTreeMap<String, Module>, Error> {
-        if self.0.wasm.is_empty() {
-            return Err(anyhow::format_err!("No wasm files specified"));
-        }
-
-        let mut modules = BTreeMap::new();
-
-        // If there's only one module, it should be called `main`
-        if self.0.wasm.len() == 1 {
-            let (_, m) = to_module(engine, &self.0.wasm[0])?;
-            modules.insert("main".to_string(), m);
-            return Ok(modules);
-        }
-
-        for f in &self.0.wasm {
-            let (name, m) = to_module(engine, f)?;
-            modules.insert(name, m);
-        }
-
-        Ok(modules)
+    for f in &manifest.wasm {
+        let (name, m) = to_module(engine, f)?;
+        modules.insert(name, m);
     }
-}
 
-impl AsRef<extism_manifest::Manifest> for Manifest {
-    fn as_ref(&self) -> &extism_manifest::Manifest {
-        &self.0
-    }
-}
-
-impl AsMut<extism_manifest::Manifest> for Manifest {
-    fn as_mut(&mut self) -> &mut extism_manifest::Manifest {
-        &mut self.0
-    }
+    Ok(modules)
 }

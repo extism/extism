@@ -135,12 +135,12 @@ impl Plugin {
                 .profiler(profiling_strategy()),
         )?;
         let mut imports = imports.into_iter();
-        let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
+        let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
         // Calculate how much memory is available based on the value of `max_pages` and the exported
         // memory of the modules. An error will be returned if a module doesn't have an exported memory
         // or there is no maximum set for a module's exported memory.
-        let mut available_pages = manifest.as_ref().memory.max_pages;
+        let mut available_pages = manifest.memory.max_pages;
         calculate_available_memory(&mut available_pages, &modules)?;
         log::trace!("Available pages: {available_pages:?}");
 
@@ -451,7 +451,6 @@ impl Plugin {
         let duration = self
             .internal()
             .manifest
-            .as_ref()
             .timeout_ms
             .map(std::time::Duration::from_millis);
         self.cancel_handle.epoch_timer_tx = Some(tx.clone());

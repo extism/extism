@@ -437,7 +437,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         }
     }
 
-    let config = &mut plugin.internal_mut().manifest.as_mut().config;
+    let config = &mut plugin.internal_mut().manifest.config;
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {

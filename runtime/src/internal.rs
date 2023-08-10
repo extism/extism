@@ -29,7 +29,7 @@ pub struct Internal {
     /// Plugin variables
     pub vars: BTreeMap<String, Vec<u8>>,
 
-    pub manifest: Manifest,
+    pub manifest: extism_manifest::Manifest,
 
     pub available_pages: Option<u32>,
 
@@ -219,18 +219,18 @@ pub trait InternalExt {
 
 impl Internal {
     pub(crate) fn new(
-        manifest: Manifest,
+        manifest: extism_manifest::Manifest,
         wasi: bool,
         available_pages: Option<u32>,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasmtime_wasi::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-            for (k, v) in manifest.as_ref().config.iter() {
+            for (k, v) in manifest.config.iter() {
                 ctx = ctx.env(k, v)?;
             }
 
-            if let Some(a) = &manifest.as_ref().allowed_paths {
+            if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
                     let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
                     ctx = ctx.preopened_dir(d, v)?;
