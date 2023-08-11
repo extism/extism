@@ -1,6 +1,6 @@
 pub use extism_manifest::{self as manifest, Manifest};
 pub use extism_runtime::{
-    sdk as bindings, Function, Internal as CurrentPlugin, UserData, Val, ValType,
+    sdk as bindings, Function, Internal as CurrentPlugin, InternalExt, UserData, Val, ValType,
 };
 
 mod context;
@@ -47,12 +47,16 @@ mod tests {
     const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
 
     fn hello_world(
-        _plugin: &mut CurrentPlugin,
+        plugin: &mut CurrentPlugin,
         inputs: &[Val],
         outputs: &mut [Val],
         _user_data: UserData,
     ) -> Result<(), Error> {
-        outputs[0] = inputs[0].clone();
+        let input_offs = inputs[0].unwrap_i64() as u64;
+        let input = plugin.memory_read_str(input_offs).unwrap().to_string();
+
+        let output = plugin.memory_alloc_bytes(&input).unwrap();
+        outputs[0] = Val::I64(output as i64);
         Ok(())
     }
 
