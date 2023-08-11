@@ -81,6 +81,11 @@ typedef struct {
 typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin, const ExtismVal *inputs, ExtismSize n_inputs, ExtismVal *outputs, ExtismSize n_outputs, void *data);
 
 /**
+ * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUID value
+ */
+const uint8_t *extism_plugin_id(ExtismPlugin *plugin);
+
+/**
  * Returns a pointer to the memory of the currently running plugin
  * NOTE: this should only be called from host functions.
  */

@@ -70,6 +70,17 @@ impl From<&wasmtime::Val> for ExtismVal {
     }
 }
 
+/// Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUID value
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_id(plugin: *mut Plugin) -> *const u8 {
+    if plugin.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let plugin = &mut *plugin;
+    plugin.id.as_bytes().as_ptr()
+}
+
 /// Returns a pointer to the memory of the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
