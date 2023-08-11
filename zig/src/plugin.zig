@@ -4,7 +4,6 @@ const Manifest = @import("manifest.zig").Manifest;
 const Function = @import("function.zig");
 const CancelHandle = @import("cancel_handle.zig");
 const c = @import("ffi.zig");
-const utils = @import("utils.zig");
 
 const Self = @This();
 
@@ -52,7 +51,7 @@ pub fn init(allocator: std.mem.Allocator, ctx: *Context, data: []const u8, funct
 
 /// Create a new plugin from the given manifest
 pub fn initFromManifest(allocator: std.mem.Allocator, ctx: *Context, manifest: Manifest, functions: []const Function, wasi: bool) !Self {
-    const json = try utils.stringifyAlloc(allocator, manifest);
+    const json = try std.json.stringifyAlloc(allocator, manifest, .{ .emit_null_optional_fields = false });
     defer allocator.free(json);
     return init(allocator, ctx, json, functions, wasi);
 }
@@ -67,7 +66,7 @@ pub fn create(allocator: std.mem.Allocator, data: []const u8, functions: []const
 
 /// Create a new plugin from the given manifest in its own context
 pub fn createFromManifest(allocator: std.mem.Allocator, manifest: Manifest, functions: []const Function, wasi: bool) !Self {
-    const json = try utils.stringifyAlloc(allocator, manifest);
+    const json = try std.json.stringifyAlloc(allocator, manifest, .{ .emit_null_optional_fields = false });
     defer allocator.free(json);
     return create(allocator, json, functions, wasi);
 }
@@ -128,15 +127,15 @@ pub fn update(self: *Self, data: []const u8, wasi: bool) !void {
 
 /// Update a plugin with the given manifest
 pub fn updateWithManifest(self: *Self, allocator: std.mem.Allocator, manifest: Manifest, wasi: bool) !void {
-    const json = try utils.stringifyAlloc(allocator, manifest);
+    const json = try std.json.stringifyAlloc(allocator, manifest, .{ .emit_null_optional_fields = false });
     defer allocator.free(json);
     return self.update(json, wasi);
 }
 /// Set configuration values
-pub fn setConfig(self: *Self, allocator: std.mem.Allocator, config: std.StringHashMap([]const u8)) !void {
+pub fn setConfig(self: *Self, allocator: std.mem.Allocator, config: std.json.ArrayHashMap([]const u8)) !void {
     self.ctx.mutex.lock();
     defer self.ctx.mutex.unlock();
-    const config_json = try utils.stringifyAlloc(allocator, config);
+    const config_json = try std.json.stringifyAlloc(allocator, config, .{ .emit_null_optional_fields = false });
     defer allocator.free(config_json);
     _ = c.extism_plugin_config(self.ctx.ctx, self.id, config_json.ptr, @as(u64, config_json.len));
 }
