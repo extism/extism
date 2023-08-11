@@ -7,10 +7,9 @@ var StructType = require("ref-struct-di")(ref);
 var UnionType = require("ref-union-di")(ref);
 
 const opaque = ref.types.void;
-const context = ref.refType(opaque);
+const plugin = ref.refType(opaque);
 
 const function_t = ref.refType(opaque);
-const pluginIndex = ref.types.int32;
 
 let ValTypeArray = ArrayType(ref.types.int);
 let PtrArray = new ArrayType("void*");
@@ -36,28 +35,22 @@ let Val = new StructType({
 let ValArray = ArrayType(Val);
 
 const _functions = {
-  extism_context_new: [context, []],
-  extism_context_free: ["void", [context]],
   extism_plugin_new: [
-    pluginIndex,
-    [context, "string", "uint64", PtrArray, "uint64", "bool"],
+    plugin,
+    ["string", "uint64", PtrArray, "uint64", "bool", "char**"],
   ],
-  extism_plugin_update: [
-    "bool",
-    [context, pluginIndex, "string", "uint64", PtrArray, "uint64", "bool"],
-  ],
-  extism_error: ["string", [context, pluginIndex]],
+  extism_error: ["string", [plugin]],
   extism_plugin_call: [
     "int32",
-    [context, pluginIndex, "string", "string", "uint64"],
+    [plugin, "string", "string", "uint64"],
   ],
-  extism_plugin_output_length: ["uint64", [context, pluginIndex]],
-  extism_plugin_output_data: ["uint8*", [context, pluginIndex]],
+  extism_plugin_output_length: ["uint64", [plugin]],
+  extism_plugin_output_data: ["uint8*", [plugin]],
   extism_log_file: ["bool", ["string", "char*"]],
-  extism_plugin_function_exists: ["bool", [context, pluginIndex, "string"]],
-  extism_plugin_config: ["void", [context, pluginIndex, "char*", "uint64"]],
-  extism_plugin_free: ["void", [context, pluginIndex]],
-  extism_context_reset: ["void", [context]],
+  extism_plugin_function_exists: ["bool", [plugin, "string"]],
+  extism_plugin_config: ["void", [plugin, "char*", "uint64"]],
+  extism_plugin_free: ["void", [plugin]],
+  extism_plugin_error_free: ["void", ["char*"]],
   extism_version: ["string", []],
   extism_function_new: [
     function_t,
@@ -78,7 +71,7 @@ const _functions = {
   extism_current_plugin_memory_alloc: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_length: ["uint64", ["void*", "uint64"]],
   extism_current_plugin_memory_free: ["void", ["void*", "uint64"]],
-  extism_plugin_cancel_handle: ["void*", [context, pluginIndex]],
+  extism_plugin_cancel_handle: ["void*", [plugin]],
   extism_plugin_cancel: ["bool", ["void*"]],
 };
 
@@ -96,49 +89,35 @@ export enum ValType {
 }
 
 interface LibExtism {
-  extism_context_new: () => Buffer;
-  extism_context_free: (ctx: Buffer) => void;
   extism_plugin_new: (
-    ctx: Buffer,
     data: string | Buffer,
     data_len: number,
     functions: Buffer,
     nfunctions: number,
     wasi: boolean,
-  ) => number;
-  extism_plugin_update: (
-    ctx: Buffer,
-    plugin_id: number,
-    data: string | Buffer,
-    data_len: number,
-    functions: Buffer,
-    nfunctions: number,
-    wasi: boolean,
-  ) => boolean;
-  extism_error: (ctx: Buffer, plugin_id: number) => string;
+    errmsg: Buffer | null,
+  ) => Buffer;
+  extism_error: (plugin: Buffer) => string;
   extism_plugin_call: (
-    ctx: Buffer,
-    plugin_id: number,
+    plugin: Buffer,
     func: string,
     input: string,
     input_len: number,
   ) => number;
-  extism_plugin_output_length: (ctx: Buffer, plugin_id: number) => number;
-  extism_plugin_output_data: (ctx: Buffer, plugin_id: number) => Uint8Array;
+  extism_plugin_output_length: (plugin: Buffer) => number;
+  extism_plugin_output_data: (plugin: Buffer) => Uint8Array;
   extism_log_file: (file: string, level: string) => boolean;
   extism_plugin_function_exists: (
-    ctx: Buffer,
-    plugin_id: number,
+    plugin: Buffer,
     func: string,
   ) => boolean;
   extism_plugin_config: (
-    ctx: Buffer,
-    plugin_id: number,
+    plugin: Buffer,
     data: string | Buffer,
     data_len: number,
   ) => void;
-  extism_plugin_free: (ctx: Buffer, plugin_id: number) => void;
-  extism_context_reset: (ctx: Buffer) => void;
+  extism_plugin_free: (plugin: Buffer) => void;
+  extism_plugin_error_free: (error: Buffer) => void;
   extism_version: () => string;
   extism_function_new: (
     name: string,
@@ -156,7 +135,7 @@ interface LibExtism {
   extism_current_plugin_memory_alloc: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_length: (p: Buffer, n: number) => number;
   extism_current_plugin_memory_free: (p: Buffer, n: number) => void;
-  extism_plugin_cancel_handle: (p: Buffer, n: number) => Buffer;
+  extism_plugin_cancel_handle: (p: Buffer) => Buffer;
   extism_plugin_cancel: (p: Buffer) => boolean;
 }
 
@@ -204,11 +183,6 @@ export function setLogFile(filename: string, level?: string) {
 export function extismVersion(): string {
   return lib.extism_version();
 }
-
-// @ts-ignore
-const contextRegistry = new FinalizationRegistry((pointer) => {
-  if (pointer) lib.extism_context_free(pointer);
-});
 
 // @ts-ignore
 const functionRegistry = new FinalizationRegistry((pointer) => {
@@ -270,100 +244,6 @@ export type Manifest = {
  * We recommend using {@link Manifest}
  */
 type ManifestData = Manifest | Buffer | string;
-
-/**
- * A Context is needed to create plugins. The Context
- * is where your plugins live. Freeing the context
- * frees all of the plugins in its scope. We recommand managing
- * the context with {@link withContext}
- *
- * @see {@link withContext}
- *
- * @example
- * Use withContext to ensure your memory is cleaned up
- * ```
- * const output = await withContext(async (ctx) => {
- *   const plugin = ctx.plugin(manifest)
- *   return await plugin.call("func", "my-input")
- * })
- * ```
- *
- * @example
- * You can manage manually if you need a long-lived context
- * ```
- * const ctx = Context()
- * // free all the plugins and reset
- * ctx.reset()
- * // free everything
- * ctx.free()
- * ```
- */
-export class Context {
-  pointer: Buffer | null;
-
-  /**
-   * Construct a context
-   */
-  constructor() {
-    this.pointer = lib.extism_context_new();
-    contextRegistry.register(this, this.pointer, this.pointer);
-  }
-
-  /**
-   * Create a plugin managed by this context
-   *
-   * @param manifest - The {@link Manifest} describing the plugin code and config
-   * @param wasi - Set to `true` to enable WASI
-   * @param config - Config details for the plugin
-   * @returns A new Plugin scoped to this Context
-   */
-  plugin(
-    manifest: ManifestData,
-    wasi: boolean = false,
-    functions: HostFunction[] = [],
-    config?: PluginConfig,
-  ) {
-    return new Plugin(manifest, wasi, functions, config, this);
-  }
-
-  /**
-   * Frees the context. Should be called after the context is not needed to reclaim the memory.
-   */
-  free() {
-    contextRegistry.unregister(this.pointer);
-    if (this.pointer) {
-      lib.extism_context_free(this.pointer);
-      this.pointer = null;
-    }
-  }
-
-  /**
-   * Resets the context. This clears all the plugins but keeps the context alive.
-   */
-  reset() {
-    if (this.pointer) lib.extism_context_reset(this.pointer);
-  }
-}
-
-/**
- * Creates a context and gives you a scope to use it. This will ensure the context
- * and all its plugins are cleaned up for you when you are done.
- *
- * @param f - The callback function with the context
- * @returns Whatever your callback returns
- */
-export async function withContext(f: (ctx: Context) => Promise<any>) {
-  const ctx = new Context();
-
-  try {
-    const x = await f(ctx);
-    ctx.free();
-    return x;
-  } catch (err) {
-    ctx.free();
-    throw err;
-  }
-}
 
 /**
  * Provides access to the plugin that is currently running from inside a {@link HostFunction}
@@ -581,30 +461,25 @@ export class CancelHandle {
  * A Plugin represents an instance of your WASM program from the given manifest.
  */
 export class Plugin {
-  id: number;
-  ctx: Context;
+  plugin: Buffer;
+  freed: boolean;
   functions: typeof PtrArray;
-  token: { id: number; pointer: Buffer };
+  token: { plugin: Buffer };
 
   /**
-   * Constructor for a plugin. @see {@link Context#plugin}.
+   * Constructor for a plugin.
    *
    * @param manifest - The {@link Manifest}
    * @param wasi - Set to true to enable WASI support
    * @param functions - An array of {@link HostFunction}
    * @param config - The plugin config
-   * @param ctx - The context to manage this plugin, or null to use a new context
    */
   constructor(
     manifest: ManifestData,
     wasi: boolean = false,
     functions: HostFunction[] = [],
     config?: PluginConfig,
-    ctx: Context | null = null,
   ) {
-    if (ctx == null) {
-      ctx = new Context();
-    }
     let dataRaw: string | Buffer;
     if (Buffer.isBuffer(manifest) || typeof manifest === "string") {
       dataRaw = manifest;
@@ -613,35 +488,30 @@ export class Plugin {
     } else {
       throw Error(`Unknown manifest type ${typeof manifest}`);
     }
-    if (!ctx.pointer) throw Error("No Context set");
     this.functions = new PtrArray(functions.length);
     for (var i = 0; i < functions.length; i++) {
       this.functions[i] = functions[i].pointer;
     }
     let plugin = lib.extism_plugin_new(
-      ctx.pointer,
       dataRaw,
       Buffer.byteLength(dataRaw, "utf-8"),
       this.functions,
       functions.length,
       wasi,
+      null, // TODO: errmsg
     );
-    if (plugin < 0) {
-      var err = lib.extism_error(ctx.pointer, -1);
-      if (err.length === 0) {
-        throw "extism_context_plugin failed";
-      }
-      throw `Unable to load plugin: ${err.toString()}`;
+    if (plugin === null) {
+      // TODO: use errmsg
+      throw "extism_plugin_new failed";
     }
-    this.id = plugin;
-    this.token = { id: this.id, pointer: ctx.pointer };
-    this.ctx = ctx;
+    this.plugin = plugin;
+    this.freed = false;
+    this.token = { plugin: this.plugin };
 
     if (config != null) {
       let s = JSON.stringify(config);
       lib.extism_plugin_config(
-        ctx.pointer,
-        this.id,
+        this.plugin,
         s,
         Buffer.byteLength(s, "utf-8"),
       );
@@ -652,64 +522,11 @@ export class Plugin {
    * Return a new `CancelHandle`, which can be used to cancel a running Plugin
    */
   cancelHandle(): CancelHandle {
-    if (!this.ctx.pointer) throw Error("No Context set");
-    let handle = lib.extism_plugin_cancel_handle(this.ctx.pointer, this.id);
+    if (this.freed) {
+      throw Error("Plugin already freed");
+    }
+    let handle = lib.extism_plugin_cancel_handle(this.plugin);
     return new CancelHandle(handle);
-  }
-
-  /**
-   * Update an existing plugin with new WASM or manifest
-   *
-   * @param manifest - The new {@link Manifest} data
-   * @param wasi - Set to true to enable WASI support
-   * @param functions - An array of {@link HostFunction}
-   * @param config - The new plugin config
-   */
-  update(
-    manifest: ManifestData,
-    wasi: boolean = false,
-    functions: HostFunction[] = [],
-    config?: PluginConfig,
-  ) {
-    let dataRaw: string | Buffer;
-    if (Buffer.isBuffer(manifest) || typeof manifest === "string") {
-      dataRaw = manifest;
-    } else if (typeof manifest === "object" && manifest.wasm) {
-      dataRaw = JSON.stringify(manifest);
-    } else {
-      throw Error("Unknown manifest type type");
-    }
-    if (!this.ctx.pointer) throw Error("No Context set");
-    this.functions = new PtrArray(functions.length);
-    for (var i = 0; i < functions.length; i++) {
-      this.functions[i] = functions[i].pointer;
-    }
-    const ok = lib.extism_plugin_update(
-      this.ctx.pointer,
-      this.id,
-      dataRaw,
-      Buffer.byteLength(dataRaw, "utf-8"),
-      this.functions,
-      functions.length,
-      wasi,
-    );
-    if (!ok) {
-      var err = lib.extism_error(this.ctx.pointer, -1);
-      if (err.length === 0) {
-        throw "extism_plugin_update failed";
-      }
-      throw `Unable to update plugin: ${err.toString()}`;
-    }
-
-    if (config != null) {
-      let s = JSON.stringify(config);
-      lib.extism_plugin_config(
-        this.ctx.pointer,
-        this.id,
-        s,
-        Buffer.byteLength(s, "utf-8"),
-      );
-    }
   }
 
   /**
@@ -720,10 +537,11 @@ export class Plugin {
    */
 
   functionExists(functionName: string) {
-    if (!this.ctx.pointer) throw Error("No Context set");
+    if (this.freed) {
+      throw Error("Plugin already freed");
+    }
     return lib.extism_plugin_function_exists(
-      this.ctx.pointer,
-      this.id,
+      this.plugin,
       functionName,
     );
   }
@@ -734,7 +552,7 @@ export class Plugin {
    * @example
    * ```
    * const manifest = { wasm: [{ path: "/tmp/code.wasm" }] }
-   * const plugin = ctx.plugin(manifest)
+   * const plugin = new Plugin(manifest)
    * const output = await plugin.call("my_function", "some-input")
    * output.toString()
    * // => "output from the function"
@@ -746,25 +564,27 @@ export class Plugin {
    */
   async call(functionName: string, input: string | Buffer): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
-      if (!this.ctx.pointer) throw Error("No Context set");
+      if (this.freed) {
+        reject("Plugin already freed");
+        return;
+      }
       var rc = lib.extism_plugin_call(
-        this.ctx.pointer,
-        this.id,
+        this.plugin,
         functionName,
         input.toString(),
         Buffer.byteLength(input, "utf-8"),
       );
       if (rc !== 0) {
-        var err = lib.extism_error(this.ctx.pointer, this.id);
+        var err = lib.extism_error(this.plugin);
         if (err.length === 0) {
           reject(`extism_plugin_call: "${functionName}" failed`);
         }
         reject(`Plugin error: ${err.toString()}, code: ${rc}`);
       }
 
-      var out_len = lib.extism_plugin_output_length(this.ctx.pointer, this.id);
+      var out_len = lib.extism_plugin_output_length(this.plugin);
       var buf = Buffer.from(
-        lib.extism_plugin_output_data(this.ctx.pointer, this.id).buffer,
+        lib.extism_plugin_output_data(this.plugin).buffer,
         0,
         out_len,
       );
@@ -776,9 +596,9 @@ export class Plugin {
    * Free a plugin, this should be called when the plugin is no longer needed
    */
   free() {
-    if (this.ctx.pointer && this.id >= 0) {
-      lib.extism_plugin_free(this.ctx.pointer, this.id);
-      this.id = -1;
+    if (!this.freed) {
+      lib.extism_plugin_free(this.plugin);
+      this.freed = true;
     }
   }
 }
