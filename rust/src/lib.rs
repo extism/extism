@@ -233,6 +233,28 @@ mod tests {
     }
 
     #[test]
+    fn test_timeout() {
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+
+        let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
+            .with_timeout(std::time::Duration::from_secs(1));
+        let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+
+        let start = std::time::Instant::now();
+        let _output = plugin.call("infinite_loop", "abc123");
+        let end = std::time::Instant::now();
+        let time = end - start;
+        println!("Timed out plugin ran for {:?}", time);
+        // std::io::stdout().write_all(output).unwrap();
+    }
+
+    #[test]
     fn test_multiple_instantiations() {
         let f = Function::new(
             "hello_world",

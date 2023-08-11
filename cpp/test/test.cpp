@@ -15,16 +15,10 @@ const std::string code = "../../wasm/code.wasm";
 namespace {
 using namespace extism;
 
-TEST(Context, Basic) {
-  Context context;
-  ASSERT_NE(context.pointer, nullptr);
-}
-
 TEST(Plugin, Manifest) {
   Manifest manifest = Manifest::path(code);
   manifest.set_config("a", "1");
 
-  ASSERT_NO_THROW(Plugin plugin(manifest));
   Plugin plugin(manifest);
 
   Buffer buf = plugin.call("count_vowels", "this is a test");
@@ -37,19 +31,17 @@ TEST(Plugin, BadManifest) {
 }
 
 TEST(Plugin, Bytes) {
-  Context context;
   auto wasm = read(code.c_str());
-  ASSERT_NO_THROW(Plugin plugin = context.plugin(wasm));
-  Plugin plugin = context.plugin(wasm);
+  ASSERT_NO_THROW(Plugin plugin(wasm));
+  Plugin plugin(wasm);
 
   Buffer buf = plugin.call("count_vowels", "this is another test");
   ASSERT_EQ(buf.string(), "{\"count\": 6}");
 }
 
 TEST(Plugin, UpdateConfig) {
-  Context context;
   auto wasm = read(code.c_str());
-  Plugin plugin = context.plugin(wasm);
+  Plugin plugin(wasm);
 
   Config config;
   config["abc"] = "123";
@@ -57,9 +49,8 @@ TEST(Plugin, UpdateConfig) {
 }
 
 TEST(Plugin, FunctionExists) {
-  Context context;
   auto wasm = read(code.c_str());
-  Plugin plugin = context.plugin(wasm);
+  Plugin plugin(wasm);
 
   ASSERT_FALSE(plugin.function_exists("bad_function"));
   ASSERT_TRUE(plugin.function_exists("count_vowels"));

@@ -22,6 +22,12 @@ pub struct ExtismVal {
     v: ValUnion,
 }
 
+#[repr(C)]
+pub struct ExtismPluginResult {
+    pub plugin: *mut Plugin,
+    pub error: *mut std::ffi::c_char,
+}
+
 /// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
     plugin: *mut Internal,
@@ -202,6 +208,12 @@ pub unsafe extern "C" fn extism_function_new(
     Box::into_raw(Box::new(f))
 }
 
+/// Free `ExtismFunction`
+#[no_mangle]
+pub unsafe extern "C" fn extism_function_free(f: *mut Function) {
+    drop(Box::from_raw(f))
+}
+
 /// Set the namespace of an `ExtismFunction`
 #[no_mangle]
 pub unsafe extern "C" fn extism_function_set_namespace(
@@ -227,7 +239,7 @@ pub unsafe extern "C" fn extism_plugin_new(
     functions: *mut *const Function,
     n_functions: Size,
     with_wasi: bool,
-    error: *mut *mut std::ffi::c_char,
+    errmsg: *mut *mut std::ffi::c_char,
 ) -> *mut Plugin {
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
@@ -249,9 +261,12 @@ pub unsafe extern "C" fn extism_plugin_new(
     let plugin = Plugin::new(data, funcs, with_wasi);
     match plugin {
         Err(e) => {
-            let e = std::ffi::CString::new(format!("Unable to create plugin: {:?}", e)).unwrap();
-            *error = e.into_raw();
-            return std::ptr::null_mut();
+            if !errmsg.is_null() {
+                let e =
+                    std::ffi::CString::new(format!("Unable to create plugin: {:?}", e)).unwrap();
+                *errmsg = e.into_raw();
+            }
+            std::ptr::null_mut()
         }
         Ok(p) => Box::into_raw(Box::new(p)),
     }
@@ -276,8 +291,7 @@ pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
 
 #[derive(Clone)]
 pub struct ExtismCancelHandle {
-    pub(crate) engine: Engine,
-    pub(crate) deadline: std::sync::Arc<std::sync::Mutex<Option<std::time::Instant>>>,
+    pub(crate) timer_tx: std::sync::mpsc::Sender<TimerAction>,
     pub id: uuid::Uuid,
 }
 
@@ -297,9 +311,11 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) -> bool {
     let handle = &*handle;
-    *handle.deadline.lock().unwrap() = Some(std::time::Instant::now());
-    handle.engine.increment_epoch();
-    true
+    let res = handle
+        .timer_tx
+        .send(TimerAction::Cancel { id: handle.id })
+        .is_ok();
+    res
 }
 
 /// Update plugin config values, this will merge with the existing values
@@ -371,6 +387,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     }
     let plugin = &mut *plugin;
     plugin.clear_error();
+
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!("Call to extism_plugin_function_exists for: {:?}", name);
 
@@ -433,10 +450,9 @@ pub unsafe extern "C" fn extism_error(plugin: *mut Plugin) -> *const c_char {
         .linker
         .get(&mut plugin.store, "env", "extism_error_get")
     {
-        f.into_func()
-            .unwrap()
-            .call(&mut plugin.store, &[], output)
-            .unwrap();
+        if let Err(e) = f.into_func().unwrap().call(&mut plugin.store, &[], output) {
+            return plugin.error(e, std::ptr::null_mut());
+        }
     }
     if output[0].unwrap_i64() == 0 {
         trace!("Error is NULL");

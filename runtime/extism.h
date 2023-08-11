@@ -131,6 +131,11 @@ ExtismFunction *extism_function_new(const char *name,
                                     void (*free_user_data)(void *_));
 
 /**
+ * Free `ExtismFunction`
+ */
+void extism_function_free(ExtismFunction *f);
+
+/**
  * Set the namespace of an `ExtismFunction`
  */
 void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
@@ -149,7 +154,7 @@ ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 const ExtismFunction **functions,
                                 ExtismSize n_functions,
                                 bool with_wasi,
-                                char **error);
+                                char **errmsg);
 
 void extism_plugin_error_free(char *err);
 

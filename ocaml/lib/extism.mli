@@ -178,25 +178,6 @@ module Function : sig
   (** Free a list of functions *)
 end
 
-(** [Context] is used to group plugins *)
-module Context : sig
-  type t
-  (** Context type *)
-
-  val create : unit -> t
-  (** Create a new context *)
-
-  val free : t -> unit
-  (** Free a context. All plugins will be removed and the value should not be 
-      accessed after this call *)
-
-  val reset : t -> unit
-  (** Reset a context. All plugins will be removed *)
-end
-
-val with_context : (Context.t -> 'a) -> 'a
-(** Execute a function with a fresh context and free it after *)
-
 val set_log_file :
   ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
@@ -208,7 +189,6 @@ module Plugin : sig
     ?config:Manifest.config ->
     ?wasi:bool ->
     ?functions:Function.t list ->
-    ?context:Context.t ->
     string ->
     (t, Error.t) result
   (** Make a new plugin from raw WebAssembly or JSON encoded manifest *)
@@ -216,22 +196,9 @@ module Plugin : sig
   val of_manifest :
     ?wasi:bool ->
     ?functions:Function.t list ->
-    ?context:Context.t ->
     Manifest.t ->
     (t, Error.t) result
   (** Make a new plugin from a [Manifest] *)
-
-  val update :
-    t ->
-    ?config:(string * string option) list ->
-    ?wasi:bool ->
-    ?functions:Function.t list ->
-    string ->
-    (unit, [ `Msg of string ]) result
-  (** Update a plugin from raw WebAssembly or JSON encoded manifest *)
-
-  val update_manifest : t -> ?wasi:bool -> Manifest.t -> (unit, Error.t) result
-  (** Update a plugin from a [Manifest] *)
 
   val call_bigstring :
     t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, Error.t) result
@@ -246,11 +213,13 @@ module Plugin : sig
   val function_exists : t -> string -> bool
   (** Check if a function is exported by a plugin *)
 
-  module Cancel_handle: sig
+  module Cancel_handle : sig
     type t
 
-    val cancel: t -> bool
+    val cancel : t -> bool
   end
 
-  val cancel_handle: t -> Cancel_handle.t
+  val cancel_handle : t -> Cancel_handle.t
 end
+
+val with_plugin : (Plugin.t -> 'a) -> Plugin.t -> 'a

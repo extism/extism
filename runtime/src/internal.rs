@@ -24,7 +24,6 @@ pub struct Internal {
     pub(crate) linker: *mut wasmtime::Linker<Internal>,
     pub(crate) wasi: Option<Wasi>,
     pub(crate) http_status: u16,
-    pub(crate) deadline: std::sync::Arc<std::sync::Mutex<Option<std::time::Instant>>>,
     pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
 }
@@ -219,7 +218,6 @@ impl Internal {
         manifest: extism_manifest::Manifest,
         wasi: bool,
         available_pages: Option<u32>,
-        deadline: std::sync::Arc<std::sync::Mutex<Option<std::time::Instant>>>,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasmtime_wasi::ambient_authority();
@@ -266,7 +264,6 @@ impl Internal {
             store: std::ptr::null_mut(),
             available_pages,
             memory_limiter,
-            deadline,
         })
     }
 
