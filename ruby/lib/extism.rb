@@ -56,16 +56,13 @@ module Extism
         wasm = JSON.generate(wasm)
       end
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
+      errmsg = FFI::MemoryPointer.new(:pointer) 
       code.put_bytes(0, wasm)
-      @plugin = C.extism_plugin_new(code, wasm.bytesize, nil, 0, wasi, nil)
+      @plugin = C.extism_plugin_new(code, wasm.bytesize, nil, 0, wasi, errmsg)
       if @plugin.null?
-        # TODO: errmsg
-        # err = C.extism_error(@context.pointer, -1)
-        # if err&.empty?
-        raise Error.new "extism_plugin_new failed"
-        # else
-        #   raise Error.new err
-        # end
+        err = errmsg.read_pointer.read_string
+        C.extism_plugin_error_free errmsg.read_pointer
+        raise Error.new err
       end
       $PLUGINS[self.object_id] = { :plugin => @plugin }
       ObjectSpace.define_finalizer(self, $FREE_PLUGIN)
