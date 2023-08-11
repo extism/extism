@@ -12,6 +12,7 @@ const plugin = ref.refType(opaque);
 const function_t = ref.refType(opaque);
 
 let ValTypeArray = ArrayType(ref.types.int);
+let ErrorMessage = ArrayType("char*");
 let PtrArray = new ArrayType("void*");
 
 let ValUnion = new UnionType({
@@ -37,7 +38,7 @@ let ValArray = ArrayType(Val);
 const _functions = {
   extism_plugin_new: [
     plugin,
-    ["string", "uint64", PtrArray, "uint64", "bool", "char**"],
+    ["string", "uint64", PtrArray, "uint64", "bool", ErrorMessage],
   ],
   extism_error: ["string", [plugin]],
   extism_plugin_call: [
@@ -498,11 +499,10 @@ export class Plugin {
       this.functions,
       functions.length,
       wasi,
-      null, // TODO: errmsg
+      null,
     );
-    if (plugin === null) {
-      // TODO: use errmsg
-      throw "extism_plugin_new failed";
+    if (plugin == null) {
+      throw Error("Failed to create plugin");
     }
     this.plugin = plugin;
     this.freed = false;

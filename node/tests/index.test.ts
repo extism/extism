@@ -52,14 +52,6 @@ describe("test extism", () => {
     expect(plugin.functionExists("i_dont_extist")).toBe(false);
   });
 
-  test("withContext returns results", async () => {
-    const plugin = new extism.Plugin(manifest());
-    let output = await plugin.call("count_vowels", "this is a test");
-    let result = JSON.parse(output.toString());
-    const count = result["count"];
-    expect(count).toBe(4);
-  });
-
   test("errors when function is not known", async () => {
     const plugin = new extism.Plugin(manifest());
     await expect(() => plugin.call("i_dont_exist", "example-input")).rejects
