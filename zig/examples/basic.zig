@@ -40,9 +40,9 @@ pub fn main() !void {
     // var my_plugin = try Plugin.init(allocator, &context, wasm, &[_]Function{f}, true);
     defer my_plugin.deinit();
 
-    var config = std.StringHashMap([]const u8).init(allocator);
-    defer config.deinit();
-    try config.put("thing", "this is a really important thing");
+    var config = std.json.ArrayHashMap([]const u8){};
+    defer config.deinit(allocator);
+    try config.map.put(allocator, "thing", "this is a really important thing");
     try my_plugin.setConfig(allocator, config);
 
     const input = "aeiouAEIOU____________________________________&smtms_y?" ** 1182;
