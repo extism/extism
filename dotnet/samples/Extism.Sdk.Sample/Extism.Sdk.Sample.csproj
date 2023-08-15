@@ -25,5 +25,11 @@
 		<ProjectReference Include="..\..\src\Extism.Sdk\Extism.Sdk.csproj" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <None Update="csharp-plugin.wasm">
+	    <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+	  </None>
+	</ItemGroup>
+
 
 </Project>
