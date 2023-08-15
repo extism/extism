@@ -2,7 +2,7 @@
 members = [
   "manifest",
   "runtime",
-  "rust",
+  # "rust",
   "libextism",
 ]
 exclude = ["kernel"]

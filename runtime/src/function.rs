@@ -1,4 +1,4 @@
-use crate::{Error, Internal};
+use crate::{CurrentPlugin, Error};
 
 /// A list of all possible value types in WebAssembly.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -146,7 +146,7 @@ impl Drop for UserData {
 unsafe impl Send for UserData {}
 unsafe impl Sync for UserData {}
 
-type FunctionInner = dyn Fn(wasmtime::Caller<Internal>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
+type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
     + Sync
     + Send;
 
@@ -169,7 +169,7 @@ impl Function {
     ) -> Function
     where
         F: 'static
-            + Fn(&mut Internal, &[Val], &mut [Val], UserData) -> Result<(), Error>
+            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData) -> Result<(), Error>
             + Sync
             + Send,
     {

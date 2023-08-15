@@ -30,7 +30,7 @@ pub struct ExtismPluginResult {
 
 /// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
-    plugin: *mut Internal,
+    plugin: *mut CurrentPlugin,
     inputs: *const ExtismVal,
     n_inputs: Size,
     outputs: *mut ExtismVal,
@@ -84,7 +84,7 @@ pub unsafe extern "C" fn extism_plugin_id(plugin: *mut Plugin) -> *const u8 {
 /// Returns a pointer to the memory of the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Internal) -> *mut u8 {
+pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut CurrentPlugin) -> *mut u8 {
     if plugin.is_null() {
         return std::ptr::null_mut();
     }
@@ -96,7 +96,10 @@ pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut Internal) -> 
 /// Allocate a memory block in the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Internal, n: Size) -> u64 {
+pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
+    plugin: *mut CurrentPlugin,
+    n: Size,
+) -> u64 {
     if plugin.is_null() {
         return 0;
     }
@@ -109,7 +112,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(plugin: *mut Interna
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory_length(
-    plugin: *mut Internal,
+    plugin: *mut CurrentPlugin,
     n: Size,
 ) -> Size {
     if plugin.is_null() {
@@ -123,7 +126,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
 /// Free an allocated memory block
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut Internal, ptr: u64) {
+pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut CurrentPlugin, ptr: u64) {
     if plugin.is_null() {
         return;
     }
@@ -306,6 +309,13 @@ pub struct ExtismCancelHandle {
     pub id: uuid::Uuid,
 }
 
+impl ExtismCancelHandle {
+    pub fn cancel(&self) -> Result<(), Error> {
+        self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
+        Ok(())
+    }
+}
+
 /// Get plugin ID for cancellation
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_cancel_handle(
@@ -322,11 +332,7 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) -> bool {
     let handle = &*handle;
-    let res = handle
-        .timer_tx
-        .send(TimerAction::Cancel { id: handle.id })
-        .is_ok();
-    res
+    handle.cancel().is_ok()
 }
 
 /// Update plugin config values, this will merge with the existing values
@@ -342,7 +348,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    plugin.clear_error();
+    plugin.current_plugin_mut().clear_error();
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -354,11 +360,11 @@ pub unsafe extern "C" fn extism_plugin_config(
         match serde_json::from_slice(data) {
             Ok(x) => x,
             Err(e) => {
-                return plugin.return_error(e, false);
+                return plugin.current_plugin_mut().return_error(e, false);
             }
         };
 
-    let wasi = &mut plugin.internal_mut().wasi;
+    let wasi = &mut plugin.current_plugin_mut().wasi;
     if let Some(Wasi { ctx, .. }) = wasi {
         for (k, v) in json.iter() {
             match v {
@@ -372,7 +378,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         }
     }
 
-    let config = &mut plugin.internal_mut().manifest.config;
+    let config = &mut plugin.current_plugin_mut().manifest.config;
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {
@@ -401,7 +407,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    plugin.clear_error();
+    plugin.current_plugin_mut().clear_error();
 
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!("Call to extism_plugin_function_exists for: {:?}", name);
@@ -409,7 +415,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let name = match name.to_str() {
         Ok(x) => x,
         Err(e) => {
-            return plugin.return_error(e, false);
+            return plugin.current_plugin_mut().return_error(e, false);
         }
     };
 
@@ -434,13 +440,13 @@ pub unsafe extern "C" fn extism_plugin_call(
     let plugin = &mut *plugin;
     let lock = plugin.instance.clone();
     let mut lock = lock.lock().unwrap();
-    plugin.clear_error();
+    plugin.current_plugin_mut().clear_error();
 
     // Get function name
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin.return_error(e, -1),
+        Err(e) => return plugin.current_plugin_mut().return_error(e, -1),
     };
 
     trace!("Calling function {} of plugin {}", name, plugin.id);
@@ -448,7 +454,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     let res = plugin.raw_call(&mut lock, name, input);
 
     match res {
-        Err((e, rc)) => plugin.return_error(e, rc),
+        Err((e, rc)) => plugin.current_plugin_mut().return_error(e, rc),
         Ok(x) => x,
     }
 }
@@ -476,7 +482,10 @@ pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_ch
         return std::ptr::null();
     }
 
-    plugin.memory_ptr().add(plugin.output.error_offset as usize) as *const _
+    plugin
+        .current_plugin_mut()
+        .memory_ptr()
+        .add(plugin.output.error_offset as usize) as *const _
 }
 
 /// Get the length of a plugin's output data
@@ -503,7 +512,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(plugin: *mut Plugin) -> *cons
     let _lock = _lock.lock().unwrap();
     trace!("Call to extism_plugin_output_data for plugin {}", plugin.id);
 
-    let ptr = plugin.memory_ptr();
+    let ptr = plugin.current_plugin_mut().memory_ptr();
     ptr.add(plugin.output.offset as usize)
 }
 
@@ -513,11 +522,7 @@ pub unsafe extern "C" fn extism_log_file(
     filename: *const c_char,
     log_level: *const c_char,
 ) -> bool {
-    use log::LevelFilter;
-    use log4rs::append::console::ConsoleAppender;
-    use log4rs::append::file::FileAppender;
-    use log4rs::config::{Appender, Config, Logger, Root};
-    use log4rs::encode::pattern::PatternEncoder;
+    use log::Level;
 
     let file = if !filename.is_null() {
         let file = std::ffi::CStr::from_ptr(filename);
@@ -543,55 +548,15 @@ pub unsafe extern "C" fn extism_log_file(
         "error"
     };
 
-    let level = match LevelFilter::from_str(level) {
+    let level = match Level::from_str(level) {
         Ok(x) => x,
         Err(_) => {
             return false;
         }
     };
 
-    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} - {m}\n"));
-
-    let logfile: Box<dyn log4rs::append::Append> =
-        if file == "-" || file == "stdout" || file == "stderr" {
-            let target = if file == "-" || file == "stdout" {
-                log4rs::append::console::Target::Stdout
-            } else {
-                log4rs::append::console::Target::Stderr
-            };
-            let console = ConsoleAppender::builder().target(target).encoder(encoder);
-            Box::new(console.build())
-        } else {
-            match FileAppender::builder().encoder(encoder).build(file) {
-                Ok(x) => Box::new(x),
-                Err(_) => {
-                    return false;
-                }
-            }
-        };
-
-    let config = match Config::builder()
-        .appender(Appender::builder().build("logfile", logfile))
-        .logger(
-            Logger::builder()
-                .appender("logfile")
-                .build("extism_runtime", level),
-        )
-        .build(Root::builder().build(LevelFilter::Off))
-    {
-        Ok(x) => x,
-        Err(_) => {
-            return false;
-        }
-    };
-
-    if log4rs::init_config(config).is_err() {
-        return false;
-    }
-    true
+    set_log_file(file, level).is_ok()
 }
-
-const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
 /// Get the Extism version string
 #[no_mangle]

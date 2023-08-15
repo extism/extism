@@ -41,14 +41,15 @@ typedef enum {
   ExternRef,
 } ExtismValType;
 
+/**
+ * CurrentPlugin stores data that is available to the caller in PDK functions, this should
+ * only be accessed from inside a host function
+ */
+typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
+
 typedef struct ExtismCancelHandle ExtismCancelHandle;
 
 typedef struct ExtismFunction ExtismFunction;
-
-/**
- * Internal stores data that is available to the caller in PDK functions
- */
-typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 
 /**
  * Plugin contains everything needed to execute a WASM function

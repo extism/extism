@@ -16,13 +16,13 @@ pub struct Plugin {
     pub id: uuid::Uuid,
 
     /// Wasmtime linker
-    pub(crate) linker: Linker<Internal>,
+    pub(crate) linker: Linker<CurrentPlugin>,
 
     /// Wasmtime store
-    pub(crate) store: Store<Internal>,
+    pub(crate) store: Store<CurrentPlugin>,
 
     /// A handle used to cancel execution of a plugin
-    pub cancel_handle: sdk::ExtismCancelHandle,
+    pub(crate) cancel_handle: sdk::ExtismCancelHandle,
 
     /// All modules that were provided to the linker
     pub(crate) modules: BTreeMap<String, Module>,
@@ -30,7 +30,7 @@ pub struct Plugin {
     /// Instance provides the ability to call functions in a module, a `Plugin` is initialized with
     /// an `instance_pre` but no `instance`. The `instance` will be created during `Plugin::raw_call`
     pub(crate) instance: std::sync::Arc<std::sync::Mutex<Option<Instance>>>,
-    pub(crate) instance_pre: InstancePre<Internal>,
+    pub(crate) instance_pre: InstancePre<CurrentPlugin>,
 
     /// Keep track of the number of times we're instantiated, this exists
     /// to avoid issues with memory piling up since `Instance`s are only
@@ -61,24 +61,24 @@ impl std::fmt::Debug for Plugin {
     }
 }
 
-impl InternalExt for Plugin {
-    fn store(&self) -> &Store<Internal> {
+impl Internal for Plugin {
+    fn store(&self) -> &Store<CurrentPlugin> {
         &self.store
     }
 
-    fn store_mut(&mut self) -> &mut Store<Internal> {
+    fn store_mut(&mut self) -> &mut Store<CurrentPlugin> {
         &mut self.store
     }
 
-    fn linker(&self) -> &Linker<Internal> {
+    fn linker(&self) -> &Linker<CurrentPlugin> {
         &self.linker
     }
 
-    fn linker_mut(&mut self) -> &mut Linker<Internal> {
+    fn linker_mut(&mut self) -> &mut Linker<CurrentPlugin> {
         &mut self.linker
     }
 
-    fn linker_and_store(&mut self) -> (&mut Linker<Internal>, &mut Store<Internal>) {
+    fn linker_and_store(&mut self) -> (&mut Linker<CurrentPlugin>, &mut Store<CurrentPlugin>) {
         (&mut self.linker, &mut self.store)
     }
 }
@@ -149,11 +149,21 @@ fn calculate_available_memory(
     Ok(())
 }
 
-fn deadline_callback(_: StoreContextMut<Internal>) -> Result<UpdateDeadline, Error> {
+fn deadline_callback(_: StoreContextMut<CurrentPlugin>) -> Result<UpdateDeadline, Error> {
     Err(Error::msg("timeout"))
 }
 
 impl Plugin {
+    /// Create a new plugin from the given manifest
+    pub fn new_with_manifest(
+        manifest: &Manifest,
+        functions: impl IntoIterator<Item = Function>,
+        with_wasi: bool,
+    ) -> Result<Plugin, Error> {
+        let data = serde_json::to_vec(manifest)?;
+        Self::new(data, functions, with_wasi)
+    }
+
     /// Create a new plugin from the given WASM code
     pub fn new<'a>(
         wasm: impl AsRef<[u8]>,
@@ -180,7 +190,7 @@ impl Plugin {
 
         let mut store = Store::new(
             &engine,
-            Internal::new(manifest, with_wasi, available_pages)?,
+            CurrentPlugin::new(manifest, with_wasi, available_pages)?,
         );
 
         store.set_epoch_deadline(1);
@@ -193,12 +203,12 @@ impl Plugin {
 
         // If wasi is enabled then add it to the linker
         if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut Internal| {
+            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().ctx
             })?;
 
             #[cfg(feature = "nn")]
-            wasmtime_wasi_nn::add_to_linker(&mut linker, |x: &mut Internal| {
+            wasmtime_wasi_nn::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().nn
             })?;
         }
@@ -280,8 +290,8 @@ impl Plugin {
             needs_reset: false,
         };
 
-        plugin.internal_mut().store = &mut plugin.store;
-        plugin.internal_mut().linker = &mut plugin.linker;
+        plugin.current_plugin_mut().store = &mut plugin.store;
+        plugin.current_plugin_mut().linker = &mut plugin.linker;
         Ok(plugin)
     }
 
@@ -291,10 +301,10 @@ impl Plugin {
     ) -> Result<(), Error> {
         if self.instantiations > 100 {
             let engine = self.store.engine().clone();
-            let internal = self.internal_mut();
+            let internal = self.current_plugin_mut();
             self.store = Store::new(
                 &engine,
-                Internal::new(
+                CurrentPlugin::new(
                     internal.manifest.clone(),
                     internal.wasi.is_some(),
                     internal.available_pages,
@@ -303,7 +313,7 @@ impl Plugin {
 
             self.store.set_epoch_deadline(1);
 
-            if self.internal().available_pages.is_some() {
+            if self.current_plugin().available_pages.is_some() {
                 self.store
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
@@ -327,9 +337,9 @@ impl Plugin {
 
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
-            let internal = self.internal_mut();
-            internal.store = store;
-            internal.linker = linker;
+            let current_plugin = self.current_plugin_mut();
+            current_plugin.store = store;
+            current_plugin.linker = linker;
         }
 
         **instance_lock = None;
@@ -348,7 +358,7 @@ impl Plugin {
         trace!("Plugin::instance is none, instantiating");
         **instance_lock = Some(instance);
         self.instantiations += 1;
-        if let Some(limiter) = &mut self.internal_mut().memory_limiter {
+        if let Some(limiter) = &mut self.current_plugin_mut().memory_limiter {
             limiter.reset();
         }
         self.detect_runtime(instance_lock);
@@ -388,9 +398,9 @@ impl Plugin {
         {
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
-            let internal = self.internal_mut();
-            internal.store = store;
-            internal.linker = linker;
+            let current_plugin = self.current_plugin_mut();
+            current_plugin.store = store;
+            current_plugin.linker = linker;
         }
 
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
@@ -402,7 +412,7 @@ impl Plugin {
             error!("Call to extism_reset failed");
         }
 
-        let offs = self.memory_alloc_bytes(bytes)?;
+        let offs = self.current_plugin_mut().memory_alloc_bytes(bytes)?;
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
             f.into_func().unwrap().call(
@@ -417,7 +427,7 @@ impl Plugin {
 
     /// Determine if wasi is enabled
     pub fn has_wasi(&self) -> bool {
-        self.internal().wasi.is_some()
+        self.current_plugin().wasi.is_some()
     }
 
     fn detect_runtime(&mut self, instance_lock: &mut std::sync::MutexGuard<Option<Instance>>) {
@@ -527,7 +537,9 @@ impl Plugin {
 
     fn output(&mut self) -> &[u8] {
         trace!("Output offset: {}", self.output.offset);
-        self.memory_read(self.output.offset, self.output.length)
+        let offs = self.output.offset;
+        let len = self.output.length;
+        self.current_plugin_mut().memory_read(offs, len)
     }
 
     fn get_output_after_call(&mut self) {
@@ -535,7 +547,7 @@ impl Plugin {
         self.output.offset = offs;
         self.output.length = len;
 
-        let err = self.get_error_position();
+        let err = self.current_plugin_mut().get_error_position();
         self.output.error_offset = err.0;
         self.output.error_length = err.1;
     }
@@ -580,7 +592,7 @@ impl Plugin {
                 id: self.id.clone(),
                 engine: self.store.engine().clone(),
                 duration: self
-                    .internal()
+                    .current_plugin()
                     .manifest
                     .timeout_ms
                     .map(std::time::Duration::from_millis),
@@ -635,12 +647,19 @@ impl Plugin {
         Ok(0)
     }
 
+    /// Call a function by name with the given input, the return value is the output data returned by the plugin.
+    /// This data will be invalidated next time the plugin is called.
     pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         self.raw_call(&mut lock, name, input)
             .map(|_| self.output())
             .map_err(|e| e.0)
+    }
+
+    /// Get a `CancelHandle`, which can be used from another thread to cancel a running plugin
+    pub fn cancel_handle(&self) -> CancelHandle {
+        self.cancel_handle.clone()
     }
 }
 
