@@ -18,12 +18,14 @@ import Foreign.StablePtr
 import Foreign.Concurrent
 import Foreign.Marshal.Utils (copyBytes, moveBytes)
 import Data.ByteString as B
+import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
 import Data.Bifunctor (second)
 import Text.JSON (encode, toJSObject, showJSON)
 import Extism.Manifest (Manifest, toString)
 import Extism.Bindings
+import qualified Data.UUID (UUID, fromByteString)
 
 -- | Host function
 data Function = Function (ForeignPtr ExtismFunction) (StablePtr ())
@@ -214,3 +216,13 @@ fromF32 _ = Nothing
 fromF64 :: Val -> Maybe Double
 fromF64 (ValF64 x) = Just x
 fromF64 _ = Nothing
+
+pluginID :: Plugin -> IO Data.UUID.UUID
+pluginID (Plugin plugin) =
+  withForeignPtr plugin (\plugin -> do
+    ptr <- extism_plugin_id plugin
+    buf <- B.packCStringLen (castPtr ptr, 16)
+    case Data.UUID.fromByteString (BL.fromStrict buf) of
+      Nothing -> error "Invalid Plugin ID" 
+      Just x -> return x)
+    

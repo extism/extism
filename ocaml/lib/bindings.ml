@@ -115,7 +115,7 @@ let extism_plugin_call_s =
   fn "extism_plugin_call"
     (plugin @-> string @-> string @-> uint64_t @-> returning int32_t)
 
-let extism_error = fn "extism_error" (plugin @-> returning string_opt)
+let extism_error = fn "extism_plugin_error" (plugin @-> returning string_opt)
 
 let extism_plugin_output_length =
   fn "extism_plugin_output_length" (plugin @-> returning uint64_t)
@@ -172,3 +172,5 @@ let extism_plugin_cancel_handle =
 
 let extism_plugin_cancel =
   fn "extism_plugin_cancel" (ptr void @-> returning bool)
+
+let extism_plugin_id = fn "extism_plugin_id" (ptr void @-> returning (ptr char))

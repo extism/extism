@@ -140,7 +140,7 @@ public unsafe class Plugin : IDisposable
     {
         CheckNotDisposed();
 
-        var result = LibExtism.extism_error(NativeHandle);
+        var result = LibExtism.extism_plugin_error(NativeHandle);
         return Marshal.PtrToStringUTF8(result);
     }
 

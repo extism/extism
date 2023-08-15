@@ -47,6 +47,7 @@ def main(args):
         )
     ]
     plugin = Plugin(manifest, wasi=True, functions=functions)
+    print(plugin.id)
     # Call `count_vowels`
     wasm_vowel_count = plugin.call("count_vowels", data)
     print(wasm_vowel_count)

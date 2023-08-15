@@ -235,7 +235,7 @@ internal static class LibExtism
     /// <param name="plugin">A plugin pointer</param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern IntPtr extism_error(ExtismPlugin* plugin);
+    unsafe internal static extern IntPtr extism_plugin_error(ExtismPlugin* plugin);
 
     /// <summary>
     /// Get the length of a plugin's output data.
@@ -263,11 +263,11 @@ internal static class LibExtism
     internal static extern bool extism_log_file(string filename, string logLevel);
 
     /// <summary>
-    /// Get the Extism version string.
+    /// Get the Extism Plugin ID, a 16-bit UUID in host order
     /// </summary>
     /// <returns></returns>
-    [DllImport("extism", EntryPoint = "extism_version")]
-    internal static extern IntPtr extism_version();
+    // [DllImport("extism")]
+    // unsafe internal static extern IntPtr extism_plugin_id(ExtismPlugin* plugin);
 
     /// <summary>
     /// Extism Log Levels

@@ -548,7 +548,7 @@ pub unsafe extern "C" fn extism_log_file(
         "error"
     };
 
-    let level = match Level::from_str(level) {
+    let level = match Level::from_str(&level.to_ascii_lowercase()) {
         Ok(x) => x,
         Err(_) => {
             return false;

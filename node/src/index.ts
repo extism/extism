@@ -40,7 +40,7 @@ const _functions = {
     plugin,
     ["string", "uint64", PtrArray, "uint64", "bool", ErrorMessage],
   ],
-  extism_error: ["string", [plugin]],
+  extism_plugin_error: ["string", [plugin]],
   extism_plugin_call: [
     "int32",
     [plugin, "string", "string", "uint64"],
@@ -97,8 +97,8 @@ interface LibExtism {
     nfunctions: number,
     wasi: boolean,
     errmsg: Buffer | null,
-  ) => Buffer;
-  extism_error: (plugin: Buffer) => string;
+  ) => Buffer | null;
+  extism_plugin_error: (plugin: Buffer) => string;
   extism_plugin_call: (
     plugin: Buffer,
     func: string,
@@ -501,7 +501,7 @@ export class Plugin {
       wasi,
       null,
     );
-    if (plugin == null) {
+    if (plugin == null || (plugin.type && plugin.type.size == 0)) {
       throw Error("Failed to create plugin");
     }
     this.plugin = plugin;
@@ -574,8 +574,9 @@ export class Plugin {
         input.toString(),
         Buffer.byteLength(input, "utf-8"),
       );
+      console.log(rc);
       if (rc !== 0) {
-        var err = lib.extism_error(this.plugin);
+        var err = lib.extism_plugin_error(this.plugin);
         if (err.length === 0) {
           reject(`extism_plugin_call: "${functionName}" failed`);
         }

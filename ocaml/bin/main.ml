@@ -7,6 +7,7 @@ let main file func_name input =
   let input = if String.equal input "-" then read_stdin () else input in
   let file = In_channel.with_open_bin file In_channel.input_all in
   let plugin = Plugin.create file ~wasi:true |> Result.get_ok in
+  print_endline (Plugin.id plugin |> Uuidm.to_string);
   let res = Plugin.call plugin ~name:func_name input |> Result.get_ok in
   print_endline res
 

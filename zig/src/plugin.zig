@@ -62,7 +62,7 @@ pub fn cancelHandle(self: *Self) CancelHandle {
 pub fn call(self: *Self, function_name: []const u8, input: []const u8) ![]const u8 {
     const res = c.extism_plugin_call(self.ptr, function_name.ptr, input.ptr, @as(u64, input.len));
     if (res != 0) {
-        var err_c = c.extism_error(self.ptr);
+        var err_c = c.extism_plugin_error(self.ptr);
         const err = std.mem.span(err_c);
 
         if (!std.mem.eql(u8, err, "")) {

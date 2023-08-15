@@ -220,6 +220,8 @@ module Plugin : sig
   end
 
   val cancel_handle : t -> Cancel_handle.t
+
+  val id : t -> Uuidm.t
 end
 
 val with_plugin : (Plugin.t -> 'a) -> Plugin.t -> 'a

@@ -306,7 +306,7 @@ func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
 	C.free(unsafe.Pointer(name))
 
 	if rc != 0 {
-		err := C.extism_error(plugin.ptr)
+		err := C.extism_plugin_error(plugin.ptr)
 		msg := "<unset by plugin>"
 		if err != nil {
 			msg = C.GoString(err)

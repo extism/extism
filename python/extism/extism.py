@@ -4,6 +4,7 @@ from base64 import b64encode
 from cffi import FFI
 from typing import Union
 from enum import Enum
+from uuid import UUID
 
 
 class Error(Exception):
@@ -219,12 +220,17 @@ class Plugin:
             s = json.dumps(config).encode()
             _lib.extism_plugin_config(self.plugin, s, len(s))
 
+    @property
+    def id(self) -> UUID:
+        b = _ffi.string(_lib.extism_plugin_id(self.plugin), 16)
+        return UUID(bytes=b)
+
     def cancel_handle(self):
         return CancelHandle(_lib.extism_plugin_cancel_handle(self.plugin))
 
     def _check_error(self, rc):
         if rc != 0:
-            error = _lib.extism_error(self.plugin)
+            error = _lib.extism_plugin_error(self.plugin)
             if error != _ffi.NULL:
                 raise Error(_ffi.string(error).decode())
             raise Error(f"Error code: {rc}")

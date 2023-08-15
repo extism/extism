@@ -107,7 +107,7 @@ public class Plugin implements AutoCloseable {
      * @return the error message
      */
     protected String error() {
-        return LibExtism.INSTANCE.extism_error(this.pluginPointer);
+        return LibExtism.INSTANCE.extism_plugin_error(this.pluginPointer);
     }
 
     /**

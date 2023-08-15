@@ -399,7 +399,7 @@ public:
   void config(const char *json, size_t length) {
     bool b = extism_plugin_config(this->plugin, (const uint8_t *)json, length);
     if (!b) {
-      const char *err = extism_error(this->plugin);
+      const char *err = extism_plugin_error(this->plugin);
       throw Error(err == nullptr ? "Unable to update plugin config" : err);
     }
   }
@@ -414,7 +414,7 @@ public:
     int32_t rc =
         extism_plugin_call(this->plugin, func.c_str(), input, input_length);
     if (rc != 0) {
-      const char *error = extism_error(this->plugin);
+      const char *error = extism_plugin_error(this->plugin);
       if (error == nullptr) {
         throw Error("extism_call failed");
       }

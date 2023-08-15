@@ -138,3 +138,8 @@ end
 
 let cancel_handle { pointer; _ } =
   Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle pointer }
+
+let id { pointer; _ } =
+  let id = Bindings.extism_plugin_id pointer in
+  let s = Ctypes.string_from_ptr id ~length:16 in
+  Uuidm.unsafe_of_bytes s

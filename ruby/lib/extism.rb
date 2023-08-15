@@ -92,7 +92,7 @@ module Extism
       input = FFI::MemoryPointer::from_string(data)
       rc = C.extism_plugin_call(@plugin, name, input, data.bytesize)
       if rc != 0
-        err = C.extism_error(@plugin)
+        err = C.extism_plugin_error(@plugin)
         if err&.empty?
           raise Error.new "extism_call failed"
         else
@@ -130,7 +130,7 @@ module Extism
     ffi_lib "extism"
     attach_function :extism_plugin_error_free, [:pointer], :void
     attach_function :extism_plugin_new, [:pointer, :uint64, :pointer, :uint64, :bool, :pointer], :pointer
-    attach_function :extism_error, [:pointer], :string
+    attach_function :extism_plugin_error, [:pointer], :string
     attach_function :extism_plugin_call, [:pointer, :string, :pointer, :uint64], :int32
     attach_function :extism_plugin_function_exists, [:pointer, :string], :bool
     attach_function :extism_plugin_output_length, [:pointer], :uint64
@@ -138,6 +138,7 @@ module Extism
     attach_function :extism_log_file, [:string, :pointer], :void
     attach_function :extism_plugin_free, [:pointer], :void
     attach_function :extism_version, [], :string
+    attach_function :extism_plugin_id, [:pointer], :pointer
     attach_function :extism_plugin_cancel_handle, [:pointer], :pointer
     attach_function :extism_plugin_cancel, [:pointer], :bool
   end
