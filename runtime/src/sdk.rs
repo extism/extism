@@ -340,6 +340,8 @@ pub unsafe extern "C" fn extism_plugin_config(
         return false;
     }
     let plugin = &mut *plugin;
+    let _lock = plugin.instance.clone();
+    let _lock = _lock.lock().unwrap();
     plugin.clear_error();
 
     trace!(
@@ -352,7 +354,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         match serde_json::from_slice(data) {
             Ok(x) => x,
             Err(e) => {
-                return plugin.error(e, false);
+                return plugin.return_error(e, false);
             }
         };
 
@@ -397,6 +399,8 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
         return false;
     }
     let plugin = &mut *plugin;
+    let _lock = plugin.instance.clone();
+    let _lock = _lock.lock().unwrap();
     plugin.clear_error();
 
     let name = std::ffi::CStr::from_ptr(func_name);
@@ -405,7 +409,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let name = match name.to_str() {
         Ok(x) => x,
         Err(e) => {
-            return plugin.error(e, false);
+            return plugin.return_error(e, false);
         }
     };
 
@@ -428,49 +432,51 @@ pub unsafe extern "C" fn extism_plugin_call(
         return -1;
     }
     let plugin = &mut *plugin;
+    let lock = plugin.instance.clone();
+    let mut lock = lock.lock().unwrap();
     plugin.clear_error();
 
     // Get function name
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin.error(e, -1),
+        Err(e) => return plugin.return_error(e, -1),
     };
 
     trace!("Calling function {} of plugin {}", name, plugin.id);
     let input = std::slice::from_raw_parts(data, data_len as usize);
-    let res = plugin.raw_call(name, input);
+    let res = plugin.raw_call(&mut lock, name, input);
 
     match res {
-        Err((e, rc)) => plugin.error(e, rc),
+        Err((e, rc)) => plugin.return_error(e, rc),
         Ok(x) => x,
     }
 }
 
 /// Get the error associated with a `Plugin`
 #[no_mangle]
+#[deprecated]
 pub unsafe extern "C" fn extism_error(plugin: *mut Plugin) -> *const c_char {
+    extism_plugin_error(plugin)
+}
+
+/// Get the error associated with a `Plugin`
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_char {
     if plugin.is_null() {
         return std::ptr::null();
     }
     let plugin = &mut *plugin;
+    let _lock = plugin.instance.clone();
+    let _lock = _lock.lock().unwrap();
     trace!("Call to extism_error for plugin {}", plugin.id);
 
-    let output = &mut [Val::I64(0)];
-    if let Some(f) = plugin
-        .linker
-        .get(&mut plugin.store, "env", "extism_error_get")
-    {
-        if let Err(e) = f.into_func().unwrap().call(&mut plugin.store, &[], output) {
-            return plugin.error(e, std::ptr::null_mut());
-        }
-    }
-    if output[0].unwrap_i64() == 0 {
+    if plugin.output.error_offset == 0 {
         trace!("Error is NULL");
         return std::ptr::null();
     }
 
-    plugin.memory_ptr().add(output[0].unwrap_i64() as usize) as *const _
+    plugin.memory_ptr().add(plugin.output.error_offset as usize) as *const _
 }
 
 /// Get the length of a plugin's output data
@@ -480,22 +486,10 @@ pub unsafe extern "C" fn extism_plugin_output_length(plugin: *mut Plugin) -> Siz
         return 0;
     }
     let plugin = &mut *plugin;
-    plugin.clear_error();
-    trace!(
-        "Call to extism_plugin_output_length for plugin {}",
-        plugin.id
-    );
-    let out = &mut [Val::I64(0)];
-    let _ = plugin
-        .linker
-        .get(&mut plugin.store, "env", "extism_output_length")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .call(&mut plugin.store_mut(), &[], out);
-    let len = out[0].unwrap_i64() as Size;
-    trace!("Output length: {len}");
-    len
+    let _lock = plugin.instance.clone();
+    let _lock = _lock.lock().unwrap();
+    trace!("Output length: {}", plugin.output.length);
+    plugin.output.length
 }
 
 /// Get a pointer to the output data
@@ -505,24 +499,12 @@ pub unsafe extern "C" fn extism_plugin_output_data(plugin: *mut Plugin) -> *cons
         return std::ptr::null();
     }
     let plugin = &mut *plugin;
-    plugin.clear_error();
+    let _lock = plugin.instance.clone();
+    let _lock = _lock.lock().unwrap();
     trace!("Call to extism_plugin_output_data for plugin {}", plugin.id);
 
     let ptr = plugin.memory_ptr();
-    let out = &mut [Val::I64(0)];
-    let mut store = &mut *(plugin.store_mut() as *mut Store<_>);
-    plugin
-        .linker
-        .get(&mut store, "env", "extism_output_offset")
-        .unwrap()
-        .into_func()
-        .unwrap()
-        .call(&mut store, &[], out)
-        .unwrap();
-
-    let offs = out[0].unwrap_i64() as usize;
-    trace!("Output offset: {}", offs);
-    ptr.add(offs)
+    ptr.add(plugin.output.offset as usize)
 }
 
 /// Set log file and level

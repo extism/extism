@@ -78,7 +78,12 @@ typedef struct {
 /**
  * Host function signature
  */
-typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin, const ExtismVal *inputs, ExtismSize n_inputs, ExtismVal *outputs, ExtismSize n_outputs, void *data);
+typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
+                                   const ExtismVal *inputs,
+                                   ExtismSize n_inputs,
+                                   ExtismVal *outputs,
+                                   ExtismSize n_outputs,
+                                   void *data);
 
 /**
  * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUID value
@@ -204,6 +209,11 @@ int32_t extism_plugin_call(ExtismPlugin *plugin,
  * Get the error associated with a `Plugin`
  */
 const char *extism_error(ExtismPlugin *plugin);
+
+/**
+ * Get the error associated with a `Plugin`
+ */
+const char *extism_plugin_error(ExtismPlugin *plugin);
 
 /**
  * Get the length of a plugin's output data

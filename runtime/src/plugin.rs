@@ -2,6 +2,14 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
+#[derive(Default)]
+pub(crate) struct Output {
+    pub(crate) offset: u64,
+    pub(crate) length: u64,
+    pub(crate) error_offset: u64,
+    pub(crate) error_length: u64,
+}
+
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
     /// Used to define functions and create new instances
@@ -18,7 +26,7 @@ pub struct Plugin {
     pub(crate) modules: BTreeMap<String, Module>,
 
     /// Instance provides the ability to call functions in a module
-    pub(crate) instance: Option<Instance>,
+    pub(crate) instance: std::sync::Arc<std::sync::Mutex<Option<Instance>>>,
     pub(crate) instance_pre: InstancePre<Internal>,
 
     /// Keep track of the number of times we're instantiated, this exists
@@ -30,9 +38,18 @@ pub struct Plugin {
     /// to run a module
     pub(crate) runtime: Option<Runtime>,
 
+    /// Keep a reference to the host functions
     _functions: Vec<Function>,
 
+    /// Communication with the timer thread
     pub(crate) timer_tx: std::sync::mpsc::Sender<TimerAction>,
+
+    /// Information that gets populated after a call
+    pub(crate) output: Output,
+
+    /// Set to `true` when de-initializarion may have occured (i.e.a call to `_start`),
+    /// in this case we need to re-initialize the entire module.
+    pub(crate) needs_reset: bool,
 }
 
 impl std::fmt::Debug for Plugin {
@@ -244,7 +261,7 @@ impl Plugin {
         let mut plugin = Plugin {
             modules,
             linker,
-            instance: None,
+            instance: std::sync::Arc::new(std::sync::Mutex::new(None)),
             instance_pre,
             store,
             runtime: None,
@@ -255,7 +272,9 @@ impl Plugin {
                 timer_tx,
             },
             instantiations: 0,
+            output: Output::default(),
             _functions: imports.collect(),
+            needs_reset: false,
         };
 
         plugin.internal_mut().store = &mut plugin.store;
@@ -263,9 +282,11 @@ impl Plugin {
         Ok(plugin)
     }
 
-    pub(crate) fn reset_store(&mut self) -> Result<(), Error> {
-        self.instance = None;
-        if self.instantiations > 5 {
+    pub(crate) fn reset_store(
+        &mut self,
+        instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
+    ) -> Result<(), Error> {
+        if self.instantiations > 100 {
             let engine = self.store.engine().clone();
             let internal = self.internal_mut();
             self.store = Store::new(
@@ -308,24 +329,37 @@ impl Plugin {
             internal.linker = linker;
         }
 
+        **instance_lock = None;
         Ok(())
     }
 
-    pub(crate) fn instantiate(&mut self) -> Result<(), Error> {
+    pub(crate) fn instantiate(
+        &mut self,
+        instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
+    ) -> Result<(), Error> {
+        if instance_lock.is_some() {
+            return Ok(());
+        }
+
         let instance = self.instance_pre.instantiate(&mut self.store)?;
-        self.instance = Some(instance);
+        trace!("Plugin::instance is none, instantiating");
+        **instance_lock = Some(instance);
         self.instantiations += 1;
         if let Some(limiter) = &mut self.internal_mut().memory_limiter {
             limiter.reset();
         }
-        self.detect_runtime();
+        self.detect_runtime(instance_lock);
         self.initialize_runtime()?;
         Ok(())
     }
 
     /// Get a function by name
-    pub(crate) fn get_func(&mut self, function: impl AsRef<str>) -> Option<Func> {
-        if let Some(instance) = &mut self.instance {
+    pub(crate) fn get_func(
+        &mut self,
+        instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
+        function: impl AsRef<str>,
+    ) -> Option<Func> {
+        if let Some(instance) = &mut **instance_lock {
             instance.get_func(&mut self.store, function.as_ref())
         } else {
             None
@@ -334,23 +368,16 @@ impl Plugin {
 
     /// Returns `true` if the given function exists, otherwise `false`
     pub fn function_exists(&mut self, function: impl AsRef<str>) -> bool {
-        if let None = &self.instance {
-            if let Err(e) = self.instantiate() {
-                error!("Unable to instantiate in Plugin::function_exists: {e:?}");
-                return false;
-            }
-        }
-        if let Some(instance) = &mut self.instance {
-            instance
-                .get_func(&mut self.store, function.as_ref())
-                .is_some()
-        } else {
-            false
-        }
+        self.modules["main"]
+            .get_export(function.as_ref())
+            .map(|x| x.func().is_some())
+            .unwrap_or(false)
     }
 
     /// Store input in memory and initialize `Internal` pointer
     pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
+        self.output = Output::default();
+
         if input.is_null() {
             len = 0;
         }
@@ -390,12 +417,12 @@ impl Plugin {
         self.internal().wasi.is_some()
     }
 
-    fn detect_runtime(&mut self) {
+    fn detect_runtime(&mut self, instance_lock: &mut std::sync::MutexGuard<Option<Instance>>) {
         // Check for Haskell runtime initialization functions
         // Initialize Haskell runtime if `hs_init` is present,
         // by calling the `hs_init` export
-        if let Some(init) = self.get_func("hs_init") {
-            let reactor_init = if let Some(init) = self.get_func("_initialize") {
+        if let Some(init) = self.get_func(instance_lock, "hs_init") {
+            let reactor_init = if let Some(init) = self.get_func(instance_lock, "_initialize") {
                 if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
                         "_initialize function found with type {:?}",
@@ -415,7 +442,7 @@ impl Plugin {
 
         // Check for `__wasm_call_ctors` or `_initialize`, this is used by WASI to
         // initialize certain interfaces.
-        let init = if let Some(init) = self.get_func("__wasm_call_ctors") {
+        let init = if let Some(init) = self.get_func(instance_lock, "__wasm_call_ctors") {
             if init.typed::<(), ()>(&self.store()).is_err() {
                 trace!(
                     "__wasm_call_ctors function found with type {:?}",
@@ -425,7 +452,7 @@ impl Plugin {
             }
             trace!("WASI runtime detected");
             init
-        } else if let Some(init) = self.get_func("_initialize") {
+        } else if let Some(init) = self.get_func(instance_lock, "_initialize") {
             if init.typed::<(), ()>(&self.store()).is_err() {
                 trace!(
                     "_initialize function found with type {:?}",
@@ -471,7 +498,7 @@ impl Plugin {
         Ok(())
     }
 
-    pub fn output(&mut self) -> &[u8] {
+    fn output_memory_position(&mut self) -> (u64, u64) {
         let out = &mut [Val::I64(0)];
         let out_len = &mut [Val::I64(0)];
         let mut store = &mut self.store;
@@ -492,24 +519,43 @@ impl Plugin {
 
         let offs = out[0].unwrap_i64() as u64;
         let len = out_len[0].unwrap_i64() as u64;
-        trace!("Output offset: {}", offs);
-        self.memory_read(offs, len)
+        (offs, len)
     }
 
-    pub fn raw_call(
+    fn output(&mut self) -> &[u8] {
+        trace!("Output offset: {}", self.output.offset);
+        self.memory_read(self.output.offset, self.output.length)
+    }
+
+    fn get_output_after_call(&mut self) {
+        let (offs, len) = self.output_memory_position();
+        self.output.offset = offs;
+        self.output.length = len;
+
+        let err = self.get_error_position();
+        self.output.error_offset = err.0;
+        self.output.error_length = err.1;
+    }
+
+    pub(crate) fn raw_call(
         &mut self,
+        lock: &mut std::sync::MutexGuard<Option<Instance>>,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
 
-        if self.instance.is_none() {
-            trace!("Plugin::instance is none, instantiating");
-            self.instantiate().map_err(|e| (e, -1))?;
+        if self.needs_reset {
+            if let Err(e) = self.reset_store(lock) {
+                error!("Call to Plugin::reset_store failed: {e:?}");
+            }
+            self.needs_reset = false;
         }
 
-        let func = match self.get_func(name) {
+        self.instantiate(lock).map_err(|e| (e, -1))?;
+
+        let func = match self.get_func(lock, name) {
             Some(x) => x,
             None => return Err((anyhow::anyhow!("Function not found: {name}"), -1)),
         };
@@ -552,11 +598,8 @@ impl Plugin {
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
 
-        if name == "_start" {
-            if let Err(e) = self.reset_store() {
-                error!("Call to Plugin::reset_store failed: {e:?}");
-            }
-        }
+        self.get_output_after_call();
+        self.needs_reset = name == "_start";
 
         match res {
             Ok(()) => (),
@@ -590,7 +633,9 @@ impl Plugin {
     }
 
     pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
-        self.raw_call(name, input)
+        let lock = self.instance.clone();
+        let mut lock = lock.lock().unwrap();
+        self.raw_call(&mut lock, name, input)
             .map(|_| self.output())
             .map_err(|e| e.0)
     }

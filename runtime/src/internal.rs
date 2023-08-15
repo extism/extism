@@ -150,7 +150,7 @@ pub trait InternalExt {
     }
 
     // A convenience method to set the plugin error and return a value
-    fn error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
+    fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
         if let Ok(offs) = self.memory_alloc_bytes(&s) {
@@ -189,6 +189,20 @@ pub trait InternalExt {
     }
 
     fn get_error(&mut self) -> Option<&str> {
+        let (offs, length) = self.get_error_position();
+        if offs == 0 {
+            return None;
+        }
+
+        let data = self.memory_read(offs, length);
+        let s = std::str::from_utf8(data);
+        match s {
+            Ok(s) => Some(s),
+            Err(_) => None,
+        }
+    }
+
+    fn get_error_position(&mut self) -> (u64, u64) {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         linker
@@ -199,17 +213,8 @@ pub trait InternalExt {
             .call(&mut store, &[], output)
             .unwrap();
         let offs = output[0].unwrap_i64() as u64;
-        if offs == 0 {
-            return None;
-        }
-
         let length = self.memory_length(offs);
-        let data = self.memory_read(offs, length);
-        let s = std::str::from_utf8(data);
-        match s {
-            Ok(s) => Some(s),
-            Err(_) => None,
-        }
+        (offs, length)
     }
 }
 
