@@ -8,42 +8,29 @@ var context = new Context();
 
 var userData = Marshal.StringToHGlobalAnsi("Hello again!");
 
-var isVowel = new HostFunction(
-    "is_vowel", 
-    "host",
-    new ExtismValType[] { ExtismValType.I32 },
-    new ExtismValType[] { ExtismValType.I32 },
-    0, 
-    IsVowel);
+using var helloWorld = new HostFunction(
+    "hello_world",
+    "env",
+    new[] { ExtismValType.I64 },
+    new[] { ExtismValType.I64 },
+    userData,
+    HelloWorld);
 
-void IsVowel(CurrentPlugin plugin, Span<ExtismVal> inputs, Span<ExtismVal> outputs, nint userData)
+void HelloWorld(CurrentPlugin plugin, Span<ExtismVal> inputs, Span<ExtismVal> outputs, nint data)
 {
-    var bytes = plugin.ReadBytes(inputs[0].v.i32);
+    Console.WriteLine("Hello from .NET!");
 
-    var text = Encoding.UTF8.GetString(bytes);
+    var text = Marshal.PtrToStringAnsi(data);
+    Console.WriteLine(text);
 
-    switch (char.ToLowerInvariant(text[0]))
-    {
+    var input = plugin.ReadString(new nint(inputs[0].v.i64));
+    Console.WriteLine($"Input: {input}");
 
-        case 'a':
-        case 'A':
-        case 'e':
-        case 'E':
-        case 'i':
-        case 'I':
-        case 'o':
-        case 'O':
-        case 'u':
-        case 'U':
-            outputs[0].v.i32 = 1;
-            return;
-    }
-
-    outputs[0].v.i32 = 0;
+    outputs[0].v.i64 = plugin.WriteString(input);
 }
 
-var wasm = File.ReadAllBytes(@"csharp-plugin.wasm");
-using var plugin = context.CreatePlugin(wasm, new[] { isVowel }, withWasi: true);
+var wasm = File.ReadAllBytes("./code-functions.wasm");
+using var plugin = context.CreatePlugin(wasm, new[] { helloWorld }, withWasi: true);
 
 var output = Encoding.UTF8.GetString(
     plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World!"))
