@@ -12,12 +12,14 @@ pub(crate) struct Output {
 
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
-    /// Used to define functions and create new instances
-    pub linker: Linker<Internal>,
-    pub store: Store<Internal>,
-
     /// A unique ID for each plugin
     pub id: uuid::Uuid,
+
+    /// Wasmtime linker
+    pub(crate) linker: Linker<Internal>,
+
+    /// Wasmtime store
+    pub(crate) store: Store<Internal>,
 
     /// A handle used to cancel execution of a plugin
     pub cancel_handle: sdk::ExtismCancelHandle,
@@ -25,7 +27,8 @@ pub struct Plugin {
     /// All modules that were provided to the linker
     pub(crate) modules: BTreeMap<String, Module>,
 
-    /// Instance provides the ability to call functions in a module
+    /// Instance provides the ability to call functions in a module, a `Plugin` is initialized with
+    /// an `instance_pre` but no `instance`. The `instance` will be created during `Plugin::raw_call`
     pub(crate) instance: std::sync::Arc<std::sync::Mutex<Option<Instance>>>,
     pub(crate) instance_pre: InstancePre<Internal>,
 
