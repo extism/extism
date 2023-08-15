@@ -211,16 +211,16 @@ impl Plugin {
                         log_debug(I64);
                         log_error(I64);
                     });
-
-                    for f in &mut imports {
-                        let name = f.name().to_string();
-                        let ns = f.namespace().unwrap_or(EXPORT_MODULE_NAME);
-                        linker.func_new(ns, &name, f.ty().clone(), unsafe {
-                            &*std::sync::Arc::as_ptr(&f.f)
-                        })?;
-                    }
                 }
             }
+        }
+
+        for f in &mut imports {
+            let name = f.name().to_string();
+            let ns = f.namespace().unwrap_or(EXPORT_MODULE_NAME);
+            linker.func_new(ns, &name, f.ty().clone(), unsafe {
+                &*std::sync::Arc::as_ptr(&f.f)
+            })?;
         }
 
         let instance_pre = linker.instantiate_pre(&main)?;
