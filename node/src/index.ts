@@ -11,7 +11,6 @@ const opaque = ref.types.void;
 const function_t = ref.refType(opaque);
 
 let ValTypeArray = ArrayType(ref.types.int);
-// let ErrorMessage = ArrayType("char*");
 let PtrArray = new ArrayType(function_t);
 
 let ValUnion = new UnionType({
@@ -37,7 +36,14 @@ let ValArray = ArrayType(Val);
 const _functions = {
   extism_plugin_new: [
     plugin,
-    ["string", "uint64", PtrArray, "uint64", "bool", "pointer"],
+    [
+      "string",
+      "uint64",
+      PtrArray,
+      "uint64",
+      "bool",
+      ref.refType(ref.types.char),
+    ],
   ],
   extism_plugin_error: ["string", [plugin]],
   extism_plugin_call: [
@@ -505,6 +511,7 @@ export class Plugin {
       null,
     );
     if (ref.address(plugin) === 0) {
+      // TODO: handle error
       throw Error("Failed to create plugin");
     }
     this.plugin = plugin;
