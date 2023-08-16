@@ -79,7 +79,7 @@ plugin wasm functions useWasi =
       if p == nullPtr then do
         err <- peek errmsg
         e <- peekCString err 
-        extism_plugin_error_free err
+        extism_plugin_new_error_free err
         return $ Left (ExtismError e)
       else do
         ptr <- Foreign.Concurrent.newForeignPtr p (extism_plugin_free p)

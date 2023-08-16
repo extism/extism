@@ -61,7 +61,7 @@ module Extism
       @plugin = C.extism_plugin_new(code, wasm.bytesize, nil, 0, wasi, errmsg)
       if @plugin.null?
         err = errmsg.read_pointer.read_string
-        C.extism_plugin_error_free errmsg.read_pointer
+        C.extism_plugin_new_error_free errmsg.read_pointer
         raise Error.new err
       end
       $PLUGINS[self.object_id] = { :plugin => @plugin }
@@ -128,7 +128,7 @@ module Extism
   module C
     extend FFI::Library
     ffi_lib "extism"
-    attach_function :extism_plugin_error_free, [:pointer], :void
+    attach_function :extism_plugin_new_error_free, [:pointer], :void
     attach_function :extism_plugin_new, [:pointer, :uint64, :pointer, :uint64, :bool, :pointer], :pointer
     attach_function :extism_plugin_error, [:pointer], :string
     attach_function :extism_plugin_call, [:pointer, :string, :pointer, :uint64], :int32

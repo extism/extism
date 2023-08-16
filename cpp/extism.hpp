@@ -354,7 +354,7 @@ public:
                                      with_wasi, &errmsg);
     if (this->plugin == nullptr) {
       std::string s(errmsg);
-      extism_plugin_error_free(errmsg);
+      extism_plugin_new_error_free(errmsg);
       throw Error(s);
     }
   }

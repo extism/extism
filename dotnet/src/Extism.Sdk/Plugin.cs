@@ -39,7 +39,7 @@ public unsafe class Plugin : IDisposable
                     throw new ExtismException("Unable to create plugin");
                     // TODO: handle error
                     // var s = Marshal.PtrToStringUTF8(result);
-                    // LibExtism.extism_plugin_error_free(errmsg);
+                    // LibExtism.extism_plugin_new_error_free(errmsg);
                     // throw new ExtismException(s);
                 }
             }

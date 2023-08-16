@@ -43,7 +43,7 @@ public class Plugin implements AutoCloseable {
             int errlen = LibExtism.INSTANCE.strlen(errormsg[0]);
             byte[] msg = new byte[errlen];
             errormsg[0].read(0, msg, 0, errlen);
-            LibExtism.INSTANCE.extism_plugin_error_free(errormsg[0]);
+            LibExtism.INSTANCE.extism_plugin_new_error_free(errormsg[0]);
             throw new ExtismException(new String(msg));
         }
 

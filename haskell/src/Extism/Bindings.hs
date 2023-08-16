@@ -88,7 +88,7 @@ foreign import ccall safe "extism.h extism_plugin_output_data" extism_plugin_out
 foreign import ccall safe "extism.h extism_log_file" extism_log_file :: CString -> CString -> IO CBool
 foreign import ccall safe "extism.h extism_plugin_config" extism_plugin_config :: Ptr ExtismPlugin -> Ptr Word8 -> Int64 -> IO CBool
 foreign import ccall safe "extism.h extism_plugin_free" extism_plugin_free :: Ptr ExtismPlugin -> IO ()
-foreign import ccall safe "extism.h extism_plugin_error_free" extism_plugin_error_free :: CString -> IO ()
+foreign import ccall safe "extism.h extism_plugin_new_error_free" extism_plugin_new_error_free :: CString -> IO ()
 foreign import ccall safe "extism.h extism_version" extism_version :: IO CString
 foreign import ccall safe "extism.h extism_plugin_id" extism_plugin_id :: Ptr ExtismPlugin -> IO (Ptr Word8)
 foreign import ccall safe "extism.h extism_plugin_cancel_handle" extism_plugin_cancel_handle :: Ptr ExtismPlugin -> IO (Ptr ExtismCancelHandle)

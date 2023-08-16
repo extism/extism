@@ -33,7 +33,7 @@ pub fn init(allocator: std.mem.Allocator, data: []const u8, functions: []const F
         std.debug.print("extism_plugin_new: {s}", .{
             errmsg,
         });
-        c.extism_plugin_error_free(errmsg);
+        c.extism_plugin_new_error_free(errmsg);
         return error.PluginLoadFailed;
     }
     return Self{

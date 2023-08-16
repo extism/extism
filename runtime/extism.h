@@ -167,7 +167,10 @@ ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 bool with_wasi,
                                 char **errmsg);
 
-void extism_plugin_error_free(char *err);
+/**
+ * Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
+ */
+void extism_plugin_new_error_free(char *err);
 
 /**
  * Remove a plugin from the registry and free associated memory

@@ -93,8 +93,8 @@ end
 
 let plugin = ptr void
 
-let extism_plugin_error_free =
-  fn "extism_plugin_error_free" (ptr char @-> returning void)
+let extism_plugin_new_error_free =
+  fn "extism_plugin_new_error_free" (ptr char @-> returning void)
 
 let extism_plugin_new =
   fn "extism_plugin_new"

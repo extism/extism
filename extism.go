@@ -245,7 +245,7 @@ func register(data []byte, functions []Function, wasi bool) (Plugin, error) {
 
 	if plugin == nil {
 		msg := C.GoString(errmsg)
-		C.extism_plugin_error_free(errmsg)
+		C.extism_plugin_new_error_free(errmsg)
 		return Plugin{}, errors.New(
 			fmt.Sprintf("Unable to load plugin: %s", msg),
 		)

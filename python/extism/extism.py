@@ -213,7 +213,7 @@ class Plugin:
 
         if self.plugin == _ffi.NULL:
             msg = _ffi.string(errmsg[0])
-            _lib.extism_plugin_error_free(errmsg[0])
+            _lib.extism_plugin_new_error_free(errmsg[0])
             raise Error(msg.decode())
 
         if config is not None:

@@ -66,7 +66,7 @@ int main(int argc, char *argv[]) {
   free(data);
   if (plugin == NULL) {
     puts(errmsg);
-    extism_plugin_error_free(errmsg);
+    extism_plugin_new_error_free(errmsg);
     exit(1);
   }
 

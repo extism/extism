@@ -50,7 +50,7 @@ const _functions = {
   extism_plugin_function_exists: ["bool", [plugin, "string"]],
   extism_plugin_config: ["void", [plugin, "char*", "uint64"]],
   extism_plugin_free: ["void", [plugin]],
-  extism_plugin_error_free: ["void", ["char*"]],
+  extism_plugin_new_error_free: ["void", ["char*"]],
   extism_version: ["string", []],
   extism_function_new: [
     function_t,
@@ -117,7 +117,7 @@ interface LibExtism {
     data_len: number,
   ) => void;
   extism_plugin_free: (plugin: Buffer) => void;
-  extism_plugin_error_free: (error: Buffer) => void;
+  extism_plugin_new_error_free: (error: Buffer) => void;
   extism_version: () => string;
   extism_function_new: (
     name: string,

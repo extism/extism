@@ -26,7 +26,7 @@ let get_errmsg ptr =
   else
     let length = strlen ptr in
     let s = Ctypes.string_from_ptr ~length ptr in
-    let () = Bindings.extism_plugin_error_free ptr in
+    let () = Bindings.extism_plugin_new_error_free ptr in
     s
 
 let create ?config ?(wasi = false) ?(functions = []) wasm =

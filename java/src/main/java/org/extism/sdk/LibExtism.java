@@ -119,7 +119,7 @@ public interface LibExtism extends Library {
     /**
      * Free error message from `extism_plugin_new`
      */
-    void extism_plugin_error_free(Pointer errmsg);
+    void extism_plugin_new_error_free(Pointer errmsg);
 
     /**
      * Returns the Extism version string
