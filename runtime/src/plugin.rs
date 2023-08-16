@@ -2,7 +2,7 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-#[derive(Default)]
+#[derive(Default, Clone)]
 pub(crate) struct Output {
     pub(crate) offset: u64,
     pub(crate) length: u64,
@@ -54,6 +54,9 @@ pub struct Plugin {
     /// in this case we need to re-initialize the entire module.
     pub(crate) needs_reset: bool,
 }
+
+unsafe impl Send for Plugin {}
+unsafe impl Sync for Plugin {}
 
 impl std::fmt::Debug for Plugin {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -571,6 +574,9 @@ impl Plugin {
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
+        self.set_input(input.as_ptr(), input.len())
+            .map_err(|x| (x, -1))?;
+
         let func = match self.get_func(lock, name) {
             Some(x) => x,
             None => return Err((anyhow::anyhow!("Function not found: {name}"), -1)),
@@ -584,8 +590,6 @@ impl Plugin {
                 -1,
             ));
         }
-        self.set_input(input.as_ptr(), input.len())
-            .map_err(|x| (x, -1))?;
 
         // Start timer
         self.timer_tx
@@ -665,13 +669,43 @@ impl Plugin {
     }
 
     pub(crate) fn clear_error(&mut self) {
+        trace!("Clearing error on plugin {}", self.id);
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
             f.into_func()
                 .unwrap()
                 .call(&mut store, &[Val::I64(0)], &mut [])
                 .unwrap();
+        } else {
+            error!("Plugin::clear_error failed, extism_error_set not found")
         }
+    }
+
+    // A convenience method to set the plugin error and return a value
+    pub(crate) fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
+        let s = format!("{e:?}");
+        debug!("Set error: {:?}", s);
+        match self.current_plugin_mut().memory_alloc_bytes(&s) {
+            Ok(offs) => {
+                let (linker, mut store) = self.linker_and_store();
+                if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+                    if let Ok(()) =
+                        f.into_func()
+                            .unwrap()
+                            .call(&mut store, &[Val::I64(offs as i64)], &mut [])
+                    {
+                        self.output.error_offset = offs;
+                        self.output.error_length = s.len() as u64;
+                    }
+                } else {
+                    error!("extism_error_set not found");
+                }
+            }
+            Err(e) => {
+                error!("Unable to set error: {e:?}")
+            }
+        }
+        x
     }
 }
 

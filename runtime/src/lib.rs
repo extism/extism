@@ -5,11 +5,11 @@ pub use anyhow::Error;
 
 mod current_plugin;
 mod function;
+mod internal;
 pub(crate) mod manifest;
 pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
-mod runtime;
 pub mod sdk;
 mod timer;
 
@@ -18,9 +18,9 @@ pub use extism_manifest::Manifest;
 pub use function::{Function, UserData, Val, ValType};
 pub use plugin::Plugin;
 pub use plugin_builder::PluginBuilder;
-pub(crate) use runtime::Internal;
-pub use runtime::Wasi;
 pub use sdk::ExtismCancelHandle as CancelHandle;
+
+pub(crate) use internal::{Internal, Wasi};
 pub(crate) use timer::{Timer, TimerAction};
 
 pub type Size = u64;
@@ -63,7 +63,7 @@ pub fn set_log_file(file: impl AsRef<std::path::Path>, level: log::Level) -> Res
         .logger(
             Logger::builder()
                 .appender("logfile")
-                .build("extism_runtime", level.to_level_filter()),
+                .build("extism", level.to_level_filter()),
         )
         .build(Root::builder().build(log::LevelFilter::Off))?;
 

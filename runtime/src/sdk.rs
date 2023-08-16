@@ -349,7 +349,6 @@ pub unsafe extern "C" fn extism_plugin_config(
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    plugin.clear_error();
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -361,7 +360,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         match serde_json::from_slice(data) {
             Ok(x) => x,
             Err(e) => {
-                return plugin.current_plugin_mut().return_error(e, false);
+                return plugin.return_error(e, false);
             }
         };
 
@@ -393,6 +392,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         }
     }
 
+    plugin.clear_error();
     true
 }
 
@@ -408,7 +408,6 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    plugin.clear_error();
 
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!("Call to extism_plugin_function_exists for: {:?}", name);
@@ -416,10 +415,11 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let name = match name.to_str() {
         Ok(x) => x,
         Err(e) => {
-            return plugin.current_plugin_mut().return_error(e, false);
+            return plugin.return_error(e, false);
         }
     };
 
+    plugin.clear_error();
     plugin.function_exists(name)
 }
 
@@ -446,7 +446,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin.current_plugin_mut().return_error(e, -1),
+        Err(e) => return plugin.return_error(e, -1),
     };
 
     trace!("Calling function {} of plugin {}", name, plugin.id);
@@ -454,8 +454,11 @@ pub unsafe extern "C" fn extism_plugin_call(
     let res = plugin.raw_call(&mut lock, name, input);
 
     match res {
-        Err((e, rc)) => plugin.current_plugin_mut().return_error(e, rc),
-        Ok(x) => x,
+        Err((e, rc)) => plugin.return_error(e, rc),
+        Ok(x) => {
+            plugin.clear_error();
+            x
+        }
     }
 }
 
@@ -475,7 +478,7 @@ pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_ch
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    trace!("Call to extism_error for plugin {}", plugin.id);
+    trace!("Call to extism_plugin_error for plugin {}", plugin.id);
 
     if plugin.output.error_offset == 0 {
         trace!("Error is NULL");

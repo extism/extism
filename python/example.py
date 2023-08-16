@@ -25,6 +25,7 @@ def count_vowels(data):
 
 
 def main(args):
+    set_log_file("stderr", "trace")
     if len(args) > 1:
         data = args[1].encode()
     else:

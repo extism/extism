@@ -228,23 +228,8 @@ impl CurrentPlugin {
         len
     }
 
-    // A convenience method to set the plugin error and return a value
-    pub(crate) fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
-        let s = format!("{e:?}");
-        debug!("Set error: {:?}", s);
-        if let Ok(offs) = self.memory_alloc_bytes(&s) {
-            let (linker, mut store) = self.linker_and_store();
-            if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
-                f.into_func()
-                    .unwrap()
-                    .call(&mut store, &[Val::I64(offs as i64)], &mut [])
-                    .unwrap();
-            }
-        }
-        x
-    }
-
     pub fn clear_error(&mut self) {
+        trace!("CurrentPlugin::clear_error");
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
             f.into_func()
