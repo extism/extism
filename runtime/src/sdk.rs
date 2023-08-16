@@ -455,10 +455,7 @@ pub unsafe extern "C" fn extism_plugin_call(
 
     match res {
         Err((e, rc)) => plugin.return_error(e, rc),
-        Ok(x) => {
-            plugin.clear_error();
-            x
-        }
+        Ok(x) => x,
     }
 }
 
