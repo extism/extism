@@ -76,9 +76,11 @@ type Function struct {
 
 // Free a function
 func (f *Function) Free() {
-	C.extism_function_free(f.pointer)
-	f.pointer = nil
-	f.userData.Delete()
+	if f.pointer != nil {
+		C.extism_function_free(f.pointer)
+		f.pointer = nil
+		f.userData.Delete()
+	}
 }
 
 // NewFunction creates a new host function with the given name, input/outputs and optional user data, which can be an
@@ -254,7 +256,7 @@ func register(data []byte, functions []Function, wasi bool) (Plugin, error) {
 	return Plugin{ptr: plugin, functions: functions}, nil
 }
 
-// NewPlugin creates a plugin in its own context
+// NewPlugin creates a plugin
 func NewPlugin(module io.Reader, functions []Function, wasi bool) (Plugin, error) {
 	wasm, err := io.ReadAll(module)
 	if err != nil {
@@ -264,7 +266,7 @@ func NewPlugin(module io.Reader, functions []Function, wasi bool) (Plugin, error
 	return register(wasm, functions, wasi)
 }
 
-// NewPlugin creates a plugin in its own context from a manifest
+// NewPlugin creates a plugin from a manifest
 func NewPluginFromManifest(manifest Manifest, functions []Function, wasi bool) (Plugin, error) {
 	data, err := json.Marshal(manifest)
 	if err != nil {
@@ -276,6 +278,9 @@ func NewPluginFromManifest(manifest Manifest, functions []Function, wasi bool) (
 
 // Set configuration values
 func (plugin Plugin) SetConfig(data map[string][]byte) error {
+	if plugin.ptr == nil {
+		return errors.New("Cannot set config, Plugin already freed")
+	}
 	s, err := json.Marshal(data)
 	if err != nil {
 		return err
@@ -287,6 +292,9 @@ func (plugin Plugin) SetConfig(data map[string][]byte) error {
 
 // FunctionExists returns true when the named function is present in the plugin
 func (plugin Plugin) FunctionExists(functionName string) bool {
+	if plugin.ptr == nil {
+		return false
+	}
 	name := C.CString(functionName)
 	b := C.extism_plugin_function_exists(plugin.ptr, name)
 	C.free(unsafe.Pointer(name))
@@ -295,6 +303,9 @@ func (plugin Plugin) FunctionExists(functionName string) bool {
 
 // Call a function by name with the given input, returning the output
 func (plugin Plugin) Call(functionName string, input []byte) ([]byte, error) {
+	if plugin.ptr == nil {
+		return []byte{}, errors.New("Plugin has already been freed")
+	}
 	ptr := makePointer(input)
 	name := C.CString(functionName)
 	rc := C.extism_plugin_call(
@@ -333,7 +344,7 @@ func (plugin *Plugin) Free() {
 		return
 	}
 	C.extism_plugin_free(plugin.ptr)
-	plugin.id = -1
+	plugin.ptr = nil
 }
 
 // ValGetI64 returns an I64 from an ExtismVal, it accepts a pointer to a C.ExtismVal

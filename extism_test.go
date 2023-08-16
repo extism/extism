@@ -35,16 +35,8 @@ func expectVowelCount(plugin Plugin, input string, count int) error {
 	return nil
 }
 
-func TestCreateAndFreeContext(t *testing.T) {
-	ctx := NewContext()
-	ctx.Free()
-}
-
 func TestCallPlugin(t *testing.T) {
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
+	plugin, err := NewPluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -61,10 +53,7 @@ func TestCallPlugin(t *testing.T) {
 }
 
 func TestFreePlugin(t *testing.T) {
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
+	plugin, err := NewPluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -80,52 +69,8 @@ func TestFreePlugin(t *testing.T) {
 	}
 }
 
-func TestContextReset(t *testing.T) {
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
-	if err != nil {
-		t.Error(err)
-	}
-	if err := expectVowelCount(plugin, "this is a test", 4); err != nil {
-		t.Error(err)
-	}
-
-	// reset the context dropping all plugins
-	ctx.Reset()
-
-	if err := expectVowelCount(plugin, "this is a test", 4); err == nil {
-		t.Fatal("Expected an error after plugin was freed")
-	}
-}
-
-func TestCanUpdateAManifest(t *testing.T) {
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
-	if err != nil {
-		t.Error(err)
-	}
-
-	if err := expectVowelCount(plugin, "this is a test", 4); err != nil {
-		t.Error(err)
-	}
-
-	plugin.UpdateManifest(manifest(false), []Function{}, false)
-
-	// can still call the plugin
-	if err := expectVowelCount(plugin, "this is a test", 4); err != nil {
-		t.Error(err)
-	}
-}
-
 func TestFunctionExists(t *testing.T) {
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
+	plugin, err := NewPluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -139,10 +84,7 @@ func TestFunctionExists(t *testing.T) {
 }
 
 func TestErrorsOnUnknownFunction(t *testing.T) {
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest(false), []Function{}, false)
+	plugin, err := NewPluginFromManifest(manifest(false), []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}
@@ -162,10 +104,7 @@ func TestCancel(t *testing.T) {
 		},
 	}
 
-	ctx := NewContext()
-	defer ctx.Free()
-
-	plugin, err := ctx.PluginFromManifest(manifest, []Function{}, false)
+	plugin, err := NewPluginFromManifest(manifest, []Function{}, false)
 	if err != nil {
 		t.Error(err)
 	}

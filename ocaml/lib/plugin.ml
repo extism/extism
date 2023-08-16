@@ -1,6 +1,9 @@
 module Manifest = Extism_manifest
 
-type t = { pointer : unit Ctypes.ptr; mutable functions : Function.t list }
+type t = {
+  mutable pointer : unit Ctypes.ptr;
+  mutable functions : Function.t list;
+}
 
 let set_config plugin = function
   | None -> true
@@ -12,7 +15,9 @@ let set_config plugin = function
         (Unsigned.UInt64.of_int (String.length config))
 
 let free t =
-  if not (Ctypes.is_null t.pointer) then Bindings.extism_plugin_free t.pointer
+  if not (Ctypes.is_null t.pointer) then
+    let () = Bindings.extism_plugin_free t.pointer in
+    t.pointer <- Ctypes.null
 
 let strlen ptr =
   let rec aux ptr len =
@@ -64,20 +69,22 @@ let%test "free plugin" =
   true
 
 let call' f { pointer; _ } ~name input len =
-  let rc = f pointer name input len in
-  if rc <> 0l then
-    match Bindings.extism_error pointer with
-    | None -> Error (`Msg "extism_plugin_call failed")
-    | Some msg -> Error (`Msg msg)
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
   else
-    let out_len = Bindings.extism_plugin_output_length pointer in
-    let ptr = Bindings.extism_plugin_output_data pointer in
-    let buf =
-      Ctypes.bigarray_of_ptr Ctypes.array1
-        (Unsigned.UInt64.to_int out_len)
-        Char ptr
-    in
-    Ok buf
+    let rc = f pointer name input len in
+    if rc <> 0l then
+      match Bindings.extism_error pointer with
+      | None -> Error (`Msg "extism_plugin_call failed")
+      | Some msg -> Error (`Msg msg)
+    else
+      let out_len = Bindings.extism_plugin_output_length pointer in
+      let ptr = Bindings.extism_plugin_output_data pointer in
+      let buf =
+        Ctypes.bigarray_of_ptr Ctypes.array1
+          (Unsigned.UInt64.to_int out_len)
+          Char ptr
+      in
+      Ok buf
 
 let call_bigstring (t : t) ~name input =
   let len = Unsigned.UInt64.of_int (Bigstringaf.length input) in
@@ -122,7 +129,8 @@ let%test "call_functions" =
   |> Error.unwrap = "{\"count\": 4}"
 
 let function_exists { pointer; _ } name =
-  Bindings.extism_plugin_function_exists pointer name
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
+  else Bindings.extism_plugin_function_exists pointer name
 
 let%test "function exists" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
@@ -137,9 +145,12 @@ module Cancel_handle = struct
 end
 
 let cancel_handle { pointer; _ } =
-  Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle pointer }
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
+  else Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle pointer }
 
 let id { pointer; _ } =
-  let id = Bindings.extism_plugin_id pointer in
-  let s = Ctypes.string_from_ptr id ~length:16 in
-  Uuidm.unsafe_of_bytes s
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
+  else
+    let id = Bindings.extism_plugin_id pointer in
+    let s = Ctypes.string_from_ptr id ~length:16 in
+    Uuidm.unsafe_of_bytes s
