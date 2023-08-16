@@ -12,7 +12,7 @@ on:
 name: Rust CI
 
 env:
-  RUNTIME_CRATE: extism-runtime
+  RUNTIME_CRATE: extism
   LIBEXTISM_CRATE: libextism
 
 jobs:
@@ -91,18 +91,3 @@ jobs:
       - name: Test no features
         run: cargo test --no-default-features --release -p ${{ env.RUNTIME_CRATE }}
 
-  rust:
-    name: Rust
-    needs: lib
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, macos-latest]
-        rust:
-          - stable
-    steps:
-      - name: Checkout sources
-        uses: actions/checkout@v3
-      - uses: ./.github/actions/extism
-      - name: Test Rust Host SDK
-        run: LD_LIBRARY_PATH=/usr/local/lib cargo test --release -p ${{ env.RUST_SDK_CRATE }}
