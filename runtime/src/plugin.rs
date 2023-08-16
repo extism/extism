@@ -390,6 +390,7 @@ impl Plugin {
     /// Store input in memory and initialize `Internal` pointer
     pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
         self.output = Output::default();
+        self.clear_error();
 
         if input.is_null() {
             len = 0;
@@ -614,10 +615,11 @@ impl Plugin {
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
 
         self.get_output_after_call();
-        self.needs_reset = name == "_start";
 
         match res {
-            Ok(()) => (),
+            Ok(()) => {
+                self.needs_reset = name == "_start";
+            }
             Err(e) => match e.downcast::<wasmtime_wasi::I32Exit>() {
                 Ok(exit) => {
                     trace!("WASI return code: {}", exit.0);
@@ -660,6 +662,16 @@ impl Plugin {
     /// Get a `CancelHandle`, which can be used from another thread to cancel a running plugin
     pub fn cancel_handle(&self) -> CancelHandle {
         self.cancel_handle.clone()
+    }
+
+    pub(crate) fn clear_error(&mut self) {
+        let (linker, mut store) = self.linker_and_store();
+        if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(0)], &mut [])
+                .unwrap();
+        }
     }
 }
 

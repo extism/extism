@@ -6,14 +6,13 @@ var ArrayType = require("ref-array-di")(ref);
 var StructType = require("ref-struct-di")(ref);
 var UnionType = require("ref-union-di")(ref);
 
+const plugin = "void*";
 const opaque = ref.types.void;
-const plugin = ref.refType(opaque);
-
 const function_t = ref.refType(opaque);
 
 let ValTypeArray = ArrayType(ref.types.int);
-let ErrorMessage = ArrayType("char*");
-let PtrArray = new ArrayType("void*");
+// let ErrorMessage = ArrayType("char*");
+let PtrArray = new ArrayType(function_t);
 
 let ValUnion = new UnionType({
   i32: ref.types.uint32,
@@ -38,7 +37,7 @@ let ValArray = ArrayType(Val);
 const _functions = {
   extism_plugin_new: [
     plugin,
-    ["string", "uint64", PtrArray, "uint64", "bool", ErrorMessage],
+    ["string", "uint64", PtrArray, "uint64", "bool", "pointer"],
   ],
   extism_plugin_error: ["string", [plugin]],
   extism_plugin_call: [
@@ -97,7 +96,7 @@ interface LibExtism {
     nfunctions: number,
     wasi: boolean,
     errmsg: Buffer | null,
-  ) => Buffer | null;
+  ) => Buffer;
   extism_plugin_error: (plugin: Buffer) => string;
   extism_plugin_call: (
     plugin: Buffer,
@@ -188,6 +187,11 @@ export function extismVersion(): string {
 // @ts-ignore
 const functionRegistry = new FinalizationRegistry((pointer) => {
   if (pointer) lib.extism_function_free(pointer);
+});
+
+// @ts-ignore
+const pluginRegistry = new FinalizationRegistry((handle) => {
+  handle();
 });
 
 /**
@@ -462,10 +466,9 @@ export class CancelHandle {
  * A Plugin represents an instance of your WASM program from the given manifest.
  */
 export class Plugin {
-  plugin: Buffer;
-  freed: boolean;
+  plugin: Buffer | null;
   functions: typeof PtrArray;
-  token: { plugin: Buffer };
+  token: { plugin: Buffer | null };
 
   /**
    * Constructor for a plugin.
@@ -493,7 +496,7 @@ export class Plugin {
     for (var i = 0; i < functions.length; i++) {
       this.functions[i] = functions[i].pointer;
     }
-    let plugin = lib.extism_plugin_new(
+    const plugin = lib.extism_plugin_new(
       dataRaw,
       Buffer.byteLength(dataRaw, "utf-8"),
       this.functions,
@@ -501,15 +504,17 @@ export class Plugin {
       wasi,
       null,
     );
-    if (plugin == null || (plugin.type && plugin.type.size == 0)) {
+    if (ref.address(plugin) === 0) {
       throw Error("Failed to create plugin");
     }
     this.plugin = plugin;
-    this.freed = false;
     this.token = { plugin: this.plugin };
+    pluginRegistry.register(this, () => {
+      this.free();
+    }, this.token);
 
     if (config != null) {
-      let s = JSON.stringify(config);
+      const s = JSON.stringify(config);
       lib.extism_plugin_config(
         this.plugin,
         s,
@@ -522,10 +527,10 @@ export class Plugin {
    * Return a new `CancelHandle`, which can be used to cancel a running Plugin
    */
   cancelHandle(): CancelHandle {
-    if (this.freed) {
+    if (this.plugin === null) {
       throw Error("Plugin already freed");
     }
-    let handle = lib.extism_plugin_cancel_handle(this.plugin);
+    const handle = lib.extism_plugin_cancel_handle(this.plugin);
     return new CancelHandle(handle);
   }
 
@@ -537,7 +542,7 @@ export class Plugin {
    */
 
   functionExists(functionName: string) {
-    if (this.freed) {
+    if (this.plugin === null) {
       throw Error("Plugin already freed");
     }
     return lib.extism_plugin_function_exists(
@@ -564,7 +569,7 @@ export class Plugin {
    */
   async call(functionName: string, input: string | Buffer): Promise<Buffer> {
     return new Promise<Buffer>((resolve, reject) => {
-      if (this.freed) {
+      if (this.plugin === null) {
         reject("Plugin already freed");
         return;
       }
@@ -574,11 +579,10 @@ export class Plugin {
         input.toString(),
         Buffer.byteLength(input, "utf-8"),
       );
-      console.log(rc);
       if (rc !== 0) {
         var err = lib.extism_plugin_error(this.plugin);
-        if (err.length === 0) {
-          reject(`extism_plugin_call: "${functionName}" failed`);
+        if (!err || err.length === 0) {
+          reject(`Plugin error: call to "${functionName}" failed`);
         }
         reject(`Plugin error: ${err.toString()}, code: ${rc}`);
       }
@@ -597,9 +601,10 @@ export class Plugin {
    * Free a plugin, this should be called when the plugin is no longer needed
    */
   free() {
-    if (!this.freed) {
+    if (this.plugin !== null) {
+      pluginRegistry.unregister(this.token);
       lib.extism_plugin_free(this.plugin);
-      this.freed = true;
+      this.plugin = null;
     }
   }
 }

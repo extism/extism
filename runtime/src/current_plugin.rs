@@ -180,12 +180,13 @@ impl CurrentPlugin {
     pub fn memory_alloc(&mut self, n: Size) -> Result<u64, Error> {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, "env", "extism_alloc")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(n as i64)], output)?;
+        if let Some(f) = linker.get(&mut store, "env", "extism_alloc") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(n as i64)], output)?;
+        } else {
+            anyhow::bail!("Unable to allocate memory");
+        }
         let offs = output[0].unwrap_i64() as u64;
         if offs == 0 {
             anyhow::bail!("out of memory")

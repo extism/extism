@@ -348,7 +348,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    plugin.current_plugin_mut().clear_error();
+    plugin.clear_error();
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    plugin.current_plugin_mut().clear_error();
+    plugin.clear_error();
 
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!("Call to extism_plugin_function_exists for: {:?}", name);
@@ -440,7 +440,6 @@ pub unsafe extern "C" fn extism_plugin_call(
     let plugin = &mut *plugin;
     let lock = plugin.instance.clone();
     let mut lock = lock.lock().unwrap();
-    plugin.current_plugin_mut().clear_error();
 
     // Get function name
     let name = std::ffi::CStr::from_ptr(func_name);

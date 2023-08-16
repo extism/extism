@@ -1,6 +1,5 @@
 use extism::Plugin;
 use rustler::{Atom, Env, ResourceArc, Term};
-use std::mem;
 use std::path::Path;
 use std::str;
 use std::str::FromStr;
@@ -74,7 +73,7 @@ fn plugin_call(
 fn plugin_cancel_handle(
     plugin: ResourceArc<ExtismPlugin>,
 ) -> Result<ResourceArc<ExtismCancelHandle>, rustler::Error> {
-    let mut plugin = plugin.plugin.write().unwrap();
+    let plugin = plugin.plugin.write().unwrap();
     let handle = plugin.cancel_handle();
     Ok(ResourceArc::new(ExtismCancelHandle {
         handle: RwLock::new(handle),
@@ -83,7 +82,7 @@ fn plugin_cancel_handle(
 
 #[rustler::nif]
 fn plugin_cancel(handle: ResourceArc<ExtismCancelHandle>) -> bool {
-    handle.handle.read().unwrap().cancel()
+    handle.handle.read().unwrap().cancel().is_ok()
 }
 
 #[rustler::nif]
@@ -100,15 +99,12 @@ fn set_log_file(filename: String, log_level: String) -> Result<Atom, rustler::Er
             "{} not a valid log level",
             log_level
         )))),
-        Ok(level) => {
-            if extism::set_log_file(path, Some(level)) {
-                Ok(atoms::ok())
-            } else {
-                Err(rustler::Error::Term(Box::new(
-                    "Did not set log file, received false from the API.",
-                )))
-            }
-        }
+        Ok(level) => match extism::set_log_file(path, level) {
+            Ok(()) => Ok(atoms::ok()),
+            Err(e) => Err(rustler::Error::Term(Box::new(format!(
+                "Did not set log file: {e:?}"
+            )))),
+        },
     }
 }
 
