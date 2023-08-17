@@ -1,8 +1,29 @@
 module Extism (
-  module Extism,
   module Extism.Manifest,
   ValType(..),
-  Val(..)
+  Val(..),
+  Function(..),
+  Plugin(..),
+  CancelHandle(..),
+  CurrentPlugin(..),
+  LogLevel(..),
+  Error(..),
+  Result(..),
+  toByteString,
+  fromByteString,
+  extismVersion,
+  plugin,
+  pluginFromManifest,
+  isValid,
+  setConfig,
+  setLogFile,
+  functionExists,
+  hostFunction,
+  call,
+  cancelHandle,
+  cancel,
+  pluginID,
+  unwrap
 ) where
 
 import Data.Int
@@ -40,7 +61,7 @@ newtype CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
 type CurrentPlugin = Ptr ExtismCurrentPlugin
 
 -- | Log level
-data LogLevel = Error | Warn | Info | Debug | Trace deriving (Show)
+data LogLevel = LogError | LogWarn | LogInfo | LogDebug | LogTrace deriving (Show)
 
 -- | Extism error
 newtype Error = ExtismError String deriving Show
@@ -106,11 +127,11 @@ setConfig (Plugin plugin) x =
       b <- extism_plugin_config plugin (castPtr s) length
       return $ b /= 0))
 
-levelStr Error = "error"
-levelStr Debug = "debug"
-levelStr Warn = "warn"
-levelStr Trace = "trace"
-levelStr Info = "info"
+levelStr LogError = "error"
+levelStr LogDebug = "debug"
+levelStr LogWarn = "warn"
+levelStr LogTrace = "trace"
+levelStr LogInfo = "info"
 
 -- | Set the log file and level, this is a global configuration
 setLogFile :: String -> LogLevel -> IO Bool
@@ -149,6 +170,15 @@ call (Plugin plugin) name input =
           return $ Right buf
       else return $ Left (ExtismError "Call failed"))
 
+-- | Call a function with a string argument and return a string
+callString :: Plugin -> String -> String -> IO (Result String)
+callString p name input = do
+  res <- call p name (toByteString input)
+  case res of 
+    Left x -> return $ Left x
+    Right x -> return $ Right (fromByteString x)
+
+
 -- | Create a new 'CancelHandle' that can be used to cancel a running plugin
 -- | from another thread.
 cancelHandle :: Plugin -> IO CancelHandle
@@ -181,42 +211,6 @@ hostFunction name params results f v =
     return $ Function fptr (castPtrToStablePtr userDataPtr)
 
 
--- | Create a new I32 'Val'
-toI32 :: Integral a => a -> Val
-toI32 x = ValI32 (fromIntegral x)
-
--- | Create a new I64 'Val'
-toI64 :: Integral a => a -> Val
-toI64 x = ValI64 (fromIntegral x)
-
--- | Create a new F32 'Val'
-toF32 :: Float -> Val
-toF32 = ValF32
-
--- | Create a new F64 'Val'
-toF64 :: Double -> Val
-toF64 = ValF64
-
--- | Get I32 'Val'
-fromI32 :: Integral a => Val -> Maybe a
-fromI32 (ValI32 x) = Just (fromIntegral x)
-fromI32 _ = Nothing
-
--- | Get I64 'Val'
-fromI64 :: Integral a => Val -> Maybe a
-fromI64 (ValI64 x) = Just (fromIntegral x)
-fromI64 _ = Nothing
-
--- | Get F32 'Val'
-fromF32 :: Val -> Maybe Float
-fromF32 (ValF32 x) = Just x
-fromF32 _ = Nothing
-
--- | Get F64 'Val'
-fromF64 :: Val -> Maybe Double
-fromF64 (ValF64 x) = Just x
-fromF64 _ = Nothing
-
 pluginID :: Plugin -> IO Data.UUID.UUID
 pluginID (Plugin plugin) =
   withForeignPtr plugin (\plugin -> do
@@ -225,4 +219,8 @@ pluginID (Plugin plugin) =
     case Data.UUID.fromByteString (BL.fromStrict buf) of
       Nothing -> error "Invalid Plugin ID" 
       Just x -> return x)
+
     
+unwrap (Right x) = x
+unwrap (Left (ExtismError msg)) = do
+  error msg

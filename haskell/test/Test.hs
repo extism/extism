@@ -1,11 +1,11 @@
 import Test.HUnit
 import Extism
 import Extism.Manifest
-import Extism.CurrentPlugin
+import Extism.HostFunction
 
 
-unwrap (Right x) = return x
-unwrap (Left (ExtismError msg)) =
+assertUnwrap (Right x) = return x
+assertUnwrap (Left (ExtismError msg)) =
   assertFailure msg
 
 defaultManifest = manifest [wasmFile "../../wasm/code.wasm"]
@@ -13,7 +13,7 @@ hostFunctionManifest = manifest [wasmFile "../../wasm/code-functions.wasm"]
 
 initPlugin :: IO Plugin
 initPlugin =
-  Extism.pluginFromManifest defaultManifest [] False >>= unwrap
+  Extism.pluginFromManifest defaultManifest [] False >>= assertUnwrap
 
 pluginFunctionExists = do
   p <- initPlugin 
@@ -23,7 +23,7 @@ pluginFunctionExists = do
   assertBool "function doesn't exist" (not exists')
 
 checkCallResult p = do
-  res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
+  res <- call p "count_vowels" (toByteString "this is a test") >>= assertUnwrap
   assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
 
 pluginCall = do
@@ -37,8 +37,8 @@ hello plugin params () = do
   return [toI64 offs]
 
 pluginCallHostFunction = do
-  p <- Extism.pluginFromManifest hostFunctionManifest [] False >>= unwrap
-  res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
+  p <- Extism.pluginFromManifest hostFunctionManifest [] False >>= assertUnwrap
+  res <- call p "count_vowels" (toByteString "this is a test") >>= assertUnwrap
   assertEqual "count vowels output" "{\"count\": 999}" (fromByteString res)
 
 pluginMultiple = do
@@ -55,7 +55,7 @@ pluginConfig = do
   assertBool "set config" b
 
 testSetLogFile = do
-  b <- setLogFile "stderr" Extism.Error
+  b <- setLogFile "stderr" Extism.LogError
   assertBool "set log file" b
 
 t name f = TestLabel name (TestCase f)
