@@ -5,6 +5,8 @@ use std::str::FromStr;
 
 use crate::*;
 
+pub type ExtismMemoryHandle = u64;
+
 /// A union type for host function argument/return values
 #[repr(C)]
 pub union ValUnion {
@@ -99,7 +101,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory(plugin: *mut CurrentPlugin
 pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
     plugin: *mut CurrentPlugin,
     n: Size,
-) -> u64 {
+) -> ExtismMemoryHandle {
     if plugin.is_null() {
         return 0;
     }
@@ -113,7 +115,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
 #[no_mangle]
 pub unsafe extern "C" fn extism_current_plugin_memory_length(
     plugin: *mut CurrentPlugin,
-    n: Size,
+    n: ExtismMemoryHandle,
 ) -> Size {
     if plugin.is_null() {
         return 0;
@@ -126,7 +128,10 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
 /// Free an allocated memory block
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_memory_free(plugin: *mut CurrentPlugin, ptr: u64) {
+pub unsafe extern "C" fn extism_current_plugin_memory_free(
+    plugin: *mut CurrentPlugin,
+    ptr: ExtismMemoryHandle,
+) {
     if plugin.is_null() {
         return;
     }

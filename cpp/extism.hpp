@@ -221,6 +221,7 @@ public:
 typedef ExtismValType ValType;
 typedef ExtismValUnion ValUnion;
 typedef ExtismVal Val;
+typedef uint64_t MemoryHandle;
 
 class CurrentPlugin {
   ExtismCurrentPlugin *pointer;
@@ -229,16 +230,18 @@ public:
   CurrentPlugin(ExtismCurrentPlugin *p) : pointer(p) {}
 
   uint8_t *memory() { return extism_current_plugin_memory(this->pointer); }
-  ExtismSize memory_length(uint64_t offs) {
+  uint8_t *memory(MemoryHandle offs) { return this->memory() + offs; }
+
+  ExtismSize memoryLength(MemoryHandle offs) {
     return extism_current_plugin_memory_length(this->pointer, offs);
   }
 
-  uint64_t alloc(ExtismSize size) {
+  MemoryHandle alloc(ExtismSize size) {
     return extism_current_plugin_memory_alloc(this->pointer, size);
   }
 
-  void free(uint64_t offs) {
-    extism_current_plugin_memory_free(this->pointer, offs);
+  void free(MemoryHandle handle) {
+    extism_current_plugin_memory_free(this->pointer, handle);
   }
 
   void returnString(Val &output, const std::string &s) {
@@ -256,7 +259,7 @@ public:
       return nullptr;
     }
     if (length != nullptr) {
-      *length = this->memory_length(inp.v.i64);
+      *length = this->memoryLength(inp.v.i64);
     }
     return this->memory() + inp.v.i64;
   }
@@ -318,7 +321,7 @@ public:
     this->func = std::shared_ptr<ExtismFunction>(ptr, extism_function_free);
   }
 
-  void set_namespace(std::string s) {
+  void setNamespace(std::string s) {
     extism_function_set_namespace(this->func.get(), s.c_str());
   }
 
@@ -368,7 +371,7 @@ public:
          std::vector<Function> functions = {})
       : Plugin(data.data(), data.size(), with_wasi, functions) {}
 
-  CancelHandle cancel_handle() {
+  CancelHandle cancelHandle() {
     return CancelHandle(extism_plugin_cancel_handle(this->plugin));
   }
 
@@ -440,13 +443,13 @@ public:
   }
 
   // Returns true if the specified function exists
-  bool function_exists(const std::string &func) const {
+  bool functionExists(const std::string &func) const {
     return extism_plugin_function_exists(this->plugin, func.c_str());
   }
 };
 
 // Set global log file for plugins
-inline bool set_log_file(const char *filename, const char *level) {
+inline bool setLogFile(const char *filename, const char *level) {
   return extism_log_file(filename, level);
 }
 

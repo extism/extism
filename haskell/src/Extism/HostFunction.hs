@@ -1,38 +1,60 @@
-module Extism.HostFunction where
+{-# LANGUAGE GeneralizedNewtypeDeriving #-}
+
+module Extism.HostFunction(
+  memoryAlloc,
+  memoryLength,
+  memoryFree,
+  memory,
+  memoryOffset,
+  memoryBytes,
+  memoryString,
+  allocBytes,
+  allocString,
+  toI32,
+  toI64,
+  toF32,
+  toF64,
+  fromI32,
+  fromI64,
+  fromF32,
+  fromF64,
+  MemoryHandle
+) where
 
 import Extism
 import Extism.Bindings
 import Data.Word
-import Data.ByteString as B
+import qualified Data.ByteString as B
 import Foreign.Ptr
 import Foreign.Marshal.Array
 import qualified Data.ByteString.Internal as BS (c2w)
 
+newtype MemoryHandle = MemoryHandle Word64 deriving (Num, Enum, Eq, Ord, Real, Integral)
 
 -- | Allocate a new handle of the given size
-memoryAlloc :: CurrentPlugin -> Word64 -> IO Word64
-memoryAlloc = extism_current_plugin_memory_alloc
+memoryAlloc :: CurrentPlugin -> Word64 -> IO MemoryHandle
+memoryAlloc p n = MemoryHandle <$> extism_current_plugin_memory_alloc p n
 
 -- | Get the length of a handle, returns 0 if the handle is invalid
-memoryLength :: CurrentPlugin -> Word64 -> IO Word64
-memoryLength = extism_current_plugin_memory_length
+memoryLength :: CurrentPlugin -> MemoryHandle -> IO Word64
+memoryLength p (MemoryHandle offs) = extism_current_plugin_memory_length p offs
 
 -- | Free allocated memory
-memoryFree :: CurrentPlugin -> Word64 -> IO ()
-memoryFree = extism_current_plugin_memory_free
+memoryFree :: CurrentPlugin -> MemoryHandle -> IO ()
+memoryFree p (MemoryHandle offs) = extism_current_plugin_memory_free p offs
 
 -- | Access a pointer to the entire memory region
 memory :: CurrentPlugin -> IO (Ptr Word8)
 memory = extism_current_plugin_memory
 
--- | Access a pointer the a specific offset in memory
-memoryOffset :: CurrentPlugin -> Word64 -> IO (Ptr Word8)
-memoryOffset plugin offs = do
+-- | Access the pointer for the given 'MemoryHandle'
+memoryOffset :: CurrentPlugin -> MemoryHandle -> IO (Ptr Word8)
+memoryOffset plugin (MemoryHandle offs) = do
   x <- extism_current_plugin_memory plugin
   return $ plusPtr x (fromIntegral offs)
 
 -- | Access the data associated with a handle as a 'ByteString'
-memoryBytes :: CurrentPlugin -> Word64 ->  IO B.ByteString
+memoryBytes :: CurrentPlugin -> MemoryHandle ->  IO B.ByteString
 memoryBytes plugin offs = do
   ptr <- memoryOffset plugin offs
   len <- memoryLength plugin offs
@@ -41,7 +63,7 @@ memoryBytes plugin offs = do
 
   
 -- | Access the data associated with a handle as a 'String'
-memoryString :: CurrentPlugin -> Word64 ->  IO String
+memoryString :: CurrentPlugin -> MemoryHandle ->  IO String
 memoryString plugin offs = do
   ptr <- memoryOffset plugin offs
   len <- memoryLength plugin offs
@@ -49,7 +71,7 @@ memoryString plugin offs = do
   return $ fromByteString $ B.pack arr
 
 -- | Allocate memory and copy an existing 'ByteString' into it
-allocBytes :: CurrentPlugin -> B.ByteString -> IO Word64
+allocBytes :: CurrentPlugin -> B.ByteString -> IO MemoryHandle
 allocBytes plugin s = do
   let length = B.length s
   offs <- memoryAlloc plugin (fromIntegral length)
@@ -59,7 +81,7 @@ allocBytes plugin s = do
 
   
 -- | Allocate memory and copy an existing 'String' into it
-allocString :: CurrentPlugin -> String -> IO Word64
+allocString :: CurrentPlugin -> String -> IO MemoryHandle
 allocString plugin s = do
   let length = Prelude.length s
   offs <- memoryAlloc plugin (fromIntegral length)

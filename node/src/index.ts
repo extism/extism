@@ -257,6 +257,11 @@ export type Manifest = {
 type ManifestData = Manifest | Buffer | string;
 
 /**
+ * A memory handle points to a particular offset in memory
+ */
+type MemoryHandle = number;
+
+/**
  * Provides access to the plugin that is currently running from inside a {@link HostFunction}
  */
 export class CurrentPlugin {
@@ -271,8 +276,11 @@ export class CurrentPlugin {
    * @param offset - The offset in memory
    * @returns a pointer to the provided offset
    */
-  memory(offset: number): Buffer {
-    let length = lib.extism_current_plugin_memory_length(this.pointer, offset);
+  memory(offset: MemoryHandle): Buffer {
+    const length = lib.extism_current_plugin_memory_length(
+      this.pointer,
+      offset,
+    );
     return Buffer.from(
       lib.extism_current_plugin_memory(this.pointer).buffer,
       offset,
@@ -285,7 +293,7 @@ export class CurrentPlugin {
    * @param n - The number of bytes to allocate
    * @returns the offset to the newly allocated block
    */
-  memoryAlloc(n: number): number {
+  memoryAlloc(n: number): MemoryHandle {
     return lib.extism_current_plugin_memory_alloc(this.pointer, n);
   }
 
@@ -293,7 +301,7 @@ export class CurrentPlugin {
    * Free a memory block
    * @param offset - The offset of the block to free
    */
-  memoryFree(offset: number) {
+  memoryFree(offset: MemoryHandle) {
     return lib.extism_current_plugin_memory_free(this.pointer, offset);
   }
 
@@ -302,7 +310,7 @@ export class CurrentPlugin {
    * @param offset - The offset of the block
    * @returns the length of the block specified by `offset`
    */
-  memoryLength(offset: number): number {
+  memoryLength(offset: MemoryHandle): number {
     return lib.extism_current_plugin_memory_length(this.pointer, offset);
   }
 
@@ -312,7 +320,7 @@ export class CurrentPlugin {
    * @param s - The string to return
    */
   returnString(output: typeof Val, s: string) {
-    var offs = this.memoryAlloc(Buffer.byteLength(s));
+    const offs = this.memoryAlloc(Buffer.byteLength(s));
     this.memory(offs).write(s);
     output.v.i64 = offs;
   }
@@ -323,7 +331,7 @@ export class CurrentPlugin {
    * @param b - The buffer to return
    */
   returnBytes(output: typeof Val, b: Buffer) {
-    var offs = this.memoryAlloc(b.length);
+    const offs = this.memoryAlloc(b.length);
     this.memory(offs).fill(b);
     output.v.i64 = offs;
   }

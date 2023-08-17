@@ -56,6 +56,8 @@ typedef struct ExtismFunction ExtismFunction;
  */
 typedef struct ExtismPlugin ExtismPlugin;
 
+typedef uint64_t ExtismMemoryHandle;
+
 typedef uint64_t ExtismSize;
 
 /**
@@ -101,19 +103,19 @@ uint8_t *extism_current_plugin_memory(ExtismCurrentPlugin *plugin);
  * Allocate a memory block in the currently running plugin
  * NOTE: this should only be called from host functions.
  */
-uint64_t extism_current_plugin_memory_alloc(ExtismCurrentPlugin *plugin, ExtismSize n);
+ExtismMemoryHandle extism_current_plugin_memory_alloc(ExtismCurrentPlugin *plugin, ExtismSize n);
 
 /**
  * Get the length of an allocated block
  * NOTE: this should only be called from host functions.
  */
-ExtismSize extism_current_plugin_memory_length(ExtismCurrentPlugin *plugin, ExtismSize n);
+ExtismSize extism_current_plugin_memory_length(ExtismCurrentPlugin *plugin, ExtismMemoryHandle n);
 
 /**
  * Free an allocated memory block
  * NOTE: this should only be called from host functions.
  */
-void extism_current_plugin_memory_free(ExtismCurrentPlugin *plugin, uint64_t ptr);
+void extism_current_plugin_memory_free(ExtismCurrentPlugin *plugin, ExtismMemoryHandle ptr);
 
 /**
  * Create a new host function

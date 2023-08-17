@@ -52,8 +52,8 @@ TEST(Plugin, FunctionExists) {
   auto wasm = read(code.c_str());
   Plugin plugin(wasm);
 
-  ASSERT_FALSE(plugin.function_exists("bad_function"));
-  ASSERT_TRUE(plugin.function_exists("count_vowels"));
+  ASSERT_FALSE(plugin.functionExists("bad_function"));
+  ASSERT_TRUE(plugin.functionExists("count_vowels"));
 }
 
 TEST(Plugin, HostFunction) {

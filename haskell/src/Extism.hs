@@ -26,9 +26,6 @@ module Extism (
   unwrap
 ) where
 
-import Data.Int
-import Data.Word
-import Control.Monad (void)
 import Foreign.ForeignPtr
 import Foreign.C.String
 import Foreign.Ptr
@@ -37,22 +34,20 @@ import Foreign.Marshal.Alloc
 import Foreign.Storable
 import Foreign.StablePtr
 import Foreign.Concurrent
-import Foreign.Marshal.Utils (copyBytes, moveBytes)
-import Data.ByteString as B
+import qualified Data.ByteString as B
 import qualified Data.ByteString.Lazy as BL
 import Data.ByteString.Internal (c2w, w2c)
 import Data.ByteString.Unsafe (unsafeUseAsCString)
-import Data.Bifunctor (second)
-import Text.JSON (encode, toJSObject, showJSON)
+import qualified Text.JSON (encode, toJSObject, showJSON)
 import Extism.Manifest (Manifest, toString)
 import Extism.Bindings
 import qualified Data.UUID (UUID, fromByteString)
 
--- | Host function
+-- | Host function, see 'Extism.HostFunction.hostFunction'
 data Function = Function (ForeignPtr ExtismFunction) (StablePtr ())
 
 -- | Plugins can be used to call WASM function
-data Plugin = Plugin (ForeignPtr ExtismPlugin)
+newtype Plugin = Plugin (ForeignPtr ExtismPlugin)
 
 -- | Cancellation handle for Plugins
 newtype CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
@@ -70,12 +65,12 @@ newtype Error = ExtismError String deriving Show
 type Result a = Either Error a
 
 -- | Helper function to convert a 'String' to a 'ByteString'
-toByteString :: String -> ByteString
-toByteString x = B.pack (Prelude.map c2w x)
+toByteString :: String -> B.ByteString
+toByteString x = B.pack (map c2w x)
 
 -- | Helper function to convert a 'ByteString' to a 'String'
-fromByteString :: ByteString -> String
-fromByteString bs = Prelude.map w2c $ B.unpack bs
+fromByteString :: B.ByteString -> String
+fromByteString bs = map w2c $ B.unpack bs
 
 -- | Get the Extism version string
 extismVersion :: () -> IO String
@@ -87,11 +82,11 @@ extismVersion () = do
 -- | be linked
 plugin :: B.ByteString -> [Function] -> Bool -> IO (Result Plugin)
 plugin wasm functions useWasi =
-  let nfunctions = fromIntegral (Prelude.length functions) in
+  let nfunctions = fromIntegral (length functions) in
   let length = fromIntegral (B.length wasm) in
   let wasi = fromInteger (if useWasi then 1 else 0) in
   do
-    funcs <- Prelude.mapM (\(Function ptr _) -> withForeignPtr ptr (\x -> do return x)) functions
+    funcs <- mapM (\(Function ptr _) -> withForeignPtr ptr (\x -> do return x)) functions
     alloca (\e-> do
       let errmsg = (e :: Ptr CString)
       p <- unsafeUseAsCString wasm (\s ->
@@ -114,13 +109,13 @@ pluginFromManifest manifest functions useWasi =
 
 -- | Check if a 'Plugin' is valid
 isValid :: Plugin -> IO Bool
-isValid (Plugin p) = withForeignPtr p (\x -> return $ (x /= nullPtr))
+isValid (Plugin p) = withForeignPtr p (\x -> return (x /= nullPtr))
 
 -- | Set configuration values for a plugin
 setConfig :: Plugin -> [(String, Maybe String)] -> IO Bool
 setConfig (Plugin plugin) x =
-  let obj = toJSObject [(k, showJSON v) | (k, v) <- x] in
-  let bs = toByteString (encode obj) in
+  let obj = Text.JSON.toJSObject [(k, Text.JSON.showJSON v) | (k, v) <- x] in
+  let bs = toByteString (Text.JSON.encode obj) in
   let length = fromIntegral (B.length bs) in
   unsafeUseAsCString bs (\s -> do
     withForeignPtr plugin (\plugin-> do
@@ -166,7 +161,7 @@ call (Plugin plugin) name input =
         then do
           length <- extism_plugin_output_length plugin
           ptr <- extism_plugin_output_data plugin
-          buf <- packCStringLen (castPtr ptr, fromIntegral length)
+          buf <- B.packCStringLen (castPtr ptr, fromIntegral length)
           return $ Right buf
       else return $ Left (ExtismError "Call failed"))
 
@@ -195,8 +190,8 @@ cancel (CancelHandle handle) =
 -- | Create a new 'Function' that can be called from a 'Plugin'
 hostFunction :: String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
 hostFunction name params results f v =
-  let nparams = fromIntegral $ Prelude.length params in
-  let nresults = fromIntegral $ Prelude.length results in
+  let nparams = fromIntegral $ length params in
+  let nresults = fromIntegral $ length results in
   do
     cb <- callbackWrap (callback f :: CCallback)
     free <- freePtrWrap freePtr

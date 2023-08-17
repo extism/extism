@@ -133,31 +133,32 @@ func GetCurrentPlugin(ptr unsafe.Pointer) CurrentPlugin {
 	}
 }
 
-func (p *CurrentPlugin) Memory(offs uint) []byte {
+type MemoryHandle = uint
+
+func (p *CurrentPlugin) Memory(offs MemoryHandle) []byte {
 	length := C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs))
 	data := unsafe.Pointer(C.extism_current_plugin_memory(p.pointer))
 	return unsafe.Slice((*byte)(unsafe.Add(data, offs)), C.int(length))
 }
 
 // Alloc a new memory block of the given length, returning its offset
-func (p *CurrentPlugin) Alloc(n uint) uint {
+func (p *CurrentPlugin) Alloc(n uint) MemoryHandle {
 	return uint(C.extism_current_plugin_memory_alloc(p.pointer, C.uint64_t(n)))
 }
 
 // Free the memory block specified by the given offset
-func (p *CurrentPlugin) Free(offs uint) {
+func (p *CurrentPlugin) Free(offs MemoryHandle) {
 	C.extism_current_plugin_memory_free(p.pointer, C.uint64_t(offs))
 }
 
 // Length returns the number of bytes allocated at the specified offset
-func (p *CurrentPlugin) Length(offs uint) uint {
-	return uint(C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs)))
+func (p *CurrentPlugin) Length(offs MemoryHandle) int {
+	return int(C.extism_current_plugin_memory_length(p.pointer, C.uint64_t(offs)))
 }
 
 // Plugin is used to call WASM functions
 type Plugin struct {
 	ptr       *C.ExtismPlugin
-	id        int32
 	functions []Function
 }
 
