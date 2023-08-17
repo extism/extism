@@ -1,6 +1,10 @@
 {-# LANGUAGE GeneralizedNewtypeDeriving #-}
 
 module Extism.HostFunction(
+  CurrentPlugin(..),
+  ValType(..),
+  Val(..),
+  MemoryHandle,
   memoryAlloc,
   memoryLength,
   memoryFree,
@@ -18,7 +22,7 @@ module Extism.HostFunction(
   fromI64,
   fromF32,
   fromF64,
-  MemoryHandle
+  hostFunction
 ) where
 
 import Extism
@@ -26,10 +30,18 @@ import Extism.Bindings
 import Data.Word
 import qualified Data.ByteString as B
 import Foreign.Ptr
+import Foreign.ForeignPtr
+import Foreign.C.String
+import Foreign.StablePtr
+import Foreign.Concurrent
 import Foreign.Marshal.Array
 import qualified Data.ByteString.Internal as BS (c2w)
 
-newtype MemoryHandle = MemoryHandle Word64 deriving (Num, Enum, Eq, Ord, Real, Integral)
+-- | Access the plugin that is currently executing from inside a host function
+type CurrentPlugin = Ptr ExtismCurrentPlugin
+
+-- | A memory handle represents an allocated block of Extism memory
+newtype MemoryHandle = MemoryHandle Word64 deriving (Num, Enum, Eq, Ord, Real, Integral, Show)
 
 -- | Allocate a new handle of the given size
 memoryAlloc :: CurrentPlugin -> Word64 -> IO MemoryHandle
@@ -124,3 +136,22 @@ fromF32 _ = Nothing
 fromF64 :: Val -> Maybe Double
 fromF64 (ValF64 x) = Just x
 fromF64 _ = Nothing
+
+-- | Create a new 'Function' that can be called from a 'Plugin'
+hostFunction :: String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
+hostFunction name params results f v =
+  let nparams = fromIntegral $ length params in
+  let nresults = fromIntegral $ length results in
+  do
+    cb <- callbackWrap (callback f :: CCallback)
+    free <- freePtrWrap freePtr
+    userData <- newStablePtr (v, free, cb)
+    let userDataPtr = castStablePtrToPtr userData
+    x <- withCString name (\name ->  do
+      withArray params (\params ->
+        withArray results (\results -> do
+          extism_function_new name params nparams results nresults cb userDataPtr free)))
+    let freeFn = extism_function_free x
+    fptr <- Foreign.Concurrent.newForeignPtr x freeFn
+    return $ Function fptr (castPtrToStablePtr userDataPtr)
+

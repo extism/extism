@@ -9,7 +9,7 @@ import Data.ByteString.Internal (c2w, w2c)
 import qualified Data.ByteString.Base64 as B64
 import qualified Data.ByteString.Char8 as BS (unpack)
 
-data Nullable a = Null | NotNull a
+data Nullable a = Null | NotNull a deriving Eq
 
 makeArray x = JSArray [showJSON a | a <- x]
 isNull JSNull = True
@@ -49,7 +49,7 @@ instance JSON a => JSON (Nullable a) where
   readJSON x = readJSON x
 
 
-newtype Base64 = Base64 B.ByteString
+newtype Base64 = Base64 B.ByteString deriving (Eq, Show)
 
 instance JSON Base64 where
   showJSON (Base64 bs) = showJSON (BS.unpack $ B64.encode bs)

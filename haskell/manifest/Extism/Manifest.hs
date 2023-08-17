@@ -9,6 +9,7 @@ newtype Memory = Memory
   {
     memoryMaxPages :: Nullable Int
   }
+  deriving Eq
 
 instance JSON Memory where
   showJSON (Memory max) =
@@ -26,6 +27,7 @@ data HTTPRequest = HTTPRequest
   , headers :: Nullable [(String, String)]
   , method :: Nullable String
   }
+  deriving Eq
 
 makeKV x =
   object [(k, showJSON v) | (k, v) <- x]
@@ -55,6 +57,7 @@ data WasmFile = WasmFile
   , fileName :: Nullable String
   , fileHash :: Nullable String
   }
+  deriving Eq
 
 instance JSON WasmFile where
   showJSON (WasmFile path name hash) =
@@ -80,9 +83,7 @@ data WasmData = WasmData
   , dataName :: Nullable String
   , dataHash :: Nullable String
   }
-
-
-
+  deriving Eq
 
 instance JSON WasmData where
   showJSON (WasmData bytes name hash) =
@@ -110,6 +111,7 @@ data WasmURL = WasmURL
   , urlName :: Nullable String
   , urlHash :: Nullable String
   }
+  deriving Eq
 
 
 instance JSON WasmURL where
@@ -127,7 +129,7 @@ instance JSON WasmURL where
       Just req -> Ok (WasmURL req name hash)
 
 -- | Specifies where to get WASM module data
-data Wasm = File WasmFile | Data WasmData | URL WasmURL
+data Wasm = File WasmFile | Data WasmData | URL WasmURL deriving Eq
 
 instance JSON Wasm where
   showJSON x =

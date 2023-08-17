@@ -1,11 +1,8 @@
 module Extism (
   module Extism.Manifest,
-  ValType(..),
-  Val(..),
   Function(..),
   Plugin(..),
   CancelHandle(..),
-  CurrentPlugin(..),
   LogLevel(..),
   Error(..),
   Result(..),
@@ -18,7 +15,6 @@ module Extism (
   setConfig,
   setLogFile,
   functionExists,
-  hostFunction,
   call,
   cancelHandle,
   cancel,
@@ -44,22 +40,19 @@ import Extism.Bindings
 import qualified Data.UUID (UUID, fromByteString)
 
 -- | Host function, see 'Extism.HostFunction.hostFunction'
-data Function = Function (ForeignPtr ExtismFunction) (StablePtr ())
+data Function = Function (ForeignPtr ExtismFunction) (StablePtr ()) deriving Eq
 
 -- | Plugins can be used to call WASM function
-newtype Plugin = Plugin (ForeignPtr ExtismPlugin)
+newtype Plugin = Plugin (ForeignPtr ExtismPlugin) deriving Eq
 
 -- | Cancellation handle for Plugins
 newtype CancelHandle = CancelHandle (Ptr ExtismCancelHandle)
 
--- | Access the plugin that is currently executing from inside a host function
-type CurrentPlugin = Ptr ExtismCurrentPlugin
-
 -- | Log level
-data LogLevel = LogError | LogWarn | LogInfo | LogDebug | LogTrace deriving (Show)
+data LogLevel = LogError | LogWarn | LogInfo | LogDebug | LogTrace deriving (Show, Eq)
 
 -- | Extism error
-newtype Error = ExtismError String deriving Show
+newtype Error = ExtismError String deriving (Show, Eq)
 
 -- | Result type
 type Result a = Either Error a
@@ -185,26 +178,6 @@ cancelHandle (Plugin plugin) = do
 cancel :: CancelHandle -> IO Bool
 cancel (CancelHandle handle) =
   extism_plugin_cancel handle
-
-
--- | Create a new 'Function' that can be called from a 'Plugin'
-hostFunction :: String -> [ValType] -> [ValType] -> (CurrentPlugin -> [Val] -> a -> IO [Val]) -> a -> IO Function
-hostFunction name params results f v =
-  let nparams = fromIntegral $ length params in
-  let nresults = fromIntegral $ length results in
-  do
-    cb <- callbackWrap (callback f :: CCallback)
-    free <- freePtrWrap freePtr
-    userData <- newStablePtr (v, free, cb)
-    let userDataPtr = castStablePtrToPtr userData
-    x <- withCString name (\name ->  do
-      withArray params (\params ->
-        withArray results (\results -> do
-          extism_function_new name params nparams results nresults cb userDataPtr free)))
-    let freeFn = extism_function_free x
-    fptr <- Foreign.Concurrent.newForeignPtr x freeFn
-    return $ Function fptr (castPtrToStablePtr userDataPtr)
-
 
 pluginID :: Plugin -> IO Data.UUID.UUID
 pluginID (Plugin plugin) =
