@@ -29,7 +29,11 @@ pub(crate) fn config_get(
     let data: &mut CurrentPlugin = caller.data_mut();
 
     let offset = args!(input, 0, i64) as u64;
-    let key = data.memory_read_str(offset)?;
+    let handle = match data.memory_handle(offset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {offset}"),
+    };
+    let key = data.memory_read_str(handle)?;
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
@@ -45,7 +49,7 @@ pub(crate) fn config_get(
             return Ok(());
         }
     };
-    output[0] = Val::I64(mem as i64);
+    output[0] = Val::I64(mem.offset() as i64);
     Ok(())
 }
 
@@ -60,7 +64,11 @@ pub(crate) fn var_get(
     let data: &mut CurrentPlugin = caller.data_mut();
 
     let offset = args!(input, 0, i64) as u64;
-    let key = data.memory_read_str(offset)?;
+    let handle = match data.memory_handle(offset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {offset}"),
+    };
+    let key = data.memory_read_str(handle)?;
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
@@ -76,7 +84,7 @@ pub(crate) fn var_get(
             return Ok(());
         }
     };
-    output[0] = Val::I64(mem as i64);
+    output[0] = Val::I64(mem.offset() as i64);
     Ok(())
 }
 
@@ -104,7 +112,11 @@ pub(crate) fn var_set(
 
     let key_offs = args!(input, 0, i64) as u64;
     let key = {
-        let key = data.memory_read_str(key_offs)?;
+        let handle = match data.memory_handle(key_offs) {
+            Some(h) => h,
+            None => anyhow::bail!("invalid handle offset: {key_offs}"),
+        };
+        let key = data.memory_read_str(handle)?;
         let key_len = key.len();
         let key_ptr = key.as_ptr();
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
@@ -116,8 +128,11 @@ pub(crate) fn var_set(
         return Ok(());
     }
 
-    let vlen = data.memory_length(voffset);
-    let value = data.memory_read(voffset, vlen).to_vec();
+    let handle = match data.memory_handle(voffset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {key_offs}"),
+    };
+    let value = data.memory_read(handle).to_vec();
 
     // Insert the value from memory into the `vars` map
     data.vars.insert(key.to_string(), value);
@@ -148,9 +163,11 @@ pub(crate) fn http_request(
         let data: &mut CurrentPlugin = caller.data_mut();
         let http_req_offset = args!(input, 0, i64) as u64;
 
-        let http_req_len = data.memory_length(http_req_offset);
-        let req: extism_manifest::HttpRequest =
-            serde_json::from_slice(data.memory_read(http_req_offset, http_req_len))?;
+        let handle = match data.memory_handle(http_req_offset) {
+            Some(h) => h,
+            None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
+        };
+        let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_read(handle))?;
 
         let body_offset = args!(input, 1, i64) as u64;
 
@@ -187,8 +204,11 @@ pub(crate) fn http_request(
         }
 
         let res = if body_offset > 0 {
-            let len = data.memory_length(body_offset);
-            let buf = data.memory_read(body_offset, len);
+            let handle = match data.memory_handle(body_offset) {
+                Some(h) => h,
+                None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
+            };
+            let buf = data.memory_read(handle);
             r.send_bytes(buf)
         } else {
             r.call()
@@ -216,7 +236,7 @@ pub(crate) fn http_request(
                 .read_to_end(&mut buf)?;
 
             let mem = data.memory_alloc_bytes(buf)?;
-            output[0] = Val::I64(mem as i64);
+            output[0] = Val::I64(mem.offset() as i64);
         } else {
             output[0] = Val::I64(0);
         }
@@ -246,7 +266,13 @@ pub fn log(
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
     let offset = args!(input, 0, i64) as u64;
-    let buf = data.memory_read_str(offset);
+
+    let handle = match data.memory_handle(offset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {offset}"),
+    };
+
+    let buf = data.memory_read_str(handle);
 
     match buf {
         Ok(buf) => log::log!(level, "{}", buf),

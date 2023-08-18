@@ -39,7 +39,7 @@ pub struct Plugin {
 
     /// Runtime determines any initialization functions needed
     /// to run a module
-    pub(crate) runtime: Option<Runtime>,
+    pub(crate) runtime: Option<GuestRuntime>,
 
     /// Keep a reference to the host functions
     _functions: Vec<Function>,
@@ -152,12 +152,15 @@ fn calculate_available_memory(
     Ok(())
 }
 
+// Raise an error when the epoch deadline is encountered - this is used for timeout/cancellation
+// to stop a plugin that is executing
 fn deadline_callback(_: StoreContextMut<CurrentPlugin>) -> Result<UpdateDeadline, Error> {
     Err(Error::msg("timeout"))
 }
 
 impl Plugin {
-    /// Create a new plugin from the given manifest
+    /// Create a new plugin from the given manifest, and host functions. The `with_wasi` parameter determines
+    /// whether or not the module should be executed with WASI enabled.
     pub fn new_with_manifest(
         manifest: &Manifest,
         functions: impl IntoIterator<Item = Function>,
@@ -167,7 +170,8 @@ impl Plugin {
         Self::new(data, functions, with_wasi)
     }
 
-    /// Create a new plugin from the given WASM code
+    /// Create a new plugin from the given WebAssembly module or JSON encoded manifest, and host functions. The `with_wasi`
+    /// parameter determines whether or not the module should be executed with WASI enabled.
     pub fn new<'a>(
         wasm: impl AsRef<[u8]>,
         imports: impl IntoIterator<Item = Function>,
@@ -298,6 +302,7 @@ impl Plugin {
         Ok(plugin)
     }
 
+    // Resets the store and linker to avoid running into Wasmtime memory limits
     pub(crate) fn reset_store(
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
@@ -349,6 +354,8 @@ impl Plugin {
         Ok(())
     }
 
+    // Instantiate the module. This is done lazily to avoid running any code outside of the `call` function,
+    // since wasmtime may execute a start function (if configured) at instantiation time,
     pub(crate) fn instantiate(
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
@@ -364,12 +371,12 @@ impl Plugin {
         if let Some(limiter) = &mut self.current_plugin_mut().memory_limiter {
             limiter.reset();
         }
-        self.detect_runtime(instance_lock);
-        self.initialize_runtime()?;
+        self.detect_guest_runtime(instance_lock);
+        self.initialize_guest_runtime()?;
         Ok(())
     }
 
-    /// Get a function by name
+    /// Get an exported function by name
     pub(crate) fn get_func(
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
@@ -390,7 +397,7 @@ impl Plugin {
             .unwrap_or(false)
     }
 
-    /// Store input in memory and initialize `Internal` pointer
+    // Store input in memory and re-initialize `Internal` pointer
     pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
         self.output = Output::default();
         self.clear_error();
@@ -416,12 +423,12 @@ impl Plugin {
             error!("Call to extism_reset failed");
         }
 
-        let offs = self.current_plugin_mut().memory_alloc_bytes(bytes)?;
+        let handle = self.current_plugin_mut().memory_alloc_bytes(bytes)?;
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
             f.into_func().unwrap().call(
                 &mut self.store,
-                &[Val::I64(offs as i64), Val::I64(len as i64)],
+                &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
                 &mut [],
             )?;
         }
@@ -434,7 +441,11 @@ impl Plugin {
         self.current_plugin().wasi.is_some()
     }
 
-    fn detect_runtime(&mut self, instance_lock: &mut std::sync::MutexGuard<Option<Instance>>) {
+    // Do a best-effort attempt to detect any guest runtime.
+    fn detect_guest_runtime(
+        &mut self,
+        instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
+    ) {
         // Check for Haskell runtime initialization functions
         // Initialize Haskell runtime if `hs_init` is present,
         // by calling the `hs_init` export
@@ -453,7 +464,7 @@ impl Plugin {
             } else {
                 None
             };
-            self.runtime = Some(Runtime::Haskell { init, reactor_init });
+            self.runtime = Some(GuestRuntime::Haskell { init, reactor_init });
             return;
         }
 
@@ -483,17 +494,18 @@ impl Plugin {
             return;
         };
 
-        self.runtime = Some(Runtime::Wasi { init });
+        self.runtime = Some(GuestRuntime::Wasi { init });
 
         trace!("No runtime detected");
     }
 
-    pub(crate) fn initialize_runtime(&mut self) -> Result<(), Error> {
+    // Initialize the guest runtime
+    pub(crate) fn initialize_guest_runtime(&mut self) -> Result<(), Error> {
         let mut store = &mut self.store;
         if let Some(runtime) = &self.runtime {
             trace!("Plugin::initialize_runtime");
             match runtime {
-                Runtime::Haskell { init, reactor_init } => {
+                GuestRuntime::Haskell { init, reactor_init } => {
                     if let Some(reactor_init) = reactor_init {
                         reactor_init.call(&mut store, &[], &mut [])?;
                     }
@@ -505,7 +517,7 @@ impl Plugin {
                     )?;
                     debug!("Initialized Haskell language runtime");
                 }
-                Runtime::Wasi { init } => {
+                GuestRuntime::Wasi { init } => {
                     init.call(&mut store, &[], &mut [])?;
                     debug!("Initialied WASI runtime");
                 }
@@ -515,6 +527,7 @@ impl Plugin {
         Ok(())
     }
 
+    // Return the position of the output in memory
     fn output_memory_position(&mut self) -> (u64, u64) {
         let out = &mut [Val::I64(0)];
         let out_len = &mut [Val::I64(0)];
@@ -539,13 +552,16 @@ impl Plugin {
         (offs, len)
     }
 
+    // Get the output data after a call has returned
     fn output(&mut self) -> &[u8] {
         trace!("Output offset: {}", self.output.offset);
         let offs = self.output.offset;
         let len = self.output.length;
-        self.current_plugin_mut().memory_read(offs, len)
+        self.current_plugin_mut()
+            .memory_read(unsafe { MemoryHandle::new(offs, len) })
     }
 
+    // Cache output memory and error information after call is complete
     fn get_output_after_call(&mut self) {
         let (offs, len) = self.output_memory_position();
         self.output.offset = offs;
@@ -556,6 +572,8 @@ impl Plugin {
         self.output.error_length = err.1;
     }
 
+    // Implements the build of the `call` function, `raw_call` is also used in the SDK
+    // code
     pub(crate) fn raw_call(
         &mut self,
         lock: &mut std::sync::MutexGuard<Option<Instance>>,
@@ -686,15 +704,15 @@ impl Plugin {
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
         match self.current_plugin_mut().memory_alloc_bytes(&s) {
-            Ok(offs) => {
+            Ok(handle) => {
                 let (linker, mut store) = self.linker_and_store();
                 if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
-                    if let Ok(()) =
-                        f.into_func()
-                            .unwrap()
-                            .call(&mut store, &[Val::I64(offs as i64)], &mut [])
-                    {
-                        self.output.error_offset = offs;
+                    if let Ok(()) = f.into_func().unwrap().call(
+                        &mut store,
+                        &[Val::I64(handle.offset() as i64)],
+                        &mut [],
+                    ) {
+                        self.output.error_offset = handle.offset();
                         self.output.error_length = s.len() as u64;
                     }
                 } else {
@@ -709,9 +727,9 @@ impl Plugin {
     }
 }
 
-// Enumerates the supported PDK language runtimes
+// Enumerates the PDK languages that need some additional initialization
 #[derive(Clone)]
-pub(crate) enum Runtime {
+pub(crate) enum GuestRuntime {
     Haskell {
         init: Func,
         reactor_init: Option<Func>,

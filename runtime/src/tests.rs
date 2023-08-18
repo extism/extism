@@ -11,11 +11,11 @@ fn hello_world(
     outputs: &mut [Val],
     _user_data: UserData,
 ) -> Result<(), Error> {
-    let input_offs = inputs[0].unwrap_i64() as u64;
-    let input = plugin.memory_read_str(input_offs).unwrap().to_string();
+    let handle = plugin.memory_handle_val(&inputs[0]).unwrap();
+    let input = plugin.memory_read_str(handle).unwrap().to_string();
 
     let output = plugin.memory_alloc_bytes(&input).unwrap();
-    outputs[0] = Val::I64(output as i64);
+    outputs[0] = output.into();
     Ok(())
 }
 

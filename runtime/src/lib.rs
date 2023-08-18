@@ -13,7 +13,7 @@ mod plugin_builder;
 pub mod sdk;
 mod timer;
 
-pub use current_plugin::CurrentPlugin;
+pub use current_plugin::{CurrentPlugin, MemoryHandle};
 pub use extism_manifest::Manifest;
 pub use function::{Function, UserData, Val, ValType};
 pub use plugin::Plugin;
@@ -32,7 +32,7 @@ mod tests;
 
 pub(crate) const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
-/// Returns the Extism version of the current runtime
+/// Returns a string containing the Extism version of the current runtime
 pub fn extism_version() -> &'static str {
     VERSION
 }

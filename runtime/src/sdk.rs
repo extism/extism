@@ -107,7 +107,10 @@ pub unsafe extern "C" fn extism_current_plugin_memory_alloc(
     }
 
     let plugin = &mut *plugin;
-    plugin.memory_alloc(n as u64).unwrap_or_default()
+    match plugin.memory_alloc(n) {
+        Ok(x) => x.offset(),
+        Err(_) => 0,
+    }
 }
 
 /// Get the length of an allocated block
@@ -137,7 +140,9 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(
     }
 
     let plugin = &mut *plugin;
-    plugin.memory_free(ptr);
+    if let Some(handle) = plugin.memory_handle(ptr) {
+        plugin.memory_free(handle);
+    }
 }
 
 /// Create a new host function

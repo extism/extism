@@ -49,6 +49,9 @@ typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 
 typedef struct ExtismCancelHandle ExtismCancelHandle;
 
+/**
+ * Wraps raw host functions with some additional metadata and user data
+ */
 typedef struct ExtismFunction ExtismFunction;
 
 /**

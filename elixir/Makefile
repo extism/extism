@@ -5,7 +5,7 @@ prepare:
 	mix compile
 
 test: prepare
-	mix test
+	mix test -v
 
 clean:
 	mix clean

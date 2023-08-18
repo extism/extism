@@ -52,17 +52,23 @@ impl PluginBuilder {
             + Sync
             + Send,
     {
-        self.functions
-            .push(Function::new(name, args, returns, user_data, f));
+        self.functions.push(Function::new(
+            name,
+            args,
+            returns,
+            user_data.map(UserData::new),
+            f,
+        ));
         self
     }
 
-    /// Add multiple `Function` instances
+    /// Add multiple host functions
     pub fn with_functions(mut self, f: impl IntoIterator<Item = Function>) -> Self {
         self.functions.extend(f);
         self
     }
 
+    /// Generate a new plugin with the configured settings
     pub fn build<'a>(self) -> Result<Plugin, Error> {
         match self.source {
             Source::Manifest(m) => Plugin::new_with_manifest(&m, self.functions, self.wasi),
