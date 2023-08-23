@@ -14,7 +14,7 @@ mod atoms {
 }
 
 struct ExtismPlugin {
-    plugin: RwLock<Plugin>,
+    plugin: RwLock<Option<Plugin>>,
 }
 unsafe impl Sync for ExtismPlugin {}
 unsafe impl Send for ExtismPlugin {}
@@ -36,6 +36,10 @@ fn to_rustler_error(extism_error: extism::Error) -> rustler::Error {
     rustler::Error::Term(Box::new(extism_error.to_string()))
 }
 
+fn freed_error() -> rustler::Error {
+    rustler::Error::Term(Box::new("Plugin has already been freed".to_string()))
+}
+
 #[rustler::nif]
 fn plugin_new_with_manifest(
     manifest_payload: String,
@@ -44,7 +48,7 @@ fn plugin_new_with_manifest(
     let result = match Plugin::new(manifest_payload, [], wasi) {
         Err(e) => Err(to_rustler_error(e)),
         Ok(plugin) => Ok(ResourceArc::new(ExtismPlugin {
-            plugin: RwLock::new(plugin),
+            plugin: RwLock::new(Some(plugin)),
         })),
     };
     result
@@ -57,27 +61,35 @@ fn plugin_call(
     input: String,
 ) -> Result<String, rustler::Error> {
     let mut plugin = plugin.plugin.write().unwrap();
-    let result = match plugin.call(name, input) {
-        Err(e) => Err(to_rustler_error(e)),
-        Ok(result) => match str::from_utf8(result) {
-            Ok(output) => Ok(output.to_string()),
-            Err(_e) => Err(rustler::Error::Term(Box::new(
-                "Could not read output from plugin",
-            ))),
-        },
-    };
-    result
+    if let Some(plugin) = &mut *plugin {
+        let result = match plugin.call(name, input) {
+            Err(e) => Err(to_rustler_error(e)),
+            Ok(result) => match str::from_utf8(result) {
+                Ok(output) => Ok(output.to_string()),
+                Err(_e) => Err(rustler::Error::Term(Box::new(
+                    "Could not read output from plugin",
+                ))),
+            },
+        };
+        result
+    } else {
+        Err(freed_error())
+    }
 }
 
 #[rustler::nif]
 fn plugin_cancel_handle(
     plugin: ResourceArc<ExtismPlugin>,
 ) -> Result<ResourceArc<ExtismCancelHandle>, rustler::Error> {
-    let plugin = plugin.plugin.write().unwrap();
-    let handle = plugin.cancel_handle();
-    Ok(ResourceArc::new(ExtismCancelHandle {
-        handle: RwLock::new(handle),
-    }))
+    let mut plugin = plugin.plugin.write().unwrap();
+    if let Some(plugin) = &mut *plugin {
+        let handle = plugin.cancel_handle();
+        Ok(ResourceArc::new(ExtismCancelHandle {
+            handle: RwLock::new(handle),
+        }))
+    } else {
+        Err(freed_error())
+    }
 }
 
 #[rustler::nif]
@@ -87,7 +99,10 @@ fn plugin_cancel(handle: ResourceArc<ExtismCancelHandle>) -> bool {
 
 #[rustler::nif]
 fn plugin_free(plugin: ResourceArc<ExtismPlugin>) -> Result<(), rustler::Error> {
-    drop(plugin);
+    let mut plugin = plugin.plugin.write().unwrap();
+    if let Some(plugin) = plugin.take() {
+        drop(plugin);
+    }
     Ok(())
 }
 
@@ -114,8 +129,12 @@ fn plugin_has_function(
     function_name: String,
 ) -> Result<bool, rustler::Error> {
     let mut plugin = plugin.plugin.write().unwrap();
-    let has_function = plugin.function_exists(function_name);
-    Ok(has_function)
+    if let Some(plugin) = &mut *plugin {
+        let has_function = plugin.function_exists(function_name);
+        Ok(has_function)
+    } else {
+        Err(freed_error())
+    }
 }
 
 rustler::init!(
