@@ -222,7 +222,7 @@ class Plugin:
 
     @property
     def id(self) -> UUID:
-        b = _ffi.string(_lib.extism_plugin_id(self.plugin), 16)
+        b = bytes(_ffi.unpack(_lib.extism_plugin_id(self.plugin), 16))
         return UUID(bytes=b)
 
     def cancel_handle(self):
