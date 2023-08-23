@@ -1,6 +1,6 @@
 cabal-version:      3.0
 name:               extism
-version:            0.3.0
+version:            0.4.0
 license:            BSD-3-Clause
 maintainer:         oss@extism.org
 author:             Extism authors
@@ -22,7 +22,7 @@ library
         base              >= 4.16.1 && < 5,
         bytestring        >= 0.11.3 && <= 0.12,
         json              >= 0.10 && <= 0.11,
-        extism-manifest   >= 0.0.0 && < 0.3.0
+        extism-manifest   >= 0.0.0 && < 0.4.0
 
 test-suite extism-example
     type:             exitcode-stdio-1.0
