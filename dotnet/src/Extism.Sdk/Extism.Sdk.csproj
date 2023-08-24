@@ -1,28 +1,28 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
-	<PropertyGroup>
-		<TargetFramework>netstandard2.1</TargetFramework>
-		<ImplicitUsings>enable</ImplicitUsings>
-		<Nullable>enable</Nullable>
-		<AllowUnsafeBlocks>True</AllowUnsafeBlocks>
-		<LangVersion>10</LangVersion>
-	</PropertyGroup>
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+    <LangVersion>10</LangVersion>
+  </PropertyGroup>
 
-	<PropertyGroup>
-		<PackageId>Extism.Sdk</PackageId>
-		<Version>0.6.0</Version>
-		<Authors>Extism Contributors</Authors>
-		<Description>Extism SDK that allows hosting Extism plugins in .NET apps.</Description>
-		<Tags>extism, wasm, plugin</Tags>
-		<PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
-		<PackageReadmeFile>README.md</PackageReadmeFile>
-	</PropertyGroup>
+  <PropertyGroup>
+    <PackageId>Extism.Sdk</PackageId>
+    <Version>0.7.0</Version>
+    <Authors>Extism Contributors</Authors>
+    <Description>Extism SDK that allows hosting Extism plugins in .NET apps.</Description>
+    <Tags>extism, wasm, plugin</Tags>
+    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+  </PropertyGroup>
 
-	<ItemGroup>
-		<None Include="README.md" Pack="true" PackagePath="\"/>
-	</ItemGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
 
-	<ItemGroup>
-		<PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
-	</ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="System.Runtime.CompilerServices.Unsafe" Version="6.0.0" />
+  </ItemGroup>
 </Project>
