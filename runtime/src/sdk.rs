@@ -299,6 +299,9 @@ pub unsafe extern "C" fn extism_plugin_new(
 /// Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_new_error_free(err: *mut std::ffi::c_char) {
+    if err.is_null() {
+        return;
+    }
     drop(std::ffi::CString::from_raw(err))
 }
 

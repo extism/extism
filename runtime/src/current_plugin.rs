@@ -249,6 +249,9 @@ impl CurrentPlugin {
 
     /// Get a `MemoryHandle` from an offset
     pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
+        if offs == 0 {
+            return None;
+        }
         let length = self.memory_length(offs);
         if length == 0 {
             return None;
