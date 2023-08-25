@@ -201,6 +201,12 @@ macro_rules! encoding {
         #[doc = concat!(stringify!($name), " encoding")]
         pub struct $name<T>(pub T);
 
+        impl<T> $name<T> {
+            pub fn into_inner(self) -> T {
+                self.0
+            }
+        }
+
         impl<'a, T: serde::Deserialize<'a>> FromBytes<'a> for $name<T> {
             fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
                 let x = $from_slice(data)?;
