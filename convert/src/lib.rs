@@ -1,102 +1,101 @@
+//! The `extism-convert` crate is used by the SDK and PDK to provide a shared interface for
+//! encoding and decoding values that can be passed to Extism function calls.
+
 pub use anyhow::Error;
 
-pub struct Json<T>(pub T);
-
+/// `ToBytes` is used to define how a type should be encoded when working with
+/// Extism memory. It is used for plugin input and host function output.
 pub trait ToBytes<'a> {
+    /// A configurable byte slice representation, allows any type that implements `AsRef<[u8]>`
     type Bytes: AsRef<[u8]>;
 
-    fn input(&'a self) -> Result<Self::Bytes, Error>;
+    /// `to_bytes` converts a value into `Self::Bytes`
+    fn to_bytes(&'a self) -> Result<Self::Bytes, Error>;
+}
+
+/// `FromBytes` is used to define how a type should be decoded when working with
+/// Extism memory. It is used for plugin output and host function input.
+pub trait FromBytes<'a>: Sized {
+    /// Decode a value from a slice of bytes
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error>;
 }
 
 impl<'a> ToBytes<'a> for Vec<u8> {
     type Bytes = &'a [u8];
-    fn input(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
         Ok(self.as_slice())
     }
 }
 
 impl<'a> ToBytes<'a> for &'a [u8] {
     type Bytes = &'a [u8];
-    fn input(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
         Ok(self)
     }
 }
 
 impl<'a> ToBytes<'a> for &'a str {
     type Bytes = &'a str;
-    fn input(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
         Ok(self)
     }
 }
 
 impl<'a> ToBytes<'a> for String {
     type Bytes = &'a str;
-    fn input(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
         Ok(self)
     }
 }
 
-impl<'a, T: serde::Serialize> ToBytes<'a> for Json<T> {
-    type Bytes = String;
-
-    fn input(&'a self) -> Result<Self::Bytes, Error> {
-        let enc = serde_json::to_string(&self.0)?;
-        Ok(enc)
-    }
-}
-
-pub trait FromBytes<'a>: Sized {
-    fn output(data: &'a [u8]) -> Result<Self, Error>;
-}
-
 impl<'a> FromBytes<'a> for &'a [u8] {
-    fn output(data: &'a [u8]) -> Result<Self, Error> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
         Ok(data)
     }
 }
 
 impl<'a> FromBytes<'a> for &'a str {
-    fn output(data: &'a [u8]) -> Result<Self, Error> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
         Ok(std::str::from_utf8(data)?)
     }
 }
 
 impl<'a> FromBytes<'a> for Vec<u8> {
-    fn output(data: &'a [u8]) -> Result<Self, Error> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
         Ok(data.to_vec())
     }
 }
 
 impl<'a> FromBytes<'a> for String {
-    fn output(data: &'a [u8]) -> Result<Self, Error> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
         Ok(std::str::from_utf8(data)?.to_string())
     }
 }
 
-impl<'a, T: serde::Deserialize<'a>> FromBytes<'a> for Json<T> {
-    fn output(data: &'a [u8]) -> Result<Self, Error> {
-        let x = serde_json::from_slice(data)?;
-        Ok(Json(x))
-    }
+#[macro_export]
+macro_rules! encoding {
+    ($name:ident, $to_vec:expr, $from_slice:expr) => {
+        pub struct $name<T>(pub T);
+
+        impl<'a, T: serde::Deserialize<'a>> FromBytes<'a> for $name<T> {
+            fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+                let x = $from_slice(data)?;
+                Ok(Json(x))
+            }
+        }
+
+        impl<'a, T: serde::Serialize> ToBytes<'a> for $name<T> {
+            type Bytes = Vec<u8>;
+
+            fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
+                let enc = $to_vec(&self.0)?;
+                Ok(enc)
+            }
+        }
+    };
 }
 
-#[cfg(feature = "msgpack")]
-pub struct Msgpack<T>(pub T);
+encoding!(Json, serde_json::to_vec, serde_json::from_slice);
 
 #[cfg(feature = "msgpack")]
-impl<'a, T: serde::Deserialize<'a>> FromBytes<'a> for Msgpack<T> {
-    fn output(data: &'a [u8]) -> Result<Self, Error> {
-        let x = rmp_serde::from_slice(data)?;
-        Ok(Msgpack(x))
-    }
-}
-
-#[cfg(feature = "msgpack")]
-impl<'a, T: serde::Serialize> ToBytes<'a> for Msgpack<T> {
-    type Bytes = Vec<u8>;
-
-    fn input(&'a self) -> Result<Self::Bytes, Error> {
-        let enc = rmp_serde::to_vec(&self.0)?;
-        Ok(enc)
-    }
-}
+encoding!(Msgpack, rmp_serde::to_vec, rmp_serde::from_slice);
