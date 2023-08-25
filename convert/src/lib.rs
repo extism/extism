@@ -214,7 +214,7 @@ macro_rules! encoding {
             }
         }
 
-        impl<'a, T: serde::Serialize> ToBytes<'a> for $name<T> {
+        impl<'a, T: serde::Serialize> ToBytes<'a> for &'a $name<T> {
             type Bytes = Vec<u8>;
 
             fn to_bytes(&self) -> Result<Self::Bytes, Error> {
