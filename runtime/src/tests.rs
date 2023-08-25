@@ -59,7 +59,9 @@ fn it_works() {
 
     let repeat = 1182;
     let input = "aeiouAEIOU____________________________________&smtms_y?".repeat(repeat);
-    let Json(count): Json<Count> = plugin.call("count_vowels", &input).unwrap();
+    let Json(count) = plugin
+        .call::<_, Json<Count>>("count_vowels", &input)
+        .unwrap();
 
     assert_eq!(
         count,
@@ -152,8 +154,9 @@ fn test_plugin_threads() {
         let a = std::thread::spawn(move || {
             let mut plugin = plugin.lock().unwrap();
             for _ in 0..10 {
-                let Json(count): Json<Count> =
-                    plugin.call("count_vowels", "this is a test aaa").unwrap();
+                let Json(count) = plugin
+                    .call::<_, Json<Count>>("count_vowels", "this is a test aaa")
+                    .unwrap();
                 assert_eq!(Count { count: 7 }, count);
             }
         });
@@ -234,7 +237,7 @@ fn test_multiple_instantiations() {
 fn test_globals() {
     let mut plugin = Plugin::new(WASM_GLOBALS, [], true).unwrap();
     for i in 0..1000 {
-        let Json(count): Json<Count> = plugin.call("globals", "").unwrap();
+        let Json(count) = plugin.call::<_, Json<Count>>("globals", "").unwrap();
         assert_eq!(count.count, i);
     }
 }
