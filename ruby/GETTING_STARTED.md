@@ -8,26 +8,18 @@
 require "extism"
 require "json"
 
-Extism.with_context do |ctx|
-  manifest = {
-    :wasm => [{ :path => "../wasm/code.wasm" }],
-  }
-  plugin = ctx.plugin(manifest)
-  res = JSON.parse(plugin.call("count_vowels", "this is a test"))
-  puts res["count"] # => 4
-end
+manifest = {
+  :wasm => [{ :path => "../wasm/code.wasm" }],
+}
+plugin = Plugin.new(manifest)
+res = JSON.parse(plugin.call("count_vowels", "this is a test"))
 ```
 
 ### API
 
-There are two primary classes you need to understand:
+There is just one primary class you need to understand:
 
-* [Context](Extism/Context.html)
 * [Plugin](Extism/Plugin.html)
-
-#### Context
-
-The [Context](Extism/Context.html) can be thought of as a session. You need a context to interact with the Extism runtime. The context holds your plugins and when you free the context, it frees your plugins. We recommend using the [Extism.with_context](Extism.html#with_context-class_method) method to ensure that your plugins are cleaned up. But if you need a long lived context for any reason, you can use the constructor [Extism::Context.new](Extism/Context.html#initialize-instance_method).
 
 #### Plugin
 
