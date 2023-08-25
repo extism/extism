@@ -420,7 +420,7 @@ impl Plugin {
             error!("Call to extism_reset failed");
         }
 
-        let handle = self.current_plugin_mut().memory_alloc_bytes(bytes)?;
+        let handle = self.current_plugin_mut().alloc(bytes)?;
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
             f.into_func().unwrap().call(
@@ -550,12 +550,14 @@ impl Plugin {
     }
 
     // Get the output data after a call has returned
-    fn output(&mut self) -> &[u8] {
+    fn output<'a, T: FromBytes<'a>>(&'a mut self) -> Result<T, Error> {
         trace!("Output offset: {}", self.output.offset);
         let offs = self.output.offset;
         let len = self.output.length;
-        self.current_plugin_mut()
-            .memory_read(unsafe { MemoryHandle::new(offs, len) })
+        T::from_bytes(
+            self.current_plugin_mut()
+                .memory_bytes(unsafe { MemoryHandle::new(offs, len) })?,
+        )
     }
 
     // Cache output memory and error information after call is complete
@@ -668,12 +670,17 @@ impl Plugin {
 
     /// Call a function by name with the given input, the return value is the output data returned by the plugin.
     /// This data will be invalidated next time the plugin is called.
-    pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
+    pub fn call<'a, 'b, T: ToBytes<'a>, U: FromBytes<'b>>(
+        &'b mut self,
+        name: impl AsRef<str>,
+        input: T,
+    ) -> Result<U, Error> {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
-        self.raw_call(&mut lock, name, input)
-            .map(|_| self.output())
+        let data = input.to_bytes()?;
+        self.raw_call(&mut lock, name, data)
             .map_err(|e| e.0)
+            .and_then(move |_| self.output())
     }
 
     /// Get a `CancelHandle`, which can be used from another thread to cancel a running plugin
@@ -698,7 +705,7 @@ impl Plugin {
     pub(crate) fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
-        match self.current_plugin_mut().memory_alloc_bytes(&s) {
+        match self.current_plugin_mut().alloc(&s) {
             Ok(handle) => {
                 let (linker, mut store) = self.linker_and_store();
                 if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {

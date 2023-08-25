@@ -141,7 +141,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(
 
     let plugin = &mut *plugin;
     if let Some(handle) = plugin.memory_handle(ptr) {
-        plugin.memory_free(handle);
+        let _ = plugin.memory_free(handle);
     }
 }
 

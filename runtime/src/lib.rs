@@ -1,6 +1,8 @@
 pub(crate) use std::collections::BTreeMap;
 pub(crate) use wasmtime::*;
 
+pub use extism_convert::*;
+
 pub use anyhow::Error;
 
 mod current_plugin;
@@ -13,7 +15,7 @@ mod plugin_builder;
 pub mod sdk;
 mod timer;
 
-pub use current_plugin::{CurrentPlugin, MemoryHandle};
+pub use current_plugin::CurrentPlugin;
 pub use extism_manifest::Manifest;
 pub use function::{Function, UserData, Val, ValType};
 pub use plugin::Plugin;

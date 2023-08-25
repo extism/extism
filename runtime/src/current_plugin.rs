@@ -1,41 +1,5 @@
 use crate::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
-pub struct MemoryHandle(u64, u64);
-
-impl MemoryHandle {
-    /// Create a new memory handle, this is unsafe because the values are provided by the user
-    /// and may not be a valid handle
-    ///
-    /// # Safety
-    /// This function is unsafe because there is no validation that the offset or
-    /// length of the handle is correct
-    pub unsafe fn new(offs: u64, len: u64) -> MemoryHandle {
-        MemoryHandle(offs, len)
-    }
-
-    /// Get the length of the memory block
-    pub fn len(&self) -> usize {
-        self.1 as usize
-    }
-
-    /// Returns `true` when the handle length is 0
-    pub fn is_empty(&self) -> bool {
-        self.1 == 0
-    }
-
-    /// Get the offset to this block in Extism memory
-    pub fn offset(&self) -> u64 {
-        self.0
-    }
-}
-
-impl From<MemoryHandle> for Val {
-    fn from(m: MemoryHandle) -> Self {
-        Val::I64(m.0 as i64)
-    }
-}
-
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
 /// only be accessed from inside a host function
 pub struct CurrentPlugin {
@@ -94,6 +58,70 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
         }
 
         Ok(true)
+    }
+}
+
+impl ExtismMemory for CurrentPlugin {
+    fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
+        let (linker, mut store) = self.linker_and_store();
+        let mem = linker
+            .get(&mut store, "env", "memory")
+            .unwrap()
+            .into_memory()
+            .unwrap();
+        let ptr = unsafe { mem.data_ptr(&store).add(handle.offset() as usize) };
+        if ptr.is_null() {
+            return Ok(&mut []);
+        }
+        Ok(unsafe { std::slice::from_raw_parts_mut(ptr, handle.len()) })
+    }
+
+    fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
+        let (linker, mut store) = self.linker_and_store();
+        let output = &mut [Val::I64(0)];
+        if let Some(f) = linker.get(&mut store, "env", "extism_alloc") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(n as i64)], output)?;
+        } else {
+            anyhow::bail!("Unable to allocate memory");
+        }
+        let offs = output[0].unwrap_i64() as u64;
+        if offs == 0 {
+            anyhow::bail!("out of memory")
+        }
+        trace!("memory_alloc: {}, {}", offs, n);
+        Ok(MemoryHandle {
+            offset: offs,
+            length: n,
+        })
+    }
+
+    /// Free a block of Extism plugin memory
+    fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error> {
+        let (linker, mut store) = self.linker_and_store();
+        linker
+            .get(&mut store, "env", "extism_free")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut store, &[Val::I64(handle.offset as i64)], &mut [])?;
+        Ok(())
+    }
+
+    fn memory_length(&mut self, offs: u64) -> u64 {
+        let (linker, mut store) = self.linker_and_store();
+        let output = &mut [Val::I64(0)];
+        linker
+            .get(&mut store, "env", "extism_length")
+            .unwrap()
+            .into_func()
+            .unwrap()
+            .call(&mut store, &[Val::I64(offs as i64)], output)
+            .unwrap();
+        let len = output[0].unwrap_i64() as u64;
+        trace!("memory_length: {}, {}", offs, len);
+        len
     }
 }
 
@@ -172,7 +200,7 @@ impl CurrentPlugin {
     }
 
     /// Get a pointer to the plugin memory
-    pub fn memory_ptr(&mut self) -> *mut u8 {
+    pub(crate) fn memory_ptr(&mut self) -> *mut u8 {
         let (linker, mut store) = self.linker_and_store();
         if let Some(mem) = linker.get(&mut store, "env", "memory") {
             if let Some(mem) = mem.into_memory() {
@@ -183,120 +211,29 @@ impl CurrentPlugin {
         std::ptr::null_mut()
     }
 
-    /// Get a slice that contains the entire plugin memory
-    pub fn memory(&mut self) -> &mut [u8] {
-        let (linker, mut store) = self.linker_and_store();
-        let mem = linker
-            .get(&mut store, "env", "memory")
-            .unwrap()
-            .into_memory()
-            .unwrap();
-        let ptr = mem.data_ptr(&store);
-        if ptr.is_null() {
-            return &mut [];
-        }
-        let size = mem.data_size(&store);
-        unsafe { std::slice::from_raw_parts_mut(ptr, size) }
-    }
-
-    /// Read a section of Extism plugin memory
-    pub fn memory_read(&mut self, handle: MemoryHandle) -> &[u8] {
-        trace!("memory_read: {}, {}", handle.0, handle.1);
-        let offs = handle.0 as usize;
-        let len = handle.1 as usize;
-        let mem = self.memory();
-        &mem[offs..offs + len]
-    }
-
-    /// Read a section of Extism plugin memory and convert to to an `str`
-    pub fn memory_read_str(&mut self, handle: MemoryHandle) -> Result<&str, std::str::Utf8Error> {
-        std::str::from_utf8(self.memory_read(handle))
-    }
-
-    /// Write data to an offset in Extism plugin memory
-    pub fn memory_write(&mut self, handle: MemoryHandle, bytes: impl AsRef<[u8]>) {
-        trace!("memory_write: {}", handle.0);
-        let b = bytes.as_ref();
-        let offs = handle.0 as usize;
-        let len = b.len();
-        self.memory()[offs..offs + len.min(handle.len())].copy_from_slice(bytes.as_ref());
-    }
-
-    /// Allocate a new block of Extism plugin memory
-    pub fn memory_alloc(&mut self, n: Size) -> Result<MemoryHandle, Error> {
-        let (linker, mut store) = self.linker_and_store();
-        let output = &mut [Val::I64(0)];
-        if let Some(f) = linker.get(&mut store, "env", "extism_alloc") {
-            f.into_func()
-                .unwrap()
-                .call(&mut store, &[Val::I64(n as i64)], output)?;
-        } else {
-            anyhow::bail!("Unable to allocate memory");
-        }
-        let offs = output[0].unwrap_i64() as u64;
-        if offs == 0 {
-            anyhow::bail!("out of memory")
-        }
-        trace!("memory_alloc: {}, {}", offs, n);
-        Ok(MemoryHandle(offs, n))
-    }
-
-    /// Allocate a new block in Extism plugin memory and fill it will the provided bytes
-    pub fn memory_alloc_bytes(&mut self, bytes: impl AsRef<[u8]>) -> Result<MemoryHandle, Error> {
-        let b = bytes.as_ref();
-        let offs = self.memory_alloc(b.len() as Size)?;
-        self.memory_write(offs, b);
-        Ok(offs)
-    }
-
-    /// Free a block of Extism plugin memory
-    pub fn memory_free(&mut self, handle: MemoryHandle) {
-        let (linker, mut store) = self.linker_and_store();
-        linker
-            .get(&mut store, "env", "extism_free")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(handle.0 as i64)], &mut [])
-            .unwrap();
-    }
-
-    /// Get a `MemoryHandle` from an offset
-    pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
-        if offs == 0 {
-            return None;
-        }
-        let length = self.memory_length(offs);
-        if length == 0 {
-            return None;
-        }
-        Some(MemoryHandle(offs, length))
-    }
-
     /// Get a `MemoryHandle` from a `Val` reference - this can be used to convert a host function's
     /// argument directly to `MemoryHandle`
-    pub fn memory_handle_val(&mut self, offs: &Val) -> Option<MemoryHandle> {
+    pub fn memory_from_val(&mut self, offs: &Val) -> Option<MemoryHandle> {
         let offs = offs.i64()? as u64;
         let length = self.memory_length(offs);
         if length == 0 {
             return None;
         }
-        Some(MemoryHandle(offs, length))
+        Some(MemoryHandle {
+            offset: offs,
+            length,
+        })
     }
 
-    pub(crate) fn memory_length(&mut self, offs: u64) -> u64 {
-        let (linker, mut store) = self.linker_and_store();
-        let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, "env", "extism_length")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(offs as i64)], output)
-            .unwrap();
-        let len = output[0].unwrap_i64() as u64;
-        trace!("memory_length: {}, {}", offs, len);
-        len
+    /// Get a `MemoryHandle` from a `Val` reference - this can be used to convert a host function's
+    /// argument directly to `MemoryHandle`
+    pub fn memory_to_val(&mut self, handle: MemoryHandle) -> Val {
+        Val::I64(handle.offset() as i64)
+    }
+
+    /// Get `ExtismMemory` handle
+    pub fn memory(&mut self) -> &mut impl ExtismMemory {
+        self
     }
 
     /// Clear the current plugin error
@@ -332,8 +269,10 @@ impl CurrentPlugin {
             return None;
         }
 
-        let data = self.memory_read(MemoryHandle(offs, length));
-        let s = std::str::from_utf8(data);
+        let s = self.memory_str(MemoryHandle {
+            offset: offs,
+            length,
+        });
         match s {
             Ok(s) => Some(s),
             Err(_) => None,

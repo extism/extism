@@ -1,7 +1,102 @@
 //! The `extism-convert` crate is used by the SDK and PDK to provide a shared interface for
 //! encoding and decoding values that can be passed to Extism function calls.
+//!
+//! A set of types (Json, Msgpack) that can be used to specify a serde encoding are also provided. These are
+//! similar to [axum extractors](https://docs.rs/axum/latest/axum/extract/index.html#intro) - they are
+//! implemented as a tuple struct with a single field that is meant to be extracted using pattern matching.
 
 pub use anyhow::Error;
+
+/// `ExtismMemory` is a trait implemented by all types that have access to the Extism allocator
+pub trait ExtismMemory {
+    /// Allocate a new handle
+    fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error>;
+
+    /// Free a handle
+    fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error>;
+
+    /// Access memory bytes
+    fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error>;
+
+    /// Get the length for a given offset, or 0 if not found
+    fn memory_length(&mut self, offs: u64) -> u64;
+
+    /// Get a `MemoryHandle` from a memory offset
+    fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
+        let len = self.memory_length(offs);
+        if len == 0 {
+            return None;
+        }
+
+        Some(MemoryHandle {
+            offset: offs,
+            length: len,
+        })
+    }
+
+    /// Access memory bytes as `str`
+    fn memory_str(&mut self, handle: MemoryHandle) -> Result<&mut str, Error> {
+        let bytes = self.memory_bytes(handle)?;
+        let s = std::str::from_utf8_mut(bytes)?;
+        Ok(s)
+    }
+
+    /// Allocate a handle large enough for the encoded Rust type and copy it into Extism memory
+    fn alloc<'a, T: ToBytes<'a>>(&mut self, t: T) -> Result<MemoryHandle, Error> {
+        let data = t.to_bytes()?;
+        let data = data.as_ref();
+        let handle = self.memory_alloc(data.len() as u64)?;
+        let bytes = self.memory_bytes(handle)?;
+        bytes.copy_from_slice(data.as_ref());
+        Ok(handle)
+    }
+
+    /// Decode a Rust type from Extism memory
+    fn get<'a, T: FromBytes<'a>>(&'a mut self, handle: MemoryHandle) -> Result<T, Error> {
+        let data = self.memory_bytes(handle)?;
+        T::from_bytes(data)
+    }
+}
+
+/// `MemoryHandle` describes where in memory a block of data is stored
+#[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
+pub struct MemoryHandle {
+    pub offset: u64,
+    pub length: u64,
+}
+
+impl MemoryHandle {
+    /// Create a new `MemoryHandle` from an offset in memory and length
+    ///
+    /// # Safety
+    /// This function is unsafe because the specified memory region may not be valid.
+    pub unsafe fn new(offset: u64, length: u64) -> MemoryHandle {
+        MemoryHandle { offset, length }
+    }
+
+    /// `NULL` equivalent
+    pub fn null() -> MemoryHandle {
+        MemoryHandle {
+            offset: 0,
+            length: 0,
+        }
+    }
+
+    /// Get the offset of a memory handle
+    pub fn offset(&self) -> u64 {
+        self.offset
+    }
+
+    /// Get the length of the memory region
+    pub fn len(&self) -> usize {
+        self.length as usize
+    }
+
+    /// Returns `true` when the length is 0
+    pub fn is_empty(&self) -> bool {
+        self.length == 0
+    }
+}
 
 /// `ToBytes` is used to define how a type should be encoded when working with
 /// Extism memory. It is used for plugin input and host function output.
@@ -10,7 +105,7 @@ pub trait ToBytes<'a> {
     type Bytes: AsRef<[u8]>;
 
     /// `to_bytes` converts a value into `Self::Bytes`
-    fn to_bytes(&'a self) -> Result<Self::Bytes, Error>;
+    fn to_bytes(&self) -> Result<Self::Bytes, Error>;
 }
 
 /// `FromBytes` is used to define how a type should be decoded when working with
@@ -20,31 +115,47 @@ pub trait FromBytes<'a>: Sized {
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error>;
 }
 
-impl<'a> ToBytes<'a> for Vec<u8> {
+impl<'a> ToBytes<'a> for &'a Vec<u8> {
     type Bytes = &'a [u8];
-    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self.as_slice())
     }
 }
 
 impl<'a> ToBytes<'a> for &'a [u8] {
     type Bytes = &'a [u8];
-    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self)
     }
 }
 
 impl<'a> ToBytes<'a> for &'a str {
     type Bytes = &'a str;
-    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self)
     }
 }
 
-impl<'a> ToBytes<'a> for String {
+impl<'a> ToBytes<'a> for &'a String {
     type Bytes = &'a str;
-    fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self)
+    }
+}
+
+impl<'a> ToBytes<'a> for f64 {
+    type Bytes = [u8; 8];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.to_le_bytes())
+    }
+}
+
+impl<'a> ToBytes<'a> for f32 {
+    type Bytes = [u8; 4];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.to_le_bytes())
     }
 }
 
@@ -72,22 +183,35 @@ impl<'a> FromBytes<'a> for String {
     }
 }
 
+impl<'a> FromBytes<'a> for f64 {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        Ok(Self::from_le_bytes(data.try_into()?))
+    }
+}
+
+impl<'a> FromBytes<'a> for f32 {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        Ok(Self::from_le_bytes(data.try_into()?))
+    }
+}
+
 #[macro_export]
 macro_rules! encoding {
     ($name:ident, $to_vec:expr, $from_slice:expr) => {
+        #[doc = concat!(stringify!($name), " encoding")]
         pub struct $name<T>(pub T);
 
         impl<'a, T: serde::Deserialize<'a>> FromBytes<'a> for $name<T> {
             fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
                 let x = $from_slice(data)?;
-                Ok(Json(x))
+                Ok($name(x))
             }
         }
 
         impl<'a, T: serde::Serialize> ToBytes<'a> for $name<T> {
             type Bytes = Vec<u8>;
 
-            fn to_bytes(&'a self) -> Result<Self::Bytes, Error> {
+            fn to_bytes(&self) -> Result<Self::Bytes, Error> {
                 let enc = $to_vec(&self.0)?;
                 Ok(enc)
             }
