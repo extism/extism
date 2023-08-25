@@ -1,6 +1,7 @@
 #include "../extism.hpp"
 
 #include <fstream>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -74,6 +75,38 @@ TEST(Plugin, HostFunction) {
   auto buf = plugin.call("count_vowels", "aaa");
   ASSERT_EQ(buf.length, 4);
   ASSERT_EQ((std::string)buf, "test");
+}
+
+void callThread(Plugin *plugin) {
+  auto buf = plugin->call("count_vowels", "aaa").string();
+  ASSERT_EQ(buf.size(), 10);
+  ASSERT_EQ(buf, "testing123");
+}
+
+TEST(Plugin, MultipleThreads) {
+  auto wasm = read("../../wasm/code-functions.wasm");
+  auto t = std::vector<ValType>{ValType::I64};
+  Function hello_world =
+      Function("hello_world", t, t,
+               [](CurrentPlugin plugin, const std::vector<Val> &params,
+                  std::vector<Val> &results, void *user_data) {
+                 auto offs = plugin.alloc(10);
+                 memcpy(plugin.memory() + offs, "testing123", 10);
+                 results[0].v.i64 = (int64_t)offs;
+               });
+  auto functions = std::vector<Function>{
+      hello_world,
+  };
+  Plugin plugin(wasm, true, functions);
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 3; i++) {
+    threads.push_back(std::thread(callThread, &plugin));
+  }
+
+  for (auto &th : threads) {
+    th.join();
+  }
 }
 
 }; // namespace
