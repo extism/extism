@@ -209,7 +209,7 @@ pub(crate) fn http_request(
                 Some(h) => h,
                 None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
             };
-            let buf: &[u8] = data.get(handle)?;
+            let buf: &[u8] = data.memory_get(handle)?;
             r.send_bytes(buf)
         } else {
             r.call()

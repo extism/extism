@@ -7,57 +7,6 @@
 
 pub use anyhow::Error;
 
-/// `ExtismMemory` is a trait implemented by all types that have access to the Extism allocator
-pub trait ExtismMemory {
-    /// Allocate a new handle
-    fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error>;
-
-    /// Free a handle
-    fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error>;
-
-    /// Access memory bytes
-    fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error>;
-
-    /// Get the length for a given offset, or 0 if not found
-    fn memory_length(&mut self, offs: u64) -> u64;
-
-    /// Get a `MemoryHandle` from a memory offset
-    fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
-        let len = self.memory_length(offs);
-        if len == 0 {
-            return None;
-        }
-
-        Some(MemoryHandle {
-            offset: offs,
-            length: len,
-        })
-    }
-
-    /// Access memory bytes as `str`
-    fn memory_str(&mut self, handle: MemoryHandle) -> Result<&mut str, Error> {
-        let bytes = self.memory_bytes(handle)?;
-        let s = std::str::from_utf8_mut(bytes)?;
-        Ok(s)
-    }
-
-    /// Allocate a handle large enough for the encoded Rust type and copy it into Extism memory
-    fn alloc<'a, T: ToBytes<'a>>(&mut self, t: T) -> Result<MemoryHandle, Error> {
-        let data = t.to_bytes()?;
-        let data = data.as_ref();
-        let handle = self.memory_alloc(data.len() as u64)?;
-        let bytes = self.memory_bytes(handle)?;
-        bytes.copy_from_slice(data.as_ref());
-        Ok(handle)
-    }
-
-    /// Decode a Rust type from Extism memory
-    fn get<'a, T: FromBytes<'a>>(&'a mut self, handle: MemoryHandle) -> Result<T, Error> {
-        let data = self.memory_bytes(handle)?;
-        T::from_bytes(data)
-    }
-}
-
 /// `MemoryHandle` describes where in memory a block of data is stored
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct MemoryHandle {

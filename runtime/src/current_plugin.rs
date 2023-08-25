@@ -61,8 +61,47 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
     }
 }
 
-impl ExtismMemory for CurrentPlugin {
-    fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
+impl CurrentPlugin {
+    /// Get a `MemoryHandle` from a memory offset
+    pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
+        let len = self.memory_length(offs);
+        if len == 0 {
+            return None;
+        }
+
+        Some(MemoryHandle {
+            offset: offs,
+            length: len,
+        })
+    }
+
+    /// Access memory bytes as `str`
+    pub fn memory_str(&mut self, handle: MemoryHandle) -> Result<&mut str, Error> {
+        let bytes = self.memory_bytes(handle)?;
+        let s = std::str::from_utf8_mut(bytes)?;
+        Ok(s)
+    }
+
+    /// Allocate a handle large enough for the encoded Rust type and copy it into Extism memory
+    pub fn alloc<'a, T: ToBytes<'a>>(&mut self, t: T) -> Result<MemoryHandle, Error> {
+        let data = t.to_bytes()?;
+        let data = data.as_ref();
+        let handle = self.memory_alloc(data.len() as u64)?;
+        let bytes = self.memory_bytes(handle)?;
+        bytes.copy_from_slice(data.as_ref());
+        Ok(handle)
+    }
+
+    /// Decode a Rust type from Extism memory
+    pub fn memory_get<'a, T: FromBytes<'a>>(
+        &'a mut self,
+        handle: MemoryHandle,
+    ) -> Result<T, Error> {
+        let data = self.memory_bytes(handle)?;
+        T::from_bytes(data)
+    }
+
+    pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
         let (linker, mut store) = self.linker_and_store();
         let mem = linker
             .get(&mut store, "env", "memory")
@@ -76,7 +115,7 @@ impl ExtismMemory for CurrentPlugin {
         Ok(unsafe { std::slice::from_raw_parts_mut(ptr, handle.len()) })
     }
 
-    fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
+    pub fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         if let Some(f) = linker.get(&mut store, "env", "extism_alloc") {
@@ -98,7 +137,7 @@ impl ExtismMemory for CurrentPlugin {
     }
 
     /// Free a block of Extism plugin memory
-    fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error> {
+    pub fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error> {
         let (linker, mut store) = self.linker_and_store();
         linker
             .get(&mut store, "env", "extism_free")
@@ -109,7 +148,7 @@ impl ExtismMemory for CurrentPlugin {
         Ok(())
     }
 
-    fn memory_length(&mut self, offs: u64) -> u64 {
+    pub fn memory_length(&mut self, offs: u64) -> u64 {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         linker
@@ -123,9 +162,7 @@ impl ExtismMemory for CurrentPlugin {
         trace!("memory_length: {}, {}", offs, len);
         len
     }
-}
 
-impl CurrentPlugin {
     /// Access a plugin's variables
     pub fn vars(&self) -> &std::collections::BTreeMap<String, Vec<u8>> {
         &self.vars
@@ -229,11 +266,6 @@ impl CurrentPlugin {
     /// argument directly to `MemoryHandle`
     pub fn memory_to_val(&mut self, handle: MemoryHandle) -> Val {
         Val::I64(handle.offset() as i64)
-    }
-
-    /// Get `ExtismMemory` handle
-    pub fn memory(&mut self) -> &mut impl ExtismMemory {
-        self
     }
 
     /// Clear the current plugin error
