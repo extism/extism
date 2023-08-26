@@ -69,7 +69,7 @@ impl PluginBuilder {
     }
 
     /// Generate a new plugin with the configured settings
-    pub fn build<'a>(self) -> Result<Plugin, Error> {
+    pub fn build(self) -> Result<Plugin, Error> {
         match self.source {
             Source::Manifest(m) => Plugin::new_with_manifest(&m, self.functions, self.wasi),
             Source::Data(d) => Plugin::new(d, self.functions, self.wasi),

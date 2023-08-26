@@ -239,7 +239,7 @@ fn test_globals() {
     let mut plugin = Plugin::new(WASM_GLOBALS, [], true).unwrap();
     for i in 0..1000 {
         let output = plugin.call("globals", "").unwrap();
-        let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
+        let count: serde_json::Value = serde_json::from_slice(output).unwrap();
         assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
     }
 }

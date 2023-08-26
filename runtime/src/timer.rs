@@ -39,12 +39,12 @@ impl Timer {
         };
 
         let timer = &mut *timer;
-        let tx = match timer {
+        
+
+        match timer {
             None => Timer::init(timer),
             Some(t) => t.tx.clone(),
-        };
-
-        tx
+        }
     }
 
     pub fn init(timer: &mut Option<Timer>) -> std::sync::mpsc::Sender<TimerAction> {

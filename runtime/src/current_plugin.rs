@@ -6,6 +6,10 @@ pub struct MemoryHandle(u64, u64);
 impl MemoryHandle {
     /// Create a new memory handle, this is unsafe because the values are provided by the user
     /// and may not be a valid handle
+    ///
+    /// # Safety
+    /// This function is unsafe because there is no validation that the offset or
+    /// length of the handle is correct
     pub unsafe fn new(offs: u64, len: u64) -> MemoryHandle {
         MemoryHandle(offs, len)
     }
@@ -13,6 +17,11 @@ impl MemoryHandle {
     /// Get the length of the memory block
     pub fn len(&self) -> usize {
         self.1 as usize
+    }
+
+    /// Returns `true` when the handle length is 0
+    pub fn is_empty(&self) -> bool {
+        self.1 == 0
     }
 
     /// Get the offset to this block in Extism memory

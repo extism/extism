@@ -172,7 +172,7 @@ impl Plugin {
 
     /// Create a new plugin from the given WebAssembly module or JSON encoded manifest, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
-    pub fn new<'a>(
+    pub fn new(
         wasm: impl AsRef<[u8]>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
@@ -275,7 +275,7 @@ impl Plugin {
             })?;
         }
 
-        let instance_pre = linker.instantiate_pre(&main)?;
+        let instance_pre = linker.instantiate_pre(main)?;
         let id = uuid::Uuid::new_v4();
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
@@ -287,10 +287,7 @@ impl Plugin {
             runtime: None,
             id,
             timer_tx: timer_tx.clone(),
-            cancel_handle: sdk::ExtismCancelHandle {
-                id: id.clone(),
-                timer_tx,
-            },
+            cancel_handle: sdk::ExtismCancelHandle { id, timer_tx },
             instantiations: 0,
             output: Output::default(),
             _functions: imports.collect(),
@@ -341,7 +338,7 @@ impl Plugin {
                 }
             }
             self.instantiations = 0;
-            self.instance_pre = self.linker.instantiate_pre(&main)?;
+            self.instance_pre = self.linker.instantiate_pre(main)?;
 
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
@@ -612,7 +609,7 @@ impl Plugin {
         // Start timer
         self.timer_tx
             .send(TimerAction::Start {
-                id: self.id.clone(),
+                id: self.id,
                 engine: self.store.engine().clone(),
                 duration: self
                     .current_plugin()
@@ -629,9 +626,7 @@ impl Plugin {
 
         // Stop timer
         self.timer_tx
-            .send(TimerAction::Stop {
-                id: self.id.clone(),
-            })
+            .send(TimerAction::Stop { id: self.id })
             .unwrap();
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
