@@ -39,7 +39,6 @@ impl Timer {
         };
 
         let timer = &mut *timer;
-        
 
         match timer {
             None => Timer::init(timer),
