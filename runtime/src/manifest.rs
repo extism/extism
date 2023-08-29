@@ -6,11 +6,6 @@ use sha2::Digest;
 
 use crate::*;
 
-/// Manifest wraps the manifest exported by `extism_manifest`
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
-#[serde(transparent)]
-pub struct Manifest(extism_manifest::Manifest);
-
 fn hex(data: &[u8]) -> String {
     let mut s = String::new();
     for &byte in data {

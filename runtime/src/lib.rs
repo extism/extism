@@ -32,7 +32,8 @@ mod tests;
 
 pub(crate) const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
 
-/// Returns a string containing the Extism version of the current runtime
+/// Returns a string containing the Extism version of the current runtime, this is the same as the Cargo package
+/// version
 pub fn extism_version() -> &'static str {
     VERSION
 }
