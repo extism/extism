@@ -1,7 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
 const sdk = @import("extism");
-const Context = sdk.Context;
 const Plugin = sdk.Plugin;
 const CurrentPlugin = sdk.CurrentPlugin;
 const Function = sdk.Function;
@@ -26,9 +25,6 @@ test "Single threaded tests" {
     var wasm_start = try std.time.Timer.start();
     _ = sdk.setLogFile("test.log", .Debug);
 
-    var ctx = Context.init();
-    defer ctx.deinit();
-
     var f = Function.init(
         "hello_world",
         &[_]sdk.c.ExtismValType{sdk.c.I64},
@@ -38,7 +34,7 @@ test "Single threaded tests" {
     );
     defer f.deinit();
 
-    var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, man, &[_]Function{f}, true);
+    var plugin = try Plugin.initFromManifest(testing.allocator, man, &[_]Function{f}, true);
     defer plugin.deinit();
 
     std.debug.print("\nregister loaded plugin: {}\n", .{std.fmt.fmtDuration(wasm_start.read())});
@@ -78,8 +74,6 @@ test "Single threaded tests" {
 test "Multi threaded tests" {
     const S = struct {
         fn _test() !void {
-            var ctx = Context.init();
-            defer ctx.deinit();
             var f = Function.init(
                 "hello_world",
                 &[_]sdk.c.ExtismValType{sdk.c.I64},
@@ -88,7 +82,7 @@ test "Multi threaded tests" {
                 @constCast(@as(*const anyopaque, @ptrCast("user data"))),
             );
             defer f.deinit();
-            var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, man, &[_]Function{f}, true);
+            var plugin = try Plugin.initFromManifest(testing.allocator, man, &[_]Function{f}, true);
             defer plugin.deinit();
             const output = try plugin.call("count_vowels", "this is a test");
             std.debug.print("{s}\n", .{output});
@@ -99,8 +93,6 @@ test "Multi threaded tests" {
     t1.join();
     t2.join();
     _ = sdk.setLogFile("test.log", .Debug);
-    var ctx = Context.init();
-    defer ctx.deinit();
 
     var f = Function.init(
         "hello_world",
@@ -111,7 +103,7 @@ test "Multi threaded tests" {
     );
     defer f.deinit();
 
-    var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, man, &[_]Function{f}, true);
+    var plugin = try Plugin.initFromManifest(testing.allocator, man, &[_]Function{f}, true);
     defer plugin.deinit();
 
     const output = try plugin.call("count_vowels", "this is a test");
@@ -121,8 +113,6 @@ test "Multi threaded tests" {
 test "Plugin Cancellation" {
     const loop_manifest = manifest.WasmFile{ .path = "../wasm/loop.wasm" };
     const loop_man = .{ .wasm = &[_]manifest.Wasm{.{ .wasm_file = loop_manifest }} };
-    var ctx = Context.init();
-    defer ctx.deinit();
     _ = sdk.setLogFile("test.log", .Debug);
     var f = Function.init(
         "hello_world",
@@ -133,7 +123,7 @@ test "Plugin Cancellation" {
     );
     defer f.deinit();
 
-    var plugin = try Plugin.initFromManifest(testing.allocator, &ctx, loop_man, &[_]Function{f}, true);
+    var plugin = try Plugin.initFromManifest(testing.allocator, loop_man, &[_]Function{f}, true);
     defer plugin.deinit();
     var handle = plugin.cancelHandle();
     const S = struct {

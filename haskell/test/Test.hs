@@ -1,35 +1,33 @@
 import Test.HUnit
 import Extism
 import Extism.Manifest
-import Extism.CurrentPlugin
+import Extism.HostFunction
 
 
-unwrap (Right x) = return x
-unwrap (Left (ExtismError msg)) =
+assertUnwrap (Right x) = return x
+assertUnwrap (Left (ExtismError msg)) =
   assertFailure msg
 
 defaultManifest = manifest [wasmFile "../../wasm/code.wasm"]
 hostFunctionManifest = manifest [wasmFile "../../wasm/code-functions.wasm"]
 
-initPlugin :: Maybe Context -> IO Plugin
-initPlugin Nothing =
-  Extism.createPluginFromManifest defaultManifest [] False >>= unwrap
-initPlugin (Just ctx) =
-  Extism.pluginFromManifest ctx defaultManifest [] False >>= unwrap
+initPlugin :: IO Plugin
+initPlugin =
+  Extism.pluginFromManifest defaultManifest [] False >>= assertUnwrap
 
 pluginFunctionExists = do
-  p <- initPlugin Nothing
+  p <- initPlugin 
   exists <- functionExists p "count_vowels"
   assertBool "function exists" exists
   exists' <- functionExists p "function_doesnt_exist"
   assertBool "function doesn't exist" (not exists')
 
 checkCallResult p = do
-  res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
+  res <- call p "count_vowels" (toByteString "this is a test") >>= assertUnwrap
   assertEqual "count vowels output" "{\"count\": 4}" (fromByteString res)
 
 pluginCall = do
-  p <- initPlugin Nothing
+  p <- initPlugin 
   checkCallResult p
 
 
@@ -39,33 +37,25 @@ hello plugin params () = do
   return [toI64 offs]
 
 pluginCallHostFunction = do
-  p <- Extism.createPluginFromManifest hostFunctionManifest [] False >>= unwrap
-  res <- call p "count_vowels" (toByteString "this is a test") >>= unwrap
+  p <- Extism.pluginFromManifest hostFunctionManifest [] False >>= assertUnwrap
+  res <- call p "count_vowels" (toByteString "this is a test") >>= assertUnwrap
   assertEqual "count vowels output" "{\"count\": 999}" (fromByteString res)
 
 pluginMultiple = do
-  withContext(\ctx -> do
-    p <- initPlugin (Just ctx)
+    p <- initPlugin
     checkCallResult p
-    q <- initPlugin (Just ctx)
-    r <- initPlugin (Just ctx)
+    q <- initPlugin
+    r <- initPlugin
     checkCallResult q
-    checkCallResult r)
-
-pluginUpdate = do
-  withContext (\ctx -> do
-    p <- initPlugin (Just ctx)
-    updateManifest p defaultManifest [] True >>= unwrap
-    checkCallResult p)
+    checkCallResult r
 
 pluginConfig = do
-  withContext (\ctx -> do
-    p <- initPlugin (Just ctx)
-    b <- setConfig p [("a", Just "1"), ("b", Just "2"), ("c", Just "3"), ("d", Nothing)]
-    assertBool "set config" b)
+  p <- initPlugin
+  b <- setConfig p [("a", Just "1"), ("b", Just "2"), ("c", Just "3"), ("d", Nothing)]
+  assertBool "set config" b
 
 testSetLogFile = do
-  b <- setLogFile "stderr" Extism.Error
+  b <- setLogFile "stderr" Extism.LogError
   assertBool "set log file" b
 
 t name f = TestLabel name (TestCase f)
@@ -77,7 +67,6 @@ main = do
       , t "Plugin.Call" pluginCall
       , t "Plugin.CallHostFunction" pluginCallHostFunction
       , t "Plugin.Multiple" pluginMultiple
-      , t "Plugin.Update" pluginUpdate
       , t "Plugin.Config" pluginConfig
       , t "SetLogFile" testSetLogFile
     ])

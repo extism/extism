@@ -25,6 +25,7 @@ def count_vowels(data):
 
 
 def main(args):
+    set_log_file("stderr", "trace")
     if len(args) > 1:
         data = args[1].encode()
     else:
@@ -47,6 +48,7 @@ def main(args):
         )
     ]
     plugin = Plugin(manifest, wasi=True, functions=functions)
+    print(plugin.id)
     # Call `count_vowels`
     wasm_vowel_count = plugin.call("count_vowels", data)
     print(wasm_vowel_count)

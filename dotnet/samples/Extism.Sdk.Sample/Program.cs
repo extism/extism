@@ -4,8 +4,6 @@ using Extism.Sdk.Native;
 using System.Runtime.InteropServices;
 using System.Text;
 
-var context = new Context();
-
 var userData = Marshal.StringToHGlobalAnsi("Hello again!");
 
 using var helloWorld = new HostFunction(
@@ -30,7 +28,7 @@ void HelloWorld(CurrentPlugin plugin, Span<ExtismVal> inputs, Span<ExtismVal> ou
 }
 
 var wasm = File.ReadAllBytes("./code-functions.wasm");
-using var plugin = context.CreatePlugin(wasm, new[] { helloWorld }, withWasi: true);
+using var plugin = new Plugin(wasm, new[] { helloWorld }, withWasi: true);
 
 var output = Encoding.UTF8.GetString(
     plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World!"))

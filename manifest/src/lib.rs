@@ -240,8 +240,19 @@ impl Manifest {
     }
 
     /// Set `config`
-    pub fn with_config(mut self, c: impl Iterator<Item = (String, String)>) -> Self {
-        self.config = c.collect();
+    pub fn with_config(
+        mut self,
+        c: impl Iterator<Item = (impl Into<String>, impl Into<String>)>,
+    ) -> Self {
+        for (k, v) in c {
+            self.config.insert(k.into(), v.into());
+        }
+        self
+    }
+
+    /// Set a single `config` key
+    pub fn with_config_key(mut self, k: impl Into<String>, v: impl Into<String>) -> Self {
+        self.config.insert(k.into(), v.into());
         self
     }
 

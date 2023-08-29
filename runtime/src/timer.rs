@@ -16,18 +16,38 @@ pub(crate) enum TimerAction {
 }
 
 pub(crate) struct Timer {
-    pub tx: std::sync::mpsc::SyncSender<TimerAction>,
+    pub tx: std::sync::mpsc::Sender<TimerAction>,
     pub thread: Option<std::thread::JoinHandle<()>>,
 }
 
 #[cfg(not(target_family = "windows"))]
 extern "C" fn cleanup_timer() {
-    drop(Context::timer().take())
+    let mut timer = match unsafe { TIMER.lock() } {
+        Ok(x) => x,
+        Err(e) => e.into_inner(),
+    };
+    drop(timer.take());
 }
 
+static mut TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
+
 impl Timer {
-    pub fn init(timer: &mut Option<Timer>) -> std::sync::mpsc::SyncSender<TimerAction> {
-        let (tx, rx) = std::sync::mpsc::sync_channel(128);
+    pub(crate) fn tx() -> std::sync::mpsc::Sender<TimerAction> {
+        let mut timer = match unsafe { TIMER.lock() } {
+            Ok(x) => x,
+            Err(e) => e.into_inner(),
+        };
+
+        let timer = &mut *timer;
+
+        match timer {
+            None => Timer::init(timer),
+            Some(t) => t.tx.clone(),
+        }
+    }
+
+    pub fn init(timer: &mut Option<Timer>) -> std::sync::mpsc::Sender<TimerAction> {
+        let (tx, rx) = std::sync::mpsc::channel();
         let thread = std::thread::spawn(move || {
             let mut plugins = std::collections::BTreeMap::new();
 

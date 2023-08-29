@@ -1,6 +1,7 @@
 #include "../extism.hpp"
 
 #include <fstream>
+#include <thread>
 
 #include <gtest/gtest.h>
 
@@ -15,16 +16,10 @@ const std::string code = "../../wasm/code.wasm";
 namespace {
 using namespace extism;
 
-TEST(Context, Basic) {
-  Context context;
-  ASSERT_NE(context.pointer, nullptr);
-}
-
 TEST(Plugin, Manifest) {
   Manifest manifest = Manifest::path(code);
   manifest.set_config("a", "1");
 
-  ASSERT_NO_THROW(Plugin plugin(manifest));
   Plugin plugin(manifest);
 
   Buffer buf = plugin.call("count_vowels", "this is a test");
@@ -37,19 +32,17 @@ TEST(Plugin, BadManifest) {
 }
 
 TEST(Plugin, Bytes) {
-  Context context;
   auto wasm = read(code.c_str());
-  ASSERT_NO_THROW(Plugin plugin = context.plugin(wasm));
-  Plugin plugin = context.plugin(wasm);
+  ASSERT_NO_THROW(Plugin plugin(wasm));
+  Plugin plugin(wasm);
 
   Buffer buf = plugin.call("count_vowels", "this is another test");
   ASSERT_EQ(buf.string(), "{\"count\": 6}");
 }
 
 TEST(Plugin, UpdateConfig) {
-  Context context;
   auto wasm = read(code.c_str());
-  Plugin plugin = context.plugin(wasm);
+  Plugin plugin(wasm);
 
   Config config;
   config["abc"] = "123";
@@ -57,12 +50,11 @@ TEST(Plugin, UpdateConfig) {
 }
 
 TEST(Plugin, FunctionExists) {
-  Context context;
   auto wasm = read(code.c_str());
-  Plugin plugin = context.plugin(wasm);
+  Plugin plugin(wasm);
 
-  ASSERT_FALSE(plugin.function_exists("bad_function"));
-  ASSERT_TRUE(plugin.function_exists("count_vowels"));
+  ASSERT_FALSE(plugin.functionExists("bad_function"));
+  ASSERT_TRUE(plugin.functionExists("count_vowels"));
 }
 
 TEST(Plugin, HostFunction) {
@@ -83,6 +75,38 @@ TEST(Plugin, HostFunction) {
   auto buf = plugin.call("count_vowels", "aaa");
   ASSERT_EQ(buf.length, 4);
   ASSERT_EQ((std::string)buf, "test");
+}
+
+void callThread(Plugin *plugin) {
+  auto buf = plugin->call("count_vowels", "aaa").string();
+  ASSERT_EQ(buf.size(), 10);
+  ASSERT_EQ(buf, "testing123");
+}
+
+TEST(Plugin, MultipleThreads) {
+  auto wasm = read("../../wasm/code-functions.wasm");
+  auto t = std::vector<ValType>{ValType::I64};
+  Function hello_world =
+      Function("hello_world", t, t,
+               [](CurrentPlugin plugin, const std::vector<Val> &params,
+                  std::vector<Val> &results, void *user_data) {
+                 auto offs = plugin.alloc(10);
+                 memcpy(plugin.memory() + offs, "testing123", 10);
+                 results[0].v.i64 = (int64_t)offs;
+               });
+  auto functions = std::vector<Function>{
+      hello_world,
+  };
+  Plugin plugin(wasm, true, functions);
+
+  std::vector<std::thread> threads;
+  for (int i = 0; i < 3; i++) {
+    threads.push_back(std::thread(callThread, &plugin));
+  }
+
+  for (auto &th : threads) {
+    th.join();
+  }
 }
 
 }; // namespace

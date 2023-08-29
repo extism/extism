@@ -24,20 +24,22 @@ class CancelHandle
 class Plugin
 {
     private $lib;
-    private $context;
 
     private $wasi;
     private $config;
 
-    private $id;
+    private $plugin;
 
-    public function __construct($data, $wasi = false, $config = null, $ctx = null) 
+    public function __construct($data, $wasi = false, $config = null) 
     {
-        if ($ctx == null) {
-          $ctx = new Context();
-        }
 
-        $this->lib = $ctx->lib;
+        global $lib;
+        
+        if ($lib == null) {
+            $lib = new \ExtismLib(\ExtismLib::SOFILE);
+        }
+        
+        $this->lib = $lib;
 
         $this->wasi = $wasi;
         $this->config = $config;
@@ -50,38 +52,32 @@ class Plugin
             $data = string_to_bytes($data);
         }
 
-        $id = $this->lib->extism_plugin_new($ctx->pointer, $data, count($data), null, 0, (int)$wasi);
-        if ($id < 0) {
-            $err = $this->lib->extism_error($ctx->pointer, -1);
-            throw new \Exception("Extism: unable to load plugin: " . $err->toString());
+        // TODO: handle error message
+        $plugin = $this->lib->extism_plugin_new($data, count($data), null, 0, (int)$wasi, null);
+        if ($plugin == null) {
+            throw new \Exception("Extism: unable to load plugin");
         }
-        $this->id = $id;
-        $this->context = $ctx;
+        $this->plugin = $plugin;
 
         if ($this->config != null) {
             $cfg = string_to_bytes(json_encode($config));
-            $this->lib->extism_plugin_config($ctx->pointer, $this->id, $cfg, count($cfg));
+            $this->lib->extism_plugin_config($this->plugin, $cfg, count($cfg));
         }
     }
     
     public function __destruct() {
-        $this->lib->extism_plugin_free($this->context->pointer, $this->id);
-        $this->id = -1;
-    }
-
-    public function getId() {
-        return $this->id;
-    }
-    
+        $this->lib->extism_plugin_free($this->plugin);
+        $this->plugin = null;
+    }    
     
     public function functionExists($name)
     {
-        return $this->lib->extism_plugin_function_exists($this->context->pointer, $this->id, $name);
+        return $this->lib->extism_plugin_function_exists($this->plugin, $name);
     }
 
     public function cancelHandle()
     {
-        return new \CancelHandle($this->lib, $this->lib->extism_plugin_cancel_handle($this->context->pointer, $this->id));
+        return new \CancelHandle($this->lib, $this->lib->extism_plugin_cancel_handle($this->plugin));
     }
 
     public function call($name, $input = null)
@@ -90,19 +86,19 @@ class Plugin
             $input = string_to_bytes($input);
         }
 
-        $rc = $this->lib->extism_plugin_call($this->context->pointer, $this->id, $name, $input, count($input));
+        $rc = $this->lib->extism_plugin_call($this->plugin, $name, $input, count($input));
         if ($rc != 0) {
             $msg = "code = " . $rc;
-            $err = $this->lib->extism_error($this->context->pointer, $this->id);
+            $err = $this->lib->extism_error($this->plugin);
             if ($err) {
                 $msg = $msg . ", error = " . $err->toString();
             }
             throw new \Exception("Extism: call to '".$name."' failed with " . $msg);
         }
 
-        $length = $this->lib->extism_plugin_output_length($this->context->pointer, $this->id);
+        $length = $this->lib->extism_plugin_output_length($this->plugin);
 
-        $buf = $this->lib->extism_plugin_output_data($this->context->pointer, $this->id);
+        $buf = $this->lib->extism_plugin_output_data($this->plugin);
 
         $output = [];
         $data = $buf->getData();
@@ -111,27 +107,6 @@ class Plugin
         }
 
         return $output;
-    }
-
-    public function update($data, $wasi = false, $config = null) {
-        if (gettype($data) == "object" and $data->wasm != null) {
-            $data = json_encode($data);
-        }
-
-        if (gettype($data) == "string") {
-            $data = string_to_bytes($data);
-        }
-
-        $ok = $this->lib->extism_plugin_update($this->context->pointer, $this->id, $data, count($data), null, 0, (int)$wasi);
-        if (!$ok) {
-            $err = $this->lib->extism_error($this->context->pointer, -1);
-            throw new \Exception("Extism: unable to update plugin: " . $err->toString());
-        }
-
-        if ($config != null) {
-            $config = json_encode($config);
-            $this->lib->extism_plugin_config($this->context->pointer, $this->id, $config, strlen($config));
-        }
     }
 }
 

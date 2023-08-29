@@ -1,37 +1,73 @@
-pub use anyhow::Error;
+pub(crate) use std::collections::BTreeMap;
 pub(crate) use wasmtime::*;
 
-mod context;
+pub use anyhow::Error;
+
+mod current_plugin;
 mod function;
 mod internal;
-pub mod manifest;
+pub(crate) mod manifest;
 pub(crate) mod pdk;
 mod plugin;
-mod plugin_ref;
+mod plugin_builder;
 pub mod sdk;
 mod timer;
 
-pub use context::Context;
+pub use current_plugin::{CurrentPlugin, MemoryHandle};
+pub use extism_manifest::Manifest;
 pub use function::{Function, UserData, Val, ValType};
-pub use internal::{Internal, InternalExt, Wasi};
-pub use manifest::Manifest;
 pub use plugin::Plugin;
-pub use plugin_ref::PluginRef;
+pub use plugin_builder::PluginBuilder;
+pub use sdk::ExtismCancelHandle as CancelHandle;
+
+pub(crate) use internal::{Internal, Wasi};
 pub(crate) use timer::{Timer, TimerAction};
 
 pub type Size = u64;
-pub type PluginIndex = i32;
 
 pub(crate) use log::{debug, error, trace};
 
-/// Converts any type implementing `std::fmt::Debug` into a suitable CString to use
-/// as an error message
-pub(crate) fn error_string(e: impl std::fmt::Debug) -> std::ffi::CString {
-    let x = format!("{:?}", e).into_bytes();
-    let x = if x[0] == b'"' && x[x.len() - 1] == b'"' {
-        x[1..x.len() - 1].to_vec()
+#[cfg(test)]
+mod tests;
+
+pub(crate) const VERSION: &str = concat!(env!("CARGO_PKG_VERSION"), "\0");
+
+/// Returns a string containing the Extism version of the current runtime, this is the same as the Cargo package
+/// version
+pub fn extism_version() -> &'static str {
+    VERSION
+}
+
+/// Set the log file Extism will use, this is a global configuration
+pub fn set_log_file(file: impl AsRef<std::path::Path>, level: log::Level) -> Result<(), Error> {
+    use log4rs::append::console::ConsoleAppender;
+    use log4rs::append::file::FileAppender;
+    use log4rs::config::{Appender, Config, Logger, Root};
+    use log4rs::encode::pattern::PatternEncoder;
+    let encoder = Box::new(PatternEncoder::new("{t} {l} {d} - {m}\n"));
+    let file = file.as_ref();
+
+    let logfile: Box<dyn log4rs::append::Append> = if file == std::path::PathBuf::from("stdout") {
+        let target = log4rs::append::console::Target::Stdout;
+        let console = ConsoleAppender::builder().target(target).encoder(encoder);
+        Box::new(console.build())
+    } else if file == std::path::PathBuf::from("-") || file == std::path::PathBuf::from("stderr") {
+        let target = log4rs::append::console::Target::Stderr;
+        let console = ConsoleAppender::builder().target(target).encoder(encoder);
+        Box::new(console.build())
     } else {
-        x
+        Box::new(FileAppender::builder().encoder(encoder).build(file)?)
     };
-    unsafe { std::ffi::CString::from_vec_unchecked(x) }
+
+    let config = Config::builder()
+        .appender(Appender::builder().build("logfile", logfile))
+        .logger(
+            Logger::builder()
+                .appender("logfile")
+                .build("extism", level.to_level_filter()),
+        )
+        .build(Root::builder().build(log::LevelFilter::Off))?;
+
+    log4rs::init_config(config)?;
+    Ok(())
 }

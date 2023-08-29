@@ -1,6 +1,5 @@
-use extism::{Context, Plugin};
+use extism::Plugin;
 use rustler::{Atom, Env, ResourceArc, Term};
-use std::mem;
 use std::path::Path;
 use std::str;
 use std::str::FromStr;
@@ -14,11 +13,11 @@ mod atoms {
     }
 }
 
-struct ExtismContext {
-    ctx: RwLock<Context>,
+struct ExtismPlugin {
+    plugin: RwLock<Option<Plugin>>,
 }
-unsafe impl Sync for ExtismContext {}
-unsafe impl Send for ExtismContext {}
+unsafe impl Sync for ExtismPlugin {}
+unsafe impl Send for ExtismPlugin {}
 
 struct ExtismCancelHandle {
     handle: RwLock<extism::CancelHandle>,
@@ -28,7 +27,7 @@ unsafe impl Sync for ExtismCancelHandle {}
 unsafe impl Send for ExtismCancelHandle {}
 
 fn load(env: Env, _: Term) -> bool {
-    rustler::resource!(ExtismContext, env);
+    rustler::resource!(ExtismPlugin, env);
     rustler::resource!(ExtismCancelHandle, env);
     true
 }
@@ -37,111 +36,73 @@ fn to_rustler_error(extism_error: extism::Error) -> rustler::Error {
     rustler::Error::Term(Box::new(extism_error.to_string()))
 }
 
-#[rustler::nif]
-fn context_new() -> ResourceArc<ExtismContext> {
-    ResourceArc::new(ExtismContext {
-        ctx: RwLock::new(Context::new()),
-    })
-}
-
-#[rustler::nif]
-fn context_reset(ctx: ResourceArc<ExtismContext>) {
-    let context = &mut ctx.ctx.write().unwrap();
-    context.reset()
-}
-
-#[rustler::nif]
-fn context_free(ctx: ResourceArc<ExtismContext>) {
-    let context = ctx.ctx.read().unwrap();
-    std::mem::drop(context)
+fn freed_error() -> rustler::Error {
+    rustler::Error::Term(Box::new("Plugin has already been freed".to_string()))
 }
 
 #[rustler::nif]
 fn plugin_new_with_manifest(
-    ctx: ResourceArc<ExtismContext>,
     manifest_payload: String,
     wasi: bool,
-) -> Result<i32, rustler::Error> {
-    let context = ctx.ctx.write().unwrap();
-    let result = match Plugin::new(&context, manifest_payload, [], wasi) {
+) -> Result<ResourceArc<ExtismPlugin>, rustler::Error> {
+    let result = match Plugin::new(manifest_payload, [], wasi) {
         Err(e) => Err(to_rustler_error(e)),
-        Ok(plugin) => {
-            let plugin_id = plugin.as_i32();
-            // this forget should be safe because the context will clean up
-            // all it's plugins when it is dropped
-            mem::forget(plugin);
-            Ok(plugin_id)
-        }
+        Ok(plugin) => Ok(ResourceArc::new(ExtismPlugin {
+            plugin: RwLock::new(Some(plugin)),
+        })),
     };
     result
 }
 
 #[rustler::nif]
 fn plugin_call(
-    ctx: ResourceArc<ExtismContext>,
-    plugin_id: i32,
+    plugin: ResourceArc<ExtismPlugin>,
     name: String,
     input: String,
 ) -> Result<String, rustler::Error> {
-    let context = &ctx.ctx.read().unwrap();
-    let mut plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    let result = match plugin.call(name, input) {
-        Err(e) => Err(to_rustler_error(e)),
-        Ok(result) => match str::from_utf8(result) {
-            Ok(output) => Ok(output.to_string()),
-            Err(_e) => Err(rustler::Error::Term(Box::new(
-                "Could not read output from plugin",
-            ))),
-        },
-    };
-    // this forget should be safe because the context will clean up
-    // all it's plugins when it is dropped
-    mem::forget(plugin);
-    result
-}
-
-#[rustler::nif]
-fn plugin_update_manifest(
-    ctx: ResourceArc<ExtismContext>,
-    plugin_id: i32,
-    manifest_payload: String,
-    wasi: bool,
-) -> Result<(), rustler::Error> {
-    let context = &ctx.ctx.read().unwrap();
-    let mut plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    let result = match plugin.update(manifest_payload, [], wasi) {
-        Ok(()) => Ok(()),
-        Err(e) => Err(to_rustler_error(e)),
-    };
-    // this forget should be safe because the context will clean up
-    // all it's plugins when it is dropped
-    mem::forget(plugin);
-    result
+    let mut plugin = plugin.plugin.write().unwrap();
+    if let Some(plugin) = &mut *plugin {
+        let result = match plugin.call(name, input) {
+            Err(e) => Err(to_rustler_error(e)),
+            Ok(result) => match str::from_utf8(result) {
+                Ok(output) => Ok(output.to_string()),
+                Err(_e) => Err(rustler::Error::Term(Box::new(
+                    "Could not read output from plugin",
+                ))),
+            },
+        };
+        result
+    } else {
+        Err(freed_error())
+    }
 }
 
 #[rustler::nif]
 fn plugin_cancel_handle(
-    ctx: ResourceArc<ExtismContext>,
-    plugin_id: i32,
+    plugin: ResourceArc<ExtismPlugin>,
 ) -> Result<ResourceArc<ExtismCancelHandle>, rustler::Error> {
-    let context = &ctx.ctx.read().unwrap();
-    let plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    let handle = plugin.cancel_handle();
-    Ok(ResourceArc::new(ExtismCancelHandle {
-        handle: RwLock::new(handle),
-    }))
+    let mut plugin = plugin.plugin.write().unwrap();
+    if let Some(plugin) = &mut *plugin {
+        let handle = plugin.cancel_handle();
+        Ok(ResourceArc::new(ExtismCancelHandle {
+            handle: RwLock::new(handle),
+        }))
+    } else {
+        Err(freed_error())
+    }
 }
 
 #[rustler::nif]
 fn plugin_cancel(handle: ResourceArc<ExtismCancelHandle>) -> bool {
-    handle.handle.read().unwrap().cancel()
+    handle.handle.read().unwrap().cancel().is_ok()
 }
 
 #[rustler::nif]
-fn plugin_free(ctx: ResourceArc<ExtismContext>, plugin_id: i32) -> Result<(), rustler::Error> {
-    let context = &ctx.ctx.read().unwrap();
-    let plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    std::mem::drop(plugin);
+fn plugin_free(plugin: ResourceArc<ExtismPlugin>) -> Result<(), rustler::Error> {
+    let mut plugin = plugin.plugin.write().unwrap();
+    if let Some(plugin) = plugin.take() {
+        drop(plugin);
+    }
     Ok(())
 }
 
@@ -153,42 +114,34 @@ fn set_log_file(filename: String, log_level: String) -> Result<Atom, rustler::Er
             "{} not a valid log level",
             log_level
         )))),
-        Ok(level) => {
-            if extism::set_log_file(path, Some(level)) {
-                Ok(atoms::ok())
-            } else {
-                Err(rustler::Error::Term(Box::new(
-                    "Did not set log file, received false from the API.",
-                )))
-            }
-        }
+        Ok(level) => match extism::set_log_file(path, level) {
+            Ok(()) => Ok(atoms::ok()),
+            Err(e) => Err(rustler::Error::Term(Box::new(format!(
+                "Did not set log file: {e:?}"
+            )))),
+        },
     }
 }
 
 #[rustler::nif]
 fn plugin_has_function(
-    ctx: ResourceArc<ExtismContext>,
-    plugin_id: i32,
+    plugin: ResourceArc<ExtismPlugin>,
     function_name: String,
 ) -> Result<bool, rustler::Error> {
-    let context = &ctx.ctx.read().unwrap();
-    let plugin = unsafe { Plugin::from_id(plugin_id, context) };
-    let has_function = plugin.has_function(function_name);
-    // this forget should be safe because the context will clean up
-    // all it's plugins when it is dropped
-    mem::forget(plugin);
-    Ok(has_function)
+    let mut plugin = plugin.plugin.write().unwrap();
+    if let Some(plugin) = &mut *plugin {
+        let has_function = plugin.function_exists(function_name);
+        Ok(has_function)
+    } else {
+        Err(freed_error())
+    }
 }
 
 rustler::init!(
     "Elixir.Extism.Native",
     [
-        context_new,
-        context_reset,
-        context_free,
         plugin_new_with_manifest,
         plugin_call,
-        plugin_update_manifest,
         plugin_has_function,
         plugin_cancel_handle,
         plugin_cancel,

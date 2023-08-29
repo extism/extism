@@ -22,18 +22,22 @@ macro_rules! args {
 /// Params: i64 (offset)
 /// Returns: i64 (offset)
 pub(crate) fn config_get(
-    mut caller: Caller<Internal>,
+    mut caller: Caller<CurrentPlugin>,
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
+    let data: &mut CurrentPlugin = caller.data_mut();
 
     let offset = args!(input, 0, i64) as u64;
-    let key = data.memory_read_str(offset)?;
+    let handle = match data.memory_handle(offset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {offset}"),
+    };
+    let key = data.memory_read_str(handle)?;
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
-    let val = data.internal().manifest.as_ref().config.get(key);
+    let val = data.manifest.config.get(key);
     let ptr = val.map(|x| (x.len(), x.as_ptr()));
     let mem = match ptr {
         Some((len, ptr)) => {
@@ -45,7 +49,7 @@ pub(crate) fn config_get(
             return Ok(());
         }
     };
-    output[0] = Val::I64(mem as i64);
+    output[0] = Val::I64(mem.offset() as i64);
     Ok(())
 }
 
@@ -53,18 +57,22 @@ pub(crate) fn config_get(
 /// Params: i64 (offset)
 /// Returns: i64 (offset)
 pub(crate) fn var_get(
-    mut caller: Caller<Internal>,
+    mut caller: Caller<CurrentPlugin>,
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
+    let data: &mut CurrentPlugin = caller.data_mut();
 
     let offset = args!(input, 0, i64) as u64;
-    let key = data.memory_read_str(offset)?;
+    let handle = match data.memory_handle(offset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {offset}"),
+    };
+    let key = data.memory_read_str(handle)?;
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
-    let val = data.internal().vars.get(key);
+    let val = data.vars.get(key);
     let ptr = val.map(|x| (x.len(), x.as_ptr()));
     let mem = match ptr {
         Some((len, ptr)) => {
@@ -76,7 +84,7 @@ pub(crate) fn var_get(
             return Ok(());
         }
     };
-    output[0] = Val::I64(mem as i64);
+    output[0] = Val::I64(mem.offset() as i64);
     Ok(())
 }
 
@@ -84,11 +92,11 @@ pub(crate) fn var_get(
 /// Params: i64 (key offset), i64 (value offset)
 /// Returns: none
 pub(crate) fn var_set(
-    mut caller: Caller<Internal>,
+    mut caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
+    let data: &mut CurrentPlugin = caller.data_mut();
 
     let mut size = 0;
     for v in data.vars.values() {
@@ -104,7 +112,11 @@ pub(crate) fn var_set(
 
     let key_offs = args!(input, 0, i64) as u64;
     let key = {
-        let key = data.memory_read_str(key_offs)?;
+        let handle = match data.memory_handle(key_offs) {
+            Some(h) => h,
+            None => anyhow::bail!("invalid handle offset: {key_offs}"),
+        };
+        let key = data.memory_read_str(handle)?;
         let key_len = key.len();
         let key_ptr = key.as_ptr();
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
@@ -116,8 +128,11 @@ pub(crate) fn var_set(
         return Ok(());
     }
 
-    let vlen = data.memory_length(voffset);
-    let value = data.memory_read(voffset, vlen).to_vec();
+    let handle = match data.memory_handle(voffset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {key_offs}"),
+    };
+    let value = data.memory_read(handle).to_vec();
 
     // Insert the value from memory into the `vars` map
     data.vars.insert(key.to_string(), value);
@@ -129,7 +144,7 @@ pub(crate) fn var_set(
 /// Params: i64 (offset to JSON encoded HttpRequest), i64 (offset to body or 0)
 /// Returns: i64 (offset)
 pub(crate) fn http_request(
-    #[allow(unused_mut)] mut caller: Caller<Internal>,
+    #[allow(unused_mut)] mut caller: Caller<CurrentPlugin>,
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
@@ -145,12 +160,14 @@ pub(crate) fn http_request(
     #[cfg(feature = "http")]
     {
         use std::io::Read;
-        let data: &mut Internal = caller.data_mut();
+        let data: &mut CurrentPlugin = caller.data_mut();
         let http_req_offset = args!(input, 0, i64) as u64;
 
-        let http_req_len = data.memory_length(http_req_offset);
-        let req: extism_manifest::HttpRequest =
-            serde_json::from_slice(data.memory_read(http_req_offset, http_req_len))?;
+        let handle = match data.memory_handle(http_req_offset) {
+            Some(h) => h,
+            None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
+        };
+        let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_read(handle))?;
 
         let body_offset = args!(input, 1, i64) as u64;
 
@@ -158,7 +175,7 @@ pub(crate) fn http_request(
             Ok(u) => u,
             Err(e) => return Err(Error::msg(format!("Invalid URL: {e:?}"))),
         };
-        let allowed_hosts = &data.internal().manifest.as_ref().allowed_hosts;
+        let allowed_hosts = &data.manifest.allowed_hosts;
         let host_str = url.host_str().unwrap_or_default();
         let host_matches = if let Some(allowed_hosts) = allowed_hosts {
             allowed_hosts.iter().any(|url| {
@@ -187,8 +204,11 @@ pub(crate) fn http_request(
         }
 
         let res = if body_offset > 0 {
-            let len = data.memory_length(body_offset);
-            let buf = data.memory_read(body_offset, len);
+            let handle = match data.memory_handle(body_offset) {
+                Some(h) => h,
+                None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
+            };
+            let buf = data.memory_read(handle);
             r.send_bytes(buf)
         } else {
             r.call()
@@ -216,7 +236,7 @@ pub(crate) fn http_request(
                 .read_to_end(&mut buf)?;
 
             let mem = data.memory_alloc_bytes(buf)?;
-            output[0] = Val::I64(mem as i64);
+            output[0] = Val::I64(mem.offset() as i64);
         } else {
             output[0] = Val::I64(0);
         }
@@ -229,24 +249,30 @@ pub(crate) fn http_request(
 /// Params: none
 /// Returns: i32 (status code)
 pub(crate) fn http_status_code(
-    mut caller: Caller<Internal>,
+    mut caller: Caller<CurrentPlugin>,
     _input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
+    let data: &mut CurrentPlugin = caller.data_mut();
     output[0] = Val::I32(data.http_status as i32);
     Ok(())
 }
 
 pub fn log(
     level: log::Level,
-    mut caller: Caller<Internal>,
+    mut caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    let data: &mut Internal = caller.data_mut();
+    let data: &mut CurrentPlugin = caller.data_mut();
     let offset = args!(input, 0, i64) as u64;
-    let buf = data.memory_read_str(offset);
+
+    let handle = match data.memory_handle(offset) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset: {offset}"),
+    };
+
+    let buf = data.memory_read_str(handle);
 
     match buf {
         Ok(buf) => log::log!(level, "{}", buf),
@@ -259,7 +285,7 @@ pub fn log(
 /// Params: i64 (offset)
 /// Returns: none
 pub(crate) fn log_warn(
-    caller: Caller<Internal>,
+    caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
@@ -270,7 +296,7 @@ pub(crate) fn log_warn(
 /// Params: i64 (offset)
 /// Returns: none
 pub(crate) fn log_info(
-    caller: Caller<Internal>,
+    caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
@@ -281,7 +307,7 @@ pub(crate) fn log_info(
 /// Params: i64 (offset)
 /// Returns: none
 pub(crate) fn log_debug(
-    caller: Caller<Internal>,
+    caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
@@ -292,7 +318,7 @@ pub(crate) fn log_debug(
 /// Params: i64 (offset)
 /// Returns: none
 pub(crate) fn log_error(
-    caller: Caller<Internal>,
+    caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {

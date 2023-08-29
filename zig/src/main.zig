@@ -2,7 +2,6 @@ const std = @import("std");
 const testing = std.testing;
 pub const c = @import("ffi.zig");
 
-pub const Context = @import("context.zig");
 pub const Plugin = @import("plugin.zig");
 pub const CurrentPlugin = @import("current_plugin.zig");
 pub const CancelHandle = @import("cancel_handle.zig");

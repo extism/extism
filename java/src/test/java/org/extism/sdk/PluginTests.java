@@ -58,17 +58,6 @@ public class PluginTests {
     }
 
     @Test
-    public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimes() {
-        var wasmSource = CODE.pathWasmSource();
-        var manifest = new Manifest(wasmSource);
-        var output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
-        assertThat(output).isEqualTo("{\"count\": 3}");
-
-        output = Extism.invokeFunction(manifest, "count_vowels", "Hello World");
-        assertThat(output).isEqualTo("{\"count\": 3}");
-    }
-
-    @Test
     public void shouldAllowInvokeFunctionFromFileWasmSourceApiUsageExample() {
 
         var wasmSourceResolver = new WasmSourceResolver();
@@ -77,28 +66,24 @@ public class PluginTests {
         var functionName = "count_vowels";
         var input = "Hello World";
 
-        try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false, null)) {
-                var output = plugin.call(functionName, input);
-                assertThat(output).isEqualTo("{\"count\": 3}");
-            }
+        try (var plugin = new Plugin(manifest, false, null)) {
+            var output = plugin.call(functionName, input);
+            assertThat(output).isEqualTo("{\"count\": 3}");
         }
     }
 
     @Test
-    public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimesByReusingContext() {
+    public void shouldAllowInvokeFunctionFromFileWasmSourceMultipleTimes() {
         var manifest = new Manifest(CODE.pathWasmSource());
         var functionName = "count_vowels";
         var input = "Hello World";
 
-        try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false, null)) {
-                var output = plugin.call(functionName, input);
-                assertThat(output).isEqualTo("{\"count\": 3}");
+        try (var plugin = new Plugin(manifest, false, null)) {
+            var output = plugin.call(functionName, input);
+            assertThat(output).isEqualTo("{\"count\": 3}");
 
-                output = plugin.call(functionName, input);
-                assertThat(output).isEqualTo("{\"count\": 3}");
-            }
+            output = plugin.call(functionName, input);
+            assertThat(output).isEqualTo("{\"count\": 3}");
         }
     }
 
@@ -140,14 +125,12 @@ public class PluginTests {
 
         HostFunction[] functions = {helloWorld};
 
-        try (var ctx = new Context()) {
-            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
-            String functionName = "count_vowels";
+        Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+        String functionName = "count_vowels";
 
-            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
-                var output = plugin.call(functionName, "this is a test");
-                assertThat(output).isEqualTo("test");
-            }
+        try (var plugin = new Plugin(manifest, true, functions)) {
+            var output = plugin.call(functionName, "this is a test");
+            assertThat(output).isEqualTo("test");
         }
     }
 
@@ -189,30 +172,26 @@ public class PluginTests {
 
         HostFunction[] functions = {f,g};
 
-        try (var ctx = new Context()) {
-            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
-            String functionName = "count_vowels";
+        Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+        String functionName = "count_vowels";
 
-            try (var plugin = ctx.newPlugin(manifest, true, functions)) {
-                var output = plugin.call(functionName, "this is a test");
-                assertThat(output).isEqualTo("test");
-            }
+        try (var plugin = new Plugin(manifest, true, functions)) {
+            var output = plugin.call(functionName, "this is a test");
+            assertThat(output).isEqualTo("test");
         }
     }
 
 
     @Test
     public void shouldFailToInvokeUnknownHostFunction() {
-        try (var ctx = new Context()) {
-            Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
-            String functionName = "count_vowels";
+        Manifest manifest = new Manifest(Arrays.asList(CODE.pathWasmFunctionsSource()));
+        String functionName = "count_vowels";
 
-            try {
-                var plugin = ctx.newPlugin(manifest, true, null);
-                plugin.call(functionName, "this is a test");
-            }  catch (ExtismException e) {
-                assertThat(e.getMessage()).contains("unknown import: `env::hello_world` has not been defined");
-            }
+        try {
+            var plugin = new Plugin(manifest, true, null);
+            plugin.call(functionName, "this is a test");
+        }  catch (ExtismException e) {
+            assertThat(e.getMessage()).contains("unknown import: `env::hello_world` has not been defined");
         }
     }
 
