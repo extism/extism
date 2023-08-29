@@ -1,6 +1,6 @@
 use crate::{CurrentPlugin, Error};
 
-/// A list of all possible value types in WebAssembly.
+/// An enumeration of all possible value types in WebAssembly.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 #[repr(C)]
 pub enum ValType {
@@ -97,7 +97,7 @@ impl UserData {
     }
 
     /// Get the user data pointer
-    pub fn as_ptr(&self) -> *mut std::ffi::c_void {
+    pub(crate) fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.ptr
     }
 

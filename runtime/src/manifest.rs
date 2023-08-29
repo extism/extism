@@ -166,7 +166,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
 const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 
-pub fn load(
+pub(crate) fn load(
     engine: &Engine,
     data: &[u8],
 ) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
@@ -194,7 +194,7 @@ pub fn load(
     Ok((Default::default(), modules))
 }
 
-pub fn modules(
+pub(crate) fn modules(
     manifest: &extism_manifest::Manifest,
     engine: &Engine,
 ) -> Result<BTreeMap<String, Module>, Error> {
