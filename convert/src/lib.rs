@@ -7,6 +7,8 @@
 
 pub use anyhow::Error;
 
+use base64::Engine;
+
 /// `MemoryHandle` describes where in memory a block of data is stored
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct MemoryHandle {
@@ -64,10 +66,29 @@ pub trait FromBytes<'a>: Sized {
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error>;
 }
 
-impl<'a> ToBytes<'a> for &'a Vec<u8> {
-    type Bytes = &'a [u8];
+pub trait FromBytesOwned: Sized {
+    /// Decode a value from a slice of bytes
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error>;
+}
+
+impl<'a> ToBytes<'a> for () {
+    type Bytes = [u8; 0];
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
-        Ok(self.as_slice())
+        Ok([])
+    }
+}
+
+impl<'a> ToBytes<'a> for Vec<u8> {
+    type Bytes = Vec<u8>;
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.clone())
+    }
+}
+
+impl<'a> ToBytes<'a> for String {
+    type Bytes = String;
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.clone())
     }
 }
 
@@ -79,13 +100,6 @@ impl<'a> ToBytes<'a> for &'a [u8] {
 }
 
 impl<'a> ToBytes<'a> for &'a str {
-    type Bytes = &'a str;
-    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
-        Ok(self)
-    }
-}
-
-impl<'a> ToBytes<'a> for &'a String {
     type Bytes = &'a str;
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self)
@@ -108,6 +122,14 @@ impl<'a> ToBytes<'a> for f32 {
     }
 }
 
+impl<'a, T: ToBytes<'a>> ToBytes<'a> for &'a T {
+    type Bytes = T::Bytes;
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        <T as ToBytes>::to_bytes(self)
+    }
+}
+
 impl<'a> FromBytes<'a> for &'a [u8] {
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
         Ok(data)
@@ -120,26 +142,38 @@ impl<'a> FromBytes<'a> for &'a str {
     }
 }
 
-impl<'a> FromBytes<'a> for Vec<u8> {
+impl<'a, T: FromBytesOwned> FromBytes<'a> for T {
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        T::from_bytes_owned(data)
+    }
+}
+
+impl<'a> FromBytesOwned for Box<[u8]> {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(data.to_vec().into_boxed_slice())
+    }
+}
+
+impl FromBytesOwned for Vec<u8> {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(data.to_vec())
     }
 }
 
-impl<'a> FromBytes<'a> for String {
-    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+impl FromBytesOwned for String {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(std::str::from_utf8(data)?.to_string())
     }
 }
 
-impl<'a> FromBytes<'a> for f64 {
-    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+impl FromBytesOwned for f64 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(Self::from_le_bytes(data.try_into()?))
     }
 }
 
-impl<'a> FromBytes<'a> for f32 {
-    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+impl FromBytesOwned for f32 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(Self::from_le_bytes(data.try_into()?))
     }
 }
@@ -156,8 +190,8 @@ macro_rules! encoding {
             }
         }
 
-        impl<'a, T: serde::Deserialize<'a>> FromBytes<'a> for $name<T> {
-            fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        impl<T: serde::de::DeserializeOwned> FromBytesOwned for $name<T> {
+            fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
                 let x = $from_slice(data)?;
                 Ok($name(x))
             }
@@ -176,5 +210,36 @@ macro_rules! encoding {
 
 encoding!(Json, serde_json::to_vec, serde_json::from_slice);
 
-#[cfg(feature = "msgpack")]
+impl<'a> ToBytes<'a> for serde_json::Value {
+    type Bytes = Vec<u8>;
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(serde_json::to_vec(self)?)
+    }
+}
+
+impl FromBytesOwned for serde_json::Value {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(serde_json::from_slice(data)?)
+    }
+}
+
 encoding!(Msgpack, rmp_serde::to_vec, rmp_serde::from_slice);
+
+pub struct Base64(Vec<u8>);
+
+impl<'a> ToBytes<'a> for Base64 {
+    type Bytes = String;
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(base64::engine::general_purpose::STANDARD.encode(&self.0))
+    }
+}
+
+impl<'a> FromBytes<'a> for Base64 {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        Ok(Base64(
+            base64::engine::general_purpose::STANDARD.decode(data)?,
+        ))
+    }
+}
