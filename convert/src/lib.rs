@@ -12,7 +12,10 @@ use base64::Engine;
 /// `MemoryHandle` describes where in memory a block of data is stored
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq, Ord)]
 pub struct MemoryHandle {
+    /// The offset of the region in Extism linear memory
     pub offset: u64,
+
+    /// The length of the memory region
     pub length: u64,
 }
 
@@ -66,8 +69,11 @@ pub trait FromBytes<'a>: Sized {
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error>;
 }
 
+/// `FromBytesOwned` is similar to `FromBytes` but it doesn't borrow from the input slice.
+/// `FromBytes` is automatically implemented for all types that implement `FromBytesOwned`
 pub trait FromBytesOwned: Sized {
-    /// Decode a value from a slice of bytes
+    /// Decode a value from a slice of bytes, the resulting value should not borrow the input
+    /// data.
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error>;
 }
 
@@ -178,6 +184,19 @@ impl FromBytesOwned for f32 {
     }
 }
 
+impl FromBytesOwned for () {
+    fn from_bytes_owned(_: &[u8]) -> Result<Self, Error> {
+        Ok(())
+    }
+}
+
+/// The `encoding` macro can be used to create newtypes that implement a particular encoding for the
+/// inner value. For example, the following line creates a new JSON encoding using serde_json:
+/// ```rust
+/// extism_convert::encoding(MyJson, serde_json::to_vec, serde_json::from_slice);
+/// ```
+/// This will create a struct `struct MyJson<T>(pub T)` and implement `ToBytes` using `serde_json::to_vec`
+/// and `FromBytesOwned` using `serde_json::from_vec`
 #[macro_export]
 macro_rules! encoding {
     ($name:ident, $to_vec:expr, $from_slice:expr) => {
@@ -208,6 +227,39 @@ macro_rules! encoding {
     };
 }
 
+/// Base64 conversion
+///
+/// When using `Base64` with `ToBytes` any type that implement `AsRef<[T]>` may be used as the inner value,
+/// but only `Base64<String>` and `Base64<Vec>` may be used with `FromBytes`
+///
+/// A value wrapped in `Base64` will automatically be encoded/decoded using base64, the inner value should not
+/// already be base64 encoded.
+pub struct Base64<T: AsRef<[u8]>>(T);
+
+impl<'a, T: AsRef<[u8]>> ToBytes<'a> for Base64<T> {
+    type Bytes = String;
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(base64::engine::general_purpose::STANDARD.encode(&self.0))
+    }
+}
+
+impl FromBytesOwned for Base64<Vec<u8>> {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Base64(
+            base64::engine::general_purpose::STANDARD.decode(data)?,
+        ))
+    }
+}
+
+impl FromBytesOwned for Base64<String> {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Base64(String::from_utf8(
+            base64::engine::general_purpose::STANDARD.decode(data)?,
+        )?))
+    }
+}
+
 encoding!(Json, serde_json::to_vec, serde_json::from_slice);
 
 impl<'a> ToBytes<'a> for serde_json::Value {
@@ -225,21 +277,3 @@ impl FromBytesOwned for serde_json::Value {
 }
 
 encoding!(Msgpack, rmp_serde::to_vec, rmp_serde::from_slice);
-
-pub struct Base64(Vec<u8>);
-
-impl<'a> ToBytes<'a> for Base64 {
-    type Bytes = String;
-
-    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
-        Ok(base64::engine::general_purpose::STANDARD.encode(&self.0))
-    }
-}
-
-impl<'a> FromBytes<'a> for Base64 {
-    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
-        Ok(Base64(
-            base64::engine::general_purpose::STANDARD.decode(data)?,
-        ))
-    }
-}
