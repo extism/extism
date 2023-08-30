@@ -63,6 +63,30 @@ impl FromBytesOwned for f32 {
     }
 }
 
+impl FromBytesOwned for i64 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Self::from_le_bytes(data.try_into()?))
+    }
+}
+
+impl FromBytesOwned for i32 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Self::from_le_bytes(data.try_into()?))
+    }
+}
+
+impl FromBytesOwned for u64 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Self::from_le_bytes(data.try_into()?))
+    }
+}
+
+impl FromBytesOwned for u32 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Self::from_le_bytes(data.try_into()?))
+    }
+}
+
 impl FromBytesOwned for () {
     fn from_bytes_owned(_: &[u8]) -> Result<Self, Error> {
         Ok(())

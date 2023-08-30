@@ -61,6 +61,38 @@ impl<'a> ToBytes<'a> for f32 {
     }
 }
 
+impl<'a> ToBytes<'a> for i64 {
+    type Bytes = [u8; 8];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.to_le_bytes())
+    }
+}
+
+impl<'a> ToBytes<'a> for i32 {
+    type Bytes = [u8; 4];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.to_le_bytes())
+    }
+}
+
+impl<'a> ToBytes<'a> for u64 {
+    type Bytes = [u8; 8];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.to_le_bytes())
+    }
+}
+
+impl<'a> ToBytes<'a> for u32 {
+    type Bytes = [u8; 4];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.to_le_bytes())
+    }
+}
+
 impl<'a, T: ToBytes<'a>> ToBytes<'a> for &'a T {
     type Bytes = T::Bytes;
 
