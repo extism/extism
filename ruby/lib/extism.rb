@@ -166,11 +166,12 @@ module Extism
   end
 
   class Function
-    def initialize(name, args, returns, func_proc, _user_data)
+    def initialize(name, args, returns, func_proc, user_data)
       @name = name
       @args = args
       @returns = returns
       @func = func_proc
+      @user_data = user_data
     end
 
     def pointer
@@ -185,7 +186,7 @@ module Extism
     private
 
     def c_func
-      @c_func ||= proc do |plugin_ptr, inputs_ptr, inputs_size, outputs_ptr, outputs_size, data_ptr|
+      @c_func ||= proc do |plugin_ptr, inputs_ptr, inputs_size, outputs_ptr, outputs_size, _data_ptr|
         current_plugin = CurrentPlugin.new(plugin_ptr)
         val_struct_size = C::ExtismVal.size
 
@@ -196,7 +197,7 @@ module Extism
           Val.new(outputs_ptr + i * val_struct_size)
         end
 
-        @func.call(current_plugin, inputs, outputs, data_ptr)
+        @func.call(current_plugin, inputs, outputs, @user_data)
       end
     end
   end
