@@ -49,11 +49,8 @@ class TestExtism < Minitest::Test
 
   def test_host_functions
     # Extism.set_log_file('stdout', 'trace')
-    func = proc do |current_plugin, inputs, outputs, user_data|
-      puts current_plugin
-      puts inputs
-      puts outputs
-      puts user_data
+    func = proc do |_current_plugin, inputs, outputs, _user_data|
+      outputs.first.value = inputs.first.value
     end
     f = Extism::Function.new('hello_world', [Extism::ValType::I64], [Extism::ValType::I64], func, nil)
     plugin = Extism::Plugin.new(host_manifest, [f], true)

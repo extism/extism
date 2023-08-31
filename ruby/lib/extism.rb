@@ -118,6 +118,12 @@ module Extism
     end
   end
 
+  class CurrentPlugin
+    def initialize(ptr)
+      @ptr = ptr
+    end
+  end
+
   module ValType
     I32 = 0
     I64 = 1
@@ -126,6 +132,37 @@ module Extism
     V128 = 4
     FUNC_REF = 5
     EXTERN_REF = 6
+  end
+
+  class Val
+    attr_reader :c_val
+
+    def initialize(ptr)
+      @c_val = C::ExtismVal.new(ptr)
+    end
+
+    def type
+      case @c_val[:t]
+      when :I32
+        :i32
+      when :I64
+        :i64
+      when :F32
+        :f32
+      when :F64
+        :f64
+      else
+        raise "Unsupported wasm value type #{type}"
+      end
+    end
+
+    def value
+      @c_val[:v][type]
+    end
+
+    def value=(val)
+      @c_val[:v][type] = val
+    end
   end
 
   class Function
@@ -148,8 +185,18 @@ module Extism
     private
 
     def c_func
-      @c_func ||= proc do |plugin_ptr, args_ptr, _args_size, returns_ptr, _returns_size, data_ptr|
-        @func.call(plugin_ptr, args_ptr, returns_ptr, data_ptr)
+      @c_func ||= proc do |plugin_ptr, inputs_ptr, inputs_size, outputs_ptr, outputs_size, data_ptr|
+        current_plugin = CurrentPlugin.new(plugin_ptr)
+        val_struct_size = C::ExtismVal.size
+
+        inputs = (0...inputs_size).map do |i|
+          Val.new(inputs_ptr + i * val_struct_size)
+        end
+        outputs = (0...outputs_size).map do |i|
+          Val.new(outputs_ptr + i * val_struct_size)
+        end
+
+        @func.call(current_plugin, inputs, outputs, data_ptr)
       end
     end
   end

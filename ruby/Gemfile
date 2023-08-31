@@ -1,15 +1,16 @@
 # frozen_string_literal: true
 
-source "https://rubygems.org"
+source 'https://rubygems.org'
 
 # Specify your gem's dependencies in extism.gemspec
 gemspec
 
-gem "rake", "~> 13.0"
-gem "ffi", "~> 1.15.5"
+gem 'ffi', '~> 1.15.5'
+gem 'rake', '~> 13.0'
 
 group :development do
-  gem "yard", "~> 0.9.28"
-  gem "rufo", "~> 0.13.0"
-  gem "minitest", "~> 5.19.0"
+  gem 'debug'
+  gem 'minitest', '~> 5.19.0'
+  gem 'rufo', '~> 0.13.0'
+  gem 'yard', '~> 0.9.28'
 end
