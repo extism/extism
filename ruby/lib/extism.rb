@@ -55,7 +55,7 @@ module Extism
       code.put_bytes(0, wasm)
       funcs_ptr = FFI::MemoryPointer.new(C::ExtismFunction)
       funcs_ptr.write_array_of_pointer(functions.map { |f| f.pointer })
-      @plugin = C.extism_plugin_new(code, wasm.bytesize, funcs_ptr, 0, wasi, errmsg)
+      @plugin = C.extism_plugin_new(code, wasm.bytesize, funcs_ptr, functions.length, wasi, errmsg)
       if @plugin.null?
         err = errmsg.read_pointer.read_string
         C.extism_plugin_new_error_free errmsg.read_pointer
@@ -142,7 +142,15 @@ module Extism
       free = proc { puts 'freeing ' }
       args = C.from_int_array(@args)
       returns = C.from_int_array(@returns)
-      @pointer = C.extism_function_new(@name, args, @args.length, returns, @returns.length, @func, free, nil)
+      @pointer = C.extism_function_new(@name, args, @args.length, returns, @returns.length, c_func, free, nil)
+    end
+
+    private
+
+    def c_func
+      @c_func ||= proc do |plugin_ptr, args_ptr, _args_size, returns_ptr, _returns_size, data_ptr|
+        @func.call(plugin_ptr, args_ptr, returns_ptr, data_ptr)
+      end
     end
   end
 
@@ -176,7 +184,7 @@ module Extism
     end
 
     class ExtismFunction < FFI::Struct
-      layout :current_plugin, :pointer,
+      layout :name, :string,
              :inputs, :pointer,
              :n_inputs, :uint64,
              :outputs, :pointer,

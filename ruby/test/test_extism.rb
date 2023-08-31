@@ -48,12 +48,17 @@ class TestExtism < Minitest::Test
   end
 
   def test_host_functions
-    func = proc do |_plugin_ptr, _args_ptr, _args_size, _returns_ptr, _returns_size, _data_ptr|
-      puts 'hello from ruby'
+    # Extism.set_log_file('stdout', 'trace')
+    func = proc do |current_plugin, inputs, outputs, user_data|
+      puts current_plugin
+      puts inputs
+      puts outputs
+      puts user_data
     end
     f = Extism::Function.new('hello_world', [Extism::ValType::I64], [Extism::ValType::I64], func, nil)
-    plugin = Extism::Plugin.new(host_manifest, [f])
-    puts plugin
+    plugin = Extism::Plugin.new(host_manifest, [f], true)
+    result = plugin.call('count_vowels', 'Hello, World!')
+    puts result
   end
 
   private
