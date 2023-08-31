@@ -12,13 +12,5 @@
 	"systemDependencies": "extism >= 0.4.0",
 	"targetType": "sourceLibrary",
 	"libs": ["extism"],
-	"preGenerateCommands-linux": [
-		"gcc -E runtime/extism.h > d/runtime.i"
-	],
-	"preGenerateCommands-osx": [
-		"clang -E runtime/extism.h -o d/runtime.i"
-	],
-	"preGenerateCommands-windows": [
-		"cl /P /Zc:preprocessor runtime/extism.h -Fid/runtime.i"
-	]
+	"dflags": ["-P-I$EXTISM_PACKAGE_DIR"]
 }
