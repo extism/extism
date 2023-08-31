@@ -118,9 +118,48 @@ module Extism
     end
   end
 
+  Memory = Struct.new(:offset, :size)
+
   class CurrentPlugin
     def initialize(ptr)
       @ptr = ptr
+    end
+
+    def memory_ptr(_mem)
+      p = C.extism_current_plugin_memory(@ptr)
+      raise 'Got 0 for current plugin memory' if p.zero?
+
+      FFI::MemoryPointer.new(p + mem.offset)
+    end
+
+    def alloc(amount)
+      offset = C.extism_current_plugin_memory_alloc(@ptr, amount)
+      Memory.new(offset, amount)
+    end
+
+    def free(memory)
+      C.extism_current_plugin_memory_free(@ptr, memory.offset)
+    end
+
+    def memory_at_offset(offset)
+      size = C.extism_current_plugin_memory_length(@ptr, offset)
+      Memory.new(offset, size)
+    end
+
+    def input_as_bytes(input)
+      # TODO: should assert that this is an int
+      mem = memory_at_offset(input.value)
+      memory_ptr(mem).read_bytes(mem.size)
+    end
+
+    def return_bytes(output, bytes)
+      mem = alloc(bytes.length)
+      memory_ptr(mem).put_bytes(0, bytes)
+      output.value = mem.offset
+    end
+
+    def return_string(output, string)
+      return_bytes(output, string)
     end
   end
 
@@ -135,8 +174,6 @@ module Extism
   end
 
   class Val
-    attr_reader :c_val
-
     def initialize(ptr)
       @c_val = C::ExtismVal.new(ptr)
     end
