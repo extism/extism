@@ -4,27 +4,28 @@ const c = @import("ffi.zig");
 c_currplugin: *c.ExtismCurrentPlugin,
 
 const Self = @This();
+const MemoryHandle = u64;
 
 pub fn getCurrentPlugin(ptr: *c.ExtismCurrentPlugin) Self {
     return .{ .c_currplugin = ptr };
 }
 
-pub fn getMemory(self: Self, offset: u64) []const u8 {
+pub fn getMemory(self: Self, offset: MemoryHandle) []const u8 {
     const len = c.extism_current_plugin_memory_length(self.c_currplugin, offset);
     const c_data = c.extism_current_plugin_memory(self.c_currplugin);
     const data: [*:0]u8 = std.mem.span(c_data);
     return data[offset .. offset + len];
 }
 
-pub fn alloc(self: *Self, n: u64) u64 {
+pub fn alloc(self: *Self, n: u64) MemoryHandle {
     return c.extism_current_plugin_memory_alloc(self.c_currplugin, n);
 }
 
-pub fn free(self: *Self, offset: u64) void {
+pub fn free(self: *Self, offset: MemoryHandle) void {
     c.extism_current_plugin_memory_free(self.c_currplugin, offset);
 }
 
-pub fn length(self: *Self, offset: u64) u64 {
+pub fn length(self: *Self, offset: MemoryHandle) u64 {
     return c.extism_current_plugin_memory_length(self.c_currplugin, offset);
 }
 

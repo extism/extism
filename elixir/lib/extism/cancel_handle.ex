@@ -4,7 +4,7 @@ defmodule Extism.CancelHandle do
   thread while running.
   """
   defstruct [
-    # The actual NIF Resource. PluginIndex and the context
+    # The actual NIF Resource
     handle: nil
   ]
 

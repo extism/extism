@@ -65,7 +65,7 @@ namespace Extism.Sdk
                 NativeHandle = LibExtism.extism_function_new(functionName, inputs, inputTypes.Length, outputs, outputTypes.Length, CallbackImpl, userData, IntPtr.Zero);
             }
 
-            if (!string.IsNullOrEmpty(functionName))
+            if (!string.IsNullOrEmpty(@namespace))
             {
                 LibExtism.extism_function_set_namespace(NativeHandle, @namespace);
             }

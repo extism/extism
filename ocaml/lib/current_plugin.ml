@@ -1,7 +1,7 @@
 open Ctypes
 
 type t = unit ptr
-type memory_block = { offs : Unsigned.UInt64.t; len : Unsigned.UInt64.t }
+type memory_handle = { offs : Unsigned.UInt64.t; len : Unsigned.UInt64.t }
 
 let memory ?(offs = Unsigned.UInt64.zero) t =
   Bindings.extism_current_plugin_memory t +@ Unsigned.UInt64.to_int offs
@@ -17,7 +17,7 @@ let alloc t len =
 
 let free t { offs; _ } = Bindings.extism_current_plugin_memory_free t offs
 
-module Memory_block = struct
+module Memory_handle = struct
   let of_val t v =
     match Types.Val.to_i64 v with
     | None -> None
@@ -63,22 +63,22 @@ end
 
 let return_string t (outputs : Types.Val_array.t) index s =
   let mem = alloc t (String.length s) in
-  Memory_block.set_string t mem s;
+  Memory_handle.set_string t mem s;
   Types.Val_array.(
     outputs.$[index] <- Types.Val.of_i64 (Unsigned.UInt64.to_int64 mem.offs))
 
 let return_bigstring t (outputs : Types.Val_array.t) index s =
   let mem = alloc t (Bigstringaf.length s) in
-  Memory_block.set_bigstring t mem s;
+  Memory_handle.set_bigstring t mem s;
   Types.Val_array.(
     outputs.$[index] <- Types.Val.of_i64 (Unsigned.UInt64.to_int64 mem.offs))
 
 let input_string t inputs index =
   let inp = Types.Val_array.(inputs.$[index]) in
-  let mem = Memory_block.of_val_exn t inp in
-  Memory_block.get_string t mem
+  let mem = Memory_handle.of_val_exn t inp in
+  Memory_handle.get_string t mem
 
 let input_bigstring t inputs index =
   let inp = Types.Val_array.(inputs.$[index]) in
-  let mem = Memory_block.of_val_exn t inp in
-  Memory_block.get_bigstring t mem
+  let mem = Memory_handle.of_val_exn t inp in
+  Memory_handle.get_bigstring t mem

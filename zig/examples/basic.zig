@@ -1,7 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
 const sdk = @import("extism");
-const Context = sdk.Context;
 const Plugin = sdk.Plugin;
 const CurrentPlugin = sdk.CurrentPlugin;
 const Function = sdk.Function;
@@ -23,8 +22,6 @@ pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
     const allocator = gpa.allocator();
     _ = sdk.setLogFile("extism.log", .Debug);
-    var context = Context.init();
-    defer context.deinit();
 
     const wasmfile_manifest = manifest.WasmFile{ .path = "../wasm/code-functions.wasm" };
     const man = .{ .wasm = &[_]manifest.Wasm{.{ .wasm_file = wasmfile_manifest }} };
@@ -36,13 +33,12 @@ pub fn main() !void {
         @constCast(@as(*const anyopaque, @ptrCast("user data"))),
     );
     defer f.deinit();
-    var my_plugin = try Plugin.initFromManifest(allocator, &context, man, &[_]Function{f}, true);
-    // var my_plugin = try Plugin.init(allocator, &context, wasm, &[_]Function{f}, true);
+    var my_plugin = try Plugin.initFromManifest(allocator, man, &[_]Function{f}, true);
     defer my_plugin.deinit();
 
-    var config = std.StringHashMap([]const u8).init(allocator);
-    defer config.deinit();
-    try config.put("thing", "this is a really important thing");
+    var config = std.json.ArrayHashMap([]const u8){};
+    defer config.deinit(allocator);
+    try config.map.put(allocator, "thing", "this is a really important thing");
     try my_plugin.setConfig(allocator, config);
 
     const input = "aeiouAEIOU____________________________________&smtms_y?" ** 1182;

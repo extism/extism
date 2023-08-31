@@ -37,9 +37,3 @@ async function main() {
 }
 
 main();
-
-// or, use a context like this:
-// let ctx = new Context();
-// let wasm = readFileSync("../wasm/code.wasm");
-// let p = ctx.plugin(wasm);
-// ... where the context can be passed around to various functions etc.

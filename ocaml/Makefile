@@ -1,5 +1,5 @@
-VERSION?=0.3.0
-TAG?=0.4.0
+VERSION?=0.4.0
+TAG?=0.5.0
 
 build:
 	dune build

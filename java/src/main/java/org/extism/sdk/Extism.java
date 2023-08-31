@@ -41,10 +41,8 @@ public class Extism {
      * @throws ExtismException if the call fails
      */
     public static String invokeFunction(Manifest manifest, String function, String input) throws ExtismException {
-        try (var ctx = new Context()) {
-            try (var plugin = ctx.newPlugin(manifest, false, null)) {
-                return plugin.call(function, input);
-            }
+        try (var plugin = new Plugin(manifest, false, null)) {
+            return plugin.call(function, input);
         }
     }
 

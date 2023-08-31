@@ -53,30 +53,29 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  ExtismContext *ctx = extism_context_new();
-
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
   ExtismValType inputs[] = {I64};
   ExtismValType outputs[] = {I64};
   ExtismFunction *f = extism_function_new("hello_world", inputs, 1, outputs, 1,
                                           hello_world, "Hello, again!", NULL);
-  ExtismPlugin plugin =
-      extism_plugin_new(ctx, data, len, (const ExtismFunction **)&f, 1, true);
+
+  char *errmsg = NULL;
+  ExtismPlugin *plugin = extism_plugin_new(
+      data, len, (const ExtismFunction **)&f, 1, true, &errmsg);
   free(data);
-  if (plugin < 0) {
-    puts(extism_error(ctx, -1));
+  if (plugin == NULL) {
+    puts(errmsg);
+    extism_plugin_new_error_free(errmsg);
     exit(1);
   }
-  assert(extism_plugin_call(ctx, plugin, "count_vowels", (uint8_t *)argv[1],
+
+  assert(extism_plugin_call(plugin, "count_vowels", (uint8_t *)argv[1],
                             strlen(argv[1])) == 0);
-  ExtismSize out_len = extism_plugin_output_length(ctx, plugin);
-  const uint8_t *output = extism_plugin_output_data(ctx, plugin);
+  ExtismSize out_len = extism_plugin_output_length(plugin);
+  const uint8_t *output = extism_plugin_output_data(plugin);
   write(STDOUT_FILENO, output, out_len);
   write(STDOUT_FILENO, "\n", 1);
-
-  extism_plugin_free(ctx, plugin);
-  extism_function_free(f);
-  extism_context_free(ctx);
+  extism_plugin_free(plugin);
   return 0;
 }

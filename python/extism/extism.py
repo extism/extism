@@ -4,6 +4,7 @@ from base64 import b64encode
 from cffi import FFI
 from typing import Union
 from enum import Enum
+from uuid import UUID
 
 
 class Error(Exception):
@@ -134,70 +135,6 @@ class Memory:
         return self.length
 
 
-class Context:
-    """
-    Context is used to store and manage plugins. You need a context to create
-    or call plugins.  The best way to interact with the Context is
-    as a context manager as it can ensure that resources are cleaned up.
-
-    Example
-    -------
-        with Context() as ctx:
-            plugin = ctx.plugin(manifest)
-            print(plugin.call("my_function", "some-input"))
-
-    If you need a long lived context, you can use the constructor and the `del` keyword to free.
-
-    Example
-    -------
-        ctx = Context()
-        del ctx
-    """
-
-    def __init__(self):
-        self.pointer = _lib.extism_context_new()
-
-    def __del__(self):
-        _lib.extism_context_free(self.pointer)
-        self.pointer = _ffi.NULL
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, type, exc, traceback):
-        self.__del__()
-
-    def reset(self):
-        """Remove all registered plugins"""
-        _lib.extism_context_reset(self.pointer)
-
-    def plugin(
-        self, manifest: Union[str, bytes, dict], wasi=False, config=None, functions=None
-    ):
-        """
-        Register a new plugin from a WASM module or JSON encoded manifest
-
-        Parameters
-        ----------
-        manifest : Union[str, bytes, dict]
-            A manifest dictionary describing the plugin or the raw bytes for a module. See [Extism > Concepts > Manifest](https://extism.org/docs/concepts/manifest/).
-        wasi : bool
-            Set to `True` to enable WASI support
-        config : dict
-            The plugin config dictionary
-        functions: list
-            Additional host functions
-
-        Returns
-        -------
-        Plugin
-            The created plugin
-        """
-        return Plugin(
-            manifest, context=self, wasi=wasi, config=config, functions=functions
-        )
-
-
 class Function:
     def __init__(self, name: str, args, returns, f, *user_data):
         self.pointer = None
@@ -250,7 +187,6 @@ class Plugin:
     def __init__(
         self,
         plugin: Union[str, bytes, dict],
-        context=None,
         wasi=False,
         config=None,
         functions=None,
@@ -259,87 +195,42 @@ class Plugin:
         Construct a Plugin
         """
 
-        if context is None:
-            context = Context()
-
         wasm = _wasm(plugin)
         self.functions = functions
 
         # Register plugin
+        errmsg = _ffi.new("char**")
         if functions is not None:
             functions = [f.pointer for f in functions]
             ptr = _ffi.new("ExtismFunction*[]", functions)
             self.plugin = _lib.extism_plugin_new(
-                context.pointer, wasm, len(wasm), ptr, len(functions), wasi
+                wasm, len(wasm), ptr, len(functions), wasi, errmsg
             )
         else:
             self.plugin = _lib.extism_plugin_new(
-                context.pointer, wasm, len(wasm), _ffi.NULL, 0, wasi
+                wasm, len(wasm), _ffi.NULL, 0, wasi, errmsg
             )
 
-        self.ctx = context
-
-        if self.plugin < 0:
-            error = _lib.extism_error(self.ctx.pointer, -1)
-            if error != _ffi.NULL:
-                raise Error(_ffi.string(error).decode())
-            raise Error("Unable to register plugin")
+        if self.plugin == _ffi.NULL:
+            msg = _ffi.string(errmsg[0])
+            _lib.extism_plugin_new_error_free(errmsg[0])
+            raise Error(msg.decode())
 
         if config is not None:
             s = json.dumps(config).encode()
-            _lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
+            _lib.extism_plugin_config(self.plugin, s, len(s))
+
+    @property
+    def id(self) -> UUID:
+        b = bytes(_ffi.unpack(_lib.extism_plugin_id(self.plugin), 16))
+        return UUID(bytes=b)
 
     def cancel_handle(self):
-        return CancelHandle(
-            _lib.extism_plugin_cancel_handle(self.ctx.pointer, self.plugin)
-        )
-
-    def update(
-        self, manifest: Union[str, bytes, dict], wasi=False, config=None, functions=None
-    ):
-        """
-        Update a plugin with a new WASM module or manifest
-
-        Parameters
-        ----------
-        plugin : Union[str, bytes, dict]
-            A manifest dictionary describing the plugin or the raw bytes for a module. See [Extism > Concepts > Manifest](https://extism.org/docs/concepts/manifest/).
-        wasi : bool
-            Set to `True` to enable WASI support
-        config : dict
-            The plugin config dictionary
-        """
-        wasm = _wasm(manifest)
-        if functions is not None:
-            self.functions = functions
-            functions = [f.pointer for f in functions]
-            ptr = _ffi.new("ExtismFunction*[]", functions)
-            ok = _lib.extism_plugin_update(
-                self.ctx.pointer,
-                self.plugin,
-                wasm,
-                len(wasm),
-                ptr,
-                len(functions),
-                wasi,
-            )
-        else:
-            ok = _lib.extism_plugin_update(
-                self.ctx.pointer, self.plugin, wasm, len(wasm), _ffi.NULL, 0, wasi
-            )
-        if not ok:
-            error = _lib.extism_error(self.ctx.pointer, -1)
-            if error != _ffi.NULL:
-                raise Error(_ffi.string(error).decode())
-            raise Error("Unable to update plugin")
-
-        if config is not None:
-            s = json.dumps(config).encode()
-            _lib.extism_plugin_config(self.ctx.pointer, self.plugin, s, len(s))
+        return CancelHandle(_lib.extism_plugin_cancel_handle(self.plugin))
 
     def _check_error(self, rc):
         if rc != 0:
-            error = _lib.extism_error(self.ctx.pointer, self.plugin)
+            error = _lib.extism_plugin_error(self.plugin)
             if error != _ffi.NULL:
                 raise Error(_ffi.string(error).decode())
             raise Error(f"Error code: {rc}")
@@ -357,9 +248,7 @@ class Plugin:
         -------
             True if the function exists in the plugin, False otherwise
         """
-        return _lib.extism_plugin_function_exists(
-            self.ctx.pointer, self.plugin, name.encode()
-        )
+        return _lib.extism_plugin_function_exists(self.plugin, name.encode())
 
     def call(self, function_name: str, data: Union[str, bytes], parse=bytes):
         """
@@ -384,22 +273,20 @@ class Plugin:
             data = data.encode()
         self._check_error(
             _lib.extism_plugin_call(
-                self.ctx.pointer, self.plugin, function_name.encode(), data, len(data)
+                self.plugin, function_name.encode(), data, len(data)
             )
         )
-        out_len = _lib.extism_plugin_output_length(self.ctx.pointer, self.plugin)
-        out_buf = _lib.extism_plugin_output_data(self.ctx.pointer, self.plugin)
+        out_len = _lib.extism_plugin_output_length(self.plugin)
+        out_buf = _lib.extism_plugin_output_data(self.plugin)
         buf = _ffi.buffer(out_buf, out_len)
         if parse is None:
             return buf
         return parse(buf)
 
     def __del__(self):
-        if not hasattr(self, "ctx"):
+        if not hasattr(self, "pointer"):
             return
-        if self.ctx.pointer == _ffi.NULL:
-            return
-        _lib.extism_plugin_free(self.ctx.pointer, self.plugin)
+        _lib.extism_plugin_free(self.plugin)
         self.plugin = -1
 
     def __enter__(self):

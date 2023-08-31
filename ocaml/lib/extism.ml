@@ -1,13 +1,14 @@
 module Manifest = Extism_manifest
 module Error = Error
-module Context = Context
 module Plugin = Plugin
 module Function = Function
 module Current_plugin = Current_plugin
 include Types
 
-let with_context = Plugin.with_context
 let extism_version = Bindings.extism_version
+
+let with_plugin f p =
+  Fun.protect ~finally:(fun () -> Plugin.free p) (fun () -> f p)
 
 let%test _ = String.length (extism_version ()) > 0
 

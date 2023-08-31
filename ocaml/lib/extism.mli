@@ -101,20 +101,20 @@ module Current_plugin : sig
   type t
   (** Opaque type, wraps [ExtismCurrentPlugin] *)
 
-  type memory_block = { offs : Unsigned.UInt64.t; len : Unsigned.UInt64.t }
+  type memory_handle = { offs : Unsigned.UInt64.t; len : Unsigned.UInt64.t }
   (** Represents a block of guest memory *)
 
   val memory : ?offs:Unsigned.UInt64.t -> t -> Unsigned.uint8 Ctypes.ptr
   (** Get pointer to entire plugin memory *)
 
-  val find : t -> Unsigned.UInt64.t -> memory_block option
-  (** Find memory block *)
+  val find : t -> Unsigned.UInt64.t -> memory_handle option
+  (** Convert an offset into a {memory_handle} *)
 
-  val alloc : t -> int -> memory_block
+  val alloc : t -> int -> memory_handle
   (** Allocate a new block of memory *)
 
-  val free : t -> memory_block -> unit
-  (** Free an allocated block of memory *)
+  val free : t -> memory_handle -> unit
+  (** Free allocated memory *)
 
   val return_string : t -> Val_array.t -> int -> string -> unit
   val return_bigstring : t -> Val_array.t -> int -> Bigstringaf.t -> unit
@@ -122,27 +122,27 @@ module Current_plugin : sig
   val input_bigstring : t -> Val_array.t -> int -> Bigstringaf.t
 
   (** Some helpter functions for reading/writing memory *)
-  module Memory_block : sig
-    val to_val : memory_block -> Val.t
+  module Memory_handle : sig
+    val to_val : memory_handle -> Val.t
     (** Convert memory block to [Val] *)
 
-    val of_val : t -> Val.t -> memory_block option
+    val of_val : t -> Val.t -> memory_handle option
     (** Convert [Val] to memory block *)
 
-    val of_val_exn : t -> Val.t -> memory_block
+    val of_val_exn : t -> Val.t -> memory_handle
     (** Convert [Val] to memory block, raises [Invalid_argument] if the value is not a pointer
         to a valid memory block *)
 
-    val get_string : t -> memory_block -> string
+    val get_string : t -> memory_handle -> string
     (** Get a string from memory stored at the provided offset *)
 
-    val get_bigstring : t -> memory_block -> Bigstringaf.t
+    val get_bigstring : t -> memory_handle -> Bigstringaf.t
     (** Get a bigstring from memory stored at the provided offset *)
 
-    val set_string : t -> memory_block -> string -> unit
+    val set_string : t -> memory_handle -> string -> unit
     (** Store a string into memory at the provided offset *)
 
-    val set_bigstring : t -> memory_block -> Bigstringaf.t -> unit
+    val set_bigstring : t -> memory_handle -> Bigstringaf.t -> unit
     (** Store a bigstring into memory at the provided offset *)
   end
 end
@@ -178,25 +178,6 @@ module Function : sig
   (** Free a list of functions *)
 end
 
-(** [Context] is used to group plugins *)
-module Context : sig
-  type t
-  (** Context type *)
-
-  val create : unit -> t
-  (** Create a new context *)
-
-  val free : t -> unit
-  (** Free a context. All plugins will be removed and the value should not be 
-      accessed after this call *)
-
-  val reset : t -> unit
-  (** Reset a context. All plugins will be removed *)
-end
-
-val with_context : (Context.t -> 'a) -> 'a
-(** Execute a function with a fresh context and free it after *)
-
 val set_log_file :
   ?level:[ `Error | `Warn | `Info | `Debug | `Trace ] -> string -> bool
 
@@ -208,7 +189,6 @@ module Plugin : sig
     ?config:Manifest.config ->
     ?wasi:bool ->
     ?functions:Function.t list ->
-    ?context:Context.t ->
     string ->
     (t, Error.t) result
   (** Make a new plugin from raw WebAssembly or JSON encoded manifest *)
@@ -216,22 +196,9 @@ module Plugin : sig
   val of_manifest :
     ?wasi:bool ->
     ?functions:Function.t list ->
-    ?context:Context.t ->
     Manifest.t ->
     (t, Error.t) result
   (** Make a new plugin from a [Manifest] *)
-
-  val update :
-    t ->
-    ?config:(string * string option) list ->
-    ?wasi:bool ->
-    ?functions:Function.t list ->
-    string ->
-    (unit, [ `Msg of string ]) result
-  (** Update a plugin from raw WebAssembly or JSON encoded manifest *)
-
-  val update_manifest : t -> ?wasi:bool -> Manifest.t -> (unit, Error.t) result
-  (** Update a plugin from a [Manifest] *)
 
   val call_bigstring :
     t -> name:string -> Bigstringaf.t -> (Bigstringaf.t, Error.t) result
@@ -246,11 +213,15 @@ module Plugin : sig
   val function_exists : t -> string -> bool
   (** Check if a function is exported by a plugin *)
 
-  module Cancel_handle: sig
+  module Cancel_handle : sig
     type t
 
-    val cancel: t -> bool
+    val cancel : t -> bool
   end
 
-  val cancel_handle: t -> Cancel_handle.t
+  val cancel_handle : t -> Cancel_handle.t
+
+  val id : t -> Uuidm.t
 end
+
+val with_plugin : (Plugin.t -> 'a) -> Plugin.t -> 'a

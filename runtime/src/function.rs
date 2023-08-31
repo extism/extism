@@ -1,6 +1,6 @@
-use crate::{Error, Internal};
+use crate::{CurrentPlugin, Error};
 
-/// A list of all possible value types in WebAssembly.
+/// An enumeration of all possible value types in WebAssembly.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 #[repr(C)]
 pub enum ValType {
@@ -54,6 +54,8 @@ impl From<ValType> for wasmtime::ValType {
 
 pub type Val = wasmtime::Val;
 
+/// UserData is an opaque pointer used to store additional data
+/// that gets passed into host function callbacks
 pub struct UserData {
     ptr: *mut std::ffi::c_void,
     free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
@@ -66,6 +68,8 @@ extern "C" fn free_any(ptr: *mut std::ffi::c_void) {
 }
 
 impl UserData {
+    /// Create a new `UserData` from an existing pointer and free function, this is used
+    /// by the C API to wrap C pointers into user data
     pub fn new_pointer(
         ptr: *mut std::ffi::c_void,
         free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
@@ -77,6 +81,7 @@ impl UserData {
         }
     }
 
+    /// Create a new `UserData` with any Rust type
     pub fn new<T: std::any::Any>(x: T) -> Self {
         let ptr = Box::into_raw(Box::new(x)) as *mut _;
         UserData {
@@ -86,11 +91,13 @@ impl UserData {
         }
     }
 
+    /// Returns `true` if the underlying pointer is `null`
     pub fn is_null(&self) -> bool {
         self.ptr.is_null()
     }
 
-    pub fn as_ptr(&self) -> *mut std::ffi::c_void {
+    /// Get the user data pointer
+    pub(crate) fn as_ptr(&self) -> *mut std::ffi::c_void {
         self.ptr
     }
 
@@ -102,6 +109,8 @@ impl UserData {
         }
     }
 
+    /// Get the pointer as an `Any` value - this will only return `Some` if `UserData::new` was used to create the value,
+    /// when `UserData::new_pointer` is used there is no way to know the original type of the pointer
     pub fn any(&self) -> Option<&dyn std::any::Any> {
         if !self.is_any || self.is_null() {
             return None;
@@ -110,6 +119,8 @@ impl UserData {
         unsafe { Some(&*self.ptr) }
     }
 
+    /// Get the pointer as a mutable `Any` value - this will only return `Some` if `UserData::new` was used to create the value,
+    /// when `UserData::new_pointer` is used there is no way to know the original type of the pointer
     pub fn any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
         if !self.is_any || self.is_null() {
             return None;
@@ -146,10 +157,11 @@ impl Drop for UserData {
 unsafe impl Send for UserData {}
 unsafe impl Sync for UserData {}
 
-type FunctionInner = dyn Fn(wasmtime::Caller<Internal>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
+type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
     + Sync
     + Send;
 
+/// Wraps raw host functions with some additional metadata and user data
 #[derive(Clone)]
 pub struct Function {
     pub(crate) name: String,
@@ -160,6 +172,7 @@ pub struct Function {
 }
 
 impl Function {
+    /// Create a new host function
     pub fn new<F>(
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
@@ -169,7 +182,7 @@ impl Function {
     ) -> Function
     where
         F: 'static
-            + Fn(&mut Internal, &[Val], &mut [Val], UserData) -> Result<(), Error>
+            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData) -> Result<(), Error>
             + Sync
             + Send,
     {

@@ -38,8 +38,27 @@ impl PluginBuilder {
     }
 
     /// Add a single host function
-    pub fn with_function(mut self, f: Function) -> Self {
-        self.functions.push(f);
+    pub fn with_function<F>(
+        mut self,
+        name: impl Into<String>,
+        args: impl IntoIterator<Item = ValType>,
+        returns: impl IntoIterator<Item = ValType>,
+        user_data: Option<UserData>,
+        f: F,
+    ) -> Self
+    where
+        F: 'static
+            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData) -> Result<(), Error>
+            + Sync
+            + Send,
+    {
+        self.functions.push(Function::new(
+            name,
+            args,
+            returns,
+            user_data.map(UserData::new),
+            f,
+        ));
         self
     }
 
@@ -49,18 +68,11 @@ impl PluginBuilder {
         self
     }
 
-    pub fn build<'a>(self, context: Option<&'a Context>) -> Result<Plugin<'a>, Error> {
-        match context {
-            Some(context) => match self.source {
-                Source::Manifest(m) => {
-                    Plugin::new_with_manifest(context, &m, self.functions, self.wasi)
-                }
-                Source::Data(d) => Plugin::new(context, d, self.functions, self.wasi),
-            },
-            None => match self.source {
-                Source::Manifest(m) => Plugin::create_with_manifest(&m, self.functions, self.wasi),
-                Source::Data(d) => Plugin::create(d, self.functions, self.wasi),
-            },
+    /// Generate a new plugin with the configured settings
+    pub fn build(self) -> Result<Plugin, Error> {
+        match self.source {
+            Source::Manifest(m) => Plugin::new_with_manifest(&m, self.functions, self.wasi),
+            Source::Data(d) => Plugin::new(d, self.functions, self.wasi),
         }
     }
 }

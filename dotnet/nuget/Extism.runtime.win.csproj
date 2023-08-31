@@ -1,24 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
-    <PropertyGroup>
-        <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
-        <NoBuild>true</NoBuild>
-        <IncludeBuildOutput>false</IncludeBuildOutput>
-    </PropertyGroup>
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;netstandard2.1</TargetFrameworks>
+    <NoBuild>true</NoBuild>
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+  </PropertyGroup>
 
-    <PropertyGroup>
-        <PackageId>Extism.runtime.win-x64</PackageId>
-        <Version>0.6.0</Version>
-        <Authors>Extism Contributors</Authors>
-        <Description>Internal implementation package for Extism to work on Windows x64</Description>
-        <Tags>extism, wasm, plugin</Tags>
-        <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
-    </PropertyGroup>
+  <PropertyGroup>
+    <PackageId>Extism.runtime.win-x64</PackageId>
+    <Version>0.7.0</Version>
+    <Authors>Extism Contributors</Authors>
+    <Description>Internal implementation package for Extism to work on Windows x64</Description>
+    <Tags>extism, wasm, plugin</Tags>
+    <PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+  </PropertyGroup>
 
-    <ItemGroup>
-        <Content Include="runtimes/win-x64.dll"
-            CopyToOutputDirectory="Always"
-            Pack="true"
-            PackagePath="runtimes\win-x64\native\extism.dll" />
-    </ItemGroup>
+  <ItemGroup>
+    <Content Include="runtimes/win-x64.dll"
+      CopyToOutputDirectory="Always"
+      Pack="true"
+      PackagePath="runtimes\win-x64\native\extism.dll" />
+  </ItemGroup>
 </Project>

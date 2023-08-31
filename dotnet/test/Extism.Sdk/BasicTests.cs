@@ -11,24 +11,11 @@ namespace Extism.Sdk.Tests;
 public class BasicTests
 {
     [Fact]
-    public void CountHelloWorldVowelsWithoutContext()
-    {
-        var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
-        var wasm = File.ReadAllBytes(Path.Combine(binDirectory, "code.wasm"));
-        using var plugin = Plugin.Create(wasm, Array.Empty<HostFunction>(), withWasi: true);
-
-        var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
-        Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
-    }
-
-    [Fact]
     public void CountHelloWorldVowels()
     {
-        using var context = new Context();
-
         var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
         var wasm = File.ReadAllBytes(Path.Combine(binDirectory, "code.wasm"));
-        using var plugin = context.CreatePlugin(wasm, Array.Empty<HostFunction>(), withWasi: true);
+        using var plugin = new Plugin(wasm, Array.Empty<HostFunction>(), withWasi: true);
 
         var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
         Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));
@@ -37,8 +24,6 @@ public class BasicTests
     [Fact]
     public void CountVowelsHostFunctions()
     {
-        using var context = new Context();
-
         var userData = Marshal.StringToHGlobalAnsi("Hello again!");
 
         using var helloWorld = new HostFunction(
@@ -51,7 +36,7 @@ public class BasicTests
 
         var binDirectory = Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)!;
         var wasm = File.ReadAllBytes(Path.Combine(binDirectory, "code-functions.wasm"));
-        using var plugin = context.CreatePlugin(wasm, new[] { helloWorld }, withWasi: true);
+        using var plugin = new Plugin(wasm, new[] { helloWorld }, withWasi: true);
 
         var response = plugin.CallFunction("count_vowels", Encoding.UTF8.GetBytes("Hello World"));
         Assert.Equal("{\"count\": 3}", Encoding.UTF8.GetString(response));

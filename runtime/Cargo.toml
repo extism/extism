@@ -1,17 +1,17 @@
 [package]
-name = "extism-runtime"
-version = "0.4.0"
+name = "extism"
+version = "1.0.0-alpha.0"
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
 homepage = "https://extism.org"
 repository = "https://github.com/extism/extism"
-description = "Extism runtime component"
+description = "Extism runtime and Rust SDK"
 
 [dependencies]
-wasmtime = ">= 10.0.0, < 12.0.0"
-wasmtime-wasi = ">= 10.0.0, < 12.0.0"
-wasmtime-wasi-nn = {version = ">= 10.0.0, < 12.0.0", optional=true}
+wasmtime = ">= 10.0.0, < 13.0.0"
+wasmtime-wasi = ">= 10.0.0, < 13.0.0"
+wasmtime-wasi-nn = {version = ">= 10.0.0, < 13.0.0", optional=true}
 anyhow = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
@@ -22,7 +22,7 @@ log4rs = "1.1"
 url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
-extism-manifest = { version = "0.4.0", path = "../manifest" }
+extism-manifest = { version = "1.0.0-alpha.0", path = "../manifest" }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
 
@@ -34,4 +34,4 @@ register-filesystem = [] # enables wasm to be loaded from disk
 http = ["ureq"]          # enables extism_http_request
 
 [build-dependencies]
-cbindgen = "0.24"
+cbindgen = "0.25"

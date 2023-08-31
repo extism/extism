@@ -1,17 +1,9 @@
 module Manifest = Extism_manifest
 
-type t = { id : int32; ctx : Context.t; mutable functions : Function.t list }
-
-let with_context f =
-  let ctx = Context.create () in
-  let x =
-    try f ctx
-    with exc ->
-      Context.free ctx;
-      raise exc
-  in
-  Context.free ctx;
-  x
+type t = {
+  mutable pointer : unit Ctypes.ptr;
+  mutable functions : Function.t list;
+}
 
 let set_config plugin = function
   | None -> true
@@ -19,39 +11,56 @@ let set_config plugin = function
       let config =
         Extism_manifest.yojson_of_config config |> Yojson.Safe.to_string
       in
-      Bindings.extism_plugin_config plugin.ctx.pointer plugin.id config
+      Bindings.extism_plugin_config plugin.pointer config
         (Unsigned.UInt64.of_int (String.length config))
 
 let free t =
-  if not (Ctypes.is_null t.ctx.pointer) then
-    Bindings.extism_plugin_free t.ctx.pointer t.id
+  if not (Ctypes.is_null t.pointer) then
+    let () = Bindings.extism_plugin_free t.pointer in
+    t.pointer <- Ctypes.null
 
-let create ?config ?(wasi = false) ?(functions = []) ?context wasm =
-  let ctx = match context with Some c -> c | None -> Context.create () in
+let strlen ptr =
+  let rec aux ptr len =
+    let c = Ctypes.( !@ ) ptr in
+    if c = char_of_int 0 then len else aux (Ctypes.( +@ ) ptr 1) (len + 1)
+  in
+  aux ptr 0
+
+let get_errmsg ptr =
+  if Ctypes.is_null ptr then "Call failed"
+  else
+    let length = strlen ptr in
+    let s = Ctypes.string_from_ptr ~length ptr in
+    let () = Bindings.extism_plugin_new_error_free ptr in
+    s
+
+let create ?config ?(wasi = false) ?(functions = []) wasm =
   let func_ptrs = List.map (fun x -> x.Function.pointer) functions in
   let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
   let n_funcs = Ctypes.CArray.length arr in
-  let id =
-    Bindings.extism_plugin_new ctx.Context.pointer wasm
+  let errmsg =
+    Ctypes.(allocate (ptr char) (coerce (ptr void) (ptr char) null))
+  in
+  let pointer =
+    Bindings.extism_plugin_new wasm
       (Unsigned.UInt64.of_int (String.length wasm))
       (Ctypes.CArray.start arr)
       (Unsigned.UInt64.of_int n_funcs)
-      wasi
+      wasi errmsg
   in
-  if id < 0l then
-    match Bindings.extism_error ctx.pointer (-1l) with
-    | None -> Error (`Msg "extism_plugin_call failed")
-    | Some msg -> Error (`Msg msg)
+  if Ctypes.is_null pointer then
+    let s = get_errmsg (Ctypes.( !@ ) errmsg) in
+    Error (`Msg s)
   else
-    let t = { id; ctx; functions } in
+    let t = { pointer; functions } in
     if not (set_config t config) then Error (`Msg "call to set_config failed")
     else
       let () = Gc.finalise free t in
       Ok t
 
-let of_manifest ?wasi ?functions ?context manifest =
+let of_manifest ?wasi ?functions manifest =
   let data = Manifest.to_json manifest in
-  create ?wasi ?functions ?context data
+  create ?wasi ?functions data
 
 let%test "free plugin" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
@@ -59,54 +68,23 @@ let%test "free plugin" =
   free plugin;
   true
 
-let update plugin ?config ?(wasi = false) ?(functions = []) wasm =
-  let { id; ctx; _ } = plugin in
-  let func_ptrs = List.map (fun x -> x.Function.pointer) functions in
-  let arr = Ctypes.CArray.of_list Ctypes.(ptr void) func_ptrs in
-  let n_funcs = Ctypes.CArray.length arr in
-  let ok =
-    Bindings.extism_plugin_update ctx.pointer id wasm
-      (Unsigned.UInt64.of_int (String.length wasm))
-      (Ctypes.CArray.start arr)
-      (Unsigned.UInt64.of_int n_funcs)
-      wasi
-  in
-  if not ok then
-    match Bindings.extism_error ctx.pointer (-1l) with
-    | None -> Error (`Msg "extism_plugin_update failed")
-    | Some msg -> Error (`Msg msg)
-  else if not (set_config plugin config) then
-    Error (`Msg "call to set_config failed")
+let call' f { pointer; _ } ~name input len =
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
   else
-    let () = plugin.functions <- functions in
-    Ok ()
-
-let update_manifest plugin ?wasi manifest =
-  let data = Manifest.to_json manifest in
-  update plugin ?wasi data
-
-let%test "update plugin manifest and config" =
-  let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
-  let config = [ ("a", Some "1") ] in
-  let plugin = of_manifest manifest |> Error.unwrap in
-  let manifest = Manifest.with_config manifest config in
-  update_manifest plugin manifest |> Result.is_ok
-
-let call' f { id; ctx; _ } ~name input len =
-  let rc = f ctx.pointer id name input len in
-  if rc <> 0l then
-    match Bindings.extism_error ctx.pointer id with
-    | None -> Error (`Msg "extism_plugin_call failed")
-    | Some msg -> Error (`Msg msg)
-  else
-    let out_len = Bindings.extism_plugin_output_length ctx.pointer id in
-    let ptr = Bindings.extism_plugin_output_data ctx.pointer id in
-    let buf =
-      Ctypes.bigarray_of_ptr Ctypes.array1
-        (Unsigned.UInt64.to_int out_len)
-        Char ptr
-    in
-    Ok buf
+    let rc = f pointer name input len in
+    if rc <> 0l then
+      match Bindings.extism_error pointer with
+      | None -> Error (`Msg "extism_plugin_call failed")
+      | Some msg -> Error (`Msg msg)
+    else
+      let out_len = Bindings.extism_plugin_output_length pointer in
+      let ptr = Bindings.extism_plugin_output_data pointer in
+      let buf =
+        Ctypes.bigarray_of_ptr Ctypes.array1
+          (Unsigned.UInt64.to_int out_len)
+          Char ptr
+      in
+      Ok buf
 
 let call_bigstring (t : t) ~name input =
   let len = Unsigned.UInt64.of_int (Bigstringaf.length input) in
@@ -150,8 +128,9 @@ let%test "call_functions" =
   call plugin ~name:"count_vowels" "this is a test"
   |> Error.unwrap = "{\"count\": 4}"
 
-let function_exists { id; ctx; _ } name =
-  Bindings.extism_plugin_function_exists ctx.pointer id name
+let function_exists { pointer; _ } name =
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
+  else Bindings.extism_plugin_function_exists pointer name
 
 let%test "function exists" =
   let manifest = Manifest.(create [ Wasm.file "test/code.wasm" ]) in
@@ -165,5 +144,13 @@ module Cancel_handle = struct
   let cancel { inner } = Bindings.extism_plugin_cancel inner
 end
 
-let cancel_handle { id; ctx; _ } =
-  Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle ctx.pointer id }
+let cancel_handle { pointer; _ } =
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
+  else Cancel_handle.{ inner = Bindings.extism_plugin_cancel_handle pointer }
+
+let id { pointer; _ } =
+  if Ctypes.is_null pointer then Error.throw (`Msg "Plugin already freed")
+  else
+    let id = Bindings.extism_plugin_id pointer in
+    let s = Ctypes.string_from_ptr id ~length:16 in
+    Uuidm.unsafe_of_bytes s

@@ -13,27 +13,17 @@ import java.util.Objects;
 public class Plugin implements AutoCloseable {
 
     /**
-     * Holds the Extism {@link Context} that the plugin belongs to.
+     * Holds the Extism plugin pointer
      */
-    private final Context context;
+    private final Pointer pluginPointer;
 
     /**
-     * Holds the index of the plugin
-     */
-    private final int index;
-
-    /**
-     * Constructor for a Plugin. Only expose internally. Plugins should be created and
-     * managed from {@link org.extism.sdk.Context}.
-     *
-     * @param context       The context to manage the plugin
      * @param manifestBytes The manifest for the plugin
      * @param functions     The Host functions for th eplugin
      * @param withWASI      Set to true to enable WASI
      */
-    public Plugin(Context context, byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
+    public Plugin(byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
 
-        Objects.requireNonNull(context, "context");
         Objects.requireNonNull(manifestBytes, "manifestBytes");
 
         Pointer[] ptrArr = new Pointer[functions == null ? 0 : functions.length];
@@ -43,47 +33,31 @@ public class Plugin implements AutoCloseable {
                ptrArr[i] = functions[i].pointer;
             }
 
-        Pointer contextPointer = context.getPointer();
-
-        int index = LibExtism.INSTANCE.extism_plugin_new(contextPointer, manifestBytes, manifestBytes.length,
+        Pointer[] errormsg = new Pointer[1];
+        Pointer p = LibExtism.INSTANCE.extism_plugin_new(manifestBytes, manifestBytes.length,
                 ptrArr,
                 functions == null ? 0 : functions.length,
-                withWASI);
-        if (index == -1) {
-            String error = context.error(this);
-            throw new ExtismException(error);
+                withWASI,
+                errormsg);
+        if (p == null) {
+            int errlen = LibExtism.INSTANCE.strlen(errormsg[0]);
+            byte[] msg = new byte[errlen];
+            errormsg[0].read(0, msg, 0, errlen);
+            LibExtism.INSTANCE.extism_plugin_new_error_free(errormsg[0]);
+            throw new ExtismException(new String(msg));
         }
 
-        this.index= index;
-        this.context = context;
+        this.pluginPointer = p;
     }
 
-    public Plugin(Context context, Manifest manifest, boolean withWASI, HostFunction[] functions) {
-        this(context, serialize(manifest), withWASI, functions);
-    }
-
-
-    public Plugin(byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
-        this(new Context(), manifestBytes, withWASI, functions);
-    }
-
-    
     public Plugin(Manifest manifest, boolean withWASI, HostFunction[] functions) {
-        this(new Context(), serialize(manifest), withWASI, functions);
+        this(serialize(manifest), withWASI, functions);
     }
+
 
     private static byte[] serialize(Manifest manifest) {
         Objects.requireNonNull(manifest, "manifest");
         return JsonSerde.toJson(manifest).getBytes(StandardCharsets.UTF_8);
-    }
-
-    /**
-     * Getter for the internal index pointer to this plugin.
-     *
-     * @return the plugin index
-     */
-    public int getIndex() {
-        return index;
     }
 
     /**
@@ -98,18 +72,18 @@ public class Plugin implements AutoCloseable {
 
         Objects.requireNonNull(functionName, "functionName");
 
-        Pointer contextPointer = context.getPointer();
         int inputDataLength = inputData == null ? 0 : inputData.length;
-        int exitCode = LibExtism.INSTANCE.extism_plugin_call(contextPointer, index, functionName, inputData, inputDataLength);
+        int exitCode = LibExtism.INSTANCE.extism_plugin_call(this.pluginPointer, functionName, inputData, inputDataLength);
         if (exitCode == -1) {
-            String error = context.error(this);
+            String error = this.error();
             throw new ExtismException(error);
         }
 
-        int length = LibExtism.INSTANCE.extism_plugin_output_length(contextPointer, index);
-        Pointer output = LibExtism.INSTANCE.extism_plugin_output_data(contextPointer, index);
+        int length = LibExtism.INSTANCE.extism_plugin_output_length(this.pluginPointer);
+        Pointer output = LibExtism.INSTANCE.extism_plugin_output_data(this.pluginPointer);
         return output.getByteArray(0, length);
     }
+
 
     /**
      * Invoke a function with the given name and input.
@@ -126,46 +100,21 @@ public class Plugin implements AutoCloseable {
         var outputBytes = call(functionName, inputBytes);
         return new String(outputBytes, StandardCharsets.UTF_8);
     }
-
+    
     /**
-     * Update the plugin code given manifest changes
+     * Get the error associated with a plugin
      *
-     * @param manifest The manifest for the plugin
-     * @param withWASI Set to true to enable WASI
-     * @return {@literal true} if update was successful
+     * @return the error message
      */
-    public boolean update(Manifest manifest, boolean withWASI, HostFunction[] functions) {
-        return update(serialize(manifest), withWASI, functions);
+    protected String error() {
+        return LibExtism.INSTANCE.extism_plugin_error(this.pluginPointer);
     }
 
     /**
-     * Update the plugin code given manifest changes
-     *
-     * @param manifestBytes The manifest for the plugin
-     * @param withWASI      Set to true to enable WASI
-     * @return {@literal true} if update was successful
-     */
-    public boolean update(byte[] manifestBytes, boolean withWASI, HostFunction[] functions) {
-        Objects.requireNonNull(manifestBytes, "manifestBytes");
-        Pointer[] ptrArr = new Pointer[functions == null ? 0 : functions.length];
-
-        if (functions != null)
-            for (int i = 0; i < functions.length; i++) {
-                ptrArr[i] = functions[i].pointer;
-            }
-
-        return LibExtism.INSTANCE.extism_plugin_update(context.getPointer(), index, manifestBytes, manifestBytes.length,
-                ptrArr,
-                functions == null ? 0 : functions.length,
-                withWASI);
-    }
-
-    /**
-     * Frees a plugin from memory. Plugins will be automatically cleaned up
-     * if you free their parent Context using {@link org.extism.sdk.Context#free() free()} or {@link org.extism.sdk.Context#reset() reset()}
+     * Frees a plugin from memory
      */
     public void free() {
-        LibExtism.INSTANCE.extism_plugin_free(context.getPointer(), index);
+        LibExtism.INSTANCE.extism_plugin_free(this.pluginPointer);
     }
 
     /**
@@ -187,7 +136,7 @@ public class Plugin implements AutoCloseable {
      */
     public boolean updateConfig(byte[] jsonBytes) {
         Objects.requireNonNull(jsonBytes, "jsonBytes");
-        return LibExtism.INSTANCE.extism_plugin_config(context.getPointer(), index, jsonBytes, jsonBytes.length);
+        return LibExtism.INSTANCE.extism_plugin_config(this.pluginPointer, jsonBytes, jsonBytes.length);
     }
 
     /**
@@ -202,10 +151,7 @@ public class Plugin implements AutoCloseable {
      * Return a new `CancelHandle`, which can be used to cancel a running Plugin
      */
     public CancelHandle cancelHandle() {
-        if (this.context.getPointer() == null) {
-            throw new ExtismException("No Context set");
-        }
-        Pointer handle = LibExtism.INSTANCE.extism_plugin_cancel_handle(this.context.getPointer(), this.index);
+        Pointer handle = LibExtism.INSTANCE.extism_plugin_cancel_handle(this.pluginPointer);
         return new CancelHandle(handle);
     }
 }
