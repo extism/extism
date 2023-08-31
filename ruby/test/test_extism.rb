@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-require "test_helper"
+require 'test_helper'
 
 class TestExtism < Minitest::Test
   def test_that_it_has_a_version_number
@@ -9,22 +9,22 @@ class TestExtism < Minitest::Test
 
   def test_plugin_call
     plugin = Extism::Plugin.new(manifest)
-    res = JSON.parse(plugin.call("count_vowels", "this is a test"))
-    assert_equal res["count"], 4
-    res = JSON.parse(plugin.call("count_vowels", "this is a test again"))
-    assert_equal res["count"], 7
-    res = JSON.parse(plugin.call("count_vowels", "this is a test thrice"))
-    assert_equal res["count"], 6
-    res = JSON.parse(plugin.call("count_vowels", "🌎hello🌎world🌎"))
-    assert_equal res["count"], 3
+    res = JSON.parse(plugin.call('count_vowels', 'this is a test'))
+    assert_equal res['count'], 4
+    res = JSON.parse(plugin.call('count_vowels', 'this is a test again'))
+    assert_equal res['count'], 7
+    res = JSON.parse(plugin.call('count_vowels', 'this is a test thrice'))
+    assert_equal res['count'], 6
+    res = JSON.parse(plugin.call('count_vowels', '🌎hello🌎world🌎'))
+    assert_equal res['count'], 3
   end
 
   def test_can_free_plugin
     plugin = Extism::Plugin.new(manifest)
-    _res = plugin.call("count_vowels", "this is a test")
+    _res = plugin.call('count_vowels', 'this is a test')
     plugin.free
     assert_raises(Extism::Error) do
-      _res = plugin.call("count_vowels", "this is a test")
+      _res = plugin.call('count_vowels', 'this is a test')
     end
   end
 
@@ -36,15 +36,24 @@ class TestExtism < Minitest::Test
 
   def test_has_function
     plugin = Extism::Plugin.new(manifest)
-    assert plugin.has_function? "count_vowels"
-    refute plugin.has_function? "i_am_not_a_function"
+    assert plugin.has_function? 'count_vowels'
+    refute plugin.has_function? 'i_am_not_a_function'
   end
 
   def test_errors_on_unknown_function
     plugin = Extism::Plugin.new(manifest)
     assert_raises(Extism::Error) do
-      plugin.call("non_existent_function", "input")
+      plugin.call('non_existent_function', 'input')
     end
+  end
+
+  def test_host_functions
+    func = proc do |_plugin_ptr, _args_ptr, _args_size, _returns_ptr, _returns_size, _data_ptr|
+      puts 'hello from ruby'
+    end
+    f = Extism::Function.new('hello_world', [Extism::ValType::I64], [Extism::ValType::I64], func, nil)
+    plugin = Extism::Plugin.new(host_manifest, [f])
+    puts plugin
   end
 
   private
@@ -53,9 +62,19 @@ class TestExtism < Minitest::Test
     {
       wasm: [
         {
-          path: File.join(__dir__, "../../wasm/code.wasm"),
-        },
-      ],
+          path: File.join(__dir__, '../../wasm/code.wasm')
+        }
+      ]
+    }
+  end
+
+  def host_manifest
+    {
+      wasm: [
+        {
+          path: File.join(__dir__, '../../wasm/code-functions.wasm')
+        }
+      ]
     }
   end
 end

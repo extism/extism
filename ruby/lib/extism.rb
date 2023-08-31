@@ -1,6 +1,6 @@
-require "ffi"
-require "json"
-require_relative "./extism/version"
+require 'ffi'
+require 'json'
+require_relative './extism/version'
 
 module Extism
   class Error < StandardError
@@ -17,16 +17,13 @@ module Extism
   # @param name [String] The path to the logfile
   # @param level [String] The log level. One of {"debug", "error", "info", "trace" }
   def self.set_log_file(name, level = nil)
-    if level
-      level = FFI::MemoryPointer::from_string(level)
-    end
     C.extism_log_file(name, level)
   end
 
   $PLUGINS = {}
   $FREE_PLUGIN = proc { |ptr|
     x = $PLUGINS[ptr]
-    if !x.nil?
+    unless x.nil?
       C.extism_plugin_free(x[:plugin])
       $PLUGINS.delete(ptr)
     end
@@ -40,7 +37,7 @@ module Extism
 
     # Cancel the plugin used to generate the handle
     def cancel
-      return C.extism_plugin_cancel(@handle)
+      C.extism_plugin_cancel(@handle)
     end
   end
 
@@ -51,26 +48,26 @@ module Extism
     # @param wasm [Hash, String] The manifest or WASM binary. See https://extism.org/docs/concepts/manifest/.
     # @param wasi [Boolean] Enable WASI support
     # @param config [Hash] The plugin config
-    def initialize(wasm, wasi = false, config = nil)
-      if wasm.class == Hash
-        wasm = JSON.generate(wasm)
-      end
+    def initialize(wasm, functions = [], wasi = false, config = nil)
+      wasm = JSON.generate(wasm) if wasm.instance_of?(Hash)
       code = FFI::MemoryPointer.new(:char, wasm.bytesize)
-      errmsg = FFI::MemoryPointer.new(:pointer) 
+      errmsg = FFI::MemoryPointer.new(:pointer)
       code.put_bytes(0, wasm)
-      @plugin = C.extism_plugin_new(code, wasm.bytesize, nil, 0, wasi, errmsg)
+      funcs_ptr = FFI::MemoryPointer.new(C::ExtismFunction)
+      funcs_ptr.write_array_of_pointer(functions.map { |f| f.pointer })
+      @plugin = C.extism_plugin_new(code, wasm.bytesize, funcs_ptr, 0, wasi, errmsg)
       if @plugin.null?
         err = errmsg.read_pointer.read_string
         C.extism_plugin_new_error_free errmsg.read_pointer
-        raise Error.new err
+        raise Error, err
       end
-      $PLUGINS[self.object_id] = { :plugin => @plugin }
+      $PLUGINS[object_id] = { plugin: @plugin }
       ObjectSpace.define_finalizer(self, $FREE_PLUGIN)
-      if config != nil and @plugin.null?
-        s = JSON.generate(config)
-        ptr = FFI::MemoryPointer::from_string(s)
-        C.extism_plugin_config(@plugin, ptr, s.bytesize)
-      end
+      return unless !config.nil? and @plugin.null?
+
+      s = JSON.generate(config)
+      ptr = FFI::MemoryPointer.from_string(s)
+      C.extism_plugin_config(@plugin, ptr, s.bytesize)
     end
 
     # Check if a function exists
@@ -89,16 +86,16 @@ module Extism
     def call(name, data, &block)
       # If no block was passed then use Pointer::read_string
       block ||= ->(buf, len) { buf.read_string(len) }
-      input = FFI::MemoryPointer::from_string(data)
+      input = FFI::MemoryPointer.from_string(data)
       rc = C.extism_plugin_call(@plugin, name, input, data.bytesize)
       if rc != 0
         err = C.extism_plugin_error(@plugin)
-        if err&.empty?
-          raise Error.new "extism_call failed"
-        else
-          raise Error.new err
-        end
+        raise Error, 'extism_call failed' if err&.empty?
+
+        raise Error, err
+
       end
+
       out_len = C.extism_plugin_output_length(@plugin)
       buf = C.extism_plugin_output_data(@plugin)
       block.call(buf, out_len)
@@ -110,36 +107,116 @@ module Extism
     def free
       return if @plugin.null?
 
-      $PLUGINS.delete(self.object_id)
+      $PLUGINS.delete(object_id)
       C.extism_plugin_free(@plugin)
       @plugin = nil
     end
 
     # Get a CancelHandle for a plugin
     def cancel_handle
-      return CancelHandle.new(C.extism_plugin_cancel_handle(@plugin))
+      CancelHandle.new(C.extism_plugin_cancel_handle(@plugin))
     end
   end
 
-  private
+  module ValType
+    I32 = 0
+    I64 = 1
+    F32 = 2
+    F64 = 3
+    V128 = 4
+    FUNC_REF = 5
+    EXTERN_REF = 6
+  end
+
+  class Function
+    def initialize(name, args, returns, func_proc, _user_data)
+      @name = name
+      @args = args
+      @returns = returns
+      @func = func_proc
+    end
+
+    def pointer
+      return @pointer if @pointer
+
+      free = proc { puts 'freeing ' }
+      args = C.from_int_array(@args)
+      returns = C.from_int_array(@returns)
+      @pointer = C.extism_function_new(@name, args, @args.length, returns, @returns.length, @func, free, nil)
+    end
+  end
 
   # Private module used to interface with the Extism runtime.
   # *Warning*: Do not use or rely on this directly.
   module C
     extend FFI::Library
-    ffi_lib "extism"
-    attach_function :extism_plugin_new_error_free, [:pointer], :void
-    attach_function :extism_plugin_new, [:pointer, :uint64, :pointer, :uint64, :bool, :pointer], :pointer
-    attach_function :extism_plugin_error, [:pointer], :string
-    attach_function :extism_plugin_call, [:pointer, :string, :pointer, :uint64], :int32
-    attach_function :extism_plugin_function_exists, [:pointer, :string], :bool
-    attach_function :extism_plugin_output_length, [:pointer], :uint64
-    attach_function :extism_plugin_output_data, [:pointer], :pointer
-    attach_function :extism_log_file, [:string, :pointer], :void
-    attach_function :extism_plugin_free, [:pointer], :void
-    attach_function :extism_version, [], :string
+    ffi_lib 'extism'
+
+    def self.from_int_array(ruby_array)
+      ptr = FFI::MemoryPointer.new(:int, ruby_array.length)
+      ptr.write_array_of_int(ruby_array)
+      ptr
+    end
+
+    typedef :uint64, :ExtismMemoryHandle
+    typedef :uint64, :ExtismSize
+
+    enum :ExtismValType, %i[I32 I64 F32 F64 V128 FuncRef ExternRef]
+
+    class ExtismValUnion < FFI::Union
+      layout :i32, :int32,
+             :i64, :int64,
+             :f32, :float,
+             :f64, :double
+    end
+
+    class ExtismVal < FFI::Struct
+      layout :t, :ExtismValType,
+             :v, ExtismValUnion
+    end
+
+    class ExtismFunction < FFI::Struct
+      layout :current_plugin, :pointer,
+             :inputs, :pointer,
+             :n_inputs, :uint64,
+             :outputs, :pointer,
+             :n_outputs, :uint64,
+             :data, :pointer
+    end
+
+    callback :ExtismFunctionType, [
+      :pointer, # plugin
+      :pointer, # inputs
+      :ExtismSize, # n_inputs
+      :pointer, # outputs
+      :ExtismSize, # n_outputs
+      :pointer # user_data
+    ], :void
+
+    callback :ExtismFreeFunctionType, [], :void
+
     attach_function :extism_plugin_id, [:pointer], :pointer
+    attach_function :extism_current_plugin_memory, [:pointer], :pointer
+    attach_function :extism_current_plugin_memory_alloc, %i[pointer ExtismSize], :ExtismMemoryHandle
+    attach_function :extism_current_plugin_memory_length, %i[pointer ExtismMemoryHandle], :ExtismSize
+    attach_function :extism_current_plugin_memory_free, %i[pointer ExtismMemoryHandle], :void
+    attach_function :extism_function_new,
+                    %i[string pointer ExtismSize pointer ExtismSize ExtismFunctionType ExtismFreeFunctionType pointer], :pointer
+    attach_function :extism_function_free, [:pointer], :void
+    attach_function :extism_function_set_namespace, %i[pointer string], :void
+    attach_function :extism_plugin_new, %i[pointer ExtismSize pointer ExtismSize bool pointer], :pointer
+    attach_function :extism_plugin_new_error_free, [:pointer], :void
+    attach_function :extism_plugin_free, [:pointer], :void
     attach_function :extism_plugin_cancel_handle, [:pointer], :pointer
     attach_function :extism_plugin_cancel, [:pointer], :bool
+    attach_function :extism_plugin_config, %i[pointer pointer ExtismSize], :bool
+    attach_function :extism_plugin_function_exists, %i[pointer string], :bool
+    attach_function :extism_plugin_call, %i[pointer string pointer ExtismSize], :int32
+    attach_function :extism_error, [:pointer], :string
+    attach_function :extism_plugin_error, [:pointer], :string
+    attach_function :extism_plugin_output_length, [:pointer], :ExtismSize
+    attach_function :extism_plugin_output_data, [:pointer], :pointer
+    attach_function :extism_log_file, %i[string string], :bool
+    attach_function :extism_version, [], :string
   end
 end
