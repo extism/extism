@@ -51,12 +51,12 @@ class TestExtism < Minitest::Test
     # Extism.set_log_file('stdout', 'trace')
     func = proc do |_current_plugin, inputs, outputs, user_data|
       outputs.first.value = inputs.first.value
-      puts user_data
+      assert_equal user_data, 'My User Data'
     end
     f = Extism::Function.new('hello_world', [Extism::ValType::I64], [Extism::ValType::I64], func, 'My User Data')
     plugin = Extism::Plugin.new(host_manifest, [f], true)
     result = plugin.call('count_vowels', 'Hello, World!')
-    puts result
+    assert_equal JSON.parse(result), { 'count' => 3 }
   end
 
   private
