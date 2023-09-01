@@ -3,10 +3,14 @@ use crate::*;
 use base64::Engine;
 
 /// The `encoding` macro can be used to create newtypes that implement a particular encoding for the
-/// inner value. For example, the following line creates a new JSON encoding using serde_json:
-/// ```rust
+/// inner value.
+///
+/// For example, the following line creates a new JSON encoding using serde_json:
+///
+/// ```
 /// extism_convert::encoding(MyJson, serde_json::to_vec, serde_json::from_slice);
 /// ```
+///
 /// This will create a struct `struct MyJson<T>(pub T)` and implement `ToBytes` using `serde_json::to_vec`
 /// and `FromBytesOwned` using `serde_json::from_vec`
 #[macro_export]
