@@ -92,3 +92,9 @@ impl FromBytesOwned for () {
         Ok(())
     }
 }
+
+impl<'a, T: FromBytes<'a>> FromBytes<'a> for std::io::Cursor<T> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        Ok(std::io::Cursor::new(T::from_bytes(data)?))
+    }
+}
