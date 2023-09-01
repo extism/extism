@@ -10,15 +10,15 @@ version(Windows) {
     import runtime;
 }
 
-///
+/// A list of all possible value types in WebAssembly.
 enum ValType {
-    i32,
-    i64,
-    f32,
-    f64,
-    v128,
-    funcRef,
-    externRef,
+    i32 = I32,
+    i64 = I64,
+    f32 = F32,
+    f64 = F64,
+    v128 = V128,
+    funcRef = FuncRef,
+    externRef = ExternRef,
 }
 
 // Opaque Pointers
@@ -101,8 +101,10 @@ struct Function {
 
         this.func = extism_function_new(
             name.toStringz,
-            cast(ExtismValType*) inputs.ptr, inputs.length,
-            cast(ExtismValType*) outputs.ptr, outputs.length,
+            // See https://dlang.org/spec/importc.html#enums
+            // See https://forum.dlang.org/post/qmidcpaxctbuphcyvkdc@forum.dlang.org
+            castFrom!(const(ValType)*).to!(typeof(ExtismVal.t)*)(inputs.ptr), inputs.length,
+            castFrom!(const(ValType)*).to!(typeof(ExtismVal.t)*)(outputs.ptr), outputs.length,
             funcClosure,
             userData,
             freeUserData == null ? null : ((void* userData) {
