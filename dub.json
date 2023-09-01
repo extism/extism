@@ -7,6 +7,7 @@
 		"Extism contributors"
 	],
 	"copyright": "Copyright © 2023, Extism contributors",
+	"targetPath": "target",
 	"sourcePaths": ["d"],
 	"importPaths": ["d"],
 	"systemDependencies": "extism >= 0.4.0",
