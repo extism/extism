@@ -28,3 +28,12 @@ dub lint
 ```sh
 dub test
 ```
+
+## Examples
+
+### Hello World
+
+```sh
+cd d/examples/hello
+dub run
+```

@@ -74,9 +74,10 @@ void memoryFree(CurrentPlugin plugin, ulong ptr) {
   extism_current_plugin_memory_free(cast(ExtismCurrentPlugin*) plugin, ptr);
 }
 
-///
-struct Function {
-  private ExtismFunction* func;
+/// A host function, where `T` is the type of its user data.
+struct Function(T) {
+  /// Managed pointer.
+  ExtismFunction* func;
   alias func this;
   private string _namespace = null;
 
@@ -90,7 +91,7 @@ struct Function {
   ///     freeUserData: a callback to release the `userData`` value when the resulting `Function` is freed.
   this(
     string name, const ValType[] inputs, const ValType[] outputs, FunctionType func,
-    void* userData = null, void function(void* userData) freeUserData = null
+    T userData, void function(T userData) freeUserData = null
   ) {
     import std.functional: toDelegate;
 
@@ -102,6 +103,12 @@ struct Function {
     ) {
       func(plugin, (cast(const Val*) inputs)[0 .. numInputs], (cast(Val*) outputs)[0 .. numOutputs], data);
     }).toDelegate.bindDelegate;
+    
+    // Bind the `freeUserData` function with C linkage
+    auto freeUserDataHandler = freeUserData is null ? null : ((void* userDataPtr) {
+      if (userDataPtr is null) return;
+      freeUserData((&userDataPtr).to!T);
+    }).toDelegate.bindDelegate;
 
     this.func = extism_function_new(
       name.toStringz,// See https://dlang.org/spec/importc.html#enums
@@ -110,9 +117,8 @@ struct Function {
         .to!(typeof(ExtismVal.t)*)(inputs.ptr), inputs.length,
       castFrom!(const(ValType)*).to!(typeof(ExtismVal.t)*)(outputs.ptr), outputs.length,
       funcClosure,
-      userData,
-      freeUserData == null ? null : ((void* userData) { freeUserData(userData); })
-        .toDelegate.bindDelegate
+      &userData,
+      freeUserDataHandler,
     );
   }
 
@@ -135,7 +141,8 @@ struct Function {
 struct Plugin {
   import std.uuid: UUID;
 
-  private ExtismPlugin* plugin;
+  /// Managed pointer.
+  ExtismPlugin* plugin;
   alias plugin this;
 
   /// Create a new plugin.
@@ -144,8 +151,8 @@ struct Plugin {
   ///     functions: is an array of ExtismFunction*
   ///     withWasi: enables/disables WASI
   /// Throws: `Exception` if the plugin could not be created.
-  this(const ubyte[] wasm, const Function[] functions, bool withWasi) {
-    char* errorMsgPtr;
+  this(const ubyte[] wasm, const(ExtismFunction)*[] functions, bool withWasi = false) {
+    char* errorMsgPtr = null;
     plugin = extism_plugin_new(
       wasm.ptr, wasm.length, cast(ExtismFunction**) functions.ptr, functions.length, withWasi, &errorMsgPtr
     );
@@ -198,8 +205,10 @@ struct Plugin {
   /// Params:
   ///     funcName: is the function to call
   ///     data: is the input data
-  int call(string funcName, ubyte[] data) {
-    return extism_plugin_call(plugin, funcName.toStringz, data.ptr, data.length);
+  void call(string funcName, ubyte[] data = null) {
+    // Returns `0` if the call was successful, otherwise `-1`.
+    if (extism_plugin_call(plugin, funcName.toStringz, data.ptr, data.length) != 0)
+      throw new Exception(this.error);
   }
 
   /// Get the plugin's output data.
