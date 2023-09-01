@@ -131,6 +131,8 @@ struct Function {
 
 ///
 struct Plugin {
+    import std.uuid : UUID;
+
     private ExtismPlugin* plugin;
     alias plugin this;
 
@@ -147,6 +149,11 @@ struct Plugin {
     }
     ~this() {
       extism_plugin_free(plugin);
+    }
+
+    /// Get a plugin's ID.
+    UUID id() {
+      return UUID(extism_plugin_id(plugin)[0 .. 16]);
     }
 
     /// Get the error associated with this `Plugin`.
