@@ -11,6 +11,6 @@
 	"importPaths": ["d"],
 	"systemDependencies": "extism >= 0.4.0",
 	"targetType": "sourceLibrary",
-	"libs": ["extism"],
-	"dflags": ["-P-I$EXTISM_PACKAGE_DIR"]
+	"dflags": ["-P-I$EXTISM_PACKAGE_DIR"],
+	"libs": ["extism"]
 }
