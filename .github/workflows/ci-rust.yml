@@ -39,13 +39,13 @@ jobs:
         uses: actions/cache@v3
         with:
           path: target/release/libextism.*
-          key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}
+          key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('convert/**') }}
       - name: Cache target
         id: cache-target
         uses: actions/cache@v3
         with:
           path: target/**
-          key: ${{ runner.os }}-target-${{ env.GITHUB_SHA }}
+          key: ${{ runner.os }}-target-${{ github.sha }}
       - name: Build
         if: steps.cache-libextism.outputs.cache-hit != 'true'
         shell: bash
@@ -79,7 +79,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: target/**
-          key: ${{ runner.os }}-target-${{ env.GITHUB_SHA }}
+          key: ${{ runner.os }}-target-${{ github.sha }}
       - name: Format
         run: cargo fmt --check -p ${{ env.RUNTIME_CRATE }}
       - name: Lint
