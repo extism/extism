@@ -50,6 +50,7 @@ class Lang:
 if __name__ == '__main__':
     # Check for missing SDK functions
     sdks = [
+        Lang('d', 'd'),
         Lang('cpp', 'hpp'),
         Lang('go', 'go', path='..'),
         Lang('haskell', 'hs'),
