@@ -5,19 +5,20 @@ const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
 
-fn hello_world(
-    plugin: &mut CurrentPlugin,
-    inputs: &[Val],
-    outputs: &mut [Val],
-    _user_data: UserData,
-) -> Result<(), Error> {
-    let handle = plugin.memory_from_val(&inputs[0]).unwrap();
-    let input = plugin.memory_str(handle).unwrap().to_string();
+host_fn!(hello_world, |a: String| -> String { a });
 
-    let output = plugin.alloc(&input).unwrap();
-    outputs[0] = plugin.memory_to_val(output);
-    Ok(())
-}
+// Which is the same as:
+// fn hello_world(
+//     plugin: &mut CurrentPlugin,
+//     inputs: &[Val],
+//     outputs: &mut [Val],
+//     _user_data: UserData,
+// ) -> Result<(), Error> {
+//     let input: String = plugin.memory_get_val(&inputs[0]).unwrap();
+//     let output = plugin.memory_new(&input).unwrap();
+//     outputs[0] = plugin.memory_to_val(output);
+//     Ok(())
+// }
 
 fn hello_world_panic(
     _plugin: &mut CurrentPlugin,

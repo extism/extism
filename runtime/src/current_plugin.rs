@@ -82,7 +82,7 @@ impl CurrentPlugin {
     }
 
     /// Allocate a handle large enough for the encoded Rust type and copy it into Extism memory
-    pub fn alloc<'a, T: ToBytes<'a>>(&mut self, t: T) -> Result<MemoryHandle, Error> {
+    pub fn memory_new<'a, T: ToBytes<'a>>(&mut self, t: T) -> Result<MemoryHandle, Error> {
         let data = t.to_bytes()?;
         let data = data.as_ref();
         let handle = self.memory_alloc(data.len() as u64)?;
@@ -98,6 +98,16 @@ impl CurrentPlugin {
     ) -> Result<T, Error> {
         let data = self.memory_bytes(handle)?;
         T::from_bytes(data)
+    }
+
+    /// Decode a Rust type from Extism memory from an offset in memory specified by a `Val`
+    pub fn memory_get_val<'a, T: FromBytes<'a>>(&'a mut self, offs: &Val) -> Result<T, Error> {
+        if let Some(handle) = self.memory_handle(offs.i64().unwrap_or(0) as u64) {
+            let data = self.memory_bytes(handle)?;
+            T::from_bytes(data)
+        } else {
+            anyhow::bail!("invalid memory offset: {offs:?}")
+        }
     }
 
     pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {

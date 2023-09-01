@@ -238,3 +238,28 @@ impl Function {
         &self.ty
     }
 }
+
+#[macro_export]
+macro_rules! host_fn {
+    ($name: ident, |$($arg:ident : $argty:ty),*| -> $ret:ty $b:block) => {
+        fn $name(
+            plugin: &mut CurrentPlugin,
+            inputs: &[Val],
+            outputs: &mut [Val],
+            _user_data: UserData,
+        ) -> Result<(), Error> {
+            let mut index = 0;
+            $(
+                let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
+                #[allow(unused_assignments)]
+                {
+                    index += 1;
+                }
+            )*
+            let output = move || { $b };
+            let output = plugin.memory_new(&output())?;
+            outputs[0] = plugin.memory_to_val(output);
+            Ok(())
+        }
+    };
+}

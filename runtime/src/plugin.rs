@@ -437,7 +437,7 @@ impl Plugin {
             error!("Call to extism_reset failed");
         }
 
-        let handle = self.current_plugin_mut().alloc(bytes)?;
+        let handle = self.current_plugin_mut().memory_new(bytes)?;
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
             f.into_func().unwrap().call(
@@ -722,7 +722,7 @@ impl Plugin {
     pub(crate) fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
-        match self.current_plugin_mut().alloc(&s) {
+        match self.current_plugin_mut().memory_new(&s) {
             Ok(handle) => {
                 let (linker, mut store) = self.linker_and_store();
                 if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
