@@ -141,11 +141,19 @@ struct Plugin {
     ///     wasm: is a WASM module (wat or wasm) or a JSON encoded manifest
     ///     functions: is an array of ExtismFunction*
     ///     withWasi: enables/disables WASI
+    /// Throws: `Exception` if the plugin could not be created.
     this(const ubyte[] wasm, const Function[] functions, bool withWasi) {
-        char* errorMsg;
-        extism_plugin_new(
-            wasm.ptr, wasm.length, cast(ExtismFunction**) functions.ptr, functions.length, withWasi, &errorMsg
+        char* errorMsgPtr;
+        plugin = extism_plugin_new(
+            wasm.ptr, wasm.length, cast(ExtismFunction**) functions.ptr, functions.length, withWasi, &errorMsgPtr
         );
+        // See https://github.com/extism/extism/blob/ddcbeec3debe787293a9957c8be88f80a64b7c22/c/main.c#L67
+        // Instead of terminating the host process, throw.
+        if (plugin !is null) return;
+        auto errorMsg = errorMsgPtr.fromStringz.idup;
+        extism_plugin_new_error_free(errorMsgPtr);
+        // TODO: Subclass `Exception` for better error handling
+        throw new Exception(errorMsg);
     }
     ~this() {
       extism_plugin_free(plugin);
