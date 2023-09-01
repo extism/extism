@@ -34,6 +34,5 @@ dub test
 ### Hello World
 
 ```sh
-cd d/examples/hello
-dub run
+dub run extism:hello
 ```

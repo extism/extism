@@ -7,7 +7,7 @@ import std.string: representation;
 import extism;
 
 void main() {
-	auto wasm = cast(ubyte[]) read("../../../wasm/code-functions.wasm");
+	auto wasm = cast(ubyte[]) read("wasm/code-functions.wasm");
 	// FIXME: Creating the plugin results in EXC_BAD_ACCESS (segfault?)
 	auto plugin = new Plugin(wasm, [
 		Function!string(
