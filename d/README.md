@@ -17,6 +17,12 @@ extism link
 
 > Note: The install command may require `sudo`.
 
+### Lint Sources
+
+```sh
+dub lint
+```
+
 ### Running Tests
 
 ```sh
