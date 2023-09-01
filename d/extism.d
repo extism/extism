@@ -61,7 +61,7 @@ alias FunctionType = void delegate(
 /// Returns: A slice of an allocated memory block of the currently running plugin.
 ubyte[] memory(CurrentPlugin plugin, ulong n) {
   auto length = extism_current_plugin_memory_length(cast(ExtismCurrentPlugin*) plugin, n);
-  return extism_current_plugin_memory(cast(ExtismCurrentPlugin*) plugin)[n .. length];
+  return extism_current_plugin_memory(cast(ExtismCurrentPlugin*) plugin)[n .. n + length];
 }
 
 /// Allocate a memory block in the currently running plugin.
