@@ -199,6 +199,8 @@ struct Plugin {
     }
 
     /// Get the plugin's output data.
+    ///
+    /// Note: This copies the data into a managed buffer.
     /// Remarks: Use `outputData.length` to retreive size of plugin output.
     ubyte[] outputData() {
         import std.algorithm : copy;
