@@ -17,3 +17,6 @@ pub use encoding::{Base64, Json, Msgpack};
 pub use from_bytes::{FromBytes, FromBytesOwned};
 pub use memory_handle::MemoryHandle;
 pub use to_bytes::ToBytes;
+
+#[cfg(test)]
+mod tests;

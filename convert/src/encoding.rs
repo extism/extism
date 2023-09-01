@@ -8,7 +8,7 @@ use base64::Engine;
 /// For example, the following line creates a new JSON encoding using serde_json:
 ///
 /// ```
-/// extism_convert::encoding(MyJson, serde_json::to_vec, serde_json::from_slice);
+/// extism_convert::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);
 /// ```
 ///
 /// This will create a struct `struct MyJson<T>(pub T)` and implement `ToBytes` using `serde_json::to_vec`
@@ -25,19 +25,19 @@ macro_rules! encoding {
             }
         }
 
-        impl<T: serde::de::DeserializeOwned> FromBytesOwned for $name<T> {
-            fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        impl<T: serde::de::DeserializeOwned> $crate::FromBytesOwned for $name<T> {
+            fn from_bytes_owned(data: &[u8]) -> std::result::Result<Self, $crate::Error> {
                 let x = $from_slice(data)?;
-                Ok($name(x))
+                std::result::Result::Ok($name(x))
             }
         }
 
-        impl<'a, T: serde::Serialize> ToBytes<'a> for &'a $name<T> {
+        impl<'a, T: serde::Serialize> $crate::ToBytes<'a> for $name<T> {
             type Bytes = Vec<u8>;
 
-            fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+            fn to_bytes(&self) -> std::result::Result<Self::Bytes, $crate::Error> {
                 let enc = $to_vec(&self.0)?;
-                Ok(enc)
+                std::result::Result::Ok(enc)
             }
         }
     };
@@ -68,7 +68,7 @@ impl FromBytesOwned for serde_json::Value {
 ///
 /// A value wrapped in `Base64` will automatically be encoded/decoded using base64, the inner value should not
 /// already be base64 encoded.
-pub struct Base64<T: AsRef<[u8]>>(T);
+pub struct Base64<T: AsRef<[u8]>>(pub T);
 
 impl<'a, T: AsRef<[u8]>> ToBytes<'a> for Base64<T> {
     type Bytes = String;
