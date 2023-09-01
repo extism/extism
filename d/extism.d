@@ -54,46 +54,6 @@ alias FunctionType = void function(
     CurrentPlugin plugin, const Val[] inputs, Val[] outputs, void *data
 );
 
-/// Used to store and manage plugins.
-struct Context {
-    private ExtismContext* ctx;
-    alias ctx this;
-
-    // Disable default struct construction, e.g. `Context ctx;`
-    @disable this();
-    package this(ExtismContext* ctx) {
-        this.ctx = ctx;
-    }
-
-    ///
-    auto ptr() const {
-        return cast(ExtismContext*) ctx;
-    }
-
-    /// Create a new context.
-    static create() {
-        return Context(extism_context_new());
-    }
-    ~this() {
-        extism_context_free(ctx);
-    }
-
-    /// Get the error associated with this `Context`.
-    string error() {
-        return extism_error(ctx, -1).fromStringz.idup;
-    }
-
-    /// Remove a plugin from the registry and free associated memory.
-    void remove(Plugin plugin) {
-        extism_plugin_free(ctx, plugin);
-    }
-
-    /// Remove all plugins from the registry.
-    void reset() {
-        extism_context_reset(ctx);
-    }
-}
-
 /// Returns: A slice of an allocated memory block of the currently running plugin.
 ubyte[] memory(CurrentPlugin plugin, ulong n) {
     auto length = extism_current_plugin_memory_length(cast(ExtismCurrentPlugin*) plugin, n);
@@ -141,8 +101,8 @@ struct Function {
 
         this.func = extism_function_new(
             name.toStringz,
-            cast(const(ExtismValType)*) inputs.ptr, inputs.length,
-            cast(const(ExtismValType)*) outputs.ptr, outputs.length,
+            cast(ExtismValType*) inputs.ptr, inputs.length,
+            cast(ExtismValType*) outputs.ptr, outputs.length,
             funcClosure,
             userData,
             freeUserData == null ? null : ((void* userData) {
@@ -167,58 +127,48 @@ struct Function {
 
 ///
 struct Plugin {
-    private int plugin;
+    private ExtismPlugin* plugin;
     alias plugin this;
-    const Context ctx;
 
     /// Create a new plugin.
     /// Params:
     ///     wasm: is a WASM module (wat or wasm) or a JSON encoded manifest
     ///     functions: is an array of ExtismFunction*
     ///     withWasi: enables/disables WASI
-    this(Context ctx, const ubyte[] wasm, const Function[] functions, bool withWasi) {
-        this.ctx = ctx;
+    this(const ubyte[] wasm, const Function[] functions, bool withWasi) {
+        char* errorMsg;
         extism_plugin_new(
-            ctx.ptr, wasm.ptr, wasm.length, cast(const(ExtismFunction)**) functions.ptr, functions.length, withWasi
+            wasm.ptr, wasm.length, cast(ExtismFunction**) functions.ptr, functions.length, withWasi, &errorMsg
         );
+    }
+    ~this() {
+      extism_plugin_free(plugin);
     }
 
     /// Get the error associated with this `Plugin`.
     string error() {
-        return extism_error(ctx.ptr, plugin).fromStringz.idup;
+        return extism_error(plugin).fromStringz.idup;
     }
 
     /// Update plugin config values, this will merge with the existing values.
     bool config(ubyte[] json) {
-        return extism_plugin_config(ctx.ptr, plugin, json.ptr, json.length);
-    }
-
-    /// Update a plugin, keeping the existing ID.
-    ///
-    /// Memory for this plugin will be reset upon update.
-    bool update(Context ctx, const ubyte[] wasm, const Function[] functions, bool withWasi) {
-        return extism_plugin_update(
-            ctx.ptr, plugin,
-            wasm.ptr, wasm.length,
-            cast(const(ExtismFunction)**) functions.ptr, functions.length,
-            withWasi
-        );
+        return extism_plugin_config(plugin, json.ptr, json.length);
     }
 
     /// See_Also: `cancel`
     const(CancelHandle) cancelHandle() {
-        return extism_plugin_cancel_handle(ctx.ptr, plugin);
+        return extism_plugin_cancel_handle(plugin);
     }
 
     /// Cancel a running plugin.
     /// See_Also: `cancelHandle`
     bool cancel(const CancelHandle handle) {
-        return extism_plugin_cancel(cast(const(ExtismCancelHandle)*) handle);
+        return extism_plugin_cancel(cast(ExtismCancelHandle*) handle);
     }
 
     /// Returns: Whether a function with `name` exists.
     bool functionExists(string name) {
-        return extism_plugin_function_exists(ctx.ptr, plugin, name.toStringz);
+        return extism_plugin_function_exists(plugin, name.toStringz);
     }
 
     /// Call a function.
@@ -226,7 +176,7 @@ struct Plugin {
     ///     funcName: is the function to call
     ///     data: is the input data
     int call(string funcName, ubyte[] data) {
-        return extism_plugin_call(ctx.ptr, plugin, funcName.toStringz, data.ptr, data.length);
+        return extism_plugin_call(plugin, funcName.toStringz, data.ptr, data.length);
     }
 
     /// Get the plugin's output data.
@@ -234,8 +184,8 @@ struct Plugin {
     ubyte[] outputData() {
         import std.algorithm : copy;
 
-        auto outputLength = extism_plugin_output_length(ctx.ptr, plugin);
-        auto outputData = extism_plugin_output_data(ctx.ptr, plugin)[0 .. outputLength];
+        auto outputLength = extism_plugin_output_length(plugin);
+        auto outputData = extism_plugin_output_data(plugin)[0 .. outputLength];
         auto buffer = new ubyte[outputLength];
         assert(
             outputData.copy(buffer).length == 0,
