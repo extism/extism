@@ -16,7 +16,6 @@ pub struct CurrentPlugin {
     pub(crate) memory_limiter: Option<MemoryLimiter>,
 }
 
-// unsafe impl Sync for CurrentPlugin {}
 unsafe impl Send for CurrentPlugin {}
 
 pub(crate) struct MemoryLimiter {

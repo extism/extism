@@ -17,6 +17,9 @@ pub struct CancelHandle {
     pub id: uuid::Uuid,
 }
 
+unsafe impl Sync for CancelHandle {}
+unsafe impl Send for CancelHandle {}
+
 impl CancelHandle {
     pub fn cancel(&self) -> Result<(), Error> {
         self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
