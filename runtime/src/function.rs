@@ -71,7 +71,7 @@ extern "C" fn free_any(ptr: *mut std::ffi::c_void) {
 impl UserData {
     /// Create a new `UserData` from an existing pointer and free function, this is used
     /// by the C API to wrap C pointers into user data
-    pub fn new_pointer(
+    pub(crate) fn new_pointer(
         ptr: *mut std::ffi::c_void,
         free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
     ) -> Self {
@@ -165,10 +165,19 @@ type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &
 /// Wraps raw host functions with some additional metadata and user data
 #[derive(Clone)]
 pub struct Function {
+    /// Function name
     pub(crate) name: String,
-    pub(crate) ty: wasmtime::FuncType,
-    pub(crate) f: std::sync::Arc<FunctionInner>,
+
+    /// Module name
     pub(crate) namespace: Option<String>,
+
+    /// Function type
+    pub(crate) ty: wasmtime::FuncType,
+
+    /// Function handle
+    pub(crate) f: std::sync::Arc<FunctionInner>,
+
+    /// UserData
     pub(crate) _user_data: std::sync::Arc<UserData>,
 }
 
@@ -203,23 +212,28 @@ impl Function {
         }
     }
 
+    /// Host function name
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Host function module name
     pub fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
     }
 
+    /// Set host function module name
     pub fn set_namespace(&mut self, namespace: impl Into<String>) {
         self.namespace = Some(namespace.into());
     }
 
+    /// Update host function module name
     pub fn with_namespace(mut self, namespace: impl Into<String>) -> Self {
         self.set_namespace(namespace);
         self
     }
 
+    /// Get function type
     pub fn ty(&self) -> &wasmtime::FuncType {
         &self.ty
     }
