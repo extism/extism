@@ -6,6 +6,7 @@ use std::str::FromStr;
 use crate::*;
 
 pub type ExtismMemoryHandle = u64;
+pub type Size = u64;
 
 /// A union type for host function argument/return values
 #[repr(C)]
@@ -317,18 +318,7 @@ pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
     drop(plugin)
 }
 
-#[derive(Clone)]
-pub struct ExtismCancelHandle {
-    pub(crate) timer_tx: std::sync::mpsc::Sender<TimerAction>,
-    pub id: uuid::Uuid,
-}
-
-impl ExtismCancelHandle {
-    pub fn cancel(&self) -> Result<(), Error> {
-        self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
-        Ok(())
-    }
-}
+pub type ExtismCancelHandle = CancelHandle;
 
 /// Get plugin ID for cancellation
 #[no_mangle]

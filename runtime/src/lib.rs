@@ -1,7 +1,8 @@
+pub(crate) use extism_convert::*;
 pub(crate) use std::collections::BTreeMap;
 pub(crate) use wasmtime::*;
 
-pub use extism_convert::*;
+pub use extism_convert as convert;
 
 pub use anyhow::Error;
 
@@ -12,22 +13,21 @@ pub(crate) mod manifest;
 pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
-pub mod sdk;
 mod timer;
 
+/// Extism C API
+pub mod sdk;
+
 pub use current_plugin::CurrentPlugin;
+pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
 pub use extism_manifest::Manifest;
 pub use function::{Function, UserData, Val, ValType};
-pub use plugin::Plugin;
+pub use plugin::{CancelHandle, Plugin};
 pub use plugin_builder::PluginBuilder;
-pub use sdk::ExtismCancelHandle as CancelHandle;
 
 pub(crate) use internal::{Internal, Wasi};
-pub(crate) use timer::{Timer, TimerAction};
-
-pub type Size = u64;
-
 pub(crate) use log::{debug, error, trace};
+pub(crate) use timer::{Timer, TimerAction};
 
 #[cfg(test)]
 mod tests;

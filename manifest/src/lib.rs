@@ -4,26 +4,35 @@ use std::path::{Path, PathBuf};
 #[deprecated]
 pub type ManifestMemory = MemoryOptions;
 
+/// Configure memory settings
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct MemoryOptions {
+    /// The max number of WebAssembly pages that should be allocated
     #[serde(alias = "max")]
     pub max_pages: Option<u32>,
 }
 
+/// Generic HTTP request structure
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct HttpRequest {
+    /// The request URL
     pub url: String,
+
+    /// Request headers
     #[serde(default)]
     #[serde(alias = "header")]
     pub headers: std::collections::BTreeMap<String, String>,
+
+    /// Request method
     pub method: Option<String>,
 }
 
 impl HttpRequest {
+    /// Create a new `HttpRequest` to the given URL
     pub fn new(url: impl Into<String>) -> HttpRequest {
         HttpRequest {
             url: url.into(),
@@ -32,22 +41,28 @@ impl HttpRequest {
         }
     }
 
+    /// Update the method
     pub fn with_method(mut self, method: impl Into<String>) -> HttpRequest {
         self.method = Some(method.into());
         self
     }
 
+    /// Add a header
     pub fn with_header(mut self, key: impl Into<String>, value: impl Into<String>) -> HttpRequest {
         self.headers.insert(key.into(), value.into());
         self
     }
 }
 
+/// Provides additional metadata about a Webassembly module
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct WasmMetadata {
+    /// Module name, this is used by Extism to determine which is the `main` module
     pub name: Option<String>,
+
+    /// Module hash, if the data loaded from disk or via HTTP doesn't match an error will be raised
     pub hash: Option<String>,
 }
 
@@ -81,16 +96,20 @@ impl From<Vec<u8>> for Wasm {
 #[deprecated]
 pub type ManifestWasm = Wasm;
 
+/// The `Wasm` type specifies how to access a WebAssembly module
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 #[serde(deny_unknown_fields)]
 pub enum Wasm {
+    /// From disk
     File {
         path: PathBuf,
         #[serde(flatten)]
         meta: WasmMetadata,
     },
+
+    /// From memory
     Data {
         #[serde(with = "base64")]
         #[cfg_attr(feature = "json_schema", schemars(schema_with = "base64_schema"))]
@@ -98,6 +117,8 @@ pub enum Wasm {
         #[serde(flatten)]
         meta: WasmMetadata,
     },
+
+    /// Via HTTP
     Url {
         #[serde(flatten)]
         req: HttpRequest,
@@ -107,6 +128,7 @@ pub enum Wasm {
 }
 
 impl Wasm {
+    /// Load Wasm from a path
     pub fn file(path: impl AsRef<std::path::Path>) -> Self {
         Wasm::File {
             path: path.as_ref().to_path_buf(),
@@ -114,6 +136,7 @@ impl Wasm {
         }
     }
 
+    /// Load Wasm directly from a buffer
     pub fn data(data: impl Into<Vec<u8>>) -> Self {
         Wasm::Data {
             data: data.into(),
@@ -121,6 +144,7 @@ impl Wasm {
         }
     }
 
+    /// Load Wasm from a URL
     pub fn url(req: HttpRequest) -> Self {
         Wasm::Url {
             req,
@@ -128,6 +152,7 @@ impl Wasm {
         }
     }
 
+    /// Get the metadata
     pub fn meta(&self) -> &WasmMetadata {
         match self {
             Wasm::File { path: _, meta } => meta,
@@ -136,6 +161,7 @@ impl Wasm {
         }
     }
 
+    /// Get mutable access to the metadata
     pub fn meta_mut(&mut self) -> &mut WasmMetadata {
         match self {
             Wasm::File { path: _, meta } => meta,
@@ -153,20 +179,34 @@ fn base64_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::
     schema.into()
 }
 
+/// The `Manifest` type is used to configure the runtime and specify how to load modules.
 #[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
+    /// WebAssembly modules, the `main` module should be named `main` or listed last
     #[serde(default)]
     pub wasm: Vec<Wasm>,
+    /// Memory options
     #[serde(default)]
     pub memory: MemoryOptions,
+
+    /// Config values are made accessible using the PDK `extism_config_get` function
     #[serde(default)]
     pub config: BTreeMap<String, String>,
     #[serde(default)]
+
+    /// Specifies which hosts may be accessed via HTTP, if this is empty then
+    /// no hosts may be accessed. Wildcards may be used.
     pub allowed_hosts: Option<Vec<String>>,
+
+    /// Specifies which paths should be made available on disk when using WASI. This is a mapping from
+    /// this is a mapping from the path on disk to the path it should be available inside the plugin.
+    /// For example, `".": "/tmp"` would mount the current directory as `/tmp` inside the module
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
+
+    /// The plugin timeout, by default this is set to 30s
     #[serde(default = "default_timeout")]
     pub timeout_ms: Option<u64>,
 }

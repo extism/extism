@@ -52,6 +52,7 @@ impl From<ValType> for wasmtime::ValType {
     }
 }
 
+/// Raw WebAssembly values
 pub type Val = wasmtime::Val;
 
 /// UserData is an opaque pointer used to store additional data

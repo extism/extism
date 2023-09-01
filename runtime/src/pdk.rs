@@ -1,8 +1,8 @@
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
 
-// This macro unwraps input arguments to prevent functions from panicking,
-// it should be used instead of `Val::unwrap_*` functions
+/// This macro unwraps input arguments to prevent functions from panicking,
+/// it should be used instead of `Val::unwrap_*` functions
 #[macro_export]
 macro_rules! args {
     ($input:expr, $index:expr, $ty:ident) => {

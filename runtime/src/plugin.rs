@@ -10,6 +10,20 @@ pub(crate) struct Output {
     pub(crate) error_length: u64,
 }
 
+/// A `CancelHandle` can be used to cancel a running plugin from another thread
+#[derive(Clone)]
+pub struct CancelHandle {
+    pub(crate) timer_tx: std::sync::mpsc::Sender<TimerAction>,
+    pub id: uuid::Uuid,
+}
+
+impl CancelHandle {
+    pub fn cancel(&self) -> Result<(), Error> {
+        self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
+        Ok(())
+    }
+}
+
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
     /// A unique ID for each plugin
