@@ -30,7 +30,7 @@ alias CurrentPlugin = Alias!(void*);
 ///
 alias ExtismSize = ulong;
 
-///
+/// A union type for host function argument/return values.
 union ValUnion {
     int i32;
     long i64;
@@ -38,19 +38,21 @@ union ValUnion {
     double f64;
 }
 
-///
+/// Holds the type and value of a function argument/return.
 struct Val {
     ValType t;
     ValUnion v;
 }
 
+/// Host function signature.
+///
 /// Used to register host functions with plugins.
 /// Params:
 ///     plugin: the currently executing plugin from within a host function
 ///     inputs: argument values
 ///     outputs: return values
 ///     data: user data associated with the host function
-alias FunctionType = void function(
+alias FunctionType = void delegate(
     CurrentPlugin plugin, const Val[] inputs, Val[] outputs, void *data
 );
 
