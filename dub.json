@@ -7,6 +7,9 @@
 		"Extism contributors"
 	],
 	"copyright": "Copyright © 2023, Extism contributors",
+	"toolchainRequirements": {
+		"frontend": ">=2.102"
+	},
 	"targetPath": "target",
 	"sourceFiles": ["d/extism.d"],
 	"importPaths": ["d"],
