@@ -171,7 +171,8 @@ pub(crate) fn load(
     if !has_magic && !is_wast {
         if let Ok(s) = std::str::from_utf8(data) {
             if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
-                let m = modules(&t, engine)?;
+                let mut m = modules(&t, engine)?;
+                m.insert("env".to_string(), extism_module);
                 return Ok((t, m));
             }
         }
