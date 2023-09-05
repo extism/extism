@@ -132,6 +132,18 @@ impl CurrentPlugin {
                 }
             }
 
+            if std::env::var("EXTISM_STDOUT").is_ok() {
+                ctx = ctx.inherit_stdout();
+            }
+
+            if std::env::var("EXTISM_STDERR").is_ok() {
+                ctx = ctx.inherit_stderr();
+            }
+
+            if std::env::var("EXTISM_STDIN").is_ok() {
+                ctx = ctx.inherit_stdin();
+            }
+
             #[cfg(feature = "nn")]
             let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 
