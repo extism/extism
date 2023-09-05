@@ -243,3 +243,24 @@ fn test_globals() {
         assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
     }
 }
+
+#[test]
+fn test_toml_manifest() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world,
+    );
+
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM)])
+        .with_timeout(std::time::Duration::from_secs(1));
+
+    let manifest_toml = toml::to_string_pretty(&manifest).unwrap();
+    let mut plugin = Plugin::new(manifest_toml.as_bytes(), [f], true).unwrap();
+
+    let output = plugin.call("count_vowels", "abc123").unwrap();
+    let count: serde_json::Value = serde_json::from_slice(output).unwrap();
+    assert_eq!(count.get("count").unwrap().as_i64().unwrap(), 1);
+}
