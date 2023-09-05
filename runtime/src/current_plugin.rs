@@ -132,16 +132,9 @@ impl CurrentPlugin {
                 }
             }
 
-            if std::env::var("EXTISM_STDOUT").is_ok() {
-                ctx = ctx.inherit_stdout();
-            }
-
-            if std::env::var("EXTISM_STDERR").is_ok() {
-                ctx = ctx.inherit_stderr();
-            }
-
-            if std::env::var("EXTISM_STDIN").is_ok() {
-                ctx = ctx.inherit_stdin();
+            // Enable WASI output, typically used for debugging purposes
+            if std::env::var("EXTISM_ENABLE_WASI_OUTPUT").is_ok() {
+                ctx = ctx.inherit_stdout().inherit_stderr();
             }
 
             #[cfg(feature = "nn")]
