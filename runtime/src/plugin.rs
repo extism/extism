@@ -757,3 +757,31 @@ pub(crate) enum GuestRuntime {
         init: Func,
     },
 }
+
+#[macro_export]
+macro_rules! typed_plugin {
+    ($name:ident {$($f:ident($input:ty) -> $output:ty),*}) => {
+        pub struct $name(pub $crate::Plugin);
+
+        impl From<$crate::Plugin> for $name {
+            fn from(x: $crate::Plugin) -> Self {
+                $name(x)
+            }
+        }
+
+
+        impl From<$name> for $crate::Plugin {
+            fn from(x: $name) -> Self {
+                x.0
+            }
+        }
+
+        impl $name {
+            $(
+                pub fn $f(&mut self, input: $input) -> Result<$output, $crate::Error> {
+                    self.0.call(stringify!($f), input)
+                }
+            )*
+        }
+    };
+}

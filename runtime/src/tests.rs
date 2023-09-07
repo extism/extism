@@ -215,6 +215,27 @@ fn test_timeout() {
     // std::io::stdout().write_all(output).unwrap();
 }
 
+typed_plugin!(Testing {
+    count_vowels(&str) -> Json<Count>
+});
+
+#[test]
+fn test_typed_plugin_macro() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world,
+    );
+
+    let mut plugin: Testing = Plugin::new(WASM, [f], true).unwrap().into();
+
+    let Json(output0): Json<Count> = plugin.count_vowels("abc123").unwrap();
+    let Json(output1): Json<Count> = plugin.0.call("count_vowels", "abc123").unwrap();
+    assert_eq!(output0, output1)
+}
+
 #[test]
 fn test_multiple_instantiations() {
     let f = Function::new(
@@ -225,12 +246,12 @@ fn test_multiple_instantiations() {
         hello_world,
     );
 
-    let mut plugin = Plugin::new(WASM, [f], true).unwrap();
+    let mut plugin: Testing = Plugin::new(WASM, [f], true).unwrap().into();
 
     // This is 10,001 because the wasmtime store limit is 10,000 - we want to test
     // that our reinstantiation process is working and that limit is never hit.
     for _ in 0..10001 {
-        let _output: &[u8] = plugin.call("count_vowels", "abc123").unwrap();
+        let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
     }
 }
 
