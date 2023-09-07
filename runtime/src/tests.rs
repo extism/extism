@@ -216,7 +216,7 @@ fn test_timeout() {
 }
 
 typed_plugin!(Testing {
-    count_vowels(&str) -> Json<Count>
+    count_vowels<T: FromBytes<'a>>(&str) -> T
 });
 
 #[test]
