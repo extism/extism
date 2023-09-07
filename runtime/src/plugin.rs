@@ -758,10 +758,32 @@ pub(crate) enum GuestRuntime {
     },
 }
 
+/// The `typed_plugin` macro is used to create a newtype wrapper around `Plugin` with methods defined for the specified functions.
+///
+/// For example, we can define a new type `MyPlugin` that automatically implements `From`/`Into` for `Plugin`
+/// ```rust
+/// #[derive(serde::Deserialize)]
+/// struct Count {
+///   count: usize,
+/// }
+///
+/// extism::typed_plugin!(MyPlugin {
+///   count_vowels(&str) -> extism::convert::Json<Count>;
+/// });
+///
+/// # const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
+/// // Convert from `Plugin` to `MyPlugin`
+/// let mut plugin: MyPlugin = extism::Plugin::new(WASM, [], true).unwrap().into();
+/// // and call the `count_vowels` function
+/// let count = plugin.count_vowels("this is a test").unwrap();
+/// ```
 #[macro_export]
 macro_rules! typed_plugin {
     ($name:ident {$($f:ident $(< $( $lt:tt $( : $clt:path )? ),+ >)? ($input:ty) -> $output:ty);*$(;)?}) => {
         pub struct $name(pub $crate::Plugin);
+
+        unsafe impl Send for $name {}
+        unsafe impl Sync for $name {}
 
         impl From<$crate::Plugin> for $name {
             fn from(x: $crate::Plugin) -> Self {

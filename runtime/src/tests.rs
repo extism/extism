@@ -5,7 +5,7 @@ const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
 
-host_fn!(hello_world, |a: String| -> String { a });
+host_fn!(hello_world (a: String) -> String { a });
 
 // Which is the same as:
 // fn hello_world(

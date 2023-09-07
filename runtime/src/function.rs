@@ -239,15 +239,22 @@ impl Function {
     }
 }
 
+/// The `host_fn` macro is used to define typed host functions
+///
+/// For example, the following defines a host function named `add_newline` that takes a
+/// string parameter and returns a string result:
+/// ```rust
+/// extism::host_fn!(add_newline(a: String) -> String { a + "\n" });
+/// ```
 #[macro_export]
 macro_rules! host_fn {
-    ($name: ident, |$($arg:ident : $argty:ty),*| -> $ret:ty $b:block) => {
+    ($name: ident ($($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
         fn $name(
-            plugin: &mut CurrentPlugin,
-            inputs: &[Val],
-            outputs: &mut [Val],
-            _user_data: UserData,
-        ) -> Result<(), Error> {
+            plugin: &mut $crate::CurrentPlugin,
+            inputs: &[$crate::Val],
+            outputs: &mut [$crate::Val],
+            _user_data: $crate::UserData,
+        ) -> Result<(), $crate::Error> {
             let mut index = 0;
             $(
                 let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
