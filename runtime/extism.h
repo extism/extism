@@ -42,12 +42,15 @@ typedef enum {
 } ExtismValType;
 
 /**
+ * A `CancelHandle` can be used to cancel a running plugin from another thread
+ */
+typedef struct ExtismCancelHandle ExtismCancelHandle;
+
+/**
  * CurrentPlugin stores data that is available to the caller in PDK functions, this should
  * only be accessed from inside a host function
  */
 typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
-
-typedef struct ExtismCancelHandle ExtismCancelHandle;
 
 /**
  * Wraps raw host functions with some additional metadata and user data
@@ -183,7 +186,7 @@ void extism_plugin_new_error_free(char *err);
 void extism_plugin_free(ExtismPlugin *plugin);
 
 /**
- * Get plugin ID for cancellation
+ * Get handle for plugin cancellation
  */
 const ExtismCancelHandle *extism_plugin_cancel_handle(const ExtismPlugin *plugin);
 

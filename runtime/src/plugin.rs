@@ -39,7 +39,7 @@ pub struct Plugin {
     pub(crate) store: Store<CurrentPlugin>,
 
     /// A handle used to cancel execution of a plugin
-    pub(crate) cancel_handle: sdk::ExtismCancelHandle,
+    pub(crate) cancel_handle: CancelHandle,
 
     /// All modules that were provided to the linker
     pub(crate) modules: BTreeMap<String, Module>,
@@ -304,7 +304,7 @@ impl Plugin {
             runtime: None,
             id,
             timer_tx: timer_tx.clone(),
-            cancel_handle: sdk::ExtismCancelHandle { id, timer_tx },
+            cancel_handle: CancelHandle { id, timer_tx },
             instantiations: 0,
             output: Output::default(),
             _functions: imports.collect(),

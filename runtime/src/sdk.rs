@@ -25,12 +25,6 @@ pub struct ExtismVal {
     v: ValUnion,
 }
 
-#[repr(C)]
-pub struct ExtismPluginResult {
-    pub plugin: *mut Plugin,
-    pub error: *mut std::ffi::c_char,
-}
-
 /// Host function signature
 pub type ExtismFunctionType = extern "C" fn(
     plugin: *mut CurrentPlugin,
@@ -318,13 +312,9 @@ pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
     drop(plugin)
 }
 
-pub type ExtismCancelHandle = CancelHandle;
-
-/// Get plugin ID for cancellation
+/// Get handle for plugin cancellation
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_cancel_handle(
-    plugin: *const Plugin,
-) -> *const ExtismCancelHandle {
+pub unsafe extern "C" fn extism_plugin_cancel_handle(plugin: *const Plugin) -> *const CancelHandle {
     if plugin.is_null() {
         return std::ptr::null();
     }
@@ -334,7 +324,7 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(
 
 /// Cancel a running plugin
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) -> bool {
+pub unsafe extern "C" fn extism_plugin_cancel(handle: *const CancelHandle) -> bool {
     let handle = &*handle;
     handle.cancel().is_ok()
 }

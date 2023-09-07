@@ -17,6 +17,7 @@ fn main() {
         .rename_item("ValType", "ExtismValType")
         .rename_item("ValUnion", "ExtismValUnion")
         .rename_item("CurrentPlugin", "ExtismCurrentPlugin")
+        .rename_item("CancelHandle", "ExtismCancelHandle")
         .rename_item("Plugin", "ExtismPlugin")
         .rename_item("Function", "ExtismFunction")
         .with_style(cbindgen::Style::Type)
