@@ -760,7 +760,7 @@ pub(crate) enum GuestRuntime {
 
 #[macro_export]
 macro_rules! typed_plugin {
-    ($name:ident {$($f:ident $(< $( $lt:tt $( : $clt:path )? ),+ >)? ($input:ty) -> $output:ty),*}) => {
+    ($name:ident {$($f:ident $(< $( $lt:tt $( : $clt:path )? ),+ >)? ($input:ty) -> $output:ty);*$(;)?}) => {
         pub struct $name(pub $crate::Plugin);
 
         impl From<$crate::Plugin> for $name {

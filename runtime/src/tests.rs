@@ -215,8 +215,12 @@ fn test_timeout() {
     // std::io::stdout().write_all(output).unwrap();
 }
 
-typed_plugin!(Testing {
+typed_plugin!(TestTypedPluginGenerics {
     count_vowels<T: FromBytes<'a>>(&str) -> T
+});
+
+typed_plugin!(Testing {
+    count_vowels(&str) -> Json<Count>
 });
 
 #[test]
