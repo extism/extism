@@ -791,7 +791,6 @@ macro_rules! typed_plugin {
             }
         }
 
-
         impl From<$name> for $crate::Plugin {
             fn from(x: $name) -> Self {
                 x.0

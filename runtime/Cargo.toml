@@ -23,7 +23,7 @@ url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
 extism-manifest = { version = "1.0.0-alpha.0", path = "../manifest" }
-extism-convert = { path = "../convert" }
+extism-convert = { version = "0.1", path = "../convert" }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
 

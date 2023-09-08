@@ -13,7 +13,14 @@ mod from_bytes;
 mod memory_handle;
 mod to_bytes;
 
-pub use encoding::{Base64, Json, Msgpack};
+pub use encoding::{Base64, Json};
+
+#[cfg(feature = "msgpack")]
+pub use encoding::Msgpack;
+
+#[cfg(feature = "protobuf")]
+pub use encoding::Protobuf;
+
 pub use from_bytes::{FromBytes, FromBytesOwned};
 pub use memory_handle::MemoryHandle;
 pub use to_bytes::ToBytes;
