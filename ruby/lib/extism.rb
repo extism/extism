@@ -118,18 +118,22 @@ module Extism
     end
   end
 
-  Memory = Struct.new(:offset, :size)
+  Memory = Struct.new(:offset, :len)
 
   class CurrentPlugin
     def initialize(ptr)
       @ptr = ptr
     end
 
-    def memory_ptr(_mem)
-      p = C.extism_current_plugin_memory(@ptr)
-      raise 'Got 0 for current plugin memory' if p.zero?
+    def memory_ptr(mem)
+      plugin_ptr = C.extism_current_plugin_memory(@ptr)
 
-      FFI::MemoryPointer.new(p + mem.offset)
+      if plugin_ptr
+        require 'debug'
+        binding.break
+      end
+
+      FFI::MemoryPointer.new(plugin_ptr.address + mem.offset)
     end
 
     def alloc(amount)
@@ -142,14 +146,14 @@ module Extism
     end
 
     def memory_at_offset(offset)
-      size = C.extism_current_plugin_memory_length(@ptr, offset)
-      Memory.new(offset, size)
+      len = C.extism_current_plugin_memory_length(@ptr, offset)
+      Memory.new(offset, len)
     end
 
     def input_as_bytes(input)
-      # TODO: should assert that this is an int
+      # TODO: should assert that this is an int input
       mem = memory_at_offset(input.value)
-      memory_ptr(mem).read_bytes(mem.size)
+      memory_ptr(mem).read_bytes(mem.len)
     end
 
     def return_bytes(output, bytes)
