@@ -125,11 +125,6 @@ module Extism
       @ptr = ptr
     end
 
-    def memory_ptr(mem)
-      plugin_ptr = C.extism_current_plugin_memory(@ptr)
-      FFI::Pointer.new(plugin_ptr.address + mem.offset)
-    end
-
     def alloc(amount)
       offset = C.extism_current_plugin_memory_alloc(@ptr, amount)
       Memory.new(offset, amount)
@@ -147,10 +142,6 @@ module Extism
     def input_as_bytes(input)
       # TODO: should assert that this is an int input
       mem = memory_at_offset(input.value)
-      # if mem
-      #   require 'debug'
-      #   binding.break
-      # end
       memory_ptr(mem).read_bytes(mem.len)
     end
 
@@ -162,6 +153,13 @@ module Extism
 
     def return_string(output, string)
       return_bytes(output, string)
+    end
+
+    private
+
+    def memory_ptr(mem)
+      plugin_ptr = C.extism_current_plugin_memory(@ptr)
+      FFI::Pointer.new(plugin_ptr.address + mem.offset)
     end
   end
 
