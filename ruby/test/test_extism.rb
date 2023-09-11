@@ -50,8 +50,8 @@ class TestExtism < Minitest::Test
   def test_host_functions
     Extism.set_log_file('stdout', 'info')
     func = proc do |current_plugin, inputs, outputs, user_data|
-      puts current_plugin.input_as_bytes(inputs.first)
-      current_plugin.return_string(outputs.first, 'Hello, World! ' + user_data)
+      input = current_plugin.input_as_bytes(inputs.first)
+      current_plugin.return_string(outputs.first, "#{input} #{user_data}")
     end
     f = Extism::Function.new('transform_string', [Extism::ValType::I64], [Extism::ValType::I64], func, 'My User Data')
     plugin = Extism::Plugin.new(host_manifest, [f], true)
