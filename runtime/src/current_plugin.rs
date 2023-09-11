@@ -132,6 +132,11 @@ impl CurrentPlugin {
                 }
             }
 
+            // Enable WASI output, typically used for debugging purposes
+            if std::env::var("EXTISM_ENABLE_WASI_OUTPUT").is_ok() {
+                ctx = ctx.inherit_stdout().inherit_stderr();
+            }
+
             #[cfg(feature = "nn")]
             let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
 
