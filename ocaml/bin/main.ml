@@ -84,7 +84,7 @@ let allowed_paths =
   let doc = "Allowed paths." in
   Arg.(
     value & opt_all string []
-    & info [ "allow-path" ] ~docv:"PATH[:PLUGIN_PATH]" ~doc)
+    & info [ "allow-path" ] ~docv:"LOCAL_PATH[:PLUGIN_PATH]" ~doc)
 
 let allowed_hosts =
   let doc = "Allowed hosts for HTTP requests." in
