@@ -20,9 +20,8 @@ let split_config =
       | p :: tl -> Some (p, Some (String.concat "=" tl)))
 
 let main file func_name input loop timeout_ms allowed_paths allowed_hosts config
-    memory_max =
+    memory_max log_level log_file wasi =
   let input = if String.equal input "-" then read_stdin () else input in
-  let file = In_channel.with_open_bin file In_channel.input_all in
   let allowed_paths = split_allowed_paths allowed_paths in
   let config = split_config config in
   let memory = Manifest.{ max_pages = memory_max } in
@@ -41,7 +40,17 @@ let main file func_name input loop timeout_ms allowed_paths allowed_hosts config
       Manifest.create ~timeout_ms ~allowed_hosts ~allowed_paths ~config ~memory
         [ Manifest.(Wasm.File { path = file; hash = None; name = None }) ]
   in
-  let plugin = Plugin.of_manifest manifest ~wasi:true |> Result.get_ok in
+  let () =
+    match (log_level, log_file) with
+    | None, _ -> ()
+    | Some level, Some file -> assert (set_log_file ~level file)
+    | Some level, None -> assert (set_log_file ~level "stderr")
+  in
+  let plugin =
+    match Plugin.of_manifest manifest ~wasi with
+    | Ok x -> x
+    | Error e -> Error.throw e
+  in
   for _ = 0 to loop do
     let res = Plugin.call plugin ~name:func_name input |> Result.get_ok in
     print_endline res
@@ -61,7 +70,7 @@ let input =
 
 let loop =
   let doc = "Number of times to call the plugin." in
-  Arg.(value & opt int 1 & info [ "loop" ] ~docv:"TIMES" ~doc)
+  Arg.(value & opt int 0 & info [ "loop" ] ~docv:"TIMES" ~doc)
 
 let memory_max =
   let doc = "Max number of memory pages." in
@@ -85,10 +94,36 @@ let config =
   let doc = "Plugin config." in
   Arg.(value & opt_all string [] & info [ "config" ] ~docv:"KEY=VALUE" ~doc)
 
+let log_file =
+  let doc = "File to write logs to." in
+  Arg.(
+    value & opt (some string) None & info [ "log-file" ] ~docv:"FILENAME" ~doc)
+
+let log_level_enum =
+  Arg.enum
+    [
+      ("warn", `Warn);
+      ("info", `Info);
+      ("debug", `Debug);
+      ("error", `Error);
+      ("trace", `Trace);
+    ]
+
+let log_level =
+  let doc = "Log level." in
+  Arg.(
+    value
+    & opt (some log_level_enum) None
+    & info [ "log-level" ] ~docv:"LEVEL" ~doc)
+
+let wasi =
+  let doc = "Enable WASI." in
+  Arg.(value & flag & info [ "wasi" ] ~doc)
+
 let main_t =
   Term.(
     const main $ file $ func_name $ input $ loop $ timeout $ allowed_paths
-    $ allowed_hosts $ config $ memory_max)
+    $ allowed_hosts $ config $ memory_max $ log_level $ log_file $ wasi)
 
 let cmd = Cmd.v (Cmd.info "extism-run") main_t
 let () = exit (Cmd.eval cmd)
