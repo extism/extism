@@ -18,4 +18,4 @@ publish:
 	opam publish -v $(VERSION) https://github.com/extism/extism/archive/refs/tags/v$(TAG).tar.gz ..
 
 install-cli: build
-	install ../_build/default/ocaml/bin/main.exe "$(PREFIX)/bin/extism-run"
+	install ../_build/default/ocaml/bin/main.exe "$(PREFIX)/bin/extism-call"
