@@ -36,7 +36,7 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Extism.runtime.win-x64" Version="0.4.0" />
+		<PackageReference Include="Extism.runtime.win-x64" Version="0.7.0" />
 	</ItemGroup>
 
 </Project>

@@ -188,9 +188,17 @@ internal static class LibExtism
     /// <param name="functions">Array of host function pointers.</param>
     /// <param name="nFunctions">Number of host functions.</param>
     /// <param name="withWasi">Enables/disables WASI.</param>
+    /// <param name="errmsg"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern ExtismPlugin* extism_plugin_new(byte* wasm, int wasmSize, IntPtr* functions, int nFunctions, bool withWasi, IntPtr* errmsg);
+    unsafe internal static extern ExtismPlugin* extism_plugin_new(byte* wasm, ulong wasmSize, IntPtr* functions, ulong nFunctions, bool withWasi, out IntPtr* errmsg);
+
+    /// <summary>
+    /// Frees a plugin error message.
+    /// </summary>
+    /// <param name="errorMessage"></param>
+    [DllImport("extism")]
+    unsafe internal static extern void extism_plugin_new_error_free(IntPtr errorMessage);
 
     /// <summary>
     /// Remove a plugin from the registry and free associated memory.
@@ -263,11 +271,11 @@ internal static class LibExtism
     internal static extern bool extism_log_file(string filename, string logLevel);
 
     /// <summary>
-    /// Get the Extism Plugin ID, a 16-bit UUID in host order
+    /// Get Extism Runtime version.
     /// </summary>
     /// <returns></returns>
-    // [DllImport("extism")]
-    // unsafe internal static extern IntPtr extism_plugin_id(ExtismPlugin* plugin);
+    [DllImport("extism")]
+    internal static extern IntPtr extism_version();
 
     /// <summary>
     /// Extism Log Levels

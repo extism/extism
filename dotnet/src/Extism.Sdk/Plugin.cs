@@ -24,7 +24,8 @@ public unsafe class Plugin : IDisposable
     /// <param name="wasm">A WASM module (wat or wasm) or a JSON encoded manifest.</param>
     /// <param name="functions">List of host functions expected by the plugin.</param>
     /// <param name="withWasi">Enable/Disable WASI.</param>
-    public Plugin(ReadOnlySpan<byte> wasm, HostFunction[] functions, bool withWasi) {
+    public Plugin(ReadOnlySpan<byte> wasm, HostFunction[] functions, bool withWasi)
+    {
         _functions = functions;
         var functionHandles = functions.Select(f => f.NativeHandle).ToArray();
 
@@ -33,14 +34,20 @@ public unsafe class Plugin : IDisposable
             fixed (byte* wasmPtr = wasm)
             fixed (IntPtr* functionsPtr = functionHandles)
             {
-                NativeHandle = LibExtism.extism_plugin_new(wasmPtr, wasm.Length, functionsPtr, functions.Length, withWasi, null);
+                IntPtr* errMsg;
+
+                NativeHandle = LibExtism.extism_plugin_new(wasmPtr, (ulong)wasm.Length, functionsPtr, (ulong)functions.Length, withWasi, out errMsg);
                 if (NativeHandle == null)
                 {
-                    throw new ExtismException("Unable to create plugin");
-                    // TODO: handle error
-                    // var s = Marshal.PtrToStringUTF8(result);
-                    // LibExtism.extism_plugin_new_error_free(errmsg);
-                    // throw new ExtismException(s);
+                    var s = Marshal.PtrToStringUTF8(*errMsg);
+                    LibExtism.extism_plugin_new_error_free(*errMsg);
+
+                    if (string.IsNullOrEmpty(s))
+                    {
+                        s = "Unable to create plugin";
+                    }
+
+                    throw new ExtismException(s);
                 }
             }
         }
@@ -198,5 +205,16 @@ public unsafe class Plugin : IDisposable
     ~Plugin()
     {
         Dispose(false);
+    }
+
+    /// <summary>
+    /// Get Extism Runtime version.
+    /// </summary>
+    /// <returns></returns>
+    public static string ExtismVersion()
+    {
+        var version = LibExtism.extism_version();
+        return Marshal.PtrToStringAnsi(version);
+
     }
 }

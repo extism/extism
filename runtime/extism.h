@@ -8,7 +8,7 @@
 
 
 /**
- * A list of all possible value types in WebAssembly.
+ * An enumeration of all possible value types in WebAssembly.
  */
 typedef enum {
   /**
