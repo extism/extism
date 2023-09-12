@@ -58,11 +58,11 @@ let main file func_name input loop timeout_ms allowed_paths allowed_hosts config
 
 let file =
   let doc = "The Wasm module or Extism manifest path." in
-  Arg.(value & pos 0 file "" & info [] ~docv:"FILE" ~doc)
+  Arg.(required & pos 0 (some file) None & info [] ~docv:"FILE" ~doc)
 
 let func_name =
   let doc = "The function to run." in
-  Arg.(value & pos 1 string "_start" & info [] ~docv:"NAME" ~doc)
+  Arg.(required & pos 1 (some string) None & info [] ~docv:"NAME" ~doc)
 
 let input =
   let doc = "Input data." in
