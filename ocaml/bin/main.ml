@@ -49,11 +49,16 @@ let main file func_name input loop timeout_ms allowed_paths allowed_hosts config
   let plugin =
     match Plugin.of_manifest manifest ~wasi with
     | Ok x -> x
-    | Error e -> Error.throw e
+    | Error (`Msg e) ->
+        Printf.eprintf "ERROR Unable to load plugin: %s" e;
+        exit 1
   in
   for _ = 0 to loop do
-    let res = Plugin.call plugin ~name:func_name input |> Result.get_ok in
-    print_endline res
+    match Plugin.call plugin ~name:func_name input with
+    | Ok res -> print_endline res
+    | Error (`Msg e) ->
+        Printf.eprintf "ERROR Unable to call function: %s" e;
+        exit 2
   done
 
 let file =
