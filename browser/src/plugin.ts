@@ -5,7 +5,7 @@ import { WASI, Fd } from '@bjorn3/browser_wasi_shim';
 export type ExtismFunction = any;
 
 export class ExtismPlugin {
-  moduleData: ArrayBuffer;
+  moduleData: ArrayBuffer | WebAssembly.Module;
   allocator: Allocator;
   config?: PluginConfig;
   vars: Record<string, Uint8Array>;
@@ -14,7 +14,7 @@ export class ExtismPlugin {
   module?: WebAssembly.WebAssemblyInstantiatedSource;
   functions: Record<string, ExtismFunction>;
 
-  constructor(moduleData: ArrayBuffer, functions: Record<string, ExtismFunction> = {}, config?: PluginConfig) {
+  constructor(moduleData: ArrayBuffer | WebAssembly.Module, functions: Record<string, ExtismFunction> = {}, config?: PluginConfig) {
     this.moduleData = moduleData;
     this.allocator = new Allocator(1024 * 1024);
     this.config = config;
@@ -78,11 +78,25 @@ export class ExtismPlugin {
       wasi_snapshot_preview1: wasi.wasiImport,
       env: environment,
     };
-    this.module = await WebAssembly.instantiate(this.moduleData, env);
+
+    if (this.moduleData instanceof WebAssembly.Module) {
+      const instance = new WebAssembly.Instance(this.moduleData, env);
+      this.module = {
+        instance,
+        module: this.moduleData
+      }
+      //@ts-ignore
+      wasi.inst = instance;
+    }
+    else {
+      this.module = await WebAssembly.instantiate(this.moduleData, env);
+      //@ts-ignore
+      wasi.inst = this.module.instance;
+    }
+    if (!this.module) throw Error("Unable to instantiate module");
+
     // normally we would call wasi.start here but it doesn't respect when there is
     // no _start function
-    //@ts-ignore
-    wasi.inst = this.module.instance;
     if (this.module.instance.exports._start) {
       //@ts-ignore
       this.module.instance.exports._start();
