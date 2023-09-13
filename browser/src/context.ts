@@ -5,7 +5,7 @@ import { ExtismPlugin } from './plugin';
  * Can be a {@link Manifest} or just the raw bytes of the WASM module as an ArrayBuffer.
  * We recommend using {@link Manifest}
  */
-type ManifestData = Manifest | ArrayBuffer;
+type ManifestData = Manifest | ArrayBuffer | WebAssembly.Module;
 
 /**
  * A Context is needed to create plugins. The Context
@@ -21,8 +21,8 @@ export default class ExtismContext {
    * @returns A new Plugin scoped to this Context
    */
   async newPlugin(manifest: ManifestData, functions: Record<string, any> = {}, config?: PluginConfig) {
-    let moduleData: ArrayBuffer | null = null;
-    if (manifest instanceof ArrayBuffer) {
+    let moduleData: ArrayBuffer | WebAssembly.Module | null = null;
+    if (manifest instanceof ArrayBuffer || manifest instanceof WebAssembly.Module) {
       moduleData = manifest;
     } else if ((manifest as Manifest).wasm) {
       const wasmData = (manifest as Manifest).wasm;

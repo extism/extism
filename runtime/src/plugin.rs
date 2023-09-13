@@ -177,7 +177,7 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        // Create a new engine, if the `EXITSM_DEBUG` environment variable is set
+        // Create a new engine, if the `EXTISM_DEBUG` environment variable is set
         // then we enable debug info
         let engine = Engine::new(
             Config::new()
