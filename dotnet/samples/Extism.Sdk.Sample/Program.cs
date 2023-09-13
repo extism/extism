@@ -29,8 +29,15 @@ void HelloWorld(CurrentPlugin plugin, Span<ExtismVal> inputs, Span<ExtismVal> ou
     outputs[0].v.i64 = plugin.WriteString(input);
 }
 
-var wasm = File.ReadAllBytes("./code-functions.wasm");
-using var plugin = new Plugin(wasm, new[] { helloWorld }, withWasi: true);
+var manifest = new Manifest(new PathWasmSource("./code-functions.wasm"))
+{
+    Config = new Dictionary<string, string>
+    {
+        { "my-key", "some cool value" }
+    },
+};
+
+using var plugin = new Plugin(manifest, new[] { helloWorld }, withWasi: true);
 
 Console.WriteLine("Plugin creatd!!!");
 

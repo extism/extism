@@ -191,7 +191,7 @@ internal static class LibExtism
     /// <param name="errmsg"></param>
     /// <returns></returns>
     [DllImport("extism")]
-    unsafe internal static extern ExtismPlugin* extism_plugin_new(byte* wasm, ulong wasmSize, IntPtr* functions, ulong nFunctions, bool withWasi, out IntPtr* errmsg);
+    unsafe internal static extern ExtismPlugin* extism_plugin_new(byte* wasm, ulong wasmSize, IntPtr* functions, ulong nFunctions, [MarshalAs(UnmanagedType.I1)] bool withWasi, out char** errmsg);
 
     /// <summary>
     /// Frees a plugin error message.
