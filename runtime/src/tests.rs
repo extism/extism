@@ -5,19 +5,20 @@ const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
 
-fn hello_world(
-    plugin: &mut CurrentPlugin,
-    inputs: &[Val],
-    outputs: &mut [Val],
-    _user_data: UserData,
-) -> Result<(), Error> {
-    let handle = plugin.memory_handle_val(&inputs[0]).unwrap();
-    let input = plugin.memory_read_str(handle).unwrap().to_string();
+host_fn!(hello_world (a: String) -> String { a });
 
-    let output = plugin.memory_alloc_bytes(&input).unwrap();
-    outputs[0] = output.into();
-    Ok(())
-}
+// Which is the same as:
+// fn hello_world(
+//     plugin: &mut CurrentPlugin,
+//     inputs: &[Val],
+//     outputs: &mut [Val],
+//     _user_data: UserData,
+// ) -> Result<(), Error> {
+//     let input: String = plugin.memory_get_val(&inputs[0]).unwrap();
+//     let output = plugin.memory_new(&input).unwrap();
+//     outputs[0] = plugin.memory_to_val(output);
+//     Ok(())
+// }
 
 fn hello_world_panic(
     _plugin: &mut CurrentPlugin,
@@ -26,6 +27,11 @@ fn hello_world_panic(
     _user_data: UserData,
 ) -> Result<(), Error> {
     panic!("This should not run");
+}
+
+#[derive(serde::Serialize, serde::Deserialize, PartialEq, Debug)]
+pub struct Count {
+    count: usize,
 }
 
 #[test]
@@ -54,15 +60,16 @@ fn it_works() {
 
     let repeat = 1182;
     let input = "aeiouAEIOU____________________________________&smtms_y?".repeat(repeat);
-    let data = plugin.call("count_vowels", &input).unwrap();
+    let Json(count) = plugin
+        .call::<_, Json<Count>>("count_vowels", &input)
+        .unwrap();
 
     assert_eq!(
-        data,
-        b"{\"count\": 11820}",
-        "expecting vowel count of {}, input size: {}, output size: {}",
+        count,
+        Count { count: 11820 },
+        "expecting vowel count of {}, but got {}",
         10 * repeat,
-        input.len(),
-        data.len()
+        count.count,
     );
 
     println!(
@@ -76,21 +83,12 @@ fn it_works() {
     let mut test_times = vec![];
     for _ in 0..100 {
         let test_start = Instant::now();
-        plugin.call("count_vowels", &input).unwrap();
+        plugin.call::<_, &[u8]>("count_vowels", &input).unwrap();
         test_times.push(test_start.elapsed());
     }
 
     let native_test = || {
         let native_start = Instant::now();
-        // let native_vowel_count = input
-        //     .chars()
-        //     .filter(|c| match c {
-        //         'A' | 'E' | 'I' | 'O' | 'U' | 'a' | 'e' | 'i' | 'o' | 'u' => true,
-        //         _ => false,
-        //     })
-        //     .collect::<Vec<_>>()
-        //     .len();
-
         let mut _native_vowel_count = 0;
         let input: &[u8] = input.as_ref();
         for i in 0..input.len() {
@@ -157,8 +155,10 @@ fn test_plugin_threads() {
         let a = std::thread::spawn(move || {
             let mut plugin = plugin.lock().unwrap();
             for _ in 0..10 {
-                let output = plugin.call("count_vowels", "this is a test aaa").unwrap();
-                assert_eq!(b"{\"count\": 7}", output);
+                let Json(count) = plugin
+                    .call::<_, Json<Count>>("count_vowels", "this is a test aaa")
+                    .unwrap();
+                assert_eq!(Count { count: 7 }, count);
             }
         });
         threads.push(a);
@@ -186,7 +186,7 @@ fn test_cancel() {
         std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(handle.cancel().is_ok());
     });
-    let _output = plugin.call("infinite_loop", "abc123");
+    let _output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Cancelled plugin ran for {:?}", time);
@@ -208,11 +208,37 @@ fn test_timeout() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
-    let _output = plugin.call("infinite_loop", "abc123");
+    let _output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Timed out plugin ran for {:?}", time);
     // std::io::stdout().write_all(output).unwrap();
+}
+
+typed_plugin!(TestTypedPluginGenerics {
+    count_vowels<T: FromBytes<'a>>(&str) -> T
+});
+
+typed_plugin!(CountVowelsPlugin {
+    count_vowels(&str) -> Json<Count>;
+});
+
+#[test]
+fn test_typed_plugin_macro() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world,
+    );
+
+    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().into();
+
+    let Json(output0): Json<Count> = plugin.count_vowels("abc123").unwrap();
+    let Json(output1): Json<Count> = plugin.0.call("count_vowels", "abc123").unwrap();
+
+    assert_eq!(output0, output1)
 }
 
 #[test]
@@ -225,12 +251,12 @@ fn test_multiple_instantiations() {
         hello_world,
     );
 
-    let mut plugin = Plugin::new(WASM, [f], true).unwrap();
+    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().into();
 
     // This is 10,001 because the wasmtime store limit is 10,000 - we want to test
     // that our reinstantiation process is working and that limit is never hit.
     for _ in 0..10001 {
-        let _output = plugin.call("count_vowels", "abc123").unwrap();
+        let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
     }
 }
 
@@ -238,9 +264,8 @@ fn test_multiple_instantiations() {
 fn test_globals() {
     let mut plugin = Plugin::new(WASM_GLOBALS, [], true).unwrap();
     for i in 0..1000 {
-        let output = plugin.call("globals", "").unwrap();
-        let count: serde_json::Value = serde_json::from_slice(output).unwrap();
-        assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
+        let Json(count) = plugin.call::<_, Json<Count>>("globals", "").unwrap();
+        assert_eq!(count.count, i);
     }
 }
 

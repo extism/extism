@@ -47,15 +47,16 @@ def main(args):
             "Hello again!",
         )
     ]
+
+    # Initialize the plugin
     plugin = Plugin(manifest, wasi=True, functions=functions)
     print(plugin.id)
-    # Call `count_vowels`
-    wasm_vowel_count = plugin.call("count_vowels", data)
-    print(wasm_vowel_count)
-    j = json.loads(wasm_vowel_count)
 
+    # Call `count_vowels`
+    j = plugin.call("count_vowels", data, parse=lambda x: json.loads(bytes(x)))
     print("Number of vowels:", j["count"])
 
+    # Check against Python implementation
     assert j["count"] == count_vowels(data)
 
 

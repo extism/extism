@@ -52,6 +52,7 @@ impl From<ValType> for wasmtime::ValType {
     }
 }
 
+/// Raw WebAssembly values
 pub type Val = wasmtime::Val;
 
 /// UserData is an opaque pointer used to store additional data
@@ -70,7 +71,7 @@ extern "C" fn free_any(ptr: *mut std::ffi::c_void) {
 impl UserData {
     /// Create a new `UserData` from an existing pointer and free function, this is used
     /// by the C API to wrap C pointers into user data
-    pub fn new_pointer(
+    pub(crate) fn new_pointer(
         ptr: *mut std::ffi::c_void,
         free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
     ) -> Self {
@@ -164,10 +165,19 @@ type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &
 /// Wraps raw host functions with some additional metadata and user data
 #[derive(Clone)]
 pub struct Function {
+    /// Function name
     pub(crate) name: String,
-    pub(crate) ty: wasmtime::FuncType,
-    pub(crate) f: std::sync::Arc<FunctionInner>,
+
+    /// Module name
     pub(crate) namespace: Option<String>,
+
+    /// Function type
+    pub(crate) ty: wasmtime::FuncType,
+
+    /// Function handle
+    pub(crate) f: std::sync::Arc<FunctionInner>,
+
+    /// UserData
     pub(crate) _user_data: std::sync::Arc<UserData>,
 }
 
@@ -202,24 +212,61 @@ impl Function {
         }
     }
 
+    /// Host function name
     pub fn name(&self) -> &str {
         &self.name
     }
 
+    /// Host function module name
     pub fn namespace(&self) -> Option<&str> {
         self.namespace.as_deref()
     }
 
+    /// Set host function module name
     pub fn set_namespace(&mut self, namespace: impl Into<String>) {
         self.namespace = Some(namespace.into());
     }
 
+    /// Update host function module name
     pub fn with_namespace(mut self, namespace: impl Into<String>) -> Self {
         self.set_namespace(namespace);
         self
     }
 
+    /// Get function type
     pub fn ty(&self) -> &wasmtime::FuncType {
         &self.ty
     }
+}
+
+/// The `host_fn` macro is used to define typed host functions
+///
+/// For example, the following defines a host function named `add_newline` that takes a
+/// string parameter and returns a string result:
+/// ```rust
+/// extism::host_fn!(add_newline(a: String) -> String { a + "\n" });
+/// ```
+#[macro_export]
+macro_rules! host_fn {
+    ($name: ident ($($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
+        fn $name(
+            plugin: &mut $crate::CurrentPlugin,
+            inputs: &[$crate::Val],
+            outputs: &mut [$crate::Val],
+            _user_data: $crate::UserData,
+        ) -> Result<(), $crate::Error> {
+            let mut index = 0;
+            $(
+                let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
+                #[allow(unused_assignments)]
+                {
+                    index += 1;
+                }
+            )*
+            let output = move || { $b };
+            let output = plugin.memory_new(&output())?;
+            outputs[0] = plugin.memory_to_val(output);
+            Ok(())
+        }
+    };
 }
