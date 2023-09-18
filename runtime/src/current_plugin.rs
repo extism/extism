@@ -125,6 +125,12 @@ impl CurrentPlugin {
     }
 
     pub fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
+        if n == 0 {
+            return Ok(MemoryHandle {
+                offset: 0,
+                length: 0,
+            });
+        }
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         if let Some(f) = linker.get(&mut store, "env", "extism_alloc") {
