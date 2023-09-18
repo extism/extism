@@ -310,6 +310,9 @@ impl MemoryBlock {
 /// Allocate a block of memory and return the offset
 #[no_mangle]
 pub unsafe fn extism_alloc(n: Length) -> Pointer {
+    if n == 0 {
+        return 0;
+    }
     let region = MemoryRoot::new();
     let block = region.alloc(n);
     match block {
@@ -321,6 +324,9 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
 /// Free allocated memory
 #[no_mangle]
 pub unsafe fn extism_free(p: Pointer) {
+    if p == 0 {
+        return;
+    }
     let block = MemoryRoot::new().find_block(p);
     if let Some(block) = block {
         block.free();
