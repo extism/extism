@@ -119,9 +119,13 @@ pub struct MemoryBlock {
 
 /// Returns the number of pages needed for the given number of bytes
 pub fn num_pages(nbytes: u64) -> usize {
-    let nbytes = nbytes as f64;
-    let page = PAGE_SIZE as f64;
-    ((nbytes / page) + 0.5) as usize
+    let npages = nbytes / PAGE_SIZE as u64;
+    let remainder = nbytes % PAGE_SIZE as u64;
+    if remainder != 0 {
+        (npages + 1) as usize
+    } else {
+        npages as usize
+    }
 }
 
 // Get the `MemoryRoot` at the correct offset in memory
