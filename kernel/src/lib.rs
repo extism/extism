@@ -121,7 +121,7 @@ pub struct MemoryBlock {
 pub fn num_pages(nbytes: u64) -> usize {
     let npages = nbytes / PAGE_SIZE as u64;
     let remainder = nbytes % PAGE_SIZE as u64;
-    if remainder != 0 {
+    if remainder != 0 || nbytes < PAGE_SIZE as u64 {
         (npages + 1) as usize
     } else {
         npages as usize
@@ -252,7 +252,7 @@ impl MemoryRoot {
         // we will need to try to grow the memory
         if length >= mem_left {
             // Calculate the number of pages needed to cover the remaining bytes
-            let npages = num_pages(length);
+            let npages = num_pages(length - mem_left);
             let x = core::arch::wasm32::memory_grow(0, npages);
             if x == usize::MAX {
                 return None;
