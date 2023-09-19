@@ -25,12 +25,6 @@ jobs:
         run: |
           sudo apt install wabt --yes
 
-      - name: Configure git
-        shell: bash
-        run: |
-          git config user.name "Extism Bot"
-          git config user.email "oss@extism.org"
-
       - name: Build kernel
         shell: bash
         run: |
@@ -42,7 +36,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           title: "update(kernel): extism-runtime.wasm in ${{ github.event.pull_request.head.ref }}"
-          body: "Automated PR to update `runtime/src/extism-runtime.wasm`"
+          body: "Automated PR to update `runtime/src/extism-runtime.wasm` in PR #${{ github.event.number }}"
           base: "${{ github.event.pull_request.head.ref }}"
           branch: "update-kernel--${{ github.event.pull_request.head.ref }}"
           add-paths: "runtime/src/extism-runtime.wasm"
