@@ -1,9 +1,9 @@
 on:
-  release:
-    types: [created]
   workflow_dispatch:
   push:
     branches: [ main ]
+    tags:
+      - 'v*'
 
 name: Release
 
@@ -13,20 +13,39 @@ env:
   RUSTFLAGS: -C target-feature=-crt-static
   ARTIFACT_DIR: release-artifacts
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  release-linux:
-    name: linux
-    runs-on: ubuntu-latest
+  release:
+    name: ${{ matrix.os }} ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}-latest
     strategy:
       matrix:
-        target:
-          [
-            aarch64-unknown-linux-gnu,
-            aarch64-unknown-linux-musl,
-            x86_64-unknown-linux-gnu,
-          ]
-          # i686-unknown-linux-gnu,
-    if: always()
+        include:
+          - os: 'macos'
+            target: 'x86_64-apple-darwin'
+            artifact: 'libextism.dylib'
+          - os: 'macos'
+            target: 'aarch64-apple-darwin'
+            artifact: 'libextism.dylib'
+          - os: 'ubuntu'
+            target: 'aarch64-unknown-linux-gnu'
+            artifact: 'libextism.so'
+          - os: 'ubuntu'
+            target: 'aarch64-unknown-linux-musl'
+            artifact: 'libextism.so'
+          - os: 'ubuntu'
+            target: 'x86_64-unknown-linux-gnu'
+            artifact: 'libextism.so'
+          - os: 'windows'
+            target: 'x86_64-pc-windows-gnu'
+            artifact: 'extism.dll'
+          - os: 'windows'
+            target: 'x86_64-pc-windows-msvc'
+            artifact: 'extism.dll'
+
     steps:
       - name: Checkout
         uses: actions/checkout@v3
@@ -41,166 +60,45 @@ jobs:
 
       - uses: Swatinem/rust-cache@v2
         with:
-          prefix-key: "linux-${{matrix.target}}"
+          prefix-key: "${{matrix.os}}-${{matrix.target}}"
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: "true"
 
-      - name: Build Target (${{ matrix.target }})
+      - name: Build Target (${{ matrix.os }} ${{ matrix.target }})
         uses: actions-rs/cargo@v1
         with:
-          use-cross: true
+          use-cross: ${{ matrix.os != 'windows' }}
           command: build
           args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
-      - name: Prepare Artifact
+      - name: set extism-maturin version
+        shell: bash
         run: |
-          EXT=so
-          SRC_DIR=target/${{ matrix.target }}/release
-          DEST_DIR=${{ env.ARTIFACT_DIR }}
-          RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
-          ARCHIVE=${RELEASE_NAME}.tar.gz
-          CHECKSUM=${RELEASE_NAME}.checksum.txt
+          pyproject="$(cat extism-maturin/pyproject.toml)"
+          version="${{ github.ref }}"
+          if [[ "$version" = "refs/heads/main" ]]; then
+            version="0.0.0-dev"
+          else
+            version="${version/refs\/tags\/v/}"
+          fi
 
-          # compress the shared library & create checksum
-          cp runtime/extism.h ${SRC_DIR}
-          cp LICENSE ${SRC_DIR}
-          tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
-          ls -ll ${ARCHIVE}
-          shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
+          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0-replaced-by-ci"/version = "'"$version"'"/g'
 
-          # copy archive and checksum into release artifact directory
-          mkdir -p ${DEST_DIR}
-          cp ${ARCHIVE} ${DEST_DIR}
-          cp ${CHECKSUM} ${DEST_DIR}
-
-          ls ${DEST_DIR}
-
-      - name: Upload Artifact to Summary
-        uses: actions/upload-artifact@v3
+      - uses: actions/setup-python@v4
         with:
-          name: ${{ env.ARTIFACT_DIR }}
-          path: |
-            *.tar.gz
-            *.txt
+          python-version: '3.10'
 
-      - name: Upload Artifact to Release
-        uses: softprops/action-gh-release@v1
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
         with:
-          files: |
-            *.tar.gz
-            *.txt
-        if: startsWith(github.ref, 'refs/tags/')
-
-  release-macos:
-    name: macos
-    runs-on: macos-latest
-    strategy:
-      matrix:
-        target: [x86_64-apple-darwin, aarch64-apple-darwin]
-    if: always()
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
           target: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "macos-${{matrix.target}}"
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: "true"
-
-      - name: Build Target (${{ matrix.target }})
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: true
-          command: build
-          args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
-
-      - name: Prepare Artifact
-        run: |
-          EXT=dylib
-          SRC_DIR=target/${{ matrix.target }}/release
-          DEST_DIR=${{ env.ARTIFACT_DIR }}
-          RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
-          ARCHIVE=${RELEASE_NAME}.tar.gz
-          CHECKSUM=${RELEASE_NAME}.checksum.txt
-
-          # compress the shared library & create checksum
-          cp runtime/extism.h ${SRC_DIR}
-          cp LICENSE ${SRC_DIR}
-          tar -C ${SRC_DIR} -czvf ${ARCHIVE} libextism.${EXT} extism.h
-          ls -ll ${ARCHIVE}
-          shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
-
-          # copy archive and checksum into release artifact directory
-          mkdir -p ${DEST_DIR}
-          cp ${ARCHIVE} ${DEST_DIR}
-          cp ${CHECKSUM} ${DEST_DIR}
-
-          ls ${DEST_DIR}
-
-      - name: Upload Artifact to Summary
-        uses: actions/upload-artifact@v3
-        with:
-          name: ${{ env.ARTIFACT_DIR }}
-          path: |
-            *.tar.gz
-            *.txt
-
-      - name: Upload Artifact to Release
-        uses: softprops/action-gh-release@v1
-        with:
-          files: |
-            *.tar.gz
-            *.txt
-        if: startsWith(github.ref, 'refs/tags/')
-
-  release-windows:
-    name: windows
-    runs-on: windows-latest
-    strategy:
-      matrix:
-        target:
-          [x86_64-pc-windows-gnu, x86_64-pc-windows-msvc]
-          # i686-pc-windows-gnu,
-          # i686-pc-windows-msvc,
-          # aarch64-pc-windows-msvc
-    if: always()
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
-
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
-        with:
-          toolchain: stable
-          profile: minimal
-          override: true
-          target: ${{ matrix.target }}
-
-      - uses: Swatinem/rust-cache@v2
-        with:
-          prefix-key: "macos-${{matrix.target}}"
-          save-if: ${{ github.ref == 'refs/heads/main' }}
-          cache-on-failure: "true"
-
-      - name: Build Target (${{ matrix.target }})
-        uses: actions-rs/cargo@v1
-        with:
-          command: build
-          args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
+          args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
+          sccache: 'true'
+          manylinux: auto
 
       - name: Prepare Artifact
         shell: bash
         run: |
-          EXT=dll
           SRC_DIR=target/${{ matrix.target }}/release
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
@@ -210,38 +108,42 @@ jobs:
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
           cp LICENSE ${SRC_DIR}
-          tar -C ${SRC_DIR} -czvf ${ARCHIVE} extism.${EXT} extism.h
+          tar -C ${SRC_DIR} -czvf ${ARCHIVE} ${{ matrix.artifact }} extism.h
           ls -ll ${ARCHIVE}
 
-          certutil -hashfile ${ARCHIVE} SHA256 >${CHECKSUM}
+          if &>/dev/null which shasum; then
+            shasum -a 256 ${ARCHIVE} > ${CHECKSUM}
+          else
+            # windows doesn't have shasum available, so we use certutil instead.
+            certutil -hashfile ${ARCHIVE} SHA256 >${CHECKSUM}
+          fi
 
           # copy archive and checksum into release artifact directory
           mkdir -p ${DEST_DIR}
           cp ${ARCHIVE} ${DEST_DIR}
           cp ${CHECKSUM} ${DEST_DIR}
+          cp dist/*.whl ${DEST_DIR}
 
-          ls ${DEST_DIR}
+          ls -ll ${DEST_DIR}
 
       - name: Upload Artifact to Summary
         uses: actions/upload-artifact@v3
         with:
           name: ${{ env.ARTIFACT_DIR }}
-          path: |
-            *.tar.gz
-            *.txt
+          path: ${{ env.ARTIFACT_DIR }}
 
-      - name: Upload Artifact to Release
+      - name: Upload Artifact to Draft Release
         uses: softprops/action-gh-release@v1
         with:
+          draft: true
           files: |
-            *.tar.gz
-            *.txt
+            ${{ env.ARTIFACT_DIR }}/*
         if: startsWith(github.ref, 'refs/tags/')
 
   release-latest:
     name: create latest release
     runs-on: ubuntu-latest
-    needs: [release-linux, release-macos, release-windows]
+    needs: [release]
     if: github.ref == 'refs/heads/main'
     steps:
       - uses: actions/download-artifact@v3
@@ -257,4 +159,5 @@ jobs:
           files: |
             *.tar.gz
             *.txt
+            *.whl
         if: github.ref == 'refs/heads/main'
