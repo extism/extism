@@ -337,11 +337,7 @@ mod tests {
 
         for i in 1..65540 {
             let input = "a".repeat(i);
-            println!("i: {i}");
             let output = plugin.call("reflect", input.clone());
-            if let Err(e) = &output {
-                println!("output: #{}", e);
-            }
             let output = std::str::from_utf8(output.unwrap()).unwrap();
             assert_eq!(output, input);
         }
