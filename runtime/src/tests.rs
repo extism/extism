@@ -4,6 +4,7 @@ use std::time::Instant;
 const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
+const WASM_REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
 
 host_fn!(hello_world (a: String) -> String { a });
 
@@ -288,4 +289,25 @@ fn test_toml_manifest() {
     let output = plugin.call("count_vowels", "abc123").unwrap();
     let count: serde_json::Value = serde_json::from_slice(output).unwrap();
     assert_eq!(count.get("count").unwrap().as_i64().unwrap(), 1);
+}
+
+#[test]
+fn test_fuzz_reflect_plugin() {
+    // assert!(set_log_file("stdout", Some(log::Level::Trace)));
+    let f = Function::new(
+        "host_reflect",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world,
+    );
+
+    let mut plugin = Plugin::new(WASM_REFLECT, [f], true).unwrap();
+
+    for i in 1..65540 {
+        let input = "a".repeat(i);
+        let output = plugin.call("reflect", input.clone());
+        let output = std::str::from_utf8(output.unwrap()).unwrap();
+        assert_eq!(output, input);
+    }
 }
