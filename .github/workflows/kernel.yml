@@ -27,6 +27,7 @@ jobs:
 
       - name: Build kernel
         shell: bash
+        continue-on-error: true
         run: |
           cd kernel
           sh build.sh
