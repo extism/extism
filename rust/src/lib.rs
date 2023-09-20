@@ -45,6 +45,7 @@ mod tests {
     const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
     const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
     const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
+    const REFLECT_WASM: &[u8] = include_bytes!("../../wasm/reflect.wasm");
 
     fn hello_world(
         plugin: &mut CurrentPlugin,
@@ -53,8 +54,8 @@ mod tests {
         _user_data: UserData,
     ) -> Result<(), Error> {
         let input_offs = inputs[0].unwrap_i64() as u64;
-        let input = plugin.memory_read_str(input_offs).unwrap().to_string();
-
+        let length = plugin.memory_length(input_offs);
+        let input = plugin.memory_read(input_offs, length).to_vec();
         let output = plugin.memory_alloc_bytes(&input).unwrap();
         outputs[0] = Val::I64(output as i64);
         Ok(())
@@ -317,6 +318,28 @@ mod tests {
             let output = plugin.call("globals", "").unwrap();
             let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
             assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
+        }
+    }
+
+    #[test]
+    fn test_fuzz_reflect_plugin() {
+        // assert!(set_log_file("stdout", Some(log::Level::Trace)));
+        let f = Function::new(
+            "host_reflect",
+            [ValType::I64],
+            [ValType::I64],
+            None,
+            hello_world,
+        );
+
+        let context = Context::new();
+        let mut plugin = Plugin::new(&context, REFLECT_WASM, [f], true).unwrap();
+
+        for i in 1..65540 {
+            let input = "a".repeat(i);
+            let output = plugin.call("reflect", input.clone());
+            let output = std::str::from_utf8(output.unwrap()).unwrap();
+            assert_eq!(output, input);
         }
     }
 }

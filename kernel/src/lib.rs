@@ -246,13 +246,13 @@ impl MemoryRoot {
         let curr = self.blocks.as_ptr() as u64 + self_position;
 
         // Get the number of bytes available
-        let mem_left = self_length - self_position;
+        let mem_left = self_length - self_position - core::mem::size_of::<MemoryRoot>() as u64;
 
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
         if length >= mem_left {
             // Calculate the number of pages needed to cover the remaining bytes
-            let npages = num_pages(length);
+            let npages = num_pages(length - mem_left);
             let x = core::arch::wasm32::memory_grow(0, npages);
             if x == usize::MAX {
                 return None;
