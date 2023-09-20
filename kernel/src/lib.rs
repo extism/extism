@@ -246,7 +246,7 @@ impl MemoryRoot {
         let curr = self.blocks.as_ptr() as u64 + self_position;
 
         // Get the number of bytes available
-        let mem_left = self_length - self_position - core::mem::size_of::<MemoryBlock>() as u64;
+        let mem_left = self_length - self_position - core::mem::size_of::<MemoryRoot>() as u64;
 
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
