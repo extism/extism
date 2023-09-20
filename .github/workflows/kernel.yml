@@ -1,0 +1,44 @@
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - kernel/**
+
+name: Kernel
+
+jobs:
+  kernel:
+    name: Build extism-runtime.wasm
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          target: wasm32-unknown-unknown
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Install deps
+        run: |
+          sudo apt install wabt --yes
+
+      - name: Build kernel
+        shell: bash
+        run: |
+          cd kernel
+          sh build.sh
+
+      - uses: peter-evans/create-pull-request@v5
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          title: "update(kernel): extism-runtime.wasm in ${{ github.event.pull_request.head.ref }}"
+          body: "Automated PR to update `runtime/src/extism-runtime.wasm` in PR #${{ github.event.number }}"
+          base: "${{ github.event.pull_request.head.ref }}"
+          branch: "update-kernel--${{ github.event.pull_request.head.ref }}"
+          add-paths: "runtime/src/extism-runtime.wasm"
+          commit-message: "update(kernel): extism-runtime.wasm in ${{ github.event.pull_request.head.ref }}"
+          delete-branch: true
