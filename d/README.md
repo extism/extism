@@ -15,7 +15,7 @@ extism install latest
 extism link
 ```
 
-> Note: The install command may require `sudo`.
+> Note: The `extism install` command may require `sudo`.
 
 ### Lint Sources
 
