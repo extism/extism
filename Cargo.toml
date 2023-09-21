@@ -1,5 +1,6 @@
 [workspace]
 members = [
+  "extism-maturin",
   "manifest",
   "runtime",
   "libextism",
