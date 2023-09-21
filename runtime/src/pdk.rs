@@ -1,9 +1,8 @@
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
 
-// This macro unwraps input arguments to prevent functions from panicking,
-// it should be used instead of `Val::unwrap_*` functions
-#[macro_export]
+/// This macro unwraps input arguments to prevent functions from panicking,
+/// it should be used instead of `Val::unwrap_*` functions
 macro_rules! args {
     ($input:expr, $index:expr, $ty:ident) => {
         match $input[$index].$ty() {
@@ -33,7 +32,7 @@ pub(crate) fn config_get(
         Some(h) => h,
         None => anyhow::bail!("invalid handle offset: {offset}"),
     };
-    let key = data.memory_read_str(handle)?;
+    let key = data.memory_str(handle)?;
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
@@ -42,7 +41,7 @@ pub(crate) fn config_get(
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_alloc_bytes(bytes)?
+            data.memory_new(bytes)?
         }
         None => {
             output[0] = Val::I64(0);
@@ -68,7 +67,7 @@ pub(crate) fn var_get(
         Some(h) => h,
         None => anyhow::bail!("invalid handle offset: {offset}"),
     };
-    let key = data.memory_read_str(handle)?;
+    let key = data.memory_str(handle)?;
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
@@ -77,7 +76,7 @@ pub(crate) fn var_get(
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_alloc_bytes(bytes)?
+            data.memory_new(bytes)?
         }
         None => {
             output[0] = Val::I64(0);
@@ -116,7 +115,7 @@ pub(crate) fn var_set(
             Some(h) => h,
             None => anyhow::bail!("invalid handle offset: {key_offs}"),
         };
-        let key = data.memory_read_str(handle)?;
+        let key = data.memory_str(handle)?;
         let key_len = key.len();
         let key_ptr = key.as_ptr();
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
@@ -132,7 +131,8 @@ pub(crate) fn var_set(
         Some(h) => h,
         None => anyhow::bail!("invalid handle offset: {key_offs}"),
     };
-    let value = data.memory_read(handle).to_vec();
+
+    let value = data.memory_bytes(handle)?.to_vec();
 
     // Insert the value from memory into the `vars` map
     data.vars.insert(key.to_string(), value);
@@ -167,7 +167,7 @@ pub(crate) fn http_request(
             Some(h) => h,
             None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
         };
-        let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_read(handle))?;
+        let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_bytes(handle)?)?;
 
         let body_offset = args!(input, 1, i64) as u64;
 
@@ -208,7 +208,7 @@ pub(crate) fn http_request(
                 Some(h) => h,
                 None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
             };
-            let buf = data.memory_read(handle);
+            let buf: &[u8] = data.memory_bytes(handle)?;
             r.send_bytes(buf)
         } else {
             r.call()
@@ -235,7 +235,7 @@ pub(crate) fn http_request(
                 .take(1024 * 1024 * 50) // TODO: make this limit configurable
                 .read_to_end(&mut buf)?;
 
-            let mem = data.memory_alloc_bytes(buf)?;
+            let mem = data.memory_new(&buf)?;
             output[0] = Val::I64(mem.offset() as i64);
         } else {
             output[0] = Val::I64(0);
@@ -272,7 +272,7 @@ pub fn log(
         None => anyhow::bail!("invalid handle offset: {offset}"),
     };
 
-    let buf = data.memory_read_str(handle);
+    let buf = data.memory_str(handle);
 
     match buf {
         Ok(buf) => log::log!(level, "{}", buf),

@@ -10,6 +10,23 @@ pub(crate) struct Output {
     pub(crate) error_length: u64,
 }
 
+/// A `CancelHandle` can be used to cancel a running plugin from another thread
+#[derive(Clone)]
+pub struct CancelHandle {
+    pub(crate) timer_tx: std::sync::mpsc::Sender<TimerAction>,
+    pub id: uuid::Uuid,
+}
+
+unsafe impl Sync for CancelHandle {}
+unsafe impl Send for CancelHandle {}
+
+impl CancelHandle {
+    pub fn cancel(&self) -> Result<(), Error> {
+        self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
+        Ok(())
+    }
+}
+
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
     /// A unique ID for each plugin
@@ -22,7 +39,7 @@ pub struct Plugin {
     pub(crate) store: Store<CurrentPlugin>,
 
     /// A handle used to cancel execution of a plugin
-    pub(crate) cancel_handle: sdk::ExtismCancelHandle,
+    pub(crate) cancel_handle: CancelHandle,
 
     /// All modules that were provided to the linker
     pub(crate) modules: BTreeMap<String, Module>,
@@ -287,7 +304,7 @@ impl Plugin {
             runtime: None,
             id,
             timer_tx: timer_tx.clone(),
-            cancel_handle: sdk::ExtismCancelHandle { id, timer_tx },
+            cancel_handle: CancelHandle { id, timer_tx },
             instantiations: 0,
             output: Output::default(),
             _functions: imports.collect(),
@@ -420,7 +437,7 @@ impl Plugin {
             error!("Call to extism_reset failed");
         }
 
-        let handle = self.current_plugin_mut().memory_alloc_bytes(bytes)?;
+        let handle = self.current_plugin_mut().memory_new(bytes)?;
 
         if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
             f.into_func().unwrap().call(
@@ -550,12 +567,14 @@ impl Plugin {
     }
 
     // Get the output data after a call has returned
-    fn output(&mut self) -> &[u8] {
+    fn output<'a, T: FromBytes<'a>>(&'a mut self) -> Result<T, Error> {
         trace!("Output offset: {}", self.output.offset);
         let offs = self.output.offset;
         let len = self.output.length;
-        self.current_plugin_mut()
-            .memory_read(unsafe { MemoryHandle::new(offs, len) })
+        T::from_bytes(
+            self.current_plugin_mut()
+                .memory_bytes(unsafe { MemoryHandle::new(offs, len) })?,
+        )
     }
 
     // Cache output memory and error information after call is complete
@@ -668,12 +687,17 @@ impl Plugin {
 
     /// Call a function by name with the given input, the return value is the output data returned by the plugin.
     /// This data will be invalidated next time the plugin is called.
-    pub fn call(&mut self, name: impl AsRef<str>, input: impl AsRef<[u8]>) -> Result<&[u8], Error> {
+    pub fn call<'a, 'b, T: ToBytes<'a>, U: FromBytes<'b>>(
+        &'b mut self,
+        name: impl AsRef<str>,
+        input: T,
+    ) -> Result<U, Error> {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
-        self.raw_call(&mut lock, name, input)
-            .map(|_| self.output())
+        let data = input.to_bytes()?;
+        self.raw_call(&mut lock, name, data)
             .map_err(|e| e.0)
+            .and_then(move |_| self.output())
     }
 
     /// Get a `CancelHandle`, which can be used from another thread to cancel a running plugin
@@ -698,7 +722,7 @@ impl Plugin {
     pub(crate) fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
-        match self.current_plugin_mut().memory_alloc_bytes(&s) {
+        match self.current_plugin_mut().memory_new(&s) {
             Ok(handle) => {
                 let (linker, mut store) = self.linker_and_store();
                 if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
@@ -732,4 +756,53 @@ pub(crate) enum GuestRuntime {
     Wasi {
         init: Func,
     },
+}
+
+/// The `typed_plugin` macro is used to create a newtype wrapper around `Plugin` with methods defined for the specified functions.
+///
+/// For example, we can define a new type `MyPlugin` that automatically implements `From`/`Into` for `Plugin`
+/// ```rust
+/// #[derive(serde::Deserialize)]
+/// struct Count {
+///   count: usize,
+/// }
+///
+/// extism::typed_plugin!(MyPlugin {
+///   count_vowels(&str) -> extism::convert::Json<Count>;
+/// });
+///
+/// # const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
+/// // Convert from `Plugin` to `MyPlugin`
+/// let mut plugin: MyPlugin = extism::Plugin::new(WASM, [], true).unwrap().into();
+/// // and call the `count_vowels` function
+/// let count = plugin.count_vowels("this is a test").unwrap();
+/// ```
+#[macro_export]
+macro_rules! typed_plugin {
+    ($name:ident {$($f:ident $(< $( $lt:tt $( : $clt:path )? ),+ >)? ($input:ty) -> $output:ty);*$(;)?}) => {
+        pub struct $name(pub $crate::Plugin);
+
+        unsafe impl Send for $name {}
+        unsafe impl Sync for $name {}
+
+        impl From<$crate::Plugin> for $name {
+            fn from(x: $crate::Plugin) -> Self {
+                $name(x)
+            }
+        }
+
+        impl From<$name> for $crate::Plugin {
+            fn from(x: $name) -> Self {
+                x.0
+            }
+        }
+
+        impl $name {
+            $(
+                pub fn $f<'a, $( $( $lt $( : $clt )? ),+ )? >(&'a mut self, input: $input) -> Result<$output, $crate::Error> {
+                    self.0.call(stringify!($f), input)
+                }
+            )*
+        }
+    };
 }

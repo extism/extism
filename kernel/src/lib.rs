@@ -87,19 +87,22 @@ pub enum MemoryStatus {
 ///
 /// The overall layout of the Extism-manged memory is organized like this:
 
-/// |------|-------|---------|-------|--------------|
-/// | Root | Block |  Data   | Block |     Data     | ...
-/// |------|-------|---------|-------|--------------|
+/// |------|-------+---------|-------+--------------|
+/// | Root | Block +  Data   | Block +     Data     | ...
+/// |------|-------+---------|-------+--------------|
 ///
 /// Where `Root` and `Block` are fixed to the size of the `MemoryRoot` and `MemoryBlock` structs. But
 /// the size of `Data` is dependent on the allocation size.
+///
+/// This means that the offset of a `Block` is the size of `Root` plus the size of all existing `Blocks`
+/// including their data.
 #[repr(C)]
 pub struct MemoryRoot {
     /// Position of the bump allocator, relative to `START_PAGE`
     pub position: AtomicU64,
     /// The total size of all data allocated using this allocator
     pub length: AtomicU64,
-    /// A pointer to where the blocks begin
+    /// A pointer to the start of the first block
     pub blocks: [MemoryBlock; 0],
 }
 
@@ -119,9 +122,13 @@ pub struct MemoryBlock {
 
 /// Returns the number of pages needed for the given number of bytes
 pub fn num_pages(nbytes: u64) -> usize {
-    let nbytes = nbytes as f64;
-    let page = PAGE_SIZE as f64;
-    ((nbytes / page) + 0.5) as usize
+    let npages = nbytes / PAGE_SIZE as u64;
+    let remainder = nbytes % PAGE_SIZE as u64;
+    if remainder != 0 {
+        (npages + 1) as usize
+    } else {
+        npages as usize
+    }
 }
 
 // Get the `MemoryRoot` at the correct offset in memory
@@ -190,6 +197,7 @@ impl MemoryRoot {
         while (block as u64) < self.blocks.as_ptr() as u64 + self_position {
             let b = &mut *block;
 
+            // Get the block status, this lets us know if we are able to re-use it
             let status = b.status.load(Ordering::Acquire);
 
             // An unused block is safe to use
@@ -242,13 +250,13 @@ impl MemoryRoot {
         let curr = self.blocks.as_ptr() as u64 + self_position;
 
         // Get the number of bytes available
-        let mem_left = self_length - self_position;
+        let mem_left = self_length - self_position - core::mem::size_of::<MemoryRoot>() as u64;
 
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
         if length >= mem_left {
             // Calculate the number of pages needed to cover the remaining bytes
-            let npages = num_pages(length);
+            let npages = num_pages(length - mem_left);
             let x = core::arch::wasm32::memory_grow(0, npages);
             if x == usize::MAX {
                 return None;
@@ -305,11 +313,14 @@ impl MemoryBlock {
     }
 }
 
-// Extism functions - these functions should be
+// Extism functions
 
 /// Allocate a block of memory and return the offset
 #[no_mangle]
 pub unsafe fn extism_alloc(n: Length) -> Pointer {
+    if n == 0 {
+        return 0;
+    }
     let region = MemoryRoot::new();
     let block = region.alloc(n);
     match block {
@@ -321,6 +332,9 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
 /// Free allocated memory
 #[no_mangle]
 pub unsafe fn extism_free(p: Pointer) {
+    if p == 0 {
+        return;
+    }
     let block = MemoryRoot::new().find_block(p);
     if let Some(block) = block {
         block.free();

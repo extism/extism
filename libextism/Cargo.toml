@@ -11,6 +11,7 @@ description = "libextism"
 [lib]
 name = "extism"
 crate-type = ["cdylib"]
+doc = false
 
 [dependencies]
 extism = {path = "../runtime"}

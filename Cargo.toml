@@ -3,5 +3,6 @@ members = [
   "manifest",
   "runtime",
   "libextism",
+  "convert"
 ]
 exclude = ["kernel"]

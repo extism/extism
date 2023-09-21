@@ -6,6 +6,7 @@ use std::str::FromStr;
 use crate::*;
 
 pub type ExtismMemoryHandle = u64;
+pub type Size = u64;
 
 /// A union type for host function argument/return values
 #[repr(C)]
@@ -22,12 +23,6 @@ pub union ValUnion {
 pub struct ExtismVal {
     t: ValType,
     v: ValUnion,
-}
-
-#[repr(C)]
-pub struct ExtismPluginResult {
-    pub plugin: *mut Plugin,
-    pub error: *mut std::ffi::c_char,
 }
 
 /// Host function signature
@@ -141,7 +136,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(
 
     let plugin = &mut *plugin;
     if let Some(handle) = plugin.memory_handle(ptr) {
-        plugin.memory_free(handle);
+        let _ = plugin.memory_free(handle);
     }
 }
 
@@ -317,24 +312,9 @@ pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
     drop(plugin)
 }
 
-#[derive(Clone)]
-pub struct ExtismCancelHandle {
-    pub(crate) timer_tx: std::sync::mpsc::Sender<TimerAction>,
-    pub id: uuid::Uuid,
-}
-
-impl ExtismCancelHandle {
-    pub fn cancel(&self) -> Result<(), Error> {
-        self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
-        Ok(())
-    }
-}
-
-/// Get plugin ID for cancellation
+/// Get handle for plugin cancellation
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_cancel_handle(
-    plugin: *const Plugin,
-) -> *const ExtismCancelHandle {
+pub unsafe extern "C" fn extism_plugin_cancel_handle(plugin: *const Plugin) -> *const CancelHandle {
     if plugin.is_null() {
         return std::ptr::null();
     }
@@ -344,7 +324,7 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(
 
 /// Cancel a running plugin
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_cancel(handle: *const ExtismCancelHandle) -> bool {
+pub unsafe extern "C" fn extism_plugin_cancel(handle: *const CancelHandle) -> bool {
     let handle = &*handle;
     handle.cancel().is_ok()
 }
