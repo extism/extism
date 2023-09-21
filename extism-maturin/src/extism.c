@@ -1,1 +1,1 @@
-#include "../../runtime/extism.h"
+#include "extism.h"
