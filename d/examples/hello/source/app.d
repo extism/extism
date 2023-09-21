@@ -3,17 +3,18 @@ import std.file;
 import std.functional: toDelegate;
 import std.stdio;
 import std.string: representation;
+import std.typecons : Yes;
 
 import extism;
 
 void main() {
 	auto wasm = cast(ubyte[]) read("wasm/code-functions.wasm");
-	// FIXME: Creating the plugin results in EXC_BAD_ACCESS (segfault?)
+	// FIXME: Creating the plugin results in EXC_BAD_ACCESS (segfault?) from `extism_plugin_new`
 	auto plugin = new Plugin(wasm, [
 		Function!string(
 			"hello_world", /* Inputs */ [ValType.i64], /* Outputs */ [ValType.i64], toDelegate(&helloWorld), "Hello, again!"
 		),
-	]);
+	], Yes.withWasi);
 
 	auto input = "aeiou";
 	plugin.call("count_vowels", cast(ubyte[]) input.representation);
