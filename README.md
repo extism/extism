@@ -1,6 +1,6 @@
 ### _Welcome!_
 
-**Please note:** This project still under active development and APIs may change until we hit v1.0.
+**Please note:** This project still under active development and APIs are changing as we hit 1.0. Currently, the main branch has many breaking changes. Our current release is 0.5.x. Until we release 1.0, we are cutting these releases from the [stable](https://github.com/extism/extism/tree/stable) branch.
 
 If you're interested in working on or building with Extism, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know - we are happy to help get you started.
 
