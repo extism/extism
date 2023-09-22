@@ -219,9 +219,6 @@ impl Plugin {
 
         store.set_epoch_deadline(1);
 
-        if available_pages.is_some() {
-            store.limiter(|internal| internal.memory_limiter.as_mut().unwrap());
-        }
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
@@ -313,6 +310,11 @@ impl Plugin {
 
         plugin.current_plugin_mut().store = &mut plugin.store;
         plugin.current_plugin_mut().linker = &mut plugin.linker;
+        if available_pages.is_some() {
+            plugin
+                .store
+                .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+        }
         Ok(plugin)
     }
 
@@ -334,7 +336,11 @@ impl Plugin {
             );
 
             self.store.set_epoch_deadline(1);
-
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let current_plugin = self.current_plugin_mut();
+            current_plugin.store = store;
+            current_plugin.linker = linker;
             if self.current_plugin().available_pages.is_some() {
                 self.store
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
@@ -356,12 +362,6 @@ impl Plugin {
             }
             self.instantiations = 0;
             self.instance_pre = self.linker.instantiate_pre(main)?;
-
-            let store = &mut self.store as *mut _;
-            let linker = &mut self.linker as *mut _;
-            let current_plugin = self.current_plugin_mut();
-            current_plugin.store = store;
-            current_plugin.linker = linker;
         }
 
         **instance_lock = None;
