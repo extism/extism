@@ -82,7 +82,7 @@ jobs:
             version="${version/refs\/tags\/v/}"
           fi
 
-          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0-replaced-by-ci"/version = "'"$version"'"/g'
+          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
 
       - uses: actions/setup-python@v4
         with:
@@ -90,6 +90,10 @@ jobs:
 
       - name: Build wheels
         uses: PyO3/maturin-action@v1
+        # maturin's cffi integration struggles with gnu headers on windows.
+        # there's partial work towards fixing this in `extism-maturin/build.rs`, but it's
+        # not sufficient to get it to work. omit it for now!
+        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
@@ -122,7 +126,11 @@ jobs:
           mkdir -p ${DEST_DIR}
           cp ${ARCHIVE} ${DEST_DIR}
           cp ${CHECKSUM} ${DEST_DIR}
-          cp dist/*.whl ${DEST_DIR}
+
+          # copy any built wheels.
+          if [ -e dist/*.whl ]; then
+            cp dist/*.whl ${DEST_DIR}
+          fi
 
           ls -ll ${DEST_DIR}
 

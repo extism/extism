@@ -1,29 +1,41 @@
-fn filter_lines(line: &&str) -> bool {
+use std::borrow::Cow;
+
+fn rewrite(line: &'_ str) -> Option<Cow<'_, str>> {
     let line = line.trim();
 
     if line.is_empty() {
-        return false;
+        return None;
     }
 
-    let not_macro = line.chars().nth(0).unwrap() != '#';
+    if line.starts_with('#') {
+        return None;
+    }
 
     if cfg!(target_os = "macos") {
-        return not_macro && !line.starts_with("typedef __builtin_va_list ");
+        if line.starts_with("typedef __builtin_va_list ") {
+            return None
+        }
     } else if cfg!(target_os = "windows") {
-        return not_macro
-            && !line.starts_with("__pragma")
-            && !line.contains("uintptr_t")
-            && !line.contains("intptr_t")
-            && !line.contains("size_t")
-            && !line.contains("ptrdiff_t");
-    }
+        if line.contains("__gnuc_va_list") ||
+        line.starts_with("__pragma") ||
+        line.contains("__attribute__") ||
+        line.contains("uintptr_t") ||
+        line.contains("intptr_t") ||
+        line.contains("size_t") ||
+        line.contains("ptrdiff_t") {
+            return None
+        }
 
-    not_macro
+        return Some(Cow::Owned(line.replace("__attribute__((__cdecl__))", "")))
+    };
+
+    Some(Cow::Borrowed(line))
 }
 
 fn main() {
     println!("cargo:rerun-if-changed=src/extism.c");
     println!("cargo:rerun-if-changed=../runtime/extism.h");
+    std::fs::copy("../runtime/extism.h", "src/extism.h").unwrap();
 
     let data = String::from_utf8(
         cc::Build::new()
@@ -36,11 +48,10 @@ fn main() {
     let data: Vec<&str> = data.split('\n').collect();
     let data: String = data
         .into_iter()
-        .filter(filter_lines)
-        .collect::<Vec<&str>>()
+        .filter_map(rewrite)
+        .collect::<Vec<Cow<'_, str>>>()
         .join("\n\n");
 
-    std::fs::create_dir_all("target").unwrap();
-    std::fs::write("target/header.h", data).unwrap();
-}
 
+    std::fs::write("../target/header.h", data).unwrap();
+}

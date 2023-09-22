@@ -41,4 +41,4 @@ java/*.iml
 java/*.log
 java/.idea
 java/.DS_Store
-
+extism-maturin/src/extism.h
