@@ -44,7 +44,7 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
 
         let d = desired - current;
         if d > self.bytes_left {
-            return Ok(false);
+            return Err(Error::msg("oom"));
         }
 
         self.bytes_left -= d;

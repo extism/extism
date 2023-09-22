@@ -210,10 +210,11 @@ fn test_timeout() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
-    let _output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Timed out plugin ran for {:?}", time);
+    assert!(output.unwrap_err().root_cause().to_string() == "timeout");
     // std::io::stdout().write_all(output).unwrap();
 }
 
@@ -313,6 +314,7 @@ fn test_memory_max() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "aaaaaaaaaa".repeat(65536 * 2));
     assert!(output.is_err());
+    assert!(output.unwrap_err().root_cause().to_string() == "oom");
 
     // Should pass without it
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);

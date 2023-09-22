@@ -608,8 +608,9 @@ impl Plugin {
                     return Ok(0);
                 }
                 Err(e) => {
-                    if e.root_cause().to_string() == "timeout" {
-                        return Err((Error::msg("timeout"), -1));
+                    let cause = e.root_cause().to_string();
+                    if cause == "timeout" || cause == "oom" {
+                        return Err((Error::msg(cause), -1));
                     }
 
                     error!("Call: {e:?}");
