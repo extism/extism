@@ -237,6 +237,12 @@ impl Manifest {
         self
     }
 
+    /// Set MemoryOptions::memory_max
+    pub fn with_memory_max(mut self, max: u32) -> Self {
+        self.memory.max_pages = Some(max);
+        return self;
+    }
+
     /// Add a hostname to `allowed_hosts`
     pub fn with_allowed_host(mut self, host: impl Into<String>) -> Self {
         match &mut self.allowed_hosts {
