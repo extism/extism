@@ -230,12 +230,8 @@ impl Plugin {
             wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().ctx
             })?;
-
-            #[cfg(feature = "nn")]
-            wasmtime_wasi_nn::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
-                &mut x.wasi.as_mut().unwrap().nn
-            })?;
         }
+
         // Get the `main` module, or the last one if `main` doesn't exist
         let (main_name, main) = modules.get("main").map(|x| ("main", x)).unwrap_or_else(|| {
             let entry = modules.iter().last().unwrap();
