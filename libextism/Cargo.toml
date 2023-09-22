@@ -18,7 +18,6 @@ extism = {path = "../runtime"}
 
 [features]
 default = ["http", "register-http", "register-filesystem"]
-nn = ["extism/nn"]
 register-http = ["extism/register-http"] # enables wasm to be downloaded using http
 register-filesystem = ["extism/register-filesystem"] # enables wasm to be loaded from disk
 http = ["extism/http"] # enables extism_http_request
