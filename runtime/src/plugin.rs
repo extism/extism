@@ -669,6 +669,7 @@ impl Plugin {
         x: E,
     ) -> E {
         if instance_lock.is_none() {
+            error!("No instance, unable to set error: {:?}", e);
             return x;
         }
         let s = format!("{e:?}");
