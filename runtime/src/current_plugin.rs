@@ -37,14 +37,14 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
         maximum: Option<usize>,
     ) -> Result<bool> {
         if let Some(max) = maximum {
-            if desired > max {
-                return Ok(false);
+            if desired >= max {
+                return Err(Error::msg("oom"));
             }
         }
 
         let d = desired - current;
         if d > self.bytes_left {
-            return Ok(false);
+            return Err(Error::msg("oom"));
         }
 
         self.bytes_left -= d;

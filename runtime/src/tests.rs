@@ -2,6 +2,7 @@ use super::*;
 use std::time::Instant;
 
 const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
+const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../wasm/code.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
 const WASM_REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
@@ -209,10 +210,11 @@ fn test_timeout() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
-    let _output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Timed out plugin ran for {:?}", time);
+    assert!(output.unwrap_err().root_cause().to_string() == "timeout");
     // std::io::stdout().write_all(output).unwrap();
 }
 
@@ -272,19 +274,11 @@ fn test_globals() {
 
 #[test]
 fn test_toml_manifest() {
-    let f = Function::new(
-        "hello_world",
-        [ValType::I64],
-        [ValType::I64],
-        None,
-        hello_world,
-    );
-
-    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM)])
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)])
         .with_timeout(std::time::Duration::from_secs(1));
 
     let manifest_toml = toml::to_string_pretty(&manifest).unwrap();
-    let mut plugin = Plugin::new(manifest_toml.as_bytes(), [f], true).unwrap();
+    let mut plugin = Plugin::new(manifest_toml.as_bytes(), [], true).unwrap();
 
     let output = plugin.call("count_vowels", "abc123").unwrap();
     let count: serde_json::Value = serde_json::from_slice(output).unwrap();
@@ -310,4 +304,28 @@ fn test_fuzz_reflect_plugin() {
         let output = std::str::from_utf8(output.unwrap()).unwrap();
         assert_eq!(output, input);
     }
+}
+
+#[test]
+fn test_memory_max() {
+    // Should fail with memory.max set
+    let manifest =
+        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(16);
+    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
+    assert!(output.is_err());
+    assert!(output.unwrap_err().root_cause().to_string() == "oom");
+
+    // Should pass with memory.max set to a large enough number
+    let manifest =
+        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(17);
+    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
+    assert!(output.is_ok());
+
+    // Should pass without it
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);
+    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
+    assert!(output.is_ok());
 }

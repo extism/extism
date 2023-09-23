@@ -116,59 +116,6 @@ fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
-fn calculate_available_memory(
-    available_pages: &mut Option<u32>,
-    modules: &BTreeMap<String, Module>,
-) -> anyhow::Result<()> {
-    let available_pages = match available_pages {
-        Some(p) => p,
-        None => return Ok(()),
-    };
-
-    let max_pages = *available_pages;
-    let mut fail_memory_check = false;
-    let mut total_memory_needed = 0;
-    for (name, module) in modules.iter() {
-        if name == "env" {
-            continue;
-        }
-        let mut memories = 0;
-        for export in module.exports() {
-            if let Some(memory) = export.ty().memory() {
-                memories += 1;
-                let memory_max = memory.maximum();
-                match memory_max {
-                    None => anyhow::bail!("Unbounded memory in module {name}, when `memory.max_pages` is set in the manifest all modules \
-                                           must have a maximum bound set on an exported memory"),
-                    Some(m) => {
-                        total_memory_needed += m;
-                        if !fail_memory_check {
-                            continue;
-                        }
-
-                        *available_pages = available_pages.saturating_sub(m as u32);
-                        if *available_pages == 0 {
-                            fail_memory_check = true;
-                        }
-                    }
-                }
-            }
-        }
-
-        if memories == 0 {
-            anyhow::bail!("No memory exported from module {name}, when `memory.max_pages` is set in the manifest all modules must \
-                           have a maximum bound set on an exported memory");
-        }
-    }
-
-    if fail_memory_check {
-        anyhow::bail!("Not enough memory configured to run the provided plugin, `memory.max_pages` is set to {max_pages} in the manifest \
-                       but {total_memory_needed} pages are needed by the plugin");
-    }
-
-    Ok(())
-}
-
 // Raise an error when the epoch deadline is encountered - this is used for timeout/cancellation
 // to stop a plugin that is executing
 fn deadline_callback(_: StoreContextMut<CurrentPlugin>) -> Result<UpdateDeadline, Error> {
@@ -205,11 +152,7 @@ impl Plugin {
         let mut imports = imports.into_iter();
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
-        // Calculate how much memory is available based on the value of `max_pages` and the exported
-        // memory of the modules. An error will be returned if a module doesn't have an exported memory
-        // or there is no maximum set for a module's exported memory.
-        let mut available_pages = manifest.memory.max_pages;
-        calculate_available_memory(&mut available_pages, &modules)?;
+        let available_pages = manifest.memory.max_pages;
         log::trace!("Available pages: {available_pages:?}");
 
         let mut store = Store::new(
@@ -219,9 +162,6 @@ impl Plugin {
 
         store.set_epoch_deadline(1);
 
-        if available_pages.is_some() {
-            store.limiter(|internal| internal.memory_limiter.as_mut().unwrap());
-        }
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
@@ -313,6 +253,11 @@ impl Plugin {
 
         plugin.current_plugin_mut().store = &mut plugin.store;
         plugin.current_plugin_mut().linker = &mut plugin.linker;
+        if available_pages.is_some() {
+            plugin
+                .store
+                .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
+        }
         Ok(plugin)
     }
 
@@ -334,8 +279,12 @@ impl Plugin {
             );
 
             self.store.set_epoch_deadline(1);
-
-            if self.current_plugin().available_pages.is_some() {
+            let store = &mut self.store as *mut _;
+            let linker = &mut self.linker as *mut _;
+            let current_plugin = self.current_plugin_mut();
+            current_plugin.store = store;
+            current_plugin.linker = linker;
+            if current_plugin.available_pages.is_some() {
                 self.store
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
@@ -356,12 +305,6 @@ impl Plugin {
             }
             self.instantiations = 0;
             self.instance_pre = self.linker.instantiate_pre(main)?;
-
-            let store = &mut self.store as *mut _;
-            let linker = &mut self.linker as *mut _;
-            let current_plugin = self.current_plugin_mut();
-            current_plugin.store = store;
-            current_plugin.linker = linker;
         }
 
         **instance_lock = None;
@@ -665,8 +608,9 @@ impl Plugin {
                     return Ok(0);
                 }
                 Err(e) => {
-                    if e.root_cause().to_string() == "timeout" {
-                        return Err((Error::msg("timeout"), -1));
+                    let cause = e.root_cause().to_string();
+                    if cause == "timeout" || cause == "oom" {
+                        return Err((Error::msg(cause), -1));
                     }
 
                     error!("Call: {e:?}");
@@ -719,7 +663,16 @@ impl Plugin {
     }
 
     // A convenience method to set the plugin error and return a value
-    pub(crate) fn return_error<E>(&mut self, e: impl std::fmt::Debug, x: E) -> E {
+    pub(crate) fn return_error<E>(
+        &mut self,
+        instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
+        e: impl std::fmt::Debug,
+        x: E,
+    ) -> E {
+        if instance_lock.is_none() {
+            error!("No instance, unable to set error: {:?}", e);
+            return x;
+        }
         let s = format!("{e:?}");
         debug!("Set error: {:?}", s);
         match self.current_plugin_mut().memory_new(&s) {

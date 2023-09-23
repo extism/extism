@@ -341,7 +341,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     }
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
-    let _lock = _lock.lock().unwrap();
+    let mut lock = _lock.lock().unwrap();
 
     trace!(
         "Call to extism_plugin_config for {} with json pointer {:?}",
@@ -353,7 +353,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         match serde_json::from_slice(data) {
             Ok(x) => x,
             Err(e) => {
-                return plugin.return_error(e, false);
+                return plugin.return_error(&mut lock, e, false);
             }
         };
 
@@ -400,7 +400,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     }
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
-    let _lock = _lock.lock().unwrap();
+    let mut lock = _lock.lock().unwrap();
 
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!("Call to extism_plugin_function_exists for: {:?}", name);
@@ -408,7 +408,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let name = match name.to_str() {
         Ok(x) => x,
         Err(e) => {
-            return plugin.return_error(e, false);
+            return plugin.return_error(&mut lock, e, false);
         }
     };
 
@@ -439,7 +439,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin.return_error(e, -1),
+        Err(e) => return plugin.return_error(&mut lock, e, -1),
     };
 
     trace!("Calling function {} of plugin {}", name, plugin.id);
@@ -447,7 +447,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     let res = plugin.raw_call(&mut lock, name, input);
 
     match res {
-        Err((e, rc)) => plugin.return_error(e, rc),
+        Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
         Ok(x) => x,
     }
 }
