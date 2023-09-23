@@ -4,10 +4,6 @@ use crate::*;
 pub struct Wasi {
     /// wasi
     pub ctx: wasmtime_wasi::WasiCtx,
-
-    /// wasi-nn
-    #[cfg(feature = "nn")]
-    pub nn: wasmtime_wasi_nn::WasiNnCtx,
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values

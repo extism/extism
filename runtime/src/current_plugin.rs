@@ -202,29 +202,22 @@ impl CurrentPlugin {
             let auth = wasmtime_wasi::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
             for (k, v) in manifest.config.iter() {
-                ctx = ctx.env(k, v)?;
+                ctx.env(k, v)?;
             }
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
                     let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
-                    ctx = ctx.preopened_dir(d, v)?;
+                    ctx.preopened_dir(d, v)?;
                 }
             }
 
             // Enable WASI output, typically used for debugging purposes
             if std::env::var("EXTISM_ENABLE_WASI_OUTPUT").is_ok() {
-                ctx = ctx.inherit_stdout().inherit_stderr();
+                ctx.inherit_stdout().inherit_stderr();
             }
 
-            #[cfg(feature = "nn")]
-            let nn = wasmtime_wasi_nn::WasiNnCtx::new()?;
-
-            Some(Wasi {
-                ctx: ctx.build(),
-                #[cfg(feature = "nn")]
-                nn,
-            })
+            Some(Wasi { ctx: ctx.build() })
         } else {
             None
         };
