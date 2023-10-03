@@ -39,12 +39,13 @@ Create a new plugin.
 - `with_wasi`: enables/disables WASI
 
 ```c
-ExtismPlugin extism_plugin_new(struct ExtismContext *ctx,
+ExtismPlugin extism_plugin_new(
                                const uint8_t *wasm,
                                ExtismSize wasm_size,
                                const ExtismFunction **functions,
                                ExtismSize n_functions,
-                               bool with_wasi);
+                               bool with_wasi,
+                               char **errmsg);
 ```
 
 ### `extism_plugin_update`
