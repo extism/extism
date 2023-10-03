@@ -71,7 +71,7 @@ bool extism_plugin_update(struct ExtismContext *ctx,
 Remove a plugin from the registry and free associated memory.
 
 ```c
-void extism_plugin_free(struct ExtismContext *ctx, ExtismPlugin plugin);
+void extism_plugin_free(ExtismPlugin *plugin);
 ```
 
 ### `extism_context_reset`
