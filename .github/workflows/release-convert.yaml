@@ -1,11 +1,11 @@
 on:
   workflow_dispatch:
 
-name: Release Runtime/Rust SDK
+name: Release extism-convert
 
 jobs:
-  release-runtime:
-    name: release-rust
+  release-convert:
+    name: release-extism-convert
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -19,8 +19,8 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
-      - name: Release Runtime
+      - name: Release Rust Convert Crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
-          cargo publish --manifest-path runtime/Cargo.toml
+          cargo publish --manifest-path convert/Cargo.toml

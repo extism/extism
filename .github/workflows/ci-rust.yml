@@ -3,6 +3,7 @@ on:
     paths:
       - .github/actions/extism/**
       - .github/workflows/ci-rust.yml
+      - convert/**
       - manifest/**
       - runtime/**
       - rust/**
