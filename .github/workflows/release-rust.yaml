@@ -4,13 +4,33 @@ on:
 name: Release Rust SDK
 
 jobs:
-  release-sdks:
-    name: release-rust
+  release-convert:
+    name: release-extism-convert
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
         uses: actions/checkout@v3
-      
+
+      - name: Setup Rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
+
+      - name: Release Rust Convert Crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          cargo publish --manifest-path convert/Cargo.toml
+  release-manifest:
+    name: release-extism-manifest
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
       - name: Setup Rust env
         uses: actions-rs/toolchain@v1
         with:
@@ -23,24 +43,28 @@ jobs:
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
-          # order of crate publication matter: manifest, convert, runtime
           cargo publish --manifest-path manifest/Cargo.toml
-          # allow for crates.io to update so dependant crates can locate extism-manifest
-          sleep 10 
-    
-      - name: Release Rust Convert Crate
-        env:
-          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
-        run: |
-          # order of crate publication matter: manifest, convert, rust
-          cargo publish --manifest-path convert/Cargo.toml
-          # allow for crates.io to update so dependant crates can locate extism-convert
-          sleep 10 
+  release-runtime:
+    name: release-rust
+    runs-on: ubuntu-latest
+    needs: [release-convert, release-manifest]
+    if: success() || failure()
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+
+      - name: Setup Rust env
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+          target: ${{ matrix.target }}
 
       - name: Release Runtime
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
           cargo publish --manifest-path runtime/Cargo.toml --no-verify
-      
-  
+
+

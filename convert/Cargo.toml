@@ -2,8 +2,11 @@
 name = "extism-convert"
 version = "0.1.0"
 edition = "2021"
-
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+authors = ["The Extism Authors", "oss@extism.org"]
+license = "BSD-3-Clause"
+homepage = "https://extism.org"
+repository = "https://github.com/extism/extism"
+description = "Traits to make Rust types usable with Extism"
 
 [dependencies]
 anyhow = "1.0.75"
