@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
 
-name: Release Rust SDK
+name: Release extism-manifest
 
 jobs:
   release-manifest:
