@@ -1,4 +1,4 @@
-//! The `extism-convert` crate is used by the SDK and PDK to provide a shared interface for
+//! The [extism-convert](https://crates.io/crates/extism-convert) crate is used by the [Rust SDK](https://crates.io/crates/extism) and [Rust PDK](https://crates.io/crates/extism-pdk) to provide a shared interface for
 //! encoding and decoding values that can be passed to Extism function calls.
 //!
 //! A set of types (Json, Msgpack) that can be used to specify a serde encoding are also provided. These are
