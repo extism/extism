@@ -9,25 +9,9 @@ we just use the [Extism Kernel](../kernel) to bring the Extism capabilities to t
 
 We [generate C headers](https://github.com/extism/extism/blob/main/runtime/extism.h) so that any language with a C-compatible FFI can bind functions to the runtime itself and embed Extism. This is how most of the [official SDKs](/docs/concepts/host-sdk) are created.
 
-If you would like to embed Extism into a language that we currently do not support, you should take a look at the header file linked above. 
+If you would like to embed Extism into a language that we currently do not support, you should take a look at the header file linked above.
 
 The general set of functions that is necessary to satisfy the runtime requirements is:
-
-### `extism_context_new`
-
-Create a new context.
-
-```c
-struct ExtismContext *extism_context_new(void);
-```
-
-### `extism_context_free`
-
-Free a context.
-
-```c
-void extism_context_free(struct ExtismContext *ctx);
-```
 
 ### `extism_plugin_new`
 
@@ -37,33 +21,15 @@ Create a new plugin.
 - `functions`: is an array of `ExtismFunction*`
 - `n_functions`: is the number of functions
 - `with_wasi`: enables/disables WASI
+- `errmsg`: error message during plugin creation
 
 ```c
-ExtismPlugin extism_plugin_new(
-                               const uint8_t *wasm,
+ExtismPlugin extism_plugin_new(const uint8_t *wasm,
                                ExtismSize wasm_size,
                                const ExtismFunction **functions,
                                ExtismSize n_functions,
                                bool with_wasi,
                                char **errmsg);
-```
-
-### `extism_plugin_update`
-
-Update a plugin, keeping the existing ID.
-
-Similar to `extism_plugin_new` but takes an `index` argument to specify which plugin to update.
-
-Memory for this plugin will be reset upon update.
-
-```c
-bool extism_plugin_update(struct ExtismContext *ctx,
-                          ExtismPlugin index,
-                          const uint8_t *wasm,
-                          ExtismSize wasm_size,
-                          const ExtismFunction **functions,
-                          ExtismSize n_functions,
-                          bool with_wasi);
 ```
 
 ### `extism_plugin_free`
@@ -74,21 +40,12 @@ Remove a plugin from the registry and free associated memory.
 void extism_plugin_free(ExtismPlugin *plugin);
 ```
 
-### `extism_context_reset`
-
-Remove all plugins from the registry.
-
-```c
-void extism_context_reset(struct ExtismContext *ctx);
-```
-
 ### `extism_plugin_config`
 
 Update plugin config values, this will merge with the existing values.
 
 ```c
-bool extism_plugin_config(struct ExtismContext *ctx,
-                          ExtismPlugin plugin,
+bool extism_plugin_config(ExtismPlugin *plugin,
                           const uint8_t *json,
                           ExtismSize json_size);
 ```
@@ -98,8 +55,7 @@ bool extism_plugin_config(struct ExtismContext *ctx,
 Returns true if `func_name` exists.
 
 ```c
-bool extism_plugin_function_exists(struct ExtismContext *ctx,
-                                   ExtismPlugin plugin,
+bool extism_plugin_function_exists(ExtismPlugin *plugin,
                                    const char *func_name);
 ```
 
@@ -111,19 +67,18 @@ Call a function.
 - `data_len`: is the length of `data`
 
 ```c
-int32_t extism_plugin_call(struct ExtismContext *ctx,
-                           ExtismPlugin plugin_id,
+int32_t extism_plugin_call(ExtismPlugin *plugin,
                            const char *func_name,
                            const uint8_t *data,
                            ExtismSize data_len);
 ```
 
-### `extism_error`
+### `extism_plugin_error`
 
-Get the error associated with a `Context` or `Plugin`, if `plugin` is `-1` then the context error will be returned.
+Get the error associated with a `Plugin`
 
 ```c
-const char *extism_error(struct ExtismContext *ctx, ExtismPlugin plugin);
+const char *extism_plugin_error(ExtismPlugin *plugin);
 ```
 
 ### `extism_plugin_output_length`
@@ -131,7 +86,7 @@ const char *extism_error(struct ExtismContext *ctx, ExtismPlugin plugin);
 Get the length of a plugin's output data.
 
 ```c
-ExtismSize extism_plugin_output_length(struct ExtismContext *ctx, ExtismPlugin plugin);
+ExtismSize extism_plugin_output_length(ExtismPlugin *plugin);
 ```
 
 ### `extism_plugin_output_data`
@@ -139,7 +94,7 @@ ExtismSize extism_plugin_output_length(struct ExtismContext *ctx, ExtismPlugin p
 Get the plugin's output data.
 
 ```c
-const uint8_t *extism_plugin_output_data(struct ExtismContext *ctx, ExtismPlugin plugin);
+const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
 ```
 
 ### `extism_log_file`
@@ -232,15 +187,23 @@ Free an `ExtismFunction`
 void extism_function_free(ExtismFunction *ptr);
 ```
 
-## Type definitions: 
+### `extism_plugin_cancel_handle`
 
-### `ExtismContext`
-
-A `Context` is used to store and manage plugins
+Get handle for plugin cancellation
 
 ```c
-typedef struct ExtismContext ExtismContext;
+const ExtismCancelHandle *extism_plugin_cancel_handle(const ExtismPlugin *plugin);
 ```
+
+### `extism_plugin_cancel`
+
+Cancel a running plugin from another thread
+
+```c
+bool extism_plugin_cancel(const ExtismCancelHandle *handle);
+```
+
+## Type definitions:
 
 ### `ExtismPlugin`
 
@@ -269,3 +232,12 @@ typedef struct ExtismFunction ExtismFunction;
 ```c
 typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 ```
+
+### `ExtismCancelHandle`
+
+`ExtismCancelHandle` can be used to cancel a running plugin from another thread
+
+```c
+typedef struct ExtismCancelHandle ExtismCancelHandle;
+```
+
