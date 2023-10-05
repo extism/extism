@@ -13,6 +13,6 @@ crate-type = ["cdylib"]
 [workspace]
 
 [dependencies]
-rustler = "0.28.0"
-extism = "0.5.0"
+rustler = "0.29.1"
+extism = "0.5.2"
 log = "0.4"
