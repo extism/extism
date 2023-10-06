@@ -34,3 +34,10 @@ http = ["ureq"]          # enables extism_http_request
 
 [build-dependencies]
 cbindgen = "0.26"
+
+[dev-dependencies]
+criterion = "0.5.1"
+
+[[bench]]
+name = "bench"
+harness = false
