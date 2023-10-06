@@ -2,6 +2,7 @@ use super::*;
 use std::time::Instant;
 
 const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
+const KERNEL: &[u8] = include_bytes!("extism-runtime.wasm");
 const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../wasm/code.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
@@ -328,4 +329,39 @@ fn test_memory_max() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
+}
+
+#[test]
+fn test_kernel() {
+    let config = wasmtime::Config::new();
+    let engine = wasmtime::Engine::new(&config).unwrap();
+    let mut store = wasmtime::Store::new(&engine, ());
+    let module = wasmtime::Module::new(&engine, KERNEL).unwrap();
+    let instance = wasmtime::Instance::new(&mut store, &module, &[]).unwrap();
+
+    let extism_alloc = |mut store: &mut wasmtime::Store<_>, n: u64| {
+        let out_alloc = &mut [Val::I64(0)];
+        instance
+            .get_func(&mut store, "extism_alloc")
+            .unwrap()
+            .call(&mut store, &[Val::I64(n as i64)], out_alloc)
+            .unwrap();
+        out_alloc[0].unwrap_i64() as u64
+    };
+
+    let extism_length = |mut store: &mut wasmtime::Store<_>, p: u64| {
+        let out = &mut [Val::I64(0)];
+        instance
+            .get_func(&mut store, "extism_length")
+            .unwrap()
+            .call(&mut store, &[Val::I64(p as i64)], out)
+            .unwrap();
+        out[0].unwrap_i64() as u64
+    };
+
+    assert_eq!(extism_alloc(&mut store, 0), 0);
+
+    let p = extism_alloc(&mut store, 64);
+    assert!(p > 0);
+    assert_eq!(extism_length(&mut store, p), 64);
 }
