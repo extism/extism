@@ -235,6 +235,8 @@ fn test_kernel_allocations() {
     assert!(q < p);
     assert_eq!(first_alloc, q);
     assert_eq!(extism_length(&mut store, instance, q), 65536 + 1024);
+    // Old pointer shouldn't return a valid length
+    assert_eq!(extism_length(&mut store, instance, p), 0);
     extism_free(&mut store, instance, q);
 }
 
@@ -268,6 +270,11 @@ fn test_load_store() {
         extism_store_u8(&mut store, instance, p + i as u64, i);
     }
     assert_eq!(extism_load_u64(&mut store, instance, p), 0x0706050403020100);
+
+    // Reading/writing way out bounds shouldn't do anything, but since reads/writes aren't tied to blocks
+    // it's hard to make sure a an offset falls inside a valid block
+    assert_eq!(extism_load_u64(&mut store, instance, 0xffffffffffff), 0);
+    extism_store_u8(&mut store, instance, 0xffffffffffff, 0);
 }
 
 #[test]
