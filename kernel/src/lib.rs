@@ -334,8 +334,6 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
 pub unsafe fn extism_free(p: Pointer) {
     if p == 0 {
         return;
-    } else if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
-        return;
     }
     let block = MemoryRoot::new().find_block(p);
     if let Some(block) = block {
@@ -359,7 +357,7 @@ pub unsafe fn extism_length(p: Pointer) -> Length {
 /// Load a byte from Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
         return 0;
     }
     *(p as *mut u8)
@@ -368,7 +366,7 @@ pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
 /// Load a u64 from Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
         return 0;
     }
     *(p as *mut u64)
@@ -377,7 +375,7 @@ pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
 /// Load a byte from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+    if p + INPUT_OFFSET < MemoryRoot::new().blocks.as_ptr() as Pointer {
         return 0;
     }
     *((INPUT_OFFSET + p) as *mut u8)
@@ -386,7 +384,7 @@ pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
 /// Load a u64 from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+    if p + INPUT_OFFSET < MemoryRoot::new().blocks.as_ptr() as Pointer {
         return 0;
     }
     *((INPUT_OFFSET + p) as *mut u64)
@@ -395,7 +393,7 @@ pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
 /// Write a byte in Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
         return;
     }
     *(p as *mut u8) = x;
@@ -404,7 +402,7 @@ pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
 /// Write a u64 in Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
         return;
     }
     *(p as *mut u64) = x;
@@ -413,9 +411,6 @@ pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
 /// Set the range of the input data in memory
 #[no_mangle]
 pub unsafe fn extism_input_set(p: Pointer, len: Length) {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
-        return;
-    }
     INPUT_OFFSET = p;
     INPUT_LENGTH = len;
 }
@@ -423,9 +418,9 @@ pub unsafe fn extism_input_set(p: Pointer, len: Length) {
 /// Set the range of the output data in memory
 #[no_mangle]
 pub unsafe fn extism_output_set(p: Pointer, len: Length) {
-    if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
-        return;
-    }
+    // if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    //     return;
+    // }
     OUTPUT_OFFSET = p;
     OUTPUT_LENGTH = len;
 }
@@ -464,10 +459,6 @@ pub unsafe fn extism_reset() {
 /// Set the error message offset
 #[no_mangle]
 pub unsafe fn extism_error_set(ptr: Pointer) {
-    if ptr <= MemoryRoot::new().blocks.as_ptr() as Pointer {
-        return;
-    }
-
     ERROR.store(ptr, Ordering::SeqCst);
 }
 

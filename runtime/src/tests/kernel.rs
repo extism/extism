@@ -30,6 +30,33 @@ fn extism_free<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p
         .unwrap();
 }
 
+fn extism_error_set<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64) {
+    instance
+        .get_func(&mut store, "extism_error_set")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], &mut [])
+        .unwrap();
+}
+
+fn extism_error_get<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance) -> u64 {
+    let out = &mut [Val::I64(0)];
+    instance
+        .get_func(&mut store, "extism_error_get")
+        .unwrap()
+        .call(&mut store, &[], out)
+        .unwrap();
+
+    out[0].unwrap_i64() as u64
+}
+
+fn extism_reset<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance) {
+    instance
+        .get_func(&mut store, "extism_reset")
+        .unwrap()
+        .call(&mut store, &[], &mut [])
+        .unwrap();
+}
+
 fn init_kernel_test() -> (Store<()>, Instance) {
     let config = wasmtime::Config::new();
     let engine = wasmtime::Engine::new(&config).unwrap();
@@ -106,4 +133,21 @@ fn test_kernel_allocations() {
     assert!(p > 0);
     assert_eq!(extism_length(&mut store, instance, p), 65536 + 1024);
     extism_free(&mut store, instance, p);
+
+    // Reset/sanity check
+    extism_reset(&mut store, instance);
+    let q = extism_alloc(&mut store, instance, 65536 + 1024);
+    assert!(q < p);
+    assert_eq!(extism_length(&mut store, instance, q), 65536 + 1024);
+    extism_free(&mut store, instance, q);
+}
+
+#[test]
+fn test_kernel_error() {
+    let (mut store, mut instance) = init_kernel_test();
+    let instance = &mut instance;
+
+    let p = extism_alloc(&mut store, instance, 512);
+    extism_error_set(&mut store, instance, p);
+    assert_eq!(extism_error_get(&mut store, instance), p);
 }
