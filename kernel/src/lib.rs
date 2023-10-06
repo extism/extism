@@ -342,6 +342,8 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
 pub unsafe fn extism_free(p: Pointer) {
     if p == 0 {
         return;
+    } else if p <= MemoryRoot::new().blocks.as_ptr() as Pointer {
+        return;
     }
     let block = MemoryRoot::new().find_block(p);
     if let Some(block) = block {
