@@ -98,7 +98,7 @@ pub enum MemoryStatus {
 /// including their data.
 #[repr(C)]
 pub struct MemoryRoot {
-    /// Position of the bump allocator, relative to `START_PAGE`
+    /// Position of the bump allocator, relative to `blocks` field
     pub position: AtomicU64,
     /// The total size of all data allocated using this allocator
     pub length: AtomicU64,
@@ -181,6 +181,12 @@ impl MemoryRoot {
             self.length.load(Ordering::Acquire) as usize,
         );
         self.position.store(0, Ordering::Release);
+    }
+
+    #[inline(always)]
+    fn pointer_in_bounds(&self, p: Pointer) -> bool {
+        let start_ptr = self.blocks.as_ptr() as Pointer;
+        p >= start_ptr && p < start_ptr + self.length.load(Ordering::Acquire) as Pointer
     }
 
     // Find a block that is free to use, this can be a new block or an existing freed block. The `self_position` argument
@@ -284,7 +290,9 @@ impl MemoryRoot {
 
     /// Finds the block at an offset in memory
     pub unsafe fn find_block(&mut self, offs: Pointer) -> Option<&mut MemoryBlock> {
-        if offs >= self.blocks.as_ptr() as Pointer + self.length.load(Ordering::Acquire) as Pointer
+        let blocks_start = self.blocks.as_ptr() as Pointer;
+        if offs < blocks_start
+            || offs >= blocks_start + self.length.load(Ordering::Acquire) as Pointer
         {
             return None;
         }
@@ -338,6 +346,12 @@ pub unsafe fn extism_free(p: Pointer) {
     let block = MemoryRoot::new().find_block(p);
     if let Some(block) = block {
         block.free();
+
+        // If the input pointer is freed for some reason, make sure the input length to 0
+        // since the original data is gone
+        if p == INPUT_OFFSET {
+            INPUT_LENGTH = 0;
+        }
     }
 }
 
@@ -357,7 +371,8 @@ pub unsafe fn extism_length(p: Pointer) -> Length {
 /// Load a byte from Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
-    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    #[cfg(feature = "bounds-checking")]
+    if !MemoryRoot::new().pointer_in_bounds(p) {
         return 0;
     }
     *(p as *mut u8)
@@ -366,7 +381,8 @@ pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
 /// Load a u64 from Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
-    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    #[cfg(feature = "bounds-checking")]
+    if !MemoryRoot::new().pointer_in_bounds(p) {
         return 0;
     }
     *(p as *mut u64)
@@ -375,7 +391,8 @@ pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
 /// Load a byte from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
-    if p + INPUT_OFFSET < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    #[cfg(feature = "bounds-checking")]
+    if p >= INPUT_LENGTH {
         return 0;
     }
     *((INPUT_OFFSET + p) as *mut u8)
@@ -384,7 +401,8 @@ pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
 /// Load a u64 from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
-    if p + INPUT_OFFSET < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    #[cfg(feature = "bounds-checking")]
+    if p + core::mem::size_of::<u64>() as Pointer > INPUT_LENGTH {
         return 0;
     }
     *((INPUT_OFFSET + p) as *mut u64)
@@ -393,7 +411,8 @@ pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
 /// Write a byte in Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
-    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    #[cfg(feature = "bounds-checking")]
+    if !MemoryRoot::new().pointer_in_bounds(p) {
         return;
     }
     *(p as *mut u8) = x;
@@ -402,7 +421,8 @@ pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
 /// Write a u64 in Extism-managed memory
 #[no_mangle]
 pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
-    if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
+    #[cfg(feature = "bounds-checking")]
+    if !MemoryRoot::new().pointer_in_bounds(p) {
         return;
     }
     *(p as *mut u64) = x;
@@ -411,6 +431,13 @@ pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
 /// Set the range of the input data in memory
 #[no_mangle]
 pub unsafe fn extism_input_set(p: Pointer, len: Length) {
+    #[cfg(feature = "bounds-checking")]
+    {
+        let root = MemoryRoot::new();
+        if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(p + len - 1) {
+            return;
+        }
+    }
     INPUT_OFFSET = p;
     INPUT_LENGTH = len;
 }
@@ -418,9 +445,13 @@ pub unsafe fn extism_input_set(p: Pointer, len: Length) {
 /// Set the range of the output data in memory
 #[no_mangle]
 pub unsafe fn extism_output_set(p: Pointer, len: Length) {
-    // if p < MemoryRoot::new().blocks.as_ptr() as Pointer {
-    //     return;
-    // }
+    #[cfg(feature = "bounds-checking")]
+    {
+        let root = MemoryRoot::new();
+        if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(p + len - 1) {
+            return;
+        }
+    }
     OUTPUT_OFFSET = p;
     OUTPUT_LENGTH = len;
 }
@@ -459,6 +490,16 @@ pub unsafe fn extism_reset() {
 /// Set the error message offset
 #[no_mangle]
 pub unsafe fn extism_error_set(ptr: Pointer) {
+    // Allow ERROR to be set to 0
+    if ptr == 0 {
+        ERROR.store(ptr, Ordering::SeqCst);
+        return;
+    }
+
+    #[cfg(feature = "bounds-checking")]
+    if !MemoryRoot::new().pointer_in_bounds(ptr) {
+        return;
+    }
     ERROR.store(ptr, Ordering::SeqCst);
 }
 
@@ -471,5 +512,5 @@ pub unsafe fn extism_error_get() -> Pointer {
 /// Get the position of the allocator, this can be used as an indication of how many bytes are currently in-use
 #[no_mangle]
 pub unsafe fn extism_memory_bytes() -> Length {
-    MemoryRoot::new().position.load(Ordering::Acquire)
+    MemoryRoot::new().length.load(Ordering::Acquire)
 }

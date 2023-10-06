@@ -22,6 +22,83 @@ fn extism_length<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance,
     out[0].unwrap_i64() as u64
 }
 
+fn extism_load_u8<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64) -> u8 {
+    let out = &mut [Val::I32(0)];
+    instance
+        .get_func(&mut store, "extism_load_u8")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], out)
+        .unwrap();
+    out[0].unwrap_i32() as u8
+}
+
+fn extism_load_u64<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64) -> u64 {
+    let out = &mut [Val::I32(0)];
+    instance
+        .get_func(&mut store, "extism_load_u64")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], out)
+        .unwrap();
+    out[0].unwrap_i64() as u64
+}
+
+fn extism_input_load_u8<T>(
+    mut store: &mut wasmtime::Store<T>,
+    instance: &mut Instance,
+    p: u64,
+) -> u8 {
+    let out = &mut [Val::I32(0)];
+    instance
+        .get_func(&mut store, "extism_input_load_u8")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], out)
+        .unwrap();
+    out[0].unwrap_i32() as u8
+}
+
+fn extism_input_load_u64<T>(
+    mut store: &mut wasmtime::Store<T>,
+    instance: &mut Instance,
+    p: u64,
+) -> u64 {
+    let out = &mut [Val::I32(0)];
+    instance
+        .get_func(&mut store, "extism_input_load_u64")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], out)
+        .unwrap();
+    out[0].unwrap_i64() as u64
+}
+
+fn extism_store_u8<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64, x: u8) {
+    instance
+        .get_func(&mut store, "extism_store_u8")
+        .unwrap()
+        .call(
+            &mut store,
+            &[Val::I64(p as i64), Val::I32(x as i32)],
+            &mut [],
+        )
+        .unwrap();
+}
+
+fn extism_store_u64<T>(
+    mut store: &mut wasmtime::Store<T>,
+    instance: &mut Instance,
+    p: u64,
+    x: u64,
+) {
+    instance
+        .get_func(&mut store, "extism_store_u64")
+        .unwrap()
+        .call(
+            &mut store,
+            &[Val::I64(p as i64), Val::I64(x as i64)],
+            &mut [],
+        )
+        .unwrap();
+}
+
 fn extism_free<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64) {
     instance
         .get_func(&mut store, "extism_free")
@@ -57,6 +134,23 @@ fn extism_reset<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance) 
         .unwrap();
 }
 
+fn extism_input_set<T>(
+    mut store: &mut wasmtime::Store<T>,
+    instance: &mut Instance,
+    p: u64,
+    l: u64,
+) {
+    instance
+        .get_func(&mut store, "extism_input_set")
+        .unwrap()
+        .call(
+            &mut store,
+            &[Val::I64(p as i64), Val::I64(l as i64)],
+            &mut [],
+        )
+        .unwrap();
+}
+
 fn init_kernel_test() -> (Store<()>, Instance) {
     let config = wasmtime::Config::new();
     let engine = wasmtime::Engine::new(&config).unwrap();
@@ -76,6 +170,7 @@ fn test_kernel_allocations() {
 
     // 1 byte
     let p = extism_alloc(&mut store, instance, 1);
+    let first_alloc = p;
     assert!(p > 0);
     assert_eq!(extism_length(&mut store, instance, p), 1);
     extism_free(&mut store, instance, p);
@@ -138,6 +233,7 @@ fn test_kernel_allocations() {
     extism_reset(&mut store, instance);
     let q = extism_alloc(&mut store, instance, 65536 + 1024);
     assert!(q < p);
+    assert_eq!(first_alloc, q);
     assert_eq!(extism_length(&mut store, instance, q), 65536 + 1024);
     extism_free(&mut store, instance, q);
 }
@@ -150,4 +246,46 @@ fn test_kernel_error() {
     let p = extism_alloc(&mut store, instance, 512);
     extism_error_set(&mut store, instance, p);
     assert_eq!(extism_error_get(&mut store, instance), p);
+}
+
+#[test]
+fn test_load_store() {
+    let (mut store, mut instance) = init_kernel_test();
+    let instance = &mut instance;
+
+    let p = extism_alloc(&mut store, instance, 8);
+    extism_store_u64(&mut store, instance, p, 999);
+    assert_eq!(extism_load_u64(&mut store, instance, p), 999);
+
+    let mut buf = [0u8; 8];
+
+    for i in 0..8 {
+        buf[i] = extism_load_u8(&mut store, instance, p + i as u64);
+    }
+    assert_eq!(u64::from_le_bytes(buf), 999);
+
+    for i in 0..8 {
+        extism_store_u8(&mut store, instance, p + i as u64, i);
+    }
+    assert_eq!(extism_load_u64(&mut store, instance, p), 0x0706050403020100);
+}
+
+#[test]
+fn test_load_input() {
+    let (mut store, mut instance) = init_kernel_test();
+    let instance = &mut instance;
+
+    let p = extism_alloc(&mut store, instance, 123456);
+
+    for i in 0..123456 {
+        extism_store_u8(&mut store, instance, p + i, b'a');
+    }
+    extism_input_set(&mut store, instance, p, 123456);
+
+    for i in 0..123456 {
+        assert_eq!(extism_input_load_u8(&mut store, instance, i), b'a');
+    }
+
+    // Out of bounds should return 0
+    assert_eq!(extism_input_load_u64(&mut store, instance, 123457), 0);
 }

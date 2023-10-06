@@ -5,6 +5,10 @@ edition = "2021"
 
 [dependencies]
 
+[features]
+default = ["bounds-checking"]
+bounds-checking = []
+
 [workspace]
 members = [
   "."
