@@ -1,11 +1,11 @@
-use super::*;
+use crate::*;
 use std::time::Instant;
 
-const WASM: &[u8] = include_bytes!("../../wasm/code-functions.wasm");
-const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../wasm/code.wasm");
-const WASM_LOOP: &[u8] = include_bytes!("../../wasm/loop.wasm");
-const WASM_GLOBALS: &[u8] = include_bytes!("../../wasm/globals.wasm");
-const WASM_REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
+const WASM: &[u8] = include_bytes!("../../../wasm/code-functions.wasm");
+const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../../wasm/code.wasm");
+const WASM_LOOP: &[u8] = include_bytes!("../../../wasm/loop.wasm");
+const WASM_GLOBALS: &[u8] = include_bytes!("../../../wasm/globals.wasm");
+const WASM_REFLECT: &[u8] = include_bytes!("../../../wasm/reflect.wasm");
 
 host_fn!(hello_world (a: String) -> String { a });
 
