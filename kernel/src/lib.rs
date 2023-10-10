@@ -193,6 +193,8 @@ impl MemoryRoot {
     #[inline(always)]
     #[allow(unused)]
     fn pointer_in_bounds_fast(p: Pointer) -> bool {
+        // Similar to `pointer_in_bounds` but less accurate on the upper bound. This uses the total memory size,
+        // instead of checking `MemoryRoot::length`
         let end = core::arch::wasm32::memory_size(0) << 16;
         p >= core::mem::size_of::<Self>() as Pointer && p <= end as Pointer
     }
