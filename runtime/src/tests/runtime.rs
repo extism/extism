@@ -47,7 +47,7 @@ fn it_works() {
         UserData::default(),
         hello_world,
     )
-    .with_namespace("env");
+    .with_namespace(EXPORT_MODULE_NAME);
     let g = Function::new(
         "hello_world",
         [ValType::I64],

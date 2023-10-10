@@ -2,6 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
+pub const EXPORT_MODULE_NAME: &str = "extism:env";
+
 #[derive(Default, Clone)]
 pub(crate) struct Output {
     pub(crate) offset: u64,
@@ -105,8 +107,6 @@ impl Internal for Plugin {
     }
 }
 
-const EXPORT_MODULE_NAME: &str = "env";
-
 fn profiling_strategy() -> ProfilingStrategy {
     match std::env::var("EXTISM_PROFILE").as_deref() {
         Ok("perf") => ProfilingStrategy::PerfMap,
@@ -198,49 +198,37 @@ impl Plugin {
             (entry.0.as_str(), entry.1)
         });
 
-        // Define PDK functions
-        macro_rules! define_funcs {
-            ($m:expr, { $($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?}) => {
-                match $m {
-                $(
-                    concat!("extism_", stringify!($name)) => {
-                        let t = FuncType::new([$($args),*], [$($($r),*)?]);
-                        linker.func_new(EXPORT_MODULE_NAME, concat!("extism_", stringify!($name)), t, pdk::$name)?;
-                        continue
-                    }
-                )*
-                    _ => ()
-                }
-            };
-        }
-
-        // Add builtins
         for (name, module) in modules.iter() {
             if name != main_name {
                 linker.module(&mut store, name, module)?;
             }
-            for import in module.imports() {
-                let module_name = import.module();
-                let name = import.name();
-                use wasmtime::ValType::*;
-
-                if module_name == EXPORT_MODULE_NAME {
-                    define_funcs!(name,  {
-                        config_get(I64) -> I64;
-                        var_get(I64) -> I64;
-                        var_set(I64, I64);
-                        http_request(I64, I64) -> I64;
-                        http_status_code() -> I32;
-                        log_warn(I64);
-                        log_info(I64);
-                        log_debug(I64);
-                        log_error(I64);
-                    });
-                }
-            }
         }
 
         let mut imports: Vec<_> = imports.into_iter().collect();
+        // Define PDK functions
+        macro_rules! add_funcs {
+            ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
+                $(
+                    let t = FuncType::new([$($args),*], [$($($r),*)?]);
+                    linker.func_new(EXPORT_MODULE_NAME, stringify!($name), t, pdk::$name)?;
+                )*
+            };
+        }
+
+        // Add builtins
+        use wasmtime::ValType::*;
+        add_funcs!(
+            config_get(I64) -> I64;
+            var_get(I64) -> I64;
+            var_set(I64, I64);
+            http_request(I64, I64) -> I64;
+            http_status_code() -> I32;
+            log_warn(I64);
+            log_info(I64);
+            log_debug(I64);
+            log_error(I64);
+        );
+
         for f in &mut imports {
             let name = f.name().to_string();
             let ns = f.namespace().unwrap_or(EXPORT_MODULE_NAME);
@@ -392,7 +380,10 @@ impl Plugin {
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
         trace!("Input size: {}", bytes.len());
 
-        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
+        if let Some(f) = self
+            .linker
+            .get(&mut self.store, EXPORT_MODULE_NAME, "extism_reset")
+        {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
         } else {
             error!("Call to extism_reset failed");
@@ -400,7 +391,10 @@ impl Plugin {
 
         let handle = self.current_plugin_mut().memory_new(bytes)?;
 
-        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
+        if let Some(f) = self
+            .linker
+            .get(&mut self.store, EXPORT_MODULE_NAME, "extism_input_set")
+        {
             f.into_func().unwrap().call(
                 &mut self.store,
                 &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
@@ -508,14 +502,14 @@ impl Plugin {
         let out_len = &mut [Val::I64(0)];
         let mut store = &mut self.store;
         self.linker
-            .get(&mut store, "env", "extism_output_offset")
+            .get(&mut store, EXPORT_MODULE_NAME, "extism_output_offset")
             .unwrap()
             .into_func()
             .unwrap()
             .call(&mut store, &[], out)
             .unwrap();
         self.linker
-            .get(&mut store, "env", "extism_output_length")
+            .get(&mut store, EXPORT_MODULE_NAME, "extism_output_length")
             .unwrap()
             .into_func()
             .unwrap()
@@ -749,7 +743,7 @@ impl Plugin {
     pub(crate) fn clear_error(&mut self) {
         trace!("Clearing error on plugin {}", self.id);
         let (linker, mut store) = self.linker_and_store();
-        if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+        if let Some(f) = linker.get(&mut store, EXPORT_MODULE_NAME, "extism_error_set") {
             f.into_func()
                 .unwrap()
                 .call(&mut store, &[Val::I64(0)], &mut [])
