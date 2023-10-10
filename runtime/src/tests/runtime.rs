@@ -300,7 +300,7 @@ fn test_fuzz_reflect_plugin() {
 
     for i in 1..65540 {
         let input = "a".repeat(i);
-        let output = plugin.call("reflect", input.clone());
+        let output = plugin.call("reflect", &input);
         let output = std::str::from_utf8(output.unwrap()).unwrap();
         assert_eq!(output, input);
     }
@@ -329,8 +329,3 @@ fn test_memory_max() {
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 }
-
-extern crate test;
-
-#[bench]
-fn bench_basic(b: &mut test::Bencher) {}
