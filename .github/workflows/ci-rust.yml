@@ -117,7 +117,3 @@ jobs:
           key: ${{ runner.os }}-target-${{ github.sha }}
       - run: cargo install cargo-criterion
       - run: cargo criterion
-      - if: github.event_name == 'pull_request'
-        run: |
-          git checkout ${{ github.event.pull_request.base.sha }}
-          cargo criterion
