@@ -288,20 +288,6 @@ impl CurrentPlugin {
         }
     }
 
-    /// Returns true when the error has been set
-    pub fn has_error(&mut self) -> bool {
-        let (linker, mut store) = self.linker_and_store();
-        let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, "env", "extism_error_get")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[], output)
-            .unwrap();
-        output[0].unwrap_i64() != 0
-    }
-
     /// Get the current error message
     pub fn get_error(&mut self) -> Option<&str> {
         let (offs, length) = self.get_error_position();

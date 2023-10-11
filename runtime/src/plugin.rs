@@ -615,6 +615,11 @@ impl Plugin {
             },
         };
 
+        // Return `Err` if Extism error message is set
+        if let Some(err) = self.get_error() {
+            return Err((Error::msg(err.to_string()), -1));
+        }
+
         // If `results` is empty and the return value wasn't a WASI exit code then
         // the call succeeded
         if results.is_empty() {
@@ -656,6 +661,10 @@ impl Plugin {
         } else {
             error!("Plugin::clear_error failed, extism_error_set not found")
         }
+    }
+
+    pub(crate) fn get_error(&mut self) -> Option<&str> {
+        self.current_plugin_mut().get_error()
     }
 
     // A convenience method to set the plugin error and return a value
