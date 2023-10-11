@@ -21,6 +21,9 @@ endif
 build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
 
+bench:
+	@(cargo criterion || echo 'For nicer output use cargo-criterion: `cargo install cargo-criterion` - using `cargo bench`') && cargo bench
+
 .PHONY: kernel
 kernel:
 	cd kernel && bash build.sh

@@ -7,7 +7,10 @@ const REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
 host_fn!(hello_world (a: String) -> String { a });
 
 pub fn basic(c: &mut Criterion) {
-    c.bench_function("basic", |b| {
+    let mut g = c.benchmark_group("basic");
+    g.sample_size(300);
+    g.measurement_time(std::time::Duration::from_secs(6));
+    g.bench_function("basic", |b| {
         let data = "a".repeat(4096);
         b.iter(|| {
             let mut plugin = Plugin::new(COUNT_VOWELS, [], true).unwrap();
@@ -20,6 +23,7 @@ pub fn create_plugin(c: &mut Criterion) {
     let mut g = c.benchmark_group("create");
     g.noise_threshold(1.0);
     g.significance_level(0.2);
+    g.sample_size(300);
     g.bench_function("create_plugin", |b| {
         b.iter(|| {
             let _plugin = PluginBuilder::new_with_module(COUNT_VOWELS)
@@ -31,12 +35,14 @@ pub fn create_plugin(c: &mut Criterion) {
 }
 
 pub fn count_vowels(c: &mut Criterion) {
+    let mut g = c.benchmark_group("count_vowels");
+    g.sample_size(500);
     let mut plugin = PluginBuilder::new_with_module(COUNT_VOWELS)
         .with_wasi(true)
         .build()
         .unwrap();
     let data = "a".repeat(4096);
-    c.bench_function("count_vowels(4096)", |b| {
+    g.bench_function("count_vowels(4096)", |b| {
         b.iter(|| {
             assert_eq!(
                 "{\"count\": 4096}",
@@ -47,6 +53,10 @@ pub fn count_vowels(c: &mut Criterion) {
 }
 
 pub fn reflect_1(c: &mut Criterion) {
+    let mut g = c.benchmark_group("reflect_1");
+    g.sample_size(500);
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
     let mut plugin = PluginBuilder::new_with_module(REFLECT)
         .with_wasi(true)
         .with_function(
@@ -59,7 +69,7 @@ pub fn reflect_1(c: &mut Criterion) {
         .build()
         .unwrap();
     let data = "a".repeat(65536);
-    c.bench_function("reflect_1_page", |b| {
+    g.bench_function("reflect_1", |b| {
         b.iter(|| {
             assert_eq!(data, plugin.call::<_, &str>("reflect", &data).unwrap());
         })
@@ -67,6 +77,10 @@ pub fn reflect_1(c: &mut Criterion) {
 }
 
 pub fn reflect_10(c: &mut Criterion) {
+    let mut g = c.benchmark_group("reflect_10");
+    g.sample_size(200);
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
     let mut plugin = PluginBuilder::new_with_module(REFLECT)
         .with_wasi(true)
         .with_function(
@@ -79,7 +93,7 @@ pub fn reflect_10(c: &mut Criterion) {
         .build()
         .unwrap();
     let data = "a".repeat(65536 * 10);
-    c.bench_function("reflect_10_pages", |b| {
+    g.bench_function("reflect_10", |b| {
         b.iter(|| {
             assert_eq!(data, plugin.call::<_, &str>("reflect", &data).unwrap());
         })
@@ -103,7 +117,7 @@ pub fn reflect_100(c: &mut Criterion) {
         .build()
         .unwrap();
     let data = "a".repeat(65536 * 100);
-    g.bench_function("reflect_100_pages", |b| {
+    g.bench_function("reflect_100", |b| {
         b.iter(|| {
             assert_eq!(data, plugin.call::<_, &str>("reflect", &data).unwrap());
         })
