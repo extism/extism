@@ -308,13 +308,12 @@ impl CurrentPlugin {
     pub(crate) fn get_error_position(&mut self) -> (u64, u64) {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, "env", "extism_error_get")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[], output)
-            .unwrap();
+        if let Some(f) = linker.get(&mut store, "env", "extism_error_get") {
+            if let Err(e) = f.into_func().unwrap().call(&mut store, &[], output) {
+                error!("unable to call extism_error_get: {:?}", e);
+                return (0, 0);
+            }
+        };
         let offs = output[0].unwrap_i64() as u64;
         let length = self.memory_length(offs);
         (offs, length)
