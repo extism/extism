@@ -91,4 +91,33 @@ jobs:
         run: cargo test --all-features --release -p ${{ env.RUNTIME_CRATE }}
       - name: Test no features
         run: cargo test --no-default-features --release -p ${{ env.RUNTIME_CRATE }}
-
+  bench:
+    name: Benchmarking
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v3
+        with:
+          path: target/**
+          key: ${{ runner.os }}-target-${{ github.sha }}
+      - run: cargo install cargo-criterion
+      - run: cargo criterion
+      - if: github.event_name == 'pull_request'
+        run: |
+          git checkout ${{ github.event.pull_request.base.sha }}
+          cargo criterion
