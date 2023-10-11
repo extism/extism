@@ -389,7 +389,7 @@ pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
 #[no_mangle]
 pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::pointer_in_bounds_fast(p) {
+    if !MemoryRoot::pointer_in_bounds_fast(p + core::mem::size_of::<u64>() as u64 - 1) {
         return 0;
     }
     *(p as *mut u64)
@@ -429,7 +429,7 @@ pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
 #[no_mangle]
 pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::pointer_in_bounds_fast(p) {
+    if !MemoryRoot::pointer_in_bounds_fast(p + core::mem::size_of::<u64>() as u64 - 1) {
         return;
     }
     *(p as *mut u64) = x;
