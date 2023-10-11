@@ -305,24 +305,21 @@ impl CurrentPlugin {
         }
     }
 
-    pub(crate) fn set_error(&mut self, e: impl std::fmt::Debug) -> Result<(u64, u64), Error> {
-        let s = format!("{e:?}");
+    #[doc(hidden)]
+    pub fn set_error(&mut self, s: impl AsRef<str>) -> Result<(u64, u64), Error> {
+        let s = s.as_ref();
         debug!("Set error: {:?}", s);
-        match self.current_plugin_mut().memory_new(&s) {
-            Ok(handle) => {
-                let (linker, mut store) = self.linker_and_store();
-                if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
-                    f.into_func().unwrap().call(
-                        &mut store,
-                        &[Val::I64(handle.offset() as i64)],
-                        &mut [],
-                    )?;
-                    return Ok((handle.offset(), s.len() as u64));
-                } else {
-                    anyhow::bail!("extism_error_set not found");
-                }
-            }
-            Err(e) => return Err(e),
+        let handle = self.current_plugin_mut().memory_new(&s)?;
+        let (linker, mut store) = self.linker_and_store();
+        if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+            f.into_func().unwrap().call(
+                &mut store,
+                &[Val::I64(handle.offset() as i64)],
+                &mut [],
+            )?;
+            return Ok((handle.offset(), s.len() as u64));
+        } else {
+            anyhow::bail!("extism_error_set not found");
         }
     }
 

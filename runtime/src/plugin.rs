@@ -671,14 +671,14 @@ impl Plugin {
     pub(crate) fn return_error<E>(
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
-        e: impl std::fmt::Debug,
+        e: impl std::fmt::Display,
         x: E,
     ) -> E {
         if instance_lock.is_none() {
-            error!("No instance, unable to set error: {:?}", e);
+            error!("No instance, unable to set error: {}", e);
             return x;
         }
-        match self.current_plugin_mut().set_error(e) {
+        match self.current_plugin_mut().set_error(e.to_string()) {
             Ok((a, b)) => {
                 self.output.error_offset = a;
                 self.output.error_length = b;
