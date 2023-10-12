@@ -184,9 +184,19 @@ impl MemoryRoot {
     }
 
     #[inline(always)]
+    #[allow(unused)]
     fn pointer_in_bounds(&self, p: Pointer) -> bool {
         let start_ptr = self.blocks.as_ptr() as Pointer;
         p >= start_ptr && p < start_ptr + self.length.load(Ordering::Acquire) as Pointer
+    }
+
+    #[inline(always)]
+    #[allow(unused)]
+    fn pointer_in_bounds_fast(p: Pointer) -> bool {
+        // Similar to `pointer_in_bounds` but less accurate on the upper bound. This uses the total memory size,
+        // instead of checking `MemoryRoot::length`
+        let end = core::arch::wasm32::memory_size(0) << 16;
+        p >= core::mem::size_of::<Self>() as Pointer && p <= end as Pointer
     }
 
     // Find a block that is free to use, this can be a new block or an existing freed block. The `self_position` argument
@@ -290,10 +300,7 @@ impl MemoryRoot {
 
     /// Finds the block at an offset in memory
     pub unsafe fn find_block(&mut self, offs: Pointer) -> Option<&mut MemoryBlock> {
-        let blocks_start = self.blocks.as_ptr() as Pointer;
-        if offs < blocks_start
-            || offs >= blocks_start + self.length.load(Ordering::Acquire) as Pointer
-        {
+        if !Self::pointer_in_bounds_fast(offs) {
             return None;
         }
         let ptr = offs - core::mem::size_of::<MemoryBlock>() as u64;
@@ -372,7 +379,7 @@ pub unsafe fn extism_length(p: Pointer) -> Length {
 #[no_mangle]
 pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::new().pointer_in_bounds(p) {
+    if !MemoryRoot::pointer_in_bounds_fast(p) {
         return 0;
     }
     *(p as *mut u8)
@@ -382,7 +389,7 @@ pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
 #[no_mangle]
 pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::new().pointer_in_bounds(p + core::mem::size_of::<u64>() as Pointer - 1) {
+    if !MemoryRoot::pointer_in_bounds_fast(p + core::mem::size_of::<u64>() as u64 - 1) {
         return 0;
     }
     *(p as *mut u64)
@@ -412,7 +419,7 @@ pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
 #[no_mangle]
 pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::new().pointer_in_bounds(p) {
+    if !MemoryRoot::pointer_in_bounds_fast(p) {
         return;
     }
     *(p as *mut u8) = x;
@@ -422,7 +429,7 @@ pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
 #[no_mangle]
 pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::new().pointer_in_bounds(p) {
+    if !MemoryRoot::pointer_in_bounds_fast(p + core::mem::size_of::<u64>() as u64 - 1) {
         return;
     }
     *(p as *mut u64) = x;
