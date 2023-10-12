@@ -590,10 +590,28 @@ impl Plugin {
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
 
         self.get_output_after_call();
+        self.needs_reset = name == "_start";
+
+        if self.output.error_offset != 0 && self.output.error_length != 0 {
+            let handle = MemoryHandle {
+                offset: self.output.error_offset,
+                length: self.output.error_length,
+            };
+            if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
+                return Err((Error::msg(e.to_string()), -1));
+            }
+        }
 
         match res {
             Ok(()) => {
-                self.needs_reset = name == "_start";
+                // If `results` is empty and the return value wasn't a WASI exit code then
+                // the call succeeded
+                if results.is_empty() {
+                    return Ok(0);
+                }
+
+                // Return result to caller
+                Ok(0)
             }
             Err(e) => match e.downcast::<wasmtime_wasi::I32Exit>() {
                 Ok(exit) => {
@@ -613,16 +631,7 @@ impl Plugin {
                     return Err((e.context("Call failed"), -1));
                 }
             },
-        };
-
-        // If `results` is empty and the return value wasn't a WASI exit code then
-        // the call succeeded
-        if results.is_empty() {
-            return Ok(0);
         }
-
-        // Return result to caller
-        Ok(0)
     }
 
     /// Call a function by name with the given input, the return value is the output data returned by the plugin.
@@ -662,30 +671,17 @@ impl Plugin {
     pub(crate) fn return_error<E>(
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
-        e: impl std::fmt::Debug,
+        e: impl std::fmt::Display,
         x: E,
     ) -> E {
         if instance_lock.is_none() {
-            error!("No instance, unable to set error: {:?}", e);
+            error!("No instance, unable to set error: {}", e);
             return x;
         }
-        let s = format!("{e:?}");
-        debug!("Set error: {:?}", s);
-        match self.current_plugin_mut().memory_new(&s) {
-            Ok(handle) => {
-                let (linker, mut store) = self.linker_and_store();
-                if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
-                    if let Ok(()) = f.into_func().unwrap().call(
-                        &mut store,
-                        &[Val::I64(handle.offset() as i64)],
-                        &mut [],
-                    ) {
-                        self.output.error_offset = handle.offset();
-                        self.output.error_length = s.len() as u64;
-                    }
-                } else {
-                    error!("extism_error_set not found");
-                }
+        match self.current_plugin_mut().set_error(e.to_string()) {
+            Ok((a, b)) => {
+                self.output.error_offset = a;
+                self.output.error_length = b;
             }
             Err(e) => {
                 error!("Unable to set error: {e:?}")

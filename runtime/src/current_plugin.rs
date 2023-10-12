@@ -288,20 +288,6 @@ impl CurrentPlugin {
         }
     }
 
-    /// Returns true when the error has been set
-    pub fn has_error(&mut self) -> bool {
-        let (linker, mut store) = self.linker_and_store();
-        let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, "env", "extism_error_get")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[], output)
-            .unwrap();
-        output[0].unwrap_i64() != 0
-    }
-
     /// Get the current error message
     pub fn get_error(&mut self) -> Option<&str> {
         let (offs, length) = self.get_error_position();
@@ -319,16 +305,33 @@ impl CurrentPlugin {
         }
     }
 
+    #[doc(hidden)]
+    pub fn set_error(&mut self, s: impl AsRef<str>) -> Result<(u64, u64), Error> {
+        let s = s.as_ref();
+        debug!("Set error: {:?}", s);
+        let handle = self.current_plugin_mut().memory_new(&s)?;
+        let (linker, mut store) = self.linker_and_store();
+        if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+            f.into_func().unwrap().call(
+                &mut store,
+                &[Val::I64(handle.offset() as i64)],
+                &mut [],
+            )?;
+            return Ok((handle.offset(), s.len() as u64));
+        } else {
+            anyhow::bail!("extism_error_set not found");
+        }
+    }
+
     pub(crate) fn get_error_position(&mut self) -> (u64, u64) {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, "env", "extism_error_get")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[], output)
-            .unwrap();
+        if let Some(f) = linker.get(&mut store, "env", "extism_error_get") {
+            if let Err(e) = f.into_func().unwrap().call(&mut store, &[], output) {
+                error!("unable to call extism_error_get: {:?}", e);
+                return (0, 0);
+            }
+        };
         let offs = output[0].unwrap_i64() as u64;
         let length = self.memory_length(offs);
         (offs, length)

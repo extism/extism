@@ -329,3 +329,30 @@ fn test_memory_max() {
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 }
+
+fn hello_world_set_error(
+    plugin: &mut CurrentPlugin,
+    inputs: &[Val],
+    outputs: &mut [Val],
+    _user_data: UserData,
+) -> Result<(), Error> {
+    plugin.set_error("TEST")?;
+    outputs[0] = inputs[0].clone();
+    Ok(())
+}
+
+#[test]
+fn test_extism_error() {
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM)]);
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world_set_error,
+    );
+    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+    assert!(output.is_err());
+    assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
+}
