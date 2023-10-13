@@ -47,7 +47,7 @@ fn it_works() {
         None,
         hello_world,
     )
-    .with_namespace(EXPORT_MODULE_NAME);
+    .with_namespace(EXTISM_ENV);
     let g = Function::new(
         "hello_world",
         [ValType::I64],
