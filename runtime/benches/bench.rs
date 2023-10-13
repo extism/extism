@@ -1,5 +1,6 @@
 use criterion::{criterion_group, criterion_main, Criterion};
 use extism::*;
+use extism_convert::Json;
 
 const COUNT_VOWELS: &[u8] = include_bytes!("../../wasm/code.wasm");
 const REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
@@ -8,7 +9,6 @@ host_fn!(hello_world (a: String) -> String { Ok(a) });
 
 pub fn basic(c: &mut Criterion) {
     let mut g = c.benchmark_group("basic");
-    g.sample_size(300);
     g.measurement_time(std::time::Duration::from_secs(6));
     g.bench_function("basic", |b| {
         let data = "a".repeat(4096);
@@ -23,7 +23,6 @@ pub fn create_plugin(c: &mut Criterion) {
     let mut g = c.benchmark_group("create");
     g.noise_threshold(1.0);
     g.significance_level(0.2);
-    g.sample_size(300);
     g.bench_function("create_plugin", |b| {
         b.iter(|| {
             let _plugin = PluginBuilder::new_with_module(COUNT_VOWELS)
@@ -34,6 +33,10 @@ pub fn create_plugin(c: &mut Criterion) {
     });
 }
 
+#[derive(Debug, serde::Deserialize, PartialEq)]
+struct Count {
+    count: u32,
+}
 pub fn count_vowels(c: &mut Criterion) {
     let mut g = c.benchmark_group("count_vowels");
     g.sample_size(500);
@@ -45,8 +48,11 @@ pub fn count_vowels(c: &mut Criterion) {
     g.bench_function("count_vowels(4096)", |b| {
         b.iter(|| {
             assert_eq!(
-                "{\"count\": 4096}",
-                plugin.call::<_, &str>("count_vowels", &data).unwrap()
+                Count { count: 4096 },
+                plugin
+                    .call::<_, Json<Count>>("count_vowels", &data)
+                    .unwrap()
+                    .0
             );
         })
     });
