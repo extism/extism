@@ -113,7 +113,7 @@ impl CurrentPlugin {
     pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
         let (linker, mut store) = self.linker_and_store();
         let mem = linker
-            .get(&mut store, EXPORT_MODULE_NAME, "memory")
+            .get(&mut store, EXTISM_ENV, "memory")
             .unwrap()
             .into_memory()
             .unwrap();
@@ -133,7 +133,7 @@ impl CurrentPlugin {
         }
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
-        if let Some(f) = linker.get(&mut store, EXPORT_MODULE_NAME, "extism_alloc") {
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV, "alloc") {
             f.into_func()
                 .unwrap()
                 .call(&mut store, &[Val::I64(n as i64)], output)?;
@@ -155,7 +155,7 @@ impl CurrentPlugin {
     pub fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error> {
         let (linker, mut store) = self.linker_and_store();
         linker
-            .get(&mut store, EXPORT_MODULE_NAME, "extism_free")
+            .get(&mut store, EXTISM_ENV, "free")
             .unwrap()
             .into_func()
             .unwrap()
@@ -167,7 +167,7 @@ impl CurrentPlugin {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         linker
-            .get(&mut store, EXPORT_MODULE_NAME, "extism_length")
+            .get(&mut store, EXTISM_ENV, "length")
             .unwrap()
             .into_func()
             .unwrap()
@@ -247,7 +247,7 @@ impl CurrentPlugin {
     /// Get a pointer to the plugin memory
     pub(crate) fn memory_ptr(&mut self) -> *mut u8 {
         let (linker, mut store) = self.linker_and_store();
-        if let Some(mem) = linker.get(&mut store, EXPORT_MODULE_NAME, "memory") {
+        if let Some(mem) = linker.get(&mut store, EXTISM_ENV, "memory") {
             if let Some(mem) = mem.into_memory() {
                 return mem.data_ptr(&mut store);
             }
@@ -280,7 +280,7 @@ impl CurrentPlugin {
     pub fn clear_error(&mut self) {
         trace!("CurrentPlugin::clear_error");
         let (linker, mut store) = self.linker_and_store();
-        if let Some(f) = linker.get(&mut store, EXPORT_MODULE_NAME, "extism_error_set") {
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV, "error_set") {
             f.into_func()
                 .unwrap()
                 .call(&mut store, &[Val::I64(0)], &mut [])
@@ -311,7 +311,7 @@ impl CurrentPlugin {
         debug!("Set error: {:?}", s);
         let handle = self.current_plugin_mut().memory_new(&s)?;
         let (linker, mut store) = self.linker_and_store();
-        if let Some(f) = linker.get(&mut store, "env", "extism_error_set") {
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV, "error_set") {
             f.into_func().unwrap().call(
                 &mut store,
                 &[Val::I64(handle.offset() as i64)],
@@ -319,16 +319,16 @@ impl CurrentPlugin {
             )?;
             return Ok((handle.offset(), s.len() as u64));
         } else {
-            anyhow::bail!("extism_error_set not found");
+            anyhow::bail!("extism:env::error_set not found");
         }
     }
 
     pub(crate) fn get_error_position(&mut self) -> (u64, u64) {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
-        if let Some(f) = linker.get(&mut store, EXPORT_MODULE_NAME, "extism_error_get") {
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV, "error_get") {
             if let Err(e) = f.into_func().unwrap().call(&mut store, &[], output) {
-                error!("unable to call extism_error_get: {:?}", e);
+                error!("unable to call extism:env::error_get: {:?}", e);
                 return (0, 0);
             }
         };
