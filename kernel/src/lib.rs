@@ -283,7 +283,7 @@ impl MemoryRoot {
 
         // Bump the position by the size of the actual data + the size of the MemoryBlock structure
         self.position.fetch_add(
-            length + core::mem::size_of::<MemoryBlock>() as u64 - 1,
+            length + core::mem::size_of::<MemoryBlock>() as u64,
             Ordering::SeqCst,
         );
 
@@ -316,9 +316,7 @@ impl MemoryBlock {
     /// is calculated based on metadata provided by the current block
     #[inline]
     pub unsafe fn next_ptr(&mut self) -> *mut MemoryBlock {
-        self.data
-            .as_mut_ptr()
-            .add(self.size + core::mem::size_of::<MemoryBlock>()) as *mut MemoryBlock
+        self.data.as_mut_ptr().add(self.size) as *mut MemoryBlock
     }
 
     /// Mark a block as free
