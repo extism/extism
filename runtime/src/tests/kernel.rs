@@ -182,17 +182,18 @@ fn test_kernel_allocations() {
     assert_eq!(extism_length(&mut store, instance, x), 2);
     extism_free(&mut store, instance, x);
 
-    // 64 bytes
-    let p = extism_alloc(&mut store, instance, 64);
-    assert!(p > 0);
-    assert_eq!(extism_length(&mut store, instance, p), 64);
-    extism_free(&mut store, instance, p);
+    for i in 0..64 {
+        let p = extism_alloc(&mut store, instance, 64 - i);
+        assert!(p > 0);
+        assert_eq!(extism_length(&mut store, instance, p), 64 - i);
+        extism_free(&mut store, instance, p);
 
-    // 64 bytes, should re-use the last allocation
-    let q = extism_alloc(&mut store, instance, 64);
-    assert_eq!(p, q);
-    assert_eq!(extism_length(&mut store, instance, q), 64);
-    extism_free(&mut store, instance, q);
+        // should re-use the last allocation
+        let q = extism_alloc(&mut store, instance, 64 - i);
+        assert_eq!(p, q);
+        assert_eq!(extism_length(&mut store, instance, q), 64 - i);
+        extism_free(&mut store, instance, q);
+    }
 
     // 512 bytes, test block re-use + splitting
     let p = extism_alloc(&mut store, instance, 512);
