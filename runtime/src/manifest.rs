@@ -172,20 +172,20 @@ pub(crate) fn load(
         if let Ok(s) = std::str::from_utf8(data) {
             if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
                 let mut m = modules(&t, engine)?;
-                m.insert(EXTISM_ENV.to_string(), extism_module);
+                m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
                 return Ok((t, m));
             }
         }
 
         let t = serde_json::from_slice::<extism_manifest::Manifest>(data)?;
         let mut m = modules(&t, engine)?;
-        m.insert(EXTISM_ENV.to_string(), extism_module);
+        m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
         return Ok((t, m));
     }
 
     let m = Module::new(engine, data)?;
     let mut modules = BTreeMap::new();
-    modules.insert(EXTISM_ENV.to_string(), extism_module);
+    modules.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
     modules.insert("main".to_string(), m);
     Ok((Default::default(), modules))
 }
