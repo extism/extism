@@ -46,9 +46,13 @@ test "Single threaded tests" {
     std.debug.print("--------------\n", .{});
     var i: usize = 0;
     var wasm_elapsed: u64 = 0;
+    var wasm_count: u32 = 0;
     while (i < 100) : (i += 1) {
         var call_start = try std.time.Timer.start();
-        _ = try plugin.call("count_vowels", input);
+        var out = try plugin.call("count_vowels", input);
+        for (out) |_| { // this is really not a fair comparison, but whatever we're just trying
+            wasm_count += 1;
+        }
         wasm_elapsed += call_start.read();
     }
     const wasm_avg = wasm_elapsed / i;
