@@ -2,7 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-pub const EXTISM_ENV: &str = "extism:env";
+pub const EXTISM_ENV_MODULE: &str = "extism:env";
+pub const EXTISM_USER_MODULE: &str = "extism:user";
 
 #[derive(Default, Clone)]
 pub(crate) struct Output {
@@ -189,7 +190,7 @@ impl Plugin {
             ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
                 $(
                     let t = FuncType::new([$($args),*], [$($($r),*)?]);
-                    linker.func_new(EXTISM_ENV, stringify!($name), t, pdk::$name)?;
+                    linker.func_new(EXTISM_ENV_MODULE, stringify!($name), t, pdk::$name)?;
                 )*
             };
         }
@@ -210,7 +211,7 @@ impl Plugin {
 
         for f in &mut imports {
             let name = f.name().to_string();
-            let ns = f.namespace().unwrap_or(EXTISM_ENV);
+            let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             linker.func_new(ns, &name, f.ty().clone(), unsafe {
                 &*std::sync::Arc::as_ptr(&f.f)
             })?;
@@ -358,7 +359,7 @@ impl Plugin {
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
         trace!("Input size: {}", bytes.len());
 
-        if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV, "reset") {
+        if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV_MODULE, "reset") {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
         } else {
             error!("Call to extism:env::reset failed");
@@ -366,7 +367,10 @@ impl Plugin {
 
         let handle = self.current_plugin_mut().memory_new(bytes)?;
 
-        if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV, "input_set") {
+        if let Some(f) = self
+            .linker
+            .get(&mut self.store, EXTISM_ENV_MODULE, "input_set")
+        {
             f.into_func().unwrap().call(
                 &mut self.store,
                 &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
@@ -474,14 +478,14 @@ impl Plugin {
         let out_len = &mut [Val::I64(0)];
         let mut store = &mut self.store;
         self.linker
-            .get(&mut store, EXTISM_ENV, "output_offset")
+            .get(&mut store, EXTISM_ENV_MODULE, "output_offset")
             .unwrap()
             .into_func()
             .unwrap()
             .call(&mut store, &[], out)
             .unwrap();
         self.linker
-            .get(&mut store, EXTISM_ENV, "output_length")
+            .get(&mut store, EXTISM_ENV_MODULE, "output_length")
             .unwrap()
             .into_func()
             .unwrap()
@@ -645,7 +649,7 @@ impl Plugin {
     pub(crate) fn clear_error(&mut self) {
         trace!("Clearing error on plugin {}", self.id);
         let (linker, mut store) = self.linker_and_store();
-        if let Some(f) = linker.get(&mut store, EXTISM_ENV, "error_set") {
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
             f.into_func()
                 .unwrap()
                 .call(&mut store, &[Val::I64(0)], &mut [])

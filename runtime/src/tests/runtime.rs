@@ -47,7 +47,7 @@ fn it_works() {
         None,
         hello_world,
     )
-    .with_namespace(EXTISM_ENV);
+    .with_namespace(EXTISM_USER_MODULE);
     let g = Function::new(
         "hello_world",
         [ValType::I64],
@@ -310,7 +310,7 @@ fn test_fuzz_reflect_plugin() {
 fn test_memory_max() {
     // Should fail with memory.max set
     let manifest =
-        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(2);
+        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(16);
     let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_err());
@@ -318,7 +318,7 @@ fn test_memory_max() {
 
     // Should pass with memory.max set to a large enough number
     let manifest =
-        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(3);
+        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(17);
     let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
