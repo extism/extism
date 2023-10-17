@@ -1,0 +1,27 @@
+<?xml version="1.0"?>
+<package>
+    <metadata>
+        <id>Extism.runtime.all</id>
+        <version>$Version</version>
+        <authors>Extism Contributors</authors>
+        <owners>Extism Contributors</owners>
+        <description>Internal implementation package for Extism</description>
+        <tags>extism wasm plugin</tags>
+        <license type="expression">BSD-3-Clause</license>
+        <projectUrl>https://github.com/extism/extism</projectUrl>
+        <requireLicenseAcceptance>false</requireLicenseAcceptance>
+        <copyright>Copyright © 2023 Extism Contributors</copyright>
+        <readme>README.md</readme>
+        <dependencies>
+            <dependency id="Extism.runtime.linux-arm64" version="$Version" />
+            <dependency id="Extism.runtime.linux-musl-arm64" version="$Version" />
+            <dependency id="Extism.runtime.linux-x64" version="$Version" />
+            <dependency id="Extism.runtime.osx-arm64" version="$Version" />
+            <dependency id="Extism.runtime.osx-x64" version="$Version" />
+            <dependency id="Extism.runtime.win-x64" version="$Version" />
+        </dependencies>
+    </metadata>
+    <files>
+        <file src="README.md" target="" />
+    </files>
+</package>

@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Extism.runtime.osx-arm64</PackageId>
+    <Description>Internal implementation package for Extism to work on macOS ARM64</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="runtimes\osx-arm64\native\libextism.dylib"
+      CopyToOutputDirectory="Always"
+      Pack="true"
+      PackagePath="runtimes\osx-arm64\native\libextism.dylib" />
+  </ItemGroup>
+
+</Project>
