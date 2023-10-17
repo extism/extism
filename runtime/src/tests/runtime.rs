@@ -210,7 +210,7 @@ fn test_timeout() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
-    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Timed out plugin ran for {:?}", time);
