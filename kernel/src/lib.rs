@@ -517,5 +517,5 @@ pub unsafe fn extism_error_get() -> Pointer {
 /// Get the position of the allocator, this can be used as an indication of how many bytes are currently in-use
 #[no_mangle]
 pub unsafe fn extism_memory_bytes() -> Length {
-    MemoryRoot::new().length.load(Ordering::Acquire)
+    MemoryRoot::new().position.load(Ordering::Acquire)
 }
