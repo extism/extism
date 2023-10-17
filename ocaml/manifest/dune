@@ -1,7 +1,0 @@
-(library
- (name extism_manifest)
- (public_name extism-manifest)
- (inline_tests)
- (libraries base64)
- (preprocess
-  (pps ppx_yojson_conv ppx_inline_test)))
