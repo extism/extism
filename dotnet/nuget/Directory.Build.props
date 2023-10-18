@@ -12,6 +12,7 @@
 		<Deterministic>true</Deterministic>
 		<NoBuild>true</NoBuild>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<IsPackable>true</IsPackable>
 	</PropertyGroup>
 
 	<ItemGroup>

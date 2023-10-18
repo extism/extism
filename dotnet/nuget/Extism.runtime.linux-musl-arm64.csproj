@@ -3,7 +3,6 @@
   <PropertyGroup>
     <PackageId>Extism.runtime.linux-musl-arm64</PackageId>
     <Description>Internal implementation package for Extism to work on Linux Musl ARM64</Description>
-    <IsPackable>true</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>
