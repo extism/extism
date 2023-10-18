@@ -254,31 +254,37 @@ impl Function {
 /// For example, the following defines a host function named `add_newline` that takes a
 /// string parameter and returns a string result:
 /// ```rust
-/// extism::host_fn!(add_newline(_plugin, a: String) -> String { a + "\n" });
+/// extism::host_fn!(add_newline(_user_data, a: String) -> String { Ok(a + "\n") });
 /// ```
+/// A few things worth noting:
+/// - The function always returns a `Result` that wraps the specified return type
+/// - If an untyped first parameter is passed (`_user_data` above) it will be
+///    the name of the `UserData` parameter and can be used from inside the function
+//     definition.
 #[macro_export]
 macro_rules! host_fn {
-    ($name: ident  ($($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
-        $crate::host_fn!($name (plugin, $($arg : $argty),*) -> $ret {$b});
+    ($name: ident  ($($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
+        $crate::host_fn!($name (user_data, $($arg : $argty),*) $(-> $ret)? {$b});
     };
-    ($name: ident  ($plugin:ident, $($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
+    ($name: ident  ($user_data:ident, $($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
         fn $name(
-            $plugin: &mut $crate::CurrentPlugin,
+            plugin: &mut $crate::CurrentPlugin,
             inputs: &[$crate::Val],
             outputs: &mut [$crate::Val],
-            _user_data: $crate::UserData,
+            #[allow(unused)]
+            mut $user_data: $crate::UserData,
         ) -> Result<(), $crate::Error> {
             let mut index = 0;
             $(
-                let $arg: $argty = $plugin.memory_get_val(&inputs[index])?;
+                let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
                 #[allow(unused_assignments)]
                 {
                     index += 1;
                 }
             )*
-            let output = move || { $b };
-            let output = $plugin.memory_new(&output())?;
-            outputs[0] = $plugin.memory_to_val(output);
+            let output = move || -> Result<_, $crate::Error> { $b };
+            let output: $crate::convert::MemoryHandle = plugin.memory_new(&output()?)?;
+            outputs[0] = plugin.memory_to_val(output);
             Ok(())
         }
     };

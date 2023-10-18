@@ -33,7 +33,9 @@ fn main() {
     "https://github.com/extism/plugins/releases/latest/download/count_vowels.wasm"
   );
   let manifest = Manifest::new([url]);
-  let plugin = Plugin::new_with_manifest(&manifest, [], true);
+  let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+  let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+  println!("{}", res);
 }
 ```
 
@@ -44,7 +46,7 @@ fn main() {
 This plug-in was written in Rust and it does one thing, it counts vowels in a string. As such, it exposes one "export" function: `count_vowels`. We can call exports using [Extism::Plugin::call](https://docs.rs/extism/latest/extism/struct.Plugin.html#method.call):
 
 ```rust
-let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
 ```
@@ -66,7 +68,7 @@ struct VowelCount {
 Then we can use [Json](https://docs.rs/extism-convert/latest/extism_convert/struct.Json.html) to get the JSON results decoded into `VowelCount`:
 
 ```rust
-let Json(res) = plugin.call::<String, Json<VowelCount>>::("count_vowels", "Hello, world!").unwrap();
+let Json(res) = plugin.call::<&str, Json<VowelCount>>::("count_vowels", "Hello, world!").unwrap();
 println!("{:?}", res);
 # => VowelCount {count: 3, total: 3, vowels: "aeiouAEIOU"}
 ```
@@ -76,11 +78,11 @@ println!("{:?}", res);
 Plug-ins may be stateful or stateless. Plug-ins can maintain state b/w calls by the use of variables. Our count vowels plug-in remembers the total number of vowels it's ever counted in the "total" key in the result. You can see this by making subsequent calls to the export:
 
 ```rust
-let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}
 
-let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 9, "vowels": "aeiouAEIOU"}
 ```
@@ -93,12 +95,12 @@ Plug-ins may optionally take a configuration object. This is a static way to con
 
 ```rust
 let manifest = Manifest::new([url]);
-let plugin = Plugin::new_with_manifest(&manifest, [], true);
-let res = plugin.call::<String, String>::("count_vowels", "Yellow, world!").unwrap();
+let mut plugin = Plugin::new_with_manifest(&manifest, [], true);
+let res = plugin.call::<&str, &str>::("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
-let plugin = Plugin::new_with_manifest(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
-let res = plugin.call::<String, String>::("count_vowels", "Yellow, world!").unwrap();
+let mut plugin = Plugin::new_with_manifest(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
+let res = plugin.call::<&str, &str>::("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 4, "total": 4, "vowels": "aeiouyAEIOUY"}
 ```
@@ -124,21 +126,18 @@ let manifest = Manifest::new([url]);
 
 Unlike our previous plug-in, this plug-in expects you to provide host functions that satisfy our its import interface for a KV store.
 
-We want to expose two functions to our plugin, `kv_write(key: String, value: Bytes)` which writes a bytes value to a key and `kv_read(key: String) -> Bytes` which reads the bytes at the given `key`.
+We want to expose two functions to our plugin, `kv_write(key: String, value: u64)` which writes a bytes value to a key and `kv_read(key: String) -> u64` which reads the bytes at the given `key`.
 
 ```rust
 use extism::*;
 
 // pretend this is redis or something :)
-type KVStore = std::sync::Arc<std::sync::Mutex<std::collections::BTreeMap<String, Vec<u8>>>>;
+type Map = std::collections::BTreeMap<String, Vec<u8>>;
+type KVStore = std::sync::Arc<std::sync::Mutex<Map>>;
 
-fn kv_read(
-    plugin: &mut CurrentPlugin,
-    inputs: &[Val],
-    outputs: &mut [Val],
-    user_data: UserData,
-) -> Result<(), Error> {
-    let key: String = plugin.memory_get_val(&inputs[0])?;
+// When an untyped first argument is provided to `host_fn` it is used as the 
+// variable name for the `UserData` parameter 
+host_fn!(kv_read(user_data, key: String) -> u64 {
     let kv = user_data.get::<KVStore>().unwrap();
     let value = kv
         .lock()
@@ -146,26 +145,16 @@ fn kv_read(
         .get(&key)
         .map(|x| u64::from_le_bytes(x.clone().try_into().unwrap()))
         .unwrap_or_else(|| 0u64);
-    plugin.memory_set_val(&mut outputs[0], value)?;
-    Ok(())
-}
+    Ok(value)
+});
 
-fn kv_write(
-    plugin: &mut CurrentPlugin,
-    inputs: &[Val],
-    _outputs: &mut [Val],
-    mut user_data: UserData,
-) -> Result<(), Error> {
-    let key: String = plugin.memory_get_val(&inputs[0])?;
-    let value: Vec<u8> = plugin.memory_get_val(&inputs[1])?;
-
+host_fn!(kv_write(user_data, key: String, value: u64) {
     let kv = user_data.get_mut::<KVStore>().unwrap();
-    kv.lock().unwrap().insert(key, value);
+    kv.lock().unwrap().insert(key, value.to_le_bytes().to_vec());
     Ok(())
-}
+});
 
 fn main() {
-    // Pretend this is redis or something :)
     let kv_store = KVStore::default();
 
     // Wrap kv_read function
@@ -190,22 +179,24 @@ fn main() {
         "https://github.com/extism/plugins/releases/latest/download/count_vowels_kvstore.wasm",
     );
     let manifest = Manifest::new([url]);
-    let plugin = Plugin::new_with_manifest(&manifest, [kv_read, kv_write], true);
+    let mut plugin = Plugin::new_with_manifest(&manifest, [kv_read, kv_write], true);
+    let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+    println!("{}", res);
 }
 ```
 
-> *Note*: In order to write host functions you should get familiar with the methods on the [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.CurrentPlugin.html) type.
+> *Note*: In order to write host functions you should get familiar with the methods on the [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.CurrentPlugin.html) and [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.UserData.html) types.
 
 Now we can invoke the event:
 
 ```rust
-let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => Read from key=count-vowels"
 # => Writing value=3 from key=count-vowels"
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
 
-let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => Read from key=count-vowels"
 # => Writing value=6 from key=count-vowels"
