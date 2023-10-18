@@ -3,8 +3,6 @@
   <PropertyGroup>
     <PackageId>Extism.runtime.osx-arm64</PackageId>
     <Description>Internal implementation package for Extism to work on macOS ARM64</Description>
-    <IsPackable>true</IsPackable>
-    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
   <ItemGroup>
@@ -13,12 +11,5 @@
       Pack="true"
       PackagePath="runtimes\osx-arm64\native\libextism.dylib" />
   </ItemGroup>
-
-  <ItemGroup>
-		<PackageReference Include="MinVer" Version="4.3.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
 
 </Project>

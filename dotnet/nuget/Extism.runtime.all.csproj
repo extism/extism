@@ -2,8 +2,6 @@
 
   <PropertyGroup>
     <NuspecFile>Extism.runtime.all.nuspec</NuspecFile>
-    <IsPackable>true</IsPackable>
-    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
   
   <Target Name="Replace" BeforeTargets="GenerateNuspec">
@@ -12,12 +10,5 @@
       Lines="$([System.IO.File]::ReadAllText($(NuspecFile)).Replace('$Version','$(MinVerVersion)'))"
       Overwrite="true"/>
   </Target>
-
-  <ItemGroup>
-		<PackageReference Include="MinVer" Version="4.3.0">
-			<PrivateAssets>all</PrivateAssets>
-			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
-		</PackageReference>
-	</ItemGroup>
 
 </Project>
