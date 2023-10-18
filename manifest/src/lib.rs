@@ -145,9 +145,21 @@ impl Wasm {
     }
 
     /// Load Wasm from a URL
-    pub fn url(req: HttpRequest) -> Self {
+    pub fn url(url: impl Into<String>) -> Self {
         Wasm::Url {
-            req,
+            req: HttpRequest {
+                url: url.into(),
+                headers: Default::default(),
+                method: None,
+            },
+            meta: Default::default(),
+        }
+    }
+
+    /// Load Wasm from an HTTP request
+    pub fn http(req: impl Into<HttpRequest>) -> Self {
+        Wasm::Url {
+            req: req.into(),
             meta: Default::default(),
         }
     }
