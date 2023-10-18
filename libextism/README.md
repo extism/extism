@@ -156,7 +156,7 @@ Let's extend our count-vowels example a little bit: Instead of storing the `tota
 
 Wasm can't use our KV store on it's own. This is where [Host Functions](https://extism.org/docs/concepts/host-functions) come in.
 
-[Host functions](https://extism.org/docs/concepts/host-functions) allow us to grant new capabilities to our plug-ins from our application. They are simply some Rust functions you write which can be passed down and invoked from any language inside the plug-in.
+[Host functions](https://extism.org/docs/concepts/host-functions) allow us to grant new capabilities to our plug-ins from our application. They are simply some C functions you write which can be passed down and invoked from any language inside the plug-in.
 
 Let's load the manifest like usual but load up this `count_vowels_kvstore` plug-in from `https://github.com/extism/plugins/releases/latest/download/count_vowels.wasm`
 
@@ -273,7 +273,7 @@ int main(void) {
 
 Now when we invoke the event:
 
-```rust
+```c
 print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
                                                (const uint8_t *)input,
                                                strlen(input)));
