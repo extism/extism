@@ -43,5 +43,5 @@ jobs:
 
       - name: Publish NuGet packages
         run: |
-          dotnet pack .\dotnet\nuget\Nuget.sln -o release-artifacts
+          dotnet pack ./dotnet/nuget/Nuget.sln -o release-artifacts
           dotnet nuget push --source https://api.nuget.org/v3/index.json ./release-artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }}
