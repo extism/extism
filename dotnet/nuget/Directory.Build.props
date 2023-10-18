@@ -10,7 +10,7 @@
 
 		<TargetFramework>netstandard2.1</TargetFramework>
 		<Deterministic>true</Deterministic>
-		<NoBuild>false</NoBuild>
+		<NoBuild>true</NoBuild>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
 
 		<MinVerIgnoreHeight>true</MinVerIgnoreHeight>
