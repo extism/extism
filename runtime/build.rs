@@ -4,6 +4,9 @@ fn main() {
     let fn_macro = "
 #define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)
 #define EXTISM_GO_FUNCTION(N) extern void N(void*, ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, uintptr_t)
+
+/** The return code from extism_plugin_call used to signal a successful call with no errors */
+#define EXTISM_SUCCESS 0
 ";
     if let Ok(bindings) = cbindgen::Builder::new()
         .with_crate(".")

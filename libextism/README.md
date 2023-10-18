@@ -2,7 +2,9 @@
 
 This crate contains no actual code, but is used to generated `libextism` from the [extism](../runtime) crate.
 
-## Building
+The C SDK is a little different from the other languages because it is generated from the Rust source using cbindgen. It operates at a lower level than the other SDKs because they build higher level abstractions on top of it.
+
+## Building from source
 
 `libextism` can be built using the `Makefile` in the root of the repository:
 
@@ -10,246 +12,281 @@ This crate contains no actual code, but is used to generated `libextism` from th
 make
 ```
 
-And to install:
+`libextism` will be built in `target/release/libextism.*` and the header file can be found in `runtime/extism.h`
+
+## Installation 
+
+The [Extism CLI](https://github.com/extism/cli) can be used to install releases from Github:
+
+```shell
+sudo PATH="$PATH" env extism lib install
+```
+
+Or from source:
 
 ```shell
 sudo make install DEST=/usr/local
 ```
 
-This will install the shared object into `/usr/local/lib` and `extism.h` into `/usr/local/include`. 
+This will install the shared object into `/usr/local/lib` and `extism.h` into `/usr/local/include`.
 
-## Runtime API
 
-We [generate C headers](https://github.com/extism/extism/blob/main/runtime/extism.h) so that any language with a C-compatible FFI can bind functions to the runtime itself and embed Extism. This is how most of the [official SDKs](/docs/concepts/host-sdk) are created.
+## Getting Started
 
-If you would like to embed Extism into a language that we currently do not support, you should take a look at the header file linked above.
-
-The general set of functions that is necessary to satisfy the runtime requirements is:
-
-### `extism_plugin_new`
-
-Create a new plugin.
-- `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
-- `wasm_size`: the length of the `wasm` parameter
-- `functions`: is an array of `ExtismFunction*`
-- `n_functions`: is the number of functions
-- `with_wasi`: enables/disables WASI
-- `errmsg`: error message during plugin creation
+To use libextism you should include the header file:
 
 ```c
-ExtismPlugin extism_plugin_new(const uint8_t *wasm,
-                               ExtismSize wasm_size,
-                               const ExtismFunction **functions,
-                               ExtismSize n_functions,
-                               bool with_wasi,
-                               char **errmsg);
+#include <extism.h>
 ```
 
-### `extism_plugin_free`
+and link the library:
 
-Remove a plugin from the registry and free associated memory.
+```
+-lextism
+```
+
+### Creating A Plug-in
+
+The primary concept in Extism is the [plug-in](https://extism.org/docs/concepts/plug-in). You can think of a plug-in as a code module stored in a `.wasm` file.
+
+Since you may not have an Extism plug-in on hand to test, let's load a demo plug-in from the web:
 
 ```c
-void extism_plugin_free(ExtismPlugin *plugin);
+#include <extism.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+void print_plugin_output(ExtismPlugin *plugin, int32_t rc){
+  if (rc != EXTISM_SUCCESS) {
+    fprintf(stderr, "ERROR: %s\n", extism_plugin_error(plugin));
+    return;
+  }
+
+  size_t outlen = extism_plugin_output_length(plugin);
+  const uint8_t *out = extism_plugin_output_data(plugin);
+  write(STDOUT_FILENO, out, outlen);
+}
+
+int main(void) {
+  const char *manifest = "{\"wasm\": [{\"url\": "
+                         "\"https://github.com/extism/plugins/releases/latest/"
+                         "download/count_vowels.wasm\"}]}";
+
+  char *errmsg = NULL;
+  ExtismPlugin *plugin = extism_plugin_new(
+      (const uint8_t *)manifest, strlen(manifest), NULL, 0, true, &errmsg);
+  if (plugin == NULL) {
+    fprintf(stderr, "ERROR: %s\n", errmsg);
+    extism_plugin_new_error_free(errmsg);
+    exit(1);
+  }
+
+  const char *input = "Hello, world!";
+  print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                  (const uint8_t *)input, strlen(input)));
+  extism_plugin_free(plugin);
+  return 0;
+}
 ```
 
-### `extism_plugin_config`
+> **Note**: In this case the manifest is a string constant, however it has a rich schema and a lot of options, see the [extism-manifest docs](https://docs.rs/extism-manifest/latest/extism_manifest/) for more details.
 
-Update plugin config values, this will merge with the existing values.
+### Calling A Plug-in's Exports
+
+This plug-in was written in Rust and it does one thing, it counts vowels in a string. As such, it exposes one "export" function: `count_vowels`. We can call exports using `extism_plugin_call`, then will use `extism_plugin_output_length`
+and `extism_plugin_output_data` to get the result:
 
 ```c
-bool extism_plugin_config(ExtismPlugin *plugin,
-                          const uint8_t *json,
-                          ExtismSize json_size);
+int32_t rc = extism_plugin_call(plugin, "count_vowels",
+                                (const uint8_t *)input, strlen(input));
+if (rc != EXTISM_SUCCESS) {
+  fprintf(stderr, "ERROR: %s\n", extism_plugin_error(plugin));
+  exit(2);
+}
+
+size_t outlen = extism_plugin_output_length(plugin);
+const uint8_t *out = extism_plugin_output_data(plugin);
+write(STDOUT_FILENO, out, outlen);
 ```
 
-### `extism_plugin_function_exists`
+Will print
 
-Returns true if `func_name` exists.
+```
+{"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
+```
+
+All exports have a simple interface of bytes-in and bytes-out. This plug-in happens to take a string and return a JSON encoded string with a report of results.
+
+### Plug-in State
+
+Plug-ins may be stateful or stateless. Plug-ins can maintain state b/w calls by the use of variables. Our count vowels plug-in remembers the total number of vowels it's ever counted in the "total" key in the result. You can see this by making subsequent calls to the export:
 
 ```c
-bool extism_plugin_function_exists(ExtismPlugin *plugin,
-                                   const char *func_name);
+print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                (const uint8_t *)input, strlen(input)));
+# => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}
+print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                (const uint8_t *)input, strlen(input)));
+# => {"count": 3, "total": 9, "vowels": "aeiouAEIOU"}
 ```
 
-### `extism_plugin_call`
+These variables will persist until this plug-in is freed or you initialize a new one.
 
-Call a function.
-- `func_name`: is the function to call
-- `data`: is the input data
-- `data_len`: is the length of `data`
+### Configuration
+
+Plug-ins may optionally take a configuration object. This is a static way to configure the plug-in. Our count-vowels plugin takes an optional configuration to change out which characters are considered vowels. Example:
 
 ```c
-int32_t extism_plugin_call(ExtismPlugin *plugin,
-                           const char *func_name,
-                           const uint8_t *data,
-                           ExtismSize data_len);
+const char *input = "Yellow, world!";
+print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                (const uint8_t *)input, strlen(input)));
+# => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
+const char * config = "{\"vowels\": \"aeiouyAEIOUY\"}";
+extism_plugin_config(plugin, config, strlen(config));
+print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                (const uint8_t *)input, strlen(input)));
+# => {"count": 4, "total": 4, "vowels": "aeiouyAEIOUY"}
 ```
 
-### `extism_plugin_error`
+### Host Functions
 
-Get the error associated with a `Plugin`
+Let's extend our count-vowels example a little bit: Instead of storing the `total` in an ephemeral plug-in var, let's store it in a persistent key-value store!
+
+Wasm can't use our KV store on it's own. This is where [Host Functions](https://extism.org/docs/concepts/host-functions) come in.
+
+[Host functions](https://extism.org/docs/concepts/host-functions) allow us to grant new capabilities to our plug-ins from our application. They are simply some Rust functions you write which can be passed down and invoked from any language inside the plug-in.
+
+Let's load the manifest like usual but load up this `count_vowels_kvstore` plug-in from `https://github.com/extism/plugins/releases/latest/download/count_vowels.wasm`
+
+> *Note*: The source code for this is [here](https://github.com/extism/plugins/blob/main/count_vowels_kvstore/src/lib.rs) and is written in rust, but it could be written in any of our PDK languages.
+
+Unlike our previous plug-in, this plug-in expects you to provide host functions that satisfy our its import interface for a KV store.
+
+We want to expose two functions to our plugin, `kv_write(key: String, value: Bytes)` which writes a bytes value to a key and `kv_read(key: String) -> Bytes` which reads the bytes at the given `key`.
 
 ```c
-const char *extism_plugin_error(ExtismPlugin *plugin);
+#include <extism.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+
+// A stubbed out KV store
+typedef struct KVStore KVStore;
+extern KVStore *fake_kv_store_new();
+extern void fake_kv_store_free(KVStore *kv);
+extern void fake_kv_store_set(KVStore *kv, const char *key, size_t keylen,
+                              uint32_t);
+extern const uint32_t fake_kv_store_get(KVStore *kv, const char *key,
+                                        size_t keylen);
+
+// Our host functions to access the fake KV store
+void kv_get(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
+            size_t ninputs, ExtismVal *outputs, size_t noutputs,
+            void *userdata) {
+  // Cast the userdata pointer
+  KVStore *kv = (KVStore *)userdata;
+
+  // Get the offset to the key in the plugin memory
+  uint64_t offs = inputs[0].v.i64;
+  size_t keylen = extism_current_plugin_memory_length(plugin, offs);
+
+  // Allocate a new block to return
+  uint64_t outoffs =
+      extism_current_plugin_memory_alloc(plugin, sizeof(uint32_t));
+
+  // Load the value from our k/v store
+  uint64_t value = fake_kv_store_get(
+      kv, (const char *)extism_current_plugin_memory(plugin) + offs, keylen);
+
+  // Update the plugin memory
+  *(uint64_t *)(extism_current_plugin_memory(plugin) + outoffs) = value;
+
+  // Return the offset to our allocated block
+  outputs[0].t = I64;
+  outputs[0].v.i64 = outoffs;
+}
+
+void kv_set(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
+            size_t ninputs, ExtismVal *outputs, size_t noutputs,
+            void *userdata) {
+  // Cast the userdata pointer
+  KVStore *kv = (KVStore *)userdata;
+
+  // Get the offset to the key in the plugin memory
+  uint64_t keyoffs = inputs[0].v.i64;
+  size_t keylen = extism_current_plugin_memory_length(plugin, keyoffs);
+
+  // Get the offset to the value in the plugin memory
+  uint64_t valueoffs = inputs[1].v.i64;
+  size_t valuelen = extism_current_plugin_memory_length(plugin, valueoffs);
+
+  // Set key => value
+  fake_kv_store_set(
+      kv, (const char *)extism_current_plugin_memory(plugin) + keyoffs, keylen,
+      *(uint32_t *)(extism_current_plugin_memory(plugin) + keyoffs));
+}
+
+int main(void) {
+  KVStore *kv = fake_kv_store_new();
+  const char *manifest = "{\"wasm\": [{\"url\": "
+                         "\"https://github.com/extism/plugins/releases/latest/"
+                         "download/count_vowels_kvstore.wasm\"}]}";
+  const ExtismValType kv_get_inputs[] = {I64};
+  const ExtismValType kv_get_outputs[] = {I64};
+  ExtismFunction *kv_get_fn = extism_function_new(
+      "kv_get", kv_get_inputs, 1, kv_get_outputs, 1, kv_get, kv, NULL);
+
+  const ExtismValType kv_set_inputs[] = {I64};
+  const ExtismValType kv_set_outputs[] = {I64};
+  ExtismFunction *kv_set_fn = extism_function_new(
+      "kv_set", kv_set_inputs, 1, kv_set_outputs, 1, kv_set, kv, NULL);
+  const ExtismFunction *functions[] = {kv_get_fn};
+  char *errmsg = NULL;
+  ExtismPlugin *plugin = extism_plugin_new(
+      (const uint8_t *)manifest, strlen(manifest), functions, 1, true, &errmsg);
+  if (plugin == NULL) {
+    fprintf(stderr, "ERROR: %s\n", errmsg);
+    extism_plugin_new_error_free(errmsg);
+    exit(1);
+  }
+
+  const char *input = "Hello, world!";
+  print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                                 (const uint8_t *)input,
+                                                 strlen(input)));
+  print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                                 (const uint8_t *)input,
+                                                 strlen(input)));
+
+  extism_plugin_free(plugin);
+  extism_function_free(kv_get_fn);
+  extism_function_free(kv_set_fn);
+  fake_kv_store_free(kv);
+  return 0;
+}
 ```
 
-### `extism_plugin_output_length`
+> *Note*: In order to write host functions you should get familiar with the `extism_current_plugin_*` functions.
 
-Get the length of a plugin's output data.
+Now when we invoke the event:
 
-```c
-ExtismSize extism_plugin_output_length(ExtismPlugin *plugin);
+```rust
+print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                               (const uint8_t *)input,
+                                               strlen(input)));
+# => Read from key=count-vowels"
+# => Writing value=3 from key=count-vowels"
+# => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
+
+print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
+                                               (const uint8_t *)input,
+                                               strlen(input)));
+# => Read from key=count-vowels"
+# => Writing value=6 from key=count-vowels"
+# => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}
 ```
 
-### `extism_plugin_output_data`
 
-Get the plugin's output data.
-
-```c
-const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
-```
-
-### `extism_log_file`
-
-Set log file and level.
-
-```c
-bool extism_log_file(const char *filename, const char *log_level);
-```
-
-### `extism_version`
-
-Get the Extism version string.
-
-```c
-const char *extism_version(void);
-```
-
-### `extism_current_plugin_memory`
-
-Returns a pointer to the memory of the currently running plugin
-
-```c
-uint8_t *extism_current_plugin_memory(ExtismCurrentPlugin *plugin);
-```
-
-### `extism_current_plugin_memory_alloc`
-
-Allocate a memory block in the currently running plugin
-
-```c
-uint64_t extism_current_plugin_memory_alloc(ExtismCurrentPlugin *plugin, ExtismSize n);
-```
-
-### `extism_current_plugin_memory_length`
-
-Get the length of an allocated block
-
-```c
-ExtismSize extism_current_plugin_memory_length(ExtismCurrentPlugin *plugin, ExtismSize n);
-```
-
-### `extism_current_plugin_memory_free`
-
-Free an allocated memory block
-
-```c
-void extism_current_plugin_memory_free(ExtismCurrentPlugin *plugin, uint64_t ptr);
-```
-
-### `extism_function_new`
-Create a new host function
-- `name`: function name, this should be valid UTF-8
-- `inputs`: argument types
-- `n_inputs`: number of argument types
-- `outputs`: return types
-- `n_outputs`: number of return types
-- `func`: the function to call
-- `user_data`: a pointer that will be passed to the function when it's called
-   this value should live as long as the function exists
-- `free_user_data`: a callback to release the `user_data` value when the resulting
-  `ExtismFunction` is freed.
-
-Returns a new `ExtismFunction` or `null` if the `name` argument is invalid.
-
-```c
-ExtismFunction *extism_function_new(const char *name,
-                                    const ExtismValType *inputs,
-                                    ExtismSize n_inputs,
-                                    const ExtismValType *outputs,
-                                    ExtismSize n_outputs,
-                                    ExtismFunctionType func,
-                                    void *user_data,
-                                    void (*free_user_data)(void *_));
-```
-
-### `extism_function_set_namespace`
-
-Set the namespace of an `ExtismFunction`
-
-```c
-void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
-```
-
-### `extism_function_free`
-
-Free an `ExtismFunction`
-
-```c
-void extism_function_free(ExtismFunction *ptr);
-```
-
-### `extism_plugin_cancel_handle`
-
-Get handle for plugin cancellation
-
-```c
-const ExtismCancelHandle *extism_plugin_cancel_handle(const ExtismPlugin *plugin);
-```
-
-### `extism_plugin_cancel`
-
-Cancel a running plugin from another thread
-
-```c
-bool extism_plugin_cancel(const ExtismCancelHandle *handle);
-```
-
-## Type definitions:
-
-### `ExtismPlugin`
-
-```c
-typedef int32_t ExtismPlugin;
-```
-
-### `ExtismSize`
-
-```c
-typedef uint64_t ExtismSize;
-```
-
-### `ExtismFunction`
-
-`ExtismFunction` is used to register host functions with plugins
-
-```c
-typedef struct ExtismFunction ExtismFunction;
-```
-
-### `ExtismCurrentPlugin`
-
-`ExtismCurrentPlugin` provides access to the currently executing plugin from within a host function
-
-```c
-typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
-```
-
-### `ExtismCancelHandle`
-
-`ExtismCancelHandle` can be used to cancel a running plugin from another thread
-
-```c
-typedef struct ExtismCancelHandle ExtismCancelHandle;
-```

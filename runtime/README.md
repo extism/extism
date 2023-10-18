@@ -126,7 +126,7 @@ let manifest = Manifest::new([url]);
 
 Unlike our previous plug-in, this plug-in expects you to provide host functions that satisfy our its import interface for a KV store.
 
-We want to expose two functions to our plugin, `kv_write(key: String, value: u64)` which writes a bytes value to a key and `kv_read(key: String) -> u64` which reads the bytes at the given `key`.
+We want to expose two functions to our plugin, `kv_write(key: String, value: Bytes)` which writes a bytes value to a key and `kv_read(key: String) -> Bytes` which reads the bytes at the given `key`.
 
 ```rust
 use extism::*;
@@ -137,18 +137,18 @@ type KVStore = std::sync::Arc<std::sync::Mutex<Map>>;
 
 // When an untyped first argument is provided to `host_fn` it is used as the 
 // variable name for the `UserData` parameter 
-host_fn!(kv_read(user_data, key: String) -> u64 {
+host_fn!(kv_read(user_data, key: String) -> u32 {
     let kv = user_data.get::<KVStore>().unwrap();
     let value = kv
         .lock()
         .unwrap()
         .get(&key)
-        .map(|x| u64::from_le_bytes(x.clone().try_into().unwrap()))
-        .unwrap_or_else(|| 0u64);
+        .map(|x| u32::from_le_bytes(x.clone().try_into().unwrap()))
+        .unwrap_or_else(|| 0u32);
     Ok(value)
 });
 
-host_fn!(kv_write(user_data, key: String, value: u64) {
+host_fn!(kv_write(user_data, key: String, value: u32) {
     let kv = user_data.get_mut::<KVStore>().unwrap();
     kv.lock().unwrap().insert(key, value.to_le_bytes().to_vec());
     Ok(())

@@ -6,6 +6,9 @@
 #define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)
 #define EXTISM_GO_FUNCTION(N) extern void N(void*, ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, uintptr_t)
 
+/** The return code from extism_plugin_call used to signal a successful call with no errors */
+#define EXTISM_SUCCESS 0
+
 
 /**
  * An enumeration of all possible value types in WebAssembly.
@@ -95,7 +98,7 @@ typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
                                    void *data);
 
 /**
- * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUID value
+ * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUIDv4
  */
 const uint8_t *extism_plugin_id(ExtismPlugin *plugin);
 
@@ -196,7 +199,7 @@ const ExtismCancelHandle *extism_plugin_cancel_handle(const ExtismPlugin *plugin
 bool extism_plugin_cancel(const ExtismCancelHandle *handle);
 
 /**
- * Update plugin config values, this will merge with the existing values
+ * Update plugin config values.
  */
 bool extism_plugin_config(ExtismPlugin *plugin, const uint8_t *json, ExtismSize json_size);
 
