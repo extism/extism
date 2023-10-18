@@ -11,7 +11,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
-          fetch-tags: true
+          fetch-depth: 0
+          filter: tree:0
 
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v3.0.3
@@ -44,6 +45,6 @@ jobs:
       - name: Publish NuGet packages
         run: |
           git tag
-          dotnet pack ./dotnet/nuget/Nuget.sln -o release-artifacts
+          dotnet pack ./dotnet/nuget/Nuget.sln -o release-artifacts -v d
           ls release-artifacts
           # dotnet nuget push --source https://api.nuget.org/v3/index.json ./release-artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }}
