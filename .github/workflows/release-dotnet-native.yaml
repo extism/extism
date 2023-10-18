@@ -10,6 +10,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v3
+        fetch-tags: true
+
       - name: Setup .NET Core SDK
         uses: actions/setup-dotnet@v3.0.3
         with:
@@ -20,10 +22,25 @@ jobs:
           name: release-artifacts
       - name: Extract Archive
         run: |
-          tar -xvzf libextism-x86_64-pc-windows-msvc-v*.tar.gz --directory dotnet/nuget/runtimes
-          mv dotnet/nuget/runtimes/extism.dll dotnet/nuget/runtimes/win-x64.dll
-      - name: Publish win-x64
+          mkdir -p dotnet/nuget/runtimes/win-x64/native/
+          tar -xvzf libextism-x86_64-pc-windows-msvc-main.tar.gz -C dotnet/nuget/runtimes/win-x64/native/
+
+          mkdir -p dotnet/nuget/runtimes/osx-arm64/native/
+          tar -xvzf libextism-aarch64-apple-darwin-main.tar.gz -C dotnet/nuget/runtimes/osx-arm64/native/
+
+          mkdir -p dotnet/nuget/runtimes/osx-x64/native/
+          tar -xvzf libextism-x86_64-apple-darwin-main.tar.gz -C dotnet/nuget/runtimes/osx-x64/native/
+
+          mkdir -p dotnet/nuget/runtimes/linux-x64/native/
+          tar -xvzf libextism-x86_64-unknown-linux-gnu-main.tar.gz -C dotnet/nuget/runtimes/linux-x64/native/
+
+          mkdir -p dotnet/nuget/runtimes/linux-arm64/native/
+          tar -xvzf libextism-aarch64-unknown-linux-gnu-main.tar.gz -C dotnet/nuget/runtimes/linux-arm64/native/
+
+          mkdir -p dotnet/nuget/runtimes/linux-musl-arm64/native/
+          tar -xvzf libextism-aarch64-unknown-linux-musl-main.tar.gz -C dotnet/nuget/runtimes/linux-musl-arm64/native/
+
+      - name: Publish NuGet packages
         run: |
-          cd dotnet/nuget
-          dotnet pack -o dist
-          dotnet nuget push --source https://api.nuget.org/v3/index.json ./dist/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }}
+          dotnet pack .\dotnet\nuget\Nuget.sln -o release-artifacts
+          dotnet nuget push --source https://api.nuget.org/v3/index.json ./release-artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }}

@@ -1,0 +1,14 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <NuspecFile>Extism.runtime.all.nuspec</NuspecFile>
+  </PropertyGroup>
+  
+  <Target Name="Replace" BeforeTargets="GenerateNuspec">
+    <WriteLinesToFile
+      File="$(NuspecFile)"
+      Lines="$([System.IO.File]::ReadAllText($(NuspecFile)).Replace('$Version','$(MinVerVersion)'))"
+      Overwrite="true"/>
+  </Target>
+
+</Project>
