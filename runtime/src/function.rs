@@ -120,6 +120,11 @@ impl UserData {
         unsafe { Some(&*self.ptr) }
     }
 
+    /// Get a reference to the value stored in `UserData` if it matches the initial type    
+    pub fn get<T: 'static>(&self) -> Option<&T> {
+        self.any().and_then(|x| x.downcast_ref())
+    }
+
     /// Get the pointer as a mutable `Any` value - this will only return `Some` if `UserData::new` was used to create the value,
     /// when `UserData::new_pointer` is used there is no way to know the original type of the pointer
     pub fn any_mut(&mut self) -> Option<&mut dyn std::any::Any> {
@@ -128,6 +133,11 @@ impl UserData {
         }
 
         unsafe { Some(&mut *self.ptr) }
+    }
+
+    /// Get a mutable reference to the value stored in `UserData` if it matches the initial type    
+    pub fn get_mut<T: 'static>(&mut self) -> Option<&mut T> {
+        self.any_mut().and_then(|x| x.downcast_mut())
     }
 }
 
@@ -244,28 +254,31 @@ impl Function {
 /// For example, the following defines a host function named `add_newline` that takes a
 /// string parameter and returns a string result:
 /// ```rust
-/// extism::host_fn!(add_newline(a: String) -> String { a + "\n" });
+/// extism::host_fn!(add_newline(_plugin, a: String) -> String { a + "\n" });
 /// ```
 #[macro_export]
 macro_rules! host_fn {
-    ($name: ident ($($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
+    ($name: ident  ($($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
+        $crate::host_fn!($name (plugin, $($arg : $argty),*) -> $ret {$b});
+    };
+    ($name: ident  ($plugin:ident, $($arg:ident : $argty:ty),*) -> $ret:ty $b:block) => {
         fn $name(
-            plugin: &mut $crate::CurrentPlugin,
+            $plugin: &mut $crate::CurrentPlugin,
             inputs: &[$crate::Val],
             outputs: &mut [$crate::Val],
             _user_data: $crate::UserData,
         ) -> Result<(), $crate::Error> {
             let mut index = 0;
             $(
-                let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
+                let $arg: $argty = $plugin.memory_get_val(&inputs[index])?;
                 #[allow(unused_assignments)]
                 {
                     index += 1;
                 }
             )*
             let output = move || { $b };
-            let output = plugin.memory_new(&output())?;
-            outputs[0] = plugin.memory_to_val(output);
+            let output = $plugin.memory_new(&output())?;
+            outputs[0] = $plugin.memory_to_val(output);
             Ok(())
         }
     };

@@ -33,7 +33,7 @@ fn main() {
     "https://github.com/extism/plugins/releases/latest/download/count_vowels.wasm"
   );
   let manifest = Manifest::new([url]);
-  let plugin = Plugin::new_with_manifest(&manifest);
+  let plugin = Plugin::new_with_manifest(&manifest, [], true);
 }
 ```
 
@@ -41,7 +41,7 @@ fn main() {
 
 ### Calling A Plug-in's Exports
 
-This plug-in was written in Rust and it does one thing, it counts vowels in a string. As such, it exposes one "export" function: `count_vowels`. We can call exports using [Extism::Plugin#call](https://extism.github.io/ruby-sdk/Extism/Plugin.html#call-instance_method):
+This plug-in was written in Rust and it does one thing, it counts vowels in a string. As such, it exposes one "export" function: `count_vowels`. We can call exports using [Extism::Plugin::call](https://docs.rs/extism/latest/extism/struct.Plugin.html#method.call):
 
 ```rust
 let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
@@ -91,14 +91,16 @@ These variables will persist until this plug-in is freed or you initialize a new
 
 Plug-ins may optionally take a configuration object. This is a static way to configure the plug-in. Our count-vowels plugin takes an optional configuration to change out which characters are considered vowels. Example:
 
-```ruby
-plugin = Extism::Plugin.new(manifest)
-plugin.call("count_vowels", "Yellow, World!")
+```rust
+let manifest = Manifest::new([url]);
+let plugin = Plugin::new_with_manifest(&manifest, [], true);
+let res = plugin.call::<String, String>::("count_vowels", "Yellow, world!").unwrap();
+println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
-
-plugin = Extism::Plugin.new(manifest, config: { vowels: "aeiouyAEIOUY" })
-plugin.call("count_vowels", "Yellow, World!")
-# => {"count": 4, "total": 4, "vowels": "aeiouAEIOUY"}
+let plugin = Plugin::new_with_manifest(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
+let res = plugin.call::<String, String>::("count_vowels", "Yellow, world!").unwrap();
+println!("{}", res);
+# => {"count": 4, "total": 4, "vowels": "aeiouyAEIOUY"}
 ```
 
 ### Host Functions
@@ -107,68 +109,104 @@ Let's extend our count-vowels example a little bit: Instead of storing the `tota
 
 Wasm can't use our KV store on it's own. This is where [Host Functions](https://extism.org/docs/concepts/host-functions) come in.
 
-[Host functions](https://extism.org/docs/concepts/host-functions) allow us to grant new capabilities to our plug-ins from our application. They are simply some ruby methods you write which can be passed down and invoked from any language inside the plug-in.
+[Host functions](https://extism.org/docs/concepts/host-functions) allow us to grant new capabilities to our plug-ins from our application. They are simply some Rust functions you write which can be passed down and invoked from any language inside the plug-in.
 
 Let's load the manifest like usual but load up this `count_vowels_kvstore` plug-in:
 
-```ruby
-url = "https://github.com/extism/plugins/releases/latest/download/count_vowels_kvstore.wasm"
-manifest = Extism::Manifest.from_url(url)
+```rust
+let url = Wasm::url(
+  "https://github.com/extism/plugins/releases/latest/download/count_vowels_kvstore.wasm"
+);
+let manifest = Manifest::new([url]);
 ```
 
 > *Note*: The source code for this is [here](https://github.com/extism/plugins/blob/main/count_vowels_kvstore/src/lib.rs) and is written in rust, but it could be written in any of our PDK languages.
 
 Unlike our previous plug-in, this plug-in expects you to provide host functions that satisfy our its import interface for a KV store.
 
-In the ruby sdk, we have a concept for this called a [Host Environment](https://extism.github.io/ruby-sdk/Extism/HostEnvironment.html). An environment is an instance of a class that implements any host functions your plug-in needs.
-
 We want to expose two functions to our plugin, `kv_write(key: String, value: Bytes)` which writes a bytes value to a key and `kv_read(key: String) -> Bytes` which reads the bytes at the given `key`.
 
-```ruby
-# pretend this is Redis or something :)
-KV_STORE = {}
+```rust
+use extism::*;
 
-class KvEnvironment
-  include Extism::HostEnvironment
+// pretend this is redis or something :)
+type KVStore = std::sync::Arc<std::sync::Mutex<std::collections::BTreeMap<String, Vec<u8>>>>;
 
-  # We need to describe the wasm function signature of each host function
-  # to register them to this environment
-  register_import :kv_read, [Extism::ValType::I64], [Extism::ValType::I64]
-  register_import :kv_write, [Extism::ValType::I64, Extism::ValType::I64], []
+fn kv_read(
+    plugin: &mut CurrentPlugin,
+    inputs: &[Val],
+    outputs: &mut [Val],
+    user_data: UserData,
+) -> Result<(), Error> {
+    let key: String = plugin.memory_get_val(&inputs[0])?;
+    let kv = user_data.get::<KVStore>().unwrap();
+    let value = kv
+        .lock()
+        .unwrap()
+        .get(&key)
+        .map(|x| u64::from_le_bytes(x.clone().try_into().unwrap()))
+        .unwrap_or_else(|| 0u64);
+    plugin.memory_set_val(&mut outputs[0], value)?;
+    Ok(())
+}
 
-  def kv_read(plugin, inputs, outputs, _user_data)
-    key = plugin.input_as_string(inputs.first)
-    val = KV_STORE[key] || [0].pack('V') # get 4 LE bytes for 0 default
-    puts "Read from key=#{key}"
-    plugin.output_string(outputs.first, val)
-  end
+fn kv_write(
+    plugin: &mut CurrentPlugin,
+    inputs: &[Val],
+    _outputs: &mut [Val],
+    mut user_data: UserData,
+) -> Result<(), Error> {
+    let key: String = plugin.memory_get_val(&inputs[0])?;
+    let value: Vec<u8> = plugin.memory_get_val(&inputs[1])?;
 
-  def kv_write(plugin, inputs, _outputs, _user_data)
-    key = plugin.input_as_string(inputs.first)
-    val = plugin.input_as_string(inputs[1])
-    puts "Writing value=#{val.unpack1('V')} from key=#{key}"
-    KV_STORE[key] = val
-  end
-end
+    let kv = user_data.get_mut::<KVStore>().unwrap();
+    kv.lock().unwrap().insert(key, value);
+    Ok(())
+}
+
+fn main() {
+    // Pretend this is redis or something :)
+    let kv_store = KVStore::default();
+
+    // Wrap kv_read function
+    let kv_read = Function::new(
+        "kv_read",
+        [ValType::I64],
+        [ValType::I64],
+        Some(UserData::new(kv_store.clone())),
+        kv_read,
+    );
+
+    // Wrap kv_write function
+    let kv_write = Function::new(
+        "kv_write",
+        [ValType::I64, ValType::I64],
+        [],
+        Some(UserData::new(kv_store.clone())),
+        kv_write,
+    );
+
+    let url = Wasm::url(
+        "https://github.com/extism/plugins/releases/latest/download/count_vowels_kvstore.wasm",
+    );
+    let manifest = Manifest::new([url]);
+    let plugin = Plugin::new_with_manifest(&manifest, [kv_read, kv_write], true);
+}
 ```
 
-> *Note*: In order to write host functions you should get familiar with the methods on the [Extism::CurrentPlugin](https://extism.github.io/ruby-sdk/Extism/CurrentPlugin.html) class. The `plugin` parameter is an instance of this class.
-
-Now we just need to create a new host environment and pass it in when loading the plug-in. Here our environment initializer takes no arguments, but you could imagine putting some customer specific instance variables in there:
-
-```ruby
-env = KvEnvironment.new
-plugin = Extism::Plugin.new(manifest, environment: env)
-```
+> *Note*: In order to write host functions you should get familiar with the methods on the [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.CurrentPlugin.html) type.
 
 Now we can invoke the event:
 
-```ruby
-plugin.call("count_vowels", "Hello, World!")
+```rust
+let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+println!("{}", res);
 # => Read from key=count-vowels"
 # => Writing value=3 from key=count-vowels"
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
-plugin.call("count_vowels", "Hello, World!")
+
+let res = plugin.call::<String, String>::("count_vowels", "Hello, world!").unwrap();
+println!("{}", res);
 # => Read from key=count-vowels"
 # => Writing value=6 from key=count-vowels"
 # => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}

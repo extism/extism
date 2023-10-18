@@ -4,7 +4,7 @@ use extism::*;
 const COUNT_VOWELS: &[u8] = include_bytes!("../../wasm/code.wasm");
 const REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
 
-host_fn!(hello_world (a: String) -> String { a });
+host_fn!(hello_world (_plugin, a: String) -> String { a });
 
 pub fn basic(c: &mut Criterion) {
     let mut g = c.benchmark_group("basic");
