@@ -11,6 +11,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
         with:
+          fetch-depth: 50
           fetch-tags: true
 
       - name: Setup .NET Core SDK
