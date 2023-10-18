@@ -3,6 +3,8 @@
   <PropertyGroup>
     <PackageId>Extism.runtime.linux-musl-arm64</PackageId>
     <Description>Internal implementation package for Extism to work on Linux Musl ARM64</Description>
+    <IsPackable>true</IsPackable>
+    <MinVerTagPrefix>v</MinVerTagPrefix>
   </PropertyGroup>
 
   <ItemGroup>
@@ -11,5 +13,12 @@
       Pack="true"
       PackagePath="runtimes\linux-musl-arm64\native\libextism.so" />
   </ItemGroup>
+
+  <ItemGroup>
+		<PackageReference Include="MinVer" Version="4.3.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
 
 </Project>
