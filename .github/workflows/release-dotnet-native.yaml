@@ -45,6 +45,6 @@ jobs:
       - name: Publish NuGet packages
         run: |
           git tag
-          dotnet pack ./dotnet/nuget/Nuget.sln -o release-artifacts
+          find ./dotnet/nuget -type f -name "*.csproj" -exec dotnet pack {} -o release-artifacts \;
           ls release-artifacts
           # dotnet nuget push --source https://api.nuget.org/v3/index.json ./release-artifacts/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }}
