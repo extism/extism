@@ -15,7 +15,7 @@
 
 		<MinVerIgnoreHeight>true</MinVerIgnoreHeight>
 		<MinVerTagPrefix>v</MinVerTagPrefix>
-		<MinVerVerbosity>detailed</MinVerVerbosity>
+		<MinVerVerbosity>normal</MinVerVerbosity>
 	</PropertyGroup>
 
 	<ItemGroup>
