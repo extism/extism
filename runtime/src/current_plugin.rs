@@ -337,7 +337,7 @@ impl CurrentPlugin {
             )?;
             return Ok((handle.offset(), s.len() as u64));
         } else {
-            anyhow::bail!("extism:env::error_set not found");
+            anyhow::bail!("extism:host/env::error_set not found");
         }
     }
 
@@ -346,7 +346,7 @@ impl CurrentPlugin {
         let output = &mut [Val::I64(0)];
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_get") {
             if let Err(e) = f.into_func().unwrap().call(&mut store, &[], output) {
-                error!("unable to call extism:env::error_get: {:?}", e);
+                error!("unable to call extism:host/env::error_get: {:?}", e);
                 return (0, 0);
             }
         };
