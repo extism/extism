@@ -384,7 +384,7 @@ impl Plugin {
         if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV_MODULE, "reset") {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
         } else {
-            error!("Call to extism:env::reset failed");
+            error!("Call to extism:host/env::reset failed");
         }
 
         let handle = self.current_plugin_mut().memory_new(bytes)?;
@@ -747,7 +747,7 @@ impl Plugin {
                 .call(&mut store, &[Val::I64(0)], &mut [])
                 .unwrap();
         } else {
-            error!("Plugin::clear_error failed, extism:env::error_set not found")
+            error!("Plugin::clear_error failed, extism:host/env::error_set not found")
         }
     }
 
