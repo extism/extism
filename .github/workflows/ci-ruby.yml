@@ -1,12 +1,4 @@
 on: 
-  pull_request:
-    paths:
-      - .github/actions/extism/**
-      - .github/workflows/ci-ruby.yml
-      - manifest/**
-      - runtime/**
-      - libextism/**
-      - ruby/**
   workflow_dispatch:
 
 name: Ruby CI
