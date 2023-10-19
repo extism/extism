@@ -2,8 +2,8 @@ use std::collections::BTreeMap;
 
 use crate::*;
 
-pub const EXTISM_ENV_MODULE: &str = "extism:env";
-pub const EXTISM_USER_MODULE: &str = "extism:user";
+pub const EXTISM_ENV_MODULE: &str = "extism:host/env";
+pub const EXTISM_USER_MODULE: &str = "extism:host/user";
 
 #[derive(Default, Clone)]
 pub(crate) struct Output {

@@ -16,7 +16,7 @@ fn hex(data: &[u8]) -> String {
 
 #[allow(unused)]
 fn cache_add_file(hash: &str, data: &[u8]) -> Result<(), Error> {
-    let cache_dir = std::env::temp_dir().join("exitsm-cache");
+    let cache_dir = std::env::temp_dir().join("extism-cache");
     let _ = std::fs::create_dir(&cache_dir);
     let file = cache_dir.join(hash);
     if file.exists() {
@@ -27,7 +27,7 @@ fn cache_add_file(hash: &str, data: &[u8]) -> Result<(), Error> {
 }
 
 fn cache_get_file(hash: &str) -> Result<Option<Vec<u8>>, Error> {
-    let cache_dir = std::env::temp_dir().join("exitsm-cache");
+    let cache_dir = std::env::temp_dir().join("extism-cache");
     let file = cache_dir.join(hash);
     if file.exists() {
         let r = std::fs::read(file)?;
