@@ -1,0 +1,18 @@
+[package]
+name = "extism_nif"
+version = "0.3.0"
+edition = "2021"
+authors = ["Benjamin Eckel <bhelx@simst.im>"]
+
+[lib]
+name = "extism_nif"
+path = "src/lib.rs"
+crate-type = ["cdylib"]
+
+# need this to be here and be empty
+[workspace]
+
+[dependencies]
+rustler = "0.28.0"
+extism = {path = "../../../runtime"} # "0.5.0"
+log = "0.4"

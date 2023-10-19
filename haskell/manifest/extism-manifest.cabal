@@ -1,0 +1,21 @@
+cabal-version:      3.0
+name:               extism-manifest
+version:            0.3.0
+license:            BSD-3-Clause
+maintainer:         oss@extism.org
+author:             Extism authors
+bug-reports:        https://github.com/extism/extism
+synopsis:           Extism manifest bindings
+description:        Bindings to Extism WebAssembly manifest
+category:           Plugins, WebAssembly
+extra-doc-files: CHANGELOG.md
+
+library
+    exposed-modules:    Extism.Manifest Extism.JSON
+    hs-source-dirs:     .
+    default-language:   Haskell2010
+    build-depends:
+        base              >= 4.16.1 && < 5,
+        bytestring        >= 0.11.3 && <= 0.12,
+        json              >= 0.10 && <= 0.11,
+        base64-bytestring >= 1.2.1 && < 1.3,

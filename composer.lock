@@ -1,0 +1,163 @@
+{
+    "_readme": [
+        "This file locks the dependencies of your project to a known state",
+        "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
+        "This file is @generated automatically"
+    ],
+    "content-hash": "0e0352cd3a96e03fd9c964888deedb29",
+    "packages": [
+        {
+            "name": "ircmaxell/ffime",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ircmaxell/FFIMe.git",
+                "reference": "431a3c13d9906b974d50b13bf8295097ea000c5e"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ircmaxell/FFIMe/zipball/431a3c13d9906b974d50b13bf8295097ea000c5e",
+                "reference": "431a3c13d9906b974d50b13bf8295097ea000c5e",
+                "shasum": ""
+            },
+            "require": {
+                "ircmaxell/php-c-parser": "dev-master",
+                "ircmaxell/php-object-symbolresolver": "dev-master",
+                "php": ">=8.0"
+            },
+            "require-dev": {
+                "phpunit/phpunit": "^8.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "FFIMe\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Anthony Ferrara",
+                    "email": "ircmaxell@gmail.com"
+                }
+            ],
+            "description": "Make life easy when working with 7.4's FFI",
+            "support": {
+                "issues": "https://github.com/ircmaxell/FFIMe/issues",
+                "source": "https://github.com/ircmaxell/FFIMe/tree/master"
+            },
+            "time": "2023-04-03T00:43:12+00:00"
+        },
+        {
+            "name": "ircmaxell/php-c-parser",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ircmaxell/php-c-parser.git",
+                "reference": "29e0223704e4ee00c66f43506f5f52db151b3517"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ircmaxell/php-c-parser/zipball/29e0223704e4ee00c66f43506f5f52db151b3517",
+                "reference": "29e0223704e4ee00c66f43506f5f52db151b3517",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
+            },
+            "require-dev": {
+                "ircmaxell/php-yacc": "dev-master",
+                "phpunit/phpunit": "^8.0"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPCParser\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Anthony Ferrara",
+                    "email": "ircmaxell@gmail.com"
+                },
+                {
+                    "name": "Bob Weinand",
+                    "email": "bobwei9@hotmail.com"
+                }
+            ],
+            "description": "Parse C when using PHP",
+            "support": {
+                "issues": "https://github.com/ircmaxell/php-c-parser/issues",
+                "source": "https://github.com/ircmaxell/php-c-parser/tree/master"
+            },
+            "time": "2023-03-23T10:58:24+00:00"
+        },
+        {
+            "name": "ircmaxell/php-object-symbolresolver",
+            "version": "dev-master",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/ircmaxell/php-object-symbolresolver.git",
+                "reference": "dfe1b1aa6c15b198bdef50fff8485e98e89f2a09"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/ircmaxell/php-object-symbolresolver/zipball/dfe1b1aa6c15b198bdef50fff8485e98e89f2a09",
+                "reference": "dfe1b1aa6c15b198bdef50fff8485e98e89f2a09",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=7.4"
+            },
+            "default-branch": true,
+            "type": "library",
+            "autoload": {
+                "psr-4": {
+                    "PHPObjectSymbolResolver\\": "lib/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Anthony Ferrara",
+                    "email": "ircmaxell@gmail.com"
+                },
+                {
+                    "name": "Bob Weinand",
+                    "email": "bobwei9@hotmail.com"
+                }
+            ],
+            "description": "An object file (ELF, Mach-O) parser",
+            "support": {
+                "issues": "https://github.com/ircmaxell/php-object-symbolresolver/issues",
+                "source": "https://github.com/ircmaxell/php-object-symbolresolver/tree/master"
+            },
+            "time": "2022-09-15T18:21:50+00:00"
+        }
+    ],
+    "packages-dev": [],
+    "aliases": [],
+    "minimum-stability": "dev",
+    "stability-flags": {
+        "ircmaxell/ffime": 20
+    },
+    "prefer-stable": true,
+    "prefer-lowest": false,
+    "platform": {
+        "php": "^7.4 || ^8"
+    },
+    "platform-dev": [],
+    "plugin-api-version": "2.3.0"
+}
