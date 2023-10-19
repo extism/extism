@@ -1,0 +1,15 @@
+[target.'cfg(target_os = "macos")']
+rustflags = [
+    "-C", "link-arg=-undefined",
+    "-C", "link-arg=dynamic_lookup",
+]
+
+# See https://github.com/rust-lang/rust/issues/59302
+[target.x86_64-unknown-linux-musl]
+rustflags = [
+  "-C", "target-feature=-crt-static"
+]
+
+# Provides a small build size, but takes more time to build.
+[profile.release]
+lto = true
