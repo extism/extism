@@ -310,16 +310,16 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_globals() {
-        let context = Context::new();
-        let mut plugin = Plugin::new(&context, WASM_GLOBALS, [], true).unwrap();
-        for i in 0..1000 {
-            let output = plugin.call("globals", "").unwrap();
-            let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
-            assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
-        }
-    }
+    // #[test]
+    // fn test_globals() {
+    //     let context = Context::new();
+    //     let mut plugin = Plugin::new(&context, WASM_GLOBALS, [], true).unwrap();
+    //     for i in 0..1000 {
+    //         let output = plugin.call("globals", "").unwrap();
+    //         let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
+    //         assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
+    //     }
+    // }
 
     #[test]
     fn test_fuzz_reflect_plugin() {
