@@ -1,14 +1,16 @@
 package org.extism.sdk.support;
 
-import com.google.gson.*;
+import com.google.gson.FieldNamingPolicy;
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
+import com.google.gson.JsonParseException;
+import com.google.gson.TypeAdapter;
 import com.google.gson.stream.JsonReader;
 import com.google.gson.stream.JsonToken;
 import com.google.gson.stream.JsonWriter;
 import org.extism.sdk.manifest.Manifest;
 
 import java.io.IOException;
-import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
 import java.util.Base64;
 
 public class JsonSerde {

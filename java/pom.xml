@@ -51,16 +51,19 @@
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 
     <!-- dependencies -->
-    <jna.version>5.12.1</jna.version>
-    <gson.version>2.10</gson.version>
+    <jna.version>5.13.0</jna.version>
+    <gson.version>2.10.1</gson.version>
 
     <!-- testing -->
-    <junit-jupiter-engine.version>5.9.1</junit-jupiter-engine.version>
-    <assertj-core.version>3.23.1</assertj-core.version>
+    <junit-jupiter-engine.version>5.9.3</junit-jupiter-engine.version>
+    <assertj-core.version>3.24.2</assertj-core.version>
 
     <!-- maven plugins -->
-    <maven-compiler-plugin.version>3.10.1</maven-compiler-plugin.version>
-    <maven-surefire-plugin.version>2.22.2</maven-surefire-plugin.version>
+    <maven-compiler-plugin.version>3.11.0</maven-compiler-plugin.version>
+    <maven-surefire-plugin.version>3.1.2</maven-surefire-plugin.version>
+    <maven-javadoc-plugin.version>3.5.0</maven-javadoc-plugin.version>
+    <maven-source-plugin.version>3.2.1</maven-source-plugin.version>
+    <jreleaser-maven-plugin.version>1.8.0</jreleaser-maven-plugin.version>
 
     <!-- jreleaser -->
     <jreleaser.git.root.search>true</jreleaser.git.root.search>
@@ -74,7 +77,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-javadoc-plugin</artifactId>
-            <version>3.4.1</version>
+            <version>${maven-javadoc-plugin.version}</version>
             <configuration>
               <additionalJOption>-Xdoclint:none</additionalJOption>
             </configuration>
@@ -90,7 +93,7 @@
           <plugin>
             <groupId>org.apache.maven.plugins</groupId>
             <artifactId>maven-source-plugin</artifactId>
-            <version>3.2.1</version>
+            <version>${maven-source-plugin.version}</version>
             <executions>
               <execution>
                 <id>attach-source</id>
@@ -103,7 +106,7 @@
           <plugin>
             <groupId>org.jreleaser</groupId>
             <artifactId>jreleaser-maven-plugin</artifactId>
-            <version>1.3.1</version>
+            <version>${jreleaser-maven-plugin.version}</version>
             <configuration>
               <jreleaser>
                 <release>
@@ -181,13 +184,6 @@
       <groupId>org.assertj</groupId>
       <artifactId>assertj-core</artifactId>
       <version>${assertj-core.version}</version>
-      <scope>test</scope>
-    </dependency>
-
-    <dependency>
-      <groupId>uk.org.webcompere</groupId>
-      <artifactId>model-assert</artifactId>
-      <version>1.0.0</version>
       <scope>test</scope>
     </dependency>
   </dependencies>

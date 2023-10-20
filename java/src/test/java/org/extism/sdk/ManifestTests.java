@@ -1,44 +1,48 @@
 package org.extism.sdk;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import org.extism.sdk.manifest.Manifest;
 import org.extism.sdk.manifest.MemoryOptions;
 import org.extism.sdk.support.JsonSerde;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
-import java.util.HashMap;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.extism.sdk.TestWasmSources.CODE;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static uk.org.webcompere.modelassert.json.JsonAssertions.assertJson;
 
 public class ManifestTests {
 
     @Test
     public void shouldSerializeManifestWithWasmSourceToJson() {
-        var paths = new HashMap<String, String>();
-        paths.put("/tmp/foo", "/tmp/extism-plugins/foo");
+        var externalPath = "/tmp/foo";
+        var internalPath = "/tmp/extism-plugins/foo";
+        var paths = Map.of(externalPath, internalPath);
         var manifest = new Manifest(List.of(CODE.pathWasmSource()), null, null, null, paths);
-        var json = JsonSerde.toJson(manifest);
-        assertNotNull(json);
+        var jsonString = JsonSerde.toJson(manifest);
+        assertNotNull(jsonString);
 
-        assertJson(json).at("/wasm").isArray();
-        assertJson(json).at("/wasm").hasSize(1);
-        assertJson(json).at("/allowed_paths").isObject();
-        assertJson(json).at("/allowed_paths").hasSize(1);
+        var json = parseAsJsonObject(jsonString);
+        assertThat(json.get("wasm").isJsonArray()).isTrue();
+        assertThat(json.get("wasm").getAsJsonArray()).hasSize(1);
+        assertThat(json.get("allowed_paths").isJsonObject()).isTrue();
+        assertThat(json.get("allowed_paths").getAsJsonObject().get(externalPath).getAsString()).isEqualTo(internalPath);
     }
 
     @Test
     public void shouldSerializeManifestWithWasmSourceAndMemoryOptionsToJson() {
 
         var manifest = new Manifest(List.of(CODE.pathWasmSource()), new MemoryOptions(4));
-        var json = JsonSerde.toJson(manifest);
-        assertNotNull(json);
+        var jsonString = JsonSerde.toJson(manifest);
+        assertNotNull(jsonString);
 
-        assertJson(json).at("/wasm").isArray();
-        assertJson(json).at("/wasm").hasSize(1);
-        assertJson(json).at("/memory/max").isEqualTo(4);
+        var json = parseAsJsonObject(jsonString);
+        assertThat(json.get("wasm").isJsonArray()).isTrue();
+        assertThat(json.get("wasm").getAsJsonArray()).hasSize(1);
+        assertThat(json.get("memory").getAsJsonObject().get("max").getAsInt()).isEqualTo(4);
     }
 
     @Test
@@ -48,5 +52,9 @@ public class ManifestTests {
         var fileHash = CODE.pathWasmSource().hash();
 
         assertThat(byteHash).isEqualTo(fileHash);
+    }
+
+    private static JsonObject parseAsJsonObject(String json) {
+        return JsonParser.parseString(json).getAsJsonObject();
     }
 }

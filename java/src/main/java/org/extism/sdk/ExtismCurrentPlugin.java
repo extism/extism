@@ -5,7 +5,8 @@ import com.sun.jna.Pointer;
 import java.nio.charset.StandardCharsets;
 
 public class ExtismCurrentPlugin {
-    public Pointer pointer;
+
+    private final Pointer pointer;
 
     public ExtismCurrentPlugin(Pointer pointer) {
         this.pointer = pointer;
