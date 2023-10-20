@@ -113,7 +113,7 @@ pub trait InternalExt {
             .unwrap()
             .call(&mut store, &[Val::I64(n as i64)], output)?;
         let offs = output[0].unwrap_i64() as u64;
-        if offs == 0 {
+        if offs == 0 && n > 0 {
             anyhow::bail!("out of memory")
         }
         trace!("memory_alloc: {}, {}", offs, n);

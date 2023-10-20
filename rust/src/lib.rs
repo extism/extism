@@ -283,7 +283,7 @@ mod tests {
         });
 
         let start = std::time::Instant::now();
-        let _output = plugin.call("infinite_loop", "abc123");
+        let _output = plugin.call("infinite_loop", "");
         let end = std::time::Instant::now();
         let time = end - start;
         println!("Cancelled plugin ran for {:?}", time);
@@ -310,16 +310,16 @@ mod tests {
         }
     }
 
-    // #[test]
-    // fn test_globals() {
-    //     let context = Context::new();
-    //     let mut plugin = Plugin::new(&context, WASM_GLOBALS, [], true).unwrap();
-    //     for i in 0..1000 {
-    //         let output = plugin.call("globals", "").unwrap();
-    //         let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
-    //         assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
-    //     }
-    // }
+    #[test]
+    fn test_globals() {
+        let context = Context::new();
+        let mut plugin = Plugin::new(&context, WASM_GLOBALS, [], true).unwrap();
+        for i in 0..1000 {
+            let output = plugin.call("globals", "").unwrap();
+            let count: serde_json::Value = serde_json::from_slice(&output).unwrap();
+            assert_eq!(count.get("count").unwrap().as_i64().unwrap(), i);
+        }
+    }
 
     #[test]
     fn test_fuzz_reflect_plugin() {
