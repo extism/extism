@@ -110,6 +110,18 @@ impl CurrentPlugin {
         }
     }
 
+    /// Encode a Rust type into Extism memory and store it in the given `Val`, this can be used to return
+    /// values from host functions.    
+    pub fn memory_set_val<'a, T: ToBytes<'a>>(
+        &'a mut self,
+        offs: &mut Val,
+        data: T,
+    ) -> Result<(), Error> {
+        let mem = self.memory_new(data)?;
+        *offs = Val::I64(mem.offset as i64);
+        Ok(())
+    }
+
     pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
         let (linker, mut store) = self.linker_and_store();
         let mem = linker

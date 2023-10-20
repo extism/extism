@@ -20,7 +20,7 @@ pub mod sdk;
 
 pub use current_plugin::CurrentPlugin;
 pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
-pub use extism_manifest::Manifest;
+pub use extism_manifest::{Manifest, Wasm};
 pub use function::{Function, UserData, Val, ValType};
 pub use plugin::{CancelHandle, Plugin};
 pub use plugin_builder::PluginBuilder;

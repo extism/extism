@@ -8,6 +8,9 @@ use crate::*;
 pub type ExtismMemoryHandle = u64;
 pub type Size = u64;
 
+/// The return code used to specify a successful plugin call
+pub static EXTISM_SUCCESS: i32 = 0;
+
 /// A union type for host function argument/return values
 #[repr(C)]
 pub union ValUnion {
@@ -67,7 +70,7 @@ impl From<&wasmtime::Val> for ExtismVal {
     }
 }
 
-/// Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUID value
+/// Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUIDv4
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_id(plugin: *mut Plugin) -> *const u8 {
     if plugin.is_null() {
@@ -230,6 +233,9 @@ pub unsafe extern "C" fn extism_function_new(
 /// Free `ExtismFunction`
 #[no_mangle]
 pub unsafe extern "C" fn extism_function_free(f: *mut Function) {
+    if f.is_null() {
+        return;
+    }
     drop(Box::from_raw(f))
 }
 
@@ -329,7 +335,10 @@ pub unsafe extern "C" fn extism_plugin_cancel(handle: *const CancelHandle) -> bo
     handle.cancel().is_ok()
 }
 
-/// Update plugin config values, this will merge with the existing values
+/// Update plugin config values.
+//
+// This will merge with the existing values, if an existing value is set to `null` it will
+// be removed
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_config(
     plugin: *mut Plugin,
