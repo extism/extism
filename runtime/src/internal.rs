@@ -105,7 +105,7 @@ pub trait InternalExt {
 
     fn memory_alloc(&mut self, n: Size) -> Result<u64, Error> {
         if n == 0 {
-            return Ok(0)
+            return Ok(0);
         }
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
