@@ -200,6 +200,7 @@ pub(crate) fn http_request(
                 Some(res.into_reader())
             }
             Err(e) => {
+                log::error!("Unable to make HTTP request: {:?}", e);
                 if let Some(res) = e.into_response() {
                     data.http_status = res.status();
                     Some(res.into_reader())
