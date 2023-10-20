@@ -104,6 +104,9 @@ pub trait InternalExt {
     }
 
     fn memory_alloc(&mut self, n: Size) -> Result<u64, Error> {
+        if n == 0 {
+            return Ok(0);
+        }
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
         linker
@@ -113,7 +116,7 @@ pub trait InternalExt {
             .unwrap()
             .call(&mut store, &[Val::I64(n as i64)], output)?;
         let offs = output[0].unwrap_i64() as u64;
-        if offs == 0 {
+        if offs == 0 && n > 0 {
             anyhow::bail!("out of memory")
         }
         trace!("memory_alloc: {}, {}", offs, n);

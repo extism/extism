@@ -283,7 +283,7 @@ mod tests {
         });
 
         let start = std::time::Instant::now();
-        let _output = plugin.call("infinite_loop", "abc123");
+        let _output = plugin.call("infinite_loop", "");
         let end = std::time::Instant::now();
         let time = end - start;
         println!("Cancelled plugin ran for {:?}", time);
