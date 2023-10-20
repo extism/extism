@@ -267,7 +267,7 @@ impl MemoryRoot {
 
         // Get the number of bytes available
         let mem_left = self_length - self_position - core::mem::size_of::<MemoryRoot>() as u64;
-        let mem_left = mem_left + 400;
+        let mem_left = mem_left - 400;
 
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
