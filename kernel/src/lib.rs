@@ -125,9 +125,9 @@ pub fn num_pages(nbytes: u64) -> usize {
     let npages = nbytes / PAGE_SIZE as u64;
     let remainder = nbytes % PAGE_SIZE as u64;
     if remainder != 0 {
-        (npages + 2) as usize
-    } else {
         (npages + 1) as usize
+    } else {
+        npages as usize
     }
 }
 
@@ -267,6 +267,7 @@ impl MemoryRoot {
 
         // Get the number of bytes available
         let mem_left = self_length - self_position - core::mem::size_of::<MemoryRoot>() as u64;
+        let mem_left = mem_left + 1;
 
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
