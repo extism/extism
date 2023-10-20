@@ -125,9 +125,9 @@ pub fn num_pages(nbytes: u64) -> usize {
     let npages = nbytes / PAGE_SIZE as u64;
     let remainder = nbytes % PAGE_SIZE as u64;
     if remainder != 0 {
-        (npages + 1) as usize
+        (npages + 2) as usize
     } else {
-        npages as usize
+        (npages + 1) as usize
     }
 }
 
