@@ -213,7 +213,7 @@ pub struct Manifest {
     pub allowed_hosts: Option<Vec<String>>,
 
     /// Specifies which paths should be made available on disk when using WASI. This is a mapping from
-    /// this is a mapping from the path on disk to the path it should be available inside the plugin.
+    /// the path on disk to the path it should be available inside the plugin.
     /// For example, `".": "/tmp"` would mount the current directory as `/tmp` inside the module
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
