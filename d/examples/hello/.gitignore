@@ -1,0 +1,17 @@
+.dub
+docs.json
+__dummy.html
+docs/
+/extism_hello
+/hello
+hello.so
+hello.dylib
+hello.dll
+hello.a
+hello.lib
+hello-test-*
+*.exe
+*.pdb
+*.o
+*.obj
+*.lst

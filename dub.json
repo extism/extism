@@ -1,0 +1,23 @@
+{
+	"name": "extism",
+	"description": "The Universal Plug-in System. Extend anything with WebAssembly (wasm).",
+	"license": "BSD-3-Clause",
+	"authors": [
+		"Chance Snow <git@chancesnow.me>",
+		"Extism contributors"
+	],
+	"copyright": "Copyright © 2023, Extism contributors",
+	"toolchainRequirements": {
+		"frontend": ">=2.102"
+	},
+	"targetPath": "target",
+	"sourceFiles": ["d/extism.d"],
+	"importPaths": ["d"],
+	"systemDependencies": "extism >= 0.4.0",
+	"targetType": "sourceLibrary",
+	"subPackages": [
+		"d/examples/hello"
+	],
+	"dflags": ["-P-I$EXTISM_PACKAGE_DIR"],
+	"libs": ["extism"]
+}

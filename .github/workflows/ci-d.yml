@@ -1,0 +1,36 @@
+on: 
+  pull_request:
+    paths:
+      - .github/actions/extism/**
+      - .github/workflows/ci-d.yml
+      - manifest/**
+      - runtime/**
+      - libextism/**
+      - d/**
+  workflow_dispatch:
+
+name: D CI
+
+jobs:
+  d:
+    name: D
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        # TODO: Use multiple versions once stable
+        d_version: [ldc-1.33.0]
+        rust:
+          - stable
+    steps:
+      - uses: actions/checkout@v3
+      - uses: ./.github/actions/extism
+      - name: Setup D environment
+        uses: dlang-community/setup-dlang@v1
+        with:
+          compiler: ${{ matrix.d_version }}
+
+      - name: Test D Host SDK
+        run: |
+          dub --version
+          LD_LIBRARY_PATH=/usr/local/lib dub test
