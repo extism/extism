@@ -25,7 +25,7 @@ The universal plug-in system. Run WebAssembly extensions inside your app. Use id
 [D](https://github.com/extism/d-sdk#readme),
 &amp; more (others coming soon).
 
-Plug-in development kits (PDK) for plug-in authors supported in [Rust](https://github.com/extism/rust-pdk#readme), [AssemblyScript](https://github.com/extism/assemblyscript-pdk#readme), [Go](https://github.com/extism/go-pdk#readme), [C/C++](https://github.com/extism/c-pdk#readme), [Haskell](https://github.com/extism/haskell-pdk#readme), [JavaScript](https://github.com/extism/js-pdk#readme), and [Zig](https://github.com/extism/zig-pdk#readme).
+Plug-in development kits (PDK) for plug-in authors supported in [Rust](https://github.com/extism/rust-pdk#readme), [AssemblyScript](https://github.com/extism/assemblyscript-pdk#readme), [Go](https://github.com/extism/go-pdk#readme), [C/C++](https://github.com/extism/c-pdk#readme), [Haskell](https://github.com/extism/haskell-pdk#readme), [JavaScript](https://github.com/extism/js-pdk#readme), [C#](https://github.com/extism/dotnet-pdk#readme), [F#](https://github.com/extism/dotnet-pdk#readme) and [Zig](https://github.com/extism/zig-pdk#readme).
 
 <p align="center">
   <img style="width: 70%;" src="https://user-images.githubusercontent.com/7517515/210286900-39b144fd-1b26-4dd0-b7a9-2b5755bc174d.png" alt="Extism embedded SDK language support"/>
