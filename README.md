@@ -13,7 +13,7 @@ The universal plug-in system. Run WebAssembly extensions inside your app. Use id
 [Python](https://github.com/extism/python-sdk#readme),
 [JavaScript](https://github.com/extism/js-sdk#readme),
 [Rust](/runtime/#readme),
-[C](c/#readme),
+[C](libextism/#readme),
 [C++](cpp/#readme),
 [OCaml](https://github.com/extism/ocaml-sdk#readme),
 [Haskell](https://github.com/extism/haskell-sdk#readme),
