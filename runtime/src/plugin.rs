@@ -671,15 +671,22 @@ impl Plugin {
                     }
                 }
 
-                if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
-                    trace!("WASI exit code: {}", exit.0);
-                    if exit.0 == 0 && msg.is_none() {
+                let wasi_exit_code = e
+                    .downcast_ref::<wasmtime_wasi::I32Exit>()
+                    .map(|e| e.0)
+                    .or_else(|| {
+                        e.downcast_ref::<wasmtime_wasi::preview2::I32Exit>()
+                            .map(|e| e.0)
+                    });
+                if let Some(exit_code) = wasi_exit_code {
+                    trace!("WASI exit code: {}", exit_code);
+                    if exit_code == 0 && msg.is_none() {
                         return Ok(0);
                     }
 
                     return Err((
                         Error::msg(msg.unwrap_or_else(|| "WASI exit code".to_string())),
-                        exit.0,
+                        exit_code,
                     ));
                 }
 
