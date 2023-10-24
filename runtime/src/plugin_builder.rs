@@ -6,7 +6,7 @@ enum Source {
 }
 
 #[derive(Default, Clone)]
-pub struct DebugOptions {
+pub(crate) struct DebugOptions {
     pub(crate) profiling_strategy: Option<wasmtime::ProfilingStrategy>,
     pub(crate) coredump: Option<std::path::PathBuf>,
     pub(crate) memdump: Option<std::path::PathBuf>,
