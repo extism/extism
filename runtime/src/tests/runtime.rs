@@ -238,7 +238,7 @@ fn test_typed_plugin_macro() {
         hello_world,
     );
 
-    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().into();
+    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().try_into().unwrap();
 
     let Json(output0): Json<Count> = plugin.count_vowels("abc123").unwrap();
     let Json(output1): Json<Count> = plugin.0.call("count_vowels", "abc123").unwrap();
@@ -256,7 +256,7 @@ fn test_multiple_instantiations() {
         hello_world,
     );
 
-    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().into();
+    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().try_into().unwrap();
 
     // This is 10,001 because the wasmtime store limit is 10,000 - we want to test
     // that our reinstantiation process is working and that limit is never hit.

@@ -143,10 +143,7 @@ impl Plugin {
             Config::new()
                 .epoch_interruption(true)
                 .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
-                .coredump_on_trap(
-                    std::env::var("EXTISM_COREDUMP").is_ok()
-                        || std::env::var("EXTISM_DUMP_MEMORY").is_ok(),
-                )
+                .coredump_on_trap(std::env::var("EXTISM_COREDUMP").is_ok())
                 .profiler(profiling_strategy()),
         )?;
         let mut imports = imports.into_iter();
@@ -636,7 +633,7 @@ impl Plugin {
                         }
                         debug!("Dumping memory to {}", file);
                         let data = memory.data(&mut self.store);
-                        if let Err(e) = std::fs::write(file, data) {
+                        if let Err(e) = std::fs::write(file, &data) {
                             error!("Unable to write memory dump: {:?}", e);
                         }
                     } else {
@@ -775,7 +772,7 @@ pub(crate) enum GuestRuntime {
 ///
 /// # const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
 /// // Convert from `Plugin` to `MyPlugin`
-/// let mut plugin: MyPlugin = extism::Plugin::new(WASM, [], true).unwrap().into();
+/// let mut plugin: MyPlugin = extism::Plugin::new(WASM, [], true).unwrap().try_into().unwrap();
 /// // and call the `count_vowels` function
 /// let count = plugin.count_vowels("this is a test").unwrap();
 /// ```
@@ -787,9 +784,15 @@ macro_rules! typed_plugin {
         unsafe impl Send for $name {}
         unsafe impl Sync for $name {}
 
-        impl From<$crate::Plugin> for $name {
-            fn from(x: $crate::Plugin) -> Self {
-                $name(x)
+        impl TryFrom<$crate::Plugin> for $name {
+            type Error = $crate::Error;
+            fn try_from(mut x: $crate::Plugin) -> Result<Self, Self::Error> {
+                $(
+                    if !x.function_exists(stringify!($f)) {
+                        return Err($crate::Error::msg(format!("Invalid function: {}", stringify!($f))));
+                    }
+                )*
+                Ok($name(x))
             }
         }
 
