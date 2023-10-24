@@ -67,9 +67,6 @@ static mut ERROR: AtomicU64 = AtomicU64::new(0);
 /// Determines if the kernel has been initialized already
 static mut INITIALIZED: AtomicBool = AtomicBool::new(false);
 
-/// A pointer to the first page that will be managed by Extism, this is set during initialization
-static mut START_PAGE: usize = 0;
-
 /// Provides information about the usage status of a `MemoryBlock`
 #[repr(u8)]
 #[derive(PartialEq)]
@@ -131,10 +128,10 @@ pub fn num_pages(nbytes: u64) -> usize {
     }
 }
 
-// Get the `MemoryRoot` at the correct offset in memory
+// Get the `MemoryRoot`, this is always stored at offset 1 in memory
 #[inline]
 unsafe fn memory_root() -> &'static mut MemoryRoot {
-    &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRoot)
+    &mut *(1 as *mut MemoryRoot)
 }
 
 impl MemoryRoot {
@@ -150,9 +147,10 @@ impl MemoryRoot {
         }
 
         // Ensure that at least one page is allocated to store the `MemoryRoot` data
-        START_PAGE = core::arch::wasm32::memory_grow(0, 1);
-        if START_PAGE == usize::MAX {
-            panic!("Out of memory");
+        if core::arch::wasm32::memory_size(0) == 0 {
+            if core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
+                panic!("Out of memory");
+            }
         }
 
         // Initialize the `MemoryRoot` length, position and data
