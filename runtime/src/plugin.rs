@@ -108,18 +108,14 @@ const EXPORT_MODULE_NAME: &str = "env";
 fn profiling_strategy() -> ProfilingStrategy {
     match std::env::var("EXTISM_PROFILE").as_deref() {
         Ok("perf") => ProfilingStrategy::PerfMap,
+        Ok("jitdump") => ProfilingStrategy::JitDump,
+        Ok("vtune") => ProfilingStrategy::VTune,
         Ok(x) => {
             log::warn!("Invalid value for EXTISM_PROFILE: {x}");
             ProfilingStrategy::None
         }
         Err(_) => ProfilingStrategy::None,
     }
-}
-
-// Raise an error when the epoch deadline is encountered - this is used for timeout/cancellation
-// to stop a plugin that is executing
-fn deadline_callback(_: StoreContextMut<CurrentPlugin>) -> Result<UpdateDeadline, Error> {
-    Err(Error::msg("timeout"))
 }
 
 impl Plugin {
@@ -147,6 +143,7 @@ impl Plugin {
             Config::new()
                 .epoch_interruption(true)
                 .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
+                .coredump_on_trap(std::env::var("EXTISM_COREDUMP").is_ok())
                 .profiler(profiling_strategy()),
         )?;
         let mut imports = imports.into_iter();
@@ -576,7 +573,6 @@ impl Plugin {
                     .map(std::time::Duration::from_millis),
             })
             .unwrap();
-        self.store.epoch_deadline_callback(deadline_callback);
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
@@ -592,16 +588,6 @@ impl Plugin {
         self.get_output_after_call();
         self.needs_reset = name == "_start";
 
-        if self.output.error_offset != 0 && self.output.error_length != 0 {
-            let handle = MemoryHandle {
-                offset: self.output.error_offset,
-                length: self.output.error_length,
-            };
-            if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
-                return Err((Error::msg(e.to_string()), -1));
-            }
-        }
-
         match res {
             Ok(()) => {
                 // If `results` is empty and the return value wasn't a WASI exit code then
@@ -610,27 +596,70 @@ impl Plugin {
                     return Ok(0);
                 }
 
+                if self.output.error_offset != 0 && self.output.error_length != 0 {
+                    let handle = MemoryHandle {
+                        offset: self.output.error_offset,
+                        length: self.output.error_length,
+                    };
+                    if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
+                        return Err((Error::msg(e.to_string()), -1));
+                    }
+                }
+
                 // Return result to caller
                 Ok(0)
             }
-            Err(e) => match e.downcast::<wasmtime_wasi::I32Exit>() {
-                Ok(exit) => {
-                    trace!("WASI return code: {}", exit.0);
-                    if exit.0 != 0 {
-                        return Err((Error::msg("WASI return code"), exit.0));
+            Err(e) => {
+                if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
+                    if let Ok(mut file) = std::env::var("EXTISM_COREDUMP") {
+                        if file.is_empty() {
+                            file = "extism.coredump".to_string();
+                        }
+                        if let Err(e) =
+                            std::fs::write(file, coredump.serialize(self.store_mut(), "extism"))
+                        {
+                            error!("Unable to write coredump: {:?}", e);
+                        }
                     }
-                    return Ok(0);
                 }
-                Err(e) => {
-                    let cause = e.root_cause().to_string();
-                    if cause == "timeout" || cause == "oom" {
-                        return Err((Error::msg(cause), -1));
+
+                let mut msg = None;
+
+                if self.output.error_offset != 0 && self.output.error_length != 0 {
+                    let handle = MemoryHandle {
+                        offset: self.output.error_offset,
+                        length: self.output.error_length,
+                    };
+                    if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
+                        msg = Some(e.to_string());
+                    }
+                }
+
+                if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
+                    trace!("WASI return code: {}", exit.0);
+                    if exit.0 == 0 {
+                        return Ok(0);
                     }
 
-                    error!("Call: {e:?}");
-                    return Err((e.context("Call failed"), -1));
+                    return Err((Error::msg("WASI return code"), exit.0));
                 }
-            },
+
+                if let Some(wasmtime::Trap::Interrupt) = e.downcast_ref::<wasmtime::Trap>() {
+                    trace!("Call to {name} timed out");
+                    return Err((Error::msg("timeout"), -1));
+                }
+
+                let cause = e.root_cause().to_string();
+                if cause == "oom" {
+                    return Err((Error::msg(cause), -1));
+                }
+
+                error!("Call to {name} encountered an error: {e:?}");
+                return Err((
+                    e.context(msg.unwrap_or_else(|| "Error in Extism plugin call".to_string())),
+                    -1,
+                ));
+            }
         }
     }
 

@@ -214,7 +214,9 @@ fn test_timeout() {
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Timed out plugin ran for {:?}", time);
-    assert!(output.unwrap_err().root_cause().to_string() == "timeout");
+    let s = output.unwrap_err().root_cause().to_string();
+    println!("{}", s);
+    assert!(s == "timeout");
     // std::io::stdout().write_all(output).unwrap();
 }
 
@@ -314,7 +316,10 @@ fn test_memory_max() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_err());
-    assert!(output.unwrap_err().root_cause().to_string() == "oom");
+
+    let err = output.unwrap_err().root_cause().to_string();
+    println!("{:?}", err);
+    assert_eq!(err, "oom");
 
     // Should pass with memory.max set to a large enough number
     let manifest =
