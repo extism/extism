@@ -143,7 +143,10 @@ impl Plugin {
             Config::new()
                 .epoch_interruption(true)
                 .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
-                .coredump_on_trap(std::env::var("EXTISM_COREDUMP").is_ok())
+                .coredump_on_trap(
+                    std::env::var("EXTISM_COREDUMP").is_ok()
+                        || std::env::var("EXTISM_DUMP_MEMORY").is_ok(),
+                )
                 .profiler(profiling_strategy()),
         )?;
         let mut imports = imports.into_iter();
@@ -612,15 +615,32 @@ impl Plugin {
             Err(e) => {
                 if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
                     if let Ok(mut file) = std::env::var("EXTISM_COREDUMP") {
-                        debug!("Saving coredump to {}", file);
                         if file.is_empty() {
-                            file = "extism.coredump".to_string();
+                            file = "extism.core".to_string();
                         }
+                        debug!("Saving coredump to {}", file);
+
                         if let Err(e) =
                             std::fs::write(file, coredump.serialize(self.store_mut(), "extism"))
                         {
                             error!("Unable to write coredump: {:?}", e);
                         }
+                    }
+                }
+
+                if let Ok(mut file) = std::env::var("EXTISM_DUMP_MEMORY") {
+                    debug!("Memory dump enabled");
+                    if let Some(memory) = self.current_plugin_mut().memory() {
+                        if file.is_empty() {
+                            file = "extism.memory".to_string();
+                        }
+                        debug!("Dumping memory to {}", file);
+                        let data = memory.data(&mut self.store);
+                        if let Err(e) = std::fs::write(file, data) {
+                            error!("Unable to write memory dump: {:?}", e);
+                        }
+                    } else {
+                        error!("Unable to get extism memory for writing to disk");
                     }
                 }
 

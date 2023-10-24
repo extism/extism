@@ -20,7 +20,8 @@ extism = "*"
 There are a few environment variables that can be used for debugging purposes:
 
 - `EXTISM_ENABLE_WASI_OUTPUT=1`: show WASI stdout/stderr
-- `EXTISM_COREDUMP=extism.coredump`: write coredump to a file when a WebAssembly function traps
+- `EXTISM_DUMP_MEMORY=extism.memory`: dump Extism linear memory to a file
+- `EXTISM_COREDUMP=extism.core`: write [coredump](https://github.com/WebAssembly/tool-conventions/blob/main/Coredump.md) to a file when a WebAssembly function traps
 - `EXTISM_DEBUG=1`: generate debug information
 - `EXTISM_PROFILE=perf|jitdump|vtune`: enable Wasmtime profiling
 
