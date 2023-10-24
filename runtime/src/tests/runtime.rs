@@ -361,3 +361,47 @@ fn test_extism_error() {
     assert!(output.is_err());
     assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
 }
+
+#[test]
+fn test_extism_memdump() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world_set_error,
+    );
+    let mut plugin = PluginBuilder::new_with_module(WASM)
+        .with_wasi(true)
+        .with_functions([f])
+        .with_memdump("extism.mem")
+        .build()
+        .unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+    assert!(output.is_err());
+    assert!(std::path::PathBuf::from("extism.mem").exists());
+    let _ = std::fs::remove_file("extism.mem");
+}
+
+#[test]
+fn test_extism_coredump() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world_set_error,
+    );
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
+        .with_timeout(std::time::Duration::from_secs(1));
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_wasi(true)
+        .with_functions([f])
+        .with_coredump("extism.core")
+        .build()
+        .unwrap();
+    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    assert!(output.is_err());
+    assert!(std::path::PathBuf::from("extism.core").exists());
+    let _ = std::fs::remove_file("extism.core");
+}

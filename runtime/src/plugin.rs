@@ -70,6 +70,8 @@ pub struct Plugin {
     /// Set to `true` when de-initializarion may have occured (i.e.a call to `_start`),
     /// in this case we need to re-initialize the entire module.
     pub(crate) needs_reset: bool,
+
+    pub(crate) debug_options: DebugOptions,
 }
 
 unsafe impl Send for Plugin {}
@@ -137,14 +139,36 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        // Create a new engine, if the `EXTISM_DEBUG` environment variable is set
-        // then we enable debug info
+        Self::build_new(wasm, imports, with_wasi, Default::default())
+    }
+
+    pub(crate) fn build_new(
+        wasm: impl AsRef<[u8]>,
+        imports: impl IntoIterator<Item = Function>,
+        with_wasi: bool,
+        mut debug_options: DebugOptions,
+    ) -> Result<Plugin, Error> {
+        // Configure debug options
+        debug_options.debug_info =
+            debug_options.debug_info || std::env::var("EXTISM_DEBUG").is_ok();
+        if let Ok(x) = std::env::var("EXTISM_COREDUMP") {
+            debug_options.coredump = Some(std::path::PathBuf::from(x));
+        };
+        if let Ok(x) = std::env::var("EXTISM_MEMDUMP") {
+            debug_options.memdump = Some(std::path::PathBuf::from(x));
+        };
+        let profiling_strategy = debug_options
+            .profiling_strategy
+            .map_or(ProfilingStrategy::None, |_| profiling_strategy());
+        debug_options.profiling_strategy = Some(profiling_strategy.clone());
+
+        // Setup wasmtime types
         let engine = Engine::new(
             Config::new()
                 .epoch_interruption(true)
-                .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
-                .coredump_on_trap(std::env::var("EXTISM_COREDUMP").is_ok())
-                .profiler(profiling_strategy()),
+                .debug_info(debug_options.debug_info)
+                .coredump_on_trap(debug_options.coredump.is_some())
+                .profiler(profiling_strategy),
         )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
@@ -242,6 +266,7 @@ impl Plugin {
             output: Output::default(),
             _functions: imports.collect(),
             needs_reset: false,
+            debug_options,
         };
 
         plugin.current_plugin_mut().store = &mut plugin.store;
@@ -576,7 +601,7 @@ impl Plugin {
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
-        let res = func.call(self.store_mut(), &[], results.as_mut_slice());
+        let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Stop timer
         self.timer_tx
@@ -588,6 +613,27 @@ impl Plugin {
         self.get_output_after_call();
         self.needs_reset = name == "_start";
 
+        let mut msg = None;
+
+        if self.output.error_offset != 0 && self.output.error_length != 0 {
+            let handle = MemoryHandle {
+                offset: self.output.error_offset,
+                length: self.output.error_length,
+            };
+            if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
+                let x = e.to_string();
+                error!("Call to {name} returned with error message: {}", x);
+
+                // If `res` is `Ok` and there is an error message set, then convert the response
+                // to an `Error`
+                if res.is_ok() {
+                    res = Err(Error::msg(x));
+                } else {
+                    msg = Some(x);
+                }
+            }
+        }
+
         match res {
             Ok(()) => {
                 // If `results` is empty and the return value wasn't a WASI exit code then
@@ -596,26 +642,13 @@ impl Plugin {
                     return Ok(0);
                 }
 
-                if self.output.error_offset != 0 && self.output.error_length != 0 {
-                    let handle = MemoryHandle {
-                        offset: self.output.error_offset,
-                        length: self.output.error_length,
-                    };
-                    if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
-                        return Err((Error::msg(e.to_string()), -1));
-                    }
-                }
-
                 // Return result to caller
                 Ok(0)
             }
             Err(e) => {
                 if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
-                    if let Ok(mut file) = std::env::var("EXTISM_COREDUMP") {
-                        if file.is_empty() {
-                            file = "extism.core".to_string();
-                        }
-                        debug!("Saving coredump to {}", file);
+                    if let Some(file) = self.debug_options.coredump.clone() {
+                        debug!("Saving coredump to {}", file.display());
 
                         if let Err(e) =
                             std::fs::write(file, coredump.serialize(self.store_mut(), "extism"))
@@ -625,33 +658,16 @@ impl Plugin {
                     }
                 }
 
-                if let Ok(mut file) = std::env::var("EXTISM_MEMDUMP") {
+                if let Some(file) = &self.debug_options.memdump.clone() {
                     trace!("Memory dump enabled");
                     if let Some(memory) = self.current_plugin_mut().memory() {
-                        if file.is_empty() {
-                            file = "extism.mem".to_string();
-                        }
-                        debug!("Dumping memory to {}", file);
+                        debug!("Dumping memory to {}", file.display());
                         let data = memory.data(&mut self.store);
                         if let Err(e) = std::fs::write(file, &data) {
                             error!("Unable to write memory dump: {:?}", e);
                         }
                     } else {
                         error!("Unable to get extism memory for writing to disk");
-                    }
-                }
-
-                let mut msg = None;
-
-                if self.output.error_offset != 0 && self.output.error_length != 0 {
-                    let handle = MemoryHandle {
-                        offset: self.output.error_offset,
-                        length: self.output.error_length,
-                    };
-                    if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
-                        let x = e.to_string();
-                        error!("Call to {name} returned with error message: {}", x);
-                        msg = Some(x);
                     }
                 }
 

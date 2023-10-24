@@ -23,7 +23,7 @@ pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
 pub use extism_manifest::{Manifest, Wasm};
 pub use function::{Function, UserData, Val, ValType};
 pub use plugin::{CancelHandle, Plugin};
-pub use plugin_builder::PluginBuilder;
+pub use plugin_builder::{DebugOptions, PluginBuilder};
 
 pub(crate) use internal::{Internal, Wasi};
 pub(crate) use log::{debug, error, trace};
