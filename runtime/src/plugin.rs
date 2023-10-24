@@ -625,11 +625,11 @@ impl Plugin {
                     }
                 }
 
-                if let Ok(mut file) = std::env::var("EXTISM_DUMP_MEMORY") {
-                    debug!("Memory dump enabled");
+                if let Ok(mut file) = std::env::var("EXTISM_MEMDUMP") {
+                    trace!("Memory dump enabled");
                     if let Some(memory) = self.current_plugin_mut().memory() {
                         if file.is_empty() {
-                            file = "extism.memory".to_string();
+                            file = "extism.mem".to_string();
                         }
                         debug!("Dumping memory to {}", file);
                         let data = memory.data(&mut self.store);
