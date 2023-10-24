@@ -612,6 +612,7 @@ impl Plugin {
             Err(e) => {
                 if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
                     if let Ok(mut file) = std::env::var("EXTISM_COREDUMP") {
+                        debug!("Saving coredump to {}", file);
                         if file.is_empty() {
                             file = "extism.coredump".to_string();
                         }
@@ -631,24 +632,31 @@ impl Plugin {
                         length: self.output.error_length,
                     };
                     if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
-                        msg = Some(e.to_string());
+                        let x = e.to_string();
+                        error!("Call to {name} returned with error message: {}", x);
+                        msg = Some(x);
                     }
                 }
 
                 if let Some(exit) = e.downcast_ref::<wasmtime_wasi::I32Exit>() {
-                    trace!("WASI return code: {}", exit.0);
-                    if exit.0 == 0 {
+                    trace!("WASI exit code: {}", exit.0);
+                    if exit.0 == 0 && msg.is_none() {
                         return Ok(0);
                     }
 
-                    return Err((Error::msg("WASI return code"), exit.0));
+                    return Err((
+                        Error::msg(msg.unwrap_or_else(|| "WASI exit code".to_string())),
+                        exit.0,
+                    ));
                 }
 
+                // Handle timeout interrupts
                 if let Some(wasmtime::Trap::Interrupt) = e.downcast_ref::<wasmtime::Trap>() {
                     trace!("Call to {name} timed out");
                     return Err((Error::msg("timeout"), -1));
                 }
 
+                // Handle out-of-memory error from `MemoryLimiter`
                 let cause = e.root_cause().to_string();
                 if cause == "oom" {
                     return Err((Error::msg(cause), -1));
