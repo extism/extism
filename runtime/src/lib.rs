@@ -27,6 +27,7 @@ pub use plugin_builder::PluginBuilder;
 
 pub(crate) use internal::{Internal, Wasi};
 pub(crate) use log::{debug, error, trace};
+pub(crate) use plugin_builder::DebugOptions;
 pub(crate) use timer::{Timer, TimerAction};
 
 #[cfg(test)]

@@ -70,6 +70,8 @@ pub struct Plugin {
     /// Set to `true` when de-initializarion may have occured (i.e.a call to `_start`),
     /// in this case we need to re-initialize the entire module.
     pub(crate) needs_reset: bool,
+
+    pub(crate) debug_options: DebugOptions,
 }
 
 unsafe impl Send for Plugin {}
@@ -108,18 +110,14 @@ const EXPORT_MODULE_NAME: &str = "env";
 fn profiling_strategy() -> ProfilingStrategy {
     match std::env::var("EXTISM_PROFILE").as_deref() {
         Ok("perf") => ProfilingStrategy::PerfMap,
+        Ok("jitdump") => ProfilingStrategy::JitDump,
+        Ok("vtune") => ProfilingStrategy::VTune,
         Ok(x) => {
             log::warn!("Invalid value for EXTISM_PROFILE: {x}");
             ProfilingStrategy::None
         }
         Err(_) => ProfilingStrategy::None,
     }
-}
-
-// Raise an error when the epoch deadline is encountered - this is used for timeout/cancellation
-// to stop a plugin that is executing
-fn deadline_callback(_: StoreContextMut<CurrentPlugin>) -> Result<UpdateDeadline, Error> {
-    Err(Error::msg("timeout"))
 }
 
 impl Plugin {
@@ -141,13 +139,36 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        // Create a new engine, if the `EXTISM_DEBUG` environment variable is set
-        // then we enable debug info
+        Self::build_new(wasm, imports, with_wasi, Default::default())
+    }
+
+    pub(crate) fn build_new(
+        wasm: impl AsRef<[u8]>,
+        imports: impl IntoIterator<Item = Function>,
+        with_wasi: bool,
+        mut debug_options: DebugOptions,
+    ) -> Result<Plugin, Error> {
+        // Configure debug options
+        debug_options.debug_info =
+            debug_options.debug_info || std::env::var("EXTISM_DEBUG").is_ok();
+        if let Ok(x) = std::env::var("EXTISM_COREDUMP") {
+            debug_options.coredump = Some(std::path::PathBuf::from(x));
+        };
+        if let Ok(x) = std::env::var("EXTISM_MEMDUMP") {
+            debug_options.memdump = Some(std::path::PathBuf::from(x));
+        };
+        let profiling_strategy = debug_options
+            .profiling_strategy
+            .map_or(ProfilingStrategy::None, |_| profiling_strategy());
+        debug_options.profiling_strategy = Some(profiling_strategy.clone());
+
+        // Setup wasmtime types
         let engine = Engine::new(
             Config::new()
                 .epoch_interruption(true)
-                .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
-                .profiler(profiling_strategy()),
+                .debug_info(debug_options.debug_info)
+                .coredump_on_trap(debug_options.coredump.is_some())
+                .profiler(profiling_strategy),
         )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
@@ -245,6 +266,7 @@ impl Plugin {
             output: Output::default(),
             _functions: imports.collect(),
             needs_reset: false,
+            debug_options,
         };
 
         plugin.current_plugin_mut().store = &mut plugin.store;
@@ -576,11 +598,10 @@ impl Plugin {
                     .map(std::time::Duration::from_millis),
             })
             .unwrap();
-        self.store.epoch_deadline_callback(deadline_callback);
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
-        let res = func.call(self.store_mut(), &[], results.as_mut_slice());
+        let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Stop timer
         self.timer_tx
@@ -592,13 +613,24 @@ impl Plugin {
         self.get_output_after_call();
         self.needs_reset = name == "_start";
 
+        let mut msg = None;
+
         if self.output.error_offset != 0 && self.output.error_length != 0 {
             let handle = MemoryHandle {
                 offset: self.output.error_offset,
                 length: self.output.error_length,
             };
             if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
-                return Err((Error::msg(e.to_string()), -1));
+                let x = e.to_string();
+                error!("Call to {name} returned with error message: {}", x);
+
+                // If `res` is `Ok` and there is an error message set, then convert the response
+                // to an `Error`
+                if res.is_ok() {
+                    res = Err(Error::msg(x));
+                } else {
+                    msg = Some(x);
+                }
             }
         }
 
@@ -613,24 +645,69 @@ impl Plugin {
                 // Return result to caller
                 Ok(0)
             }
-            Err(e) => match e.downcast::<wasmtime_wasi::I32Exit>() {
-                Ok(exit) => {
-                    trace!("WASI return code: {}", exit.0);
-                    if exit.0 != 0 {
-                        return Err((Error::msg("WASI return code"), exit.0));
+            Err(e) => {
+                if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
+                    if let Some(file) = self.debug_options.coredump.clone() {
+                        debug!("Saving coredump to {}", file.display());
+
+                        if let Err(e) =
+                            std::fs::write(file, coredump.serialize(self.store_mut(), "extism"))
+                        {
+                            error!("Unable to write coredump: {:?}", e);
+                        }
                     }
-                    return Ok(0);
                 }
-                Err(e) => {
-                    let cause = e.root_cause().to_string();
-                    if cause == "timeout" || cause == "oom" {
-                        return Err((Error::msg(cause), -1));
+
+                if let Some(file) = &self.debug_options.memdump.clone() {
+                    trace!("Memory dump enabled");
+                    if let Some(memory) = self.current_plugin_mut().memory() {
+                        debug!("Dumping memory to {}", file.display());
+                        let data = memory.data(&mut self.store);
+                        if let Err(e) = std::fs::write(file, &data) {
+                            error!("Unable to write memory dump: {:?}", e);
+                        }
+                    } else {
+                        error!("Unable to get extism memory for writing to disk");
+                    }
+                }
+
+                let wasi_exit_code = e
+                    .downcast_ref::<wasmtime_wasi::I32Exit>()
+                    .map(|e| e.0)
+                    .or_else(|| {
+                        e.downcast_ref::<wasmtime_wasi::preview2::I32Exit>()
+                            .map(|e| e.0)
+                    });
+                if let Some(exit_code) = wasi_exit_code {
+                    trace!("WASI exit code: {}", exit_code);
+                    if exit_code == 0 && msg.is_none() {
+                        return Ok(0);
                     }
 
-                    error!("Call: {e:?}");
-                    return Err((e.context("Call failed"), -1));
+                    return Err((
+                        Error::msg(msg.unwrap_or_else(|| "WASI exit code".to_string())),
+                        exit_code,
+                    ));
                 }
-            },
+
+                // Handle timeout interrupts
+                if let Some(wasmtime::Trap::Interrupt) = e.downcast_ref::<wasmtime::Trap>() {
+                    trace!("Call to {name} timed out");
+                    return Err((Error::msg("timeout"), -1));
+                }
+
+                // Handle out-of-memory error from `MemoryLimiter`
+                let cause = e.root_cause().to_string();
+                if cause == "oom" {
+                    return Err((Error::msg(cause), -1));
+                }
+
+                error!("Call to {name} encountered an error: {e:?}");
+                return Err((
+                    e.context(msg.unwrap_or_else(|| "Error in Extism plugin call".to_string())),
+                    -1,
+                ));
+            }
         }
     }
 
@@ -718,7 +795,7 @@ pub(crate) enum GuestRuntime {
 ///
 /// # const WASM: &[u8] = include_bytes!("../../wasm/code.wasm");
 /// // Convert from `Plugin` to `MyPlugin`
-/// let mut plugin: MyPlugin = extism::Plugin::new(WASM, [], true).unwrap().into();
+/// let mut plugin: MyPlugin = extism::Plugin::new(WASM, [], true).unwrap().try_into().unwrap();
 /// // and call the `count_vowels` function
 /// let count = plugin.count_vowels("this is a test").unwrap();
 /// ```
@@ -730,9 +807,15 @@ macro_rules! typed_plugin {
         unsafe impl Send for $name {}
         unsafe impl Sync for $name {}
 
-        impl From<$crate::Plugin> for $name {
-            fn from(x: $crate::Plugin) -> Self {
-                $name(x)
+        impl TryFrom<$crate::Plugin> for $name {
+            type Error = $crate::Error;
+            fn try_from(mut x: $crate::Plugin) -> Result<Self, Self::Error> {
+                $(
+                    if !x.function_exists(stringify!($f)) {
+                        return Err($crate::Error::msg(format!("Invalid function: {}", stringify!($f))));
+                    }
+                )*
+                Ok($name(x))
             }
         }
 

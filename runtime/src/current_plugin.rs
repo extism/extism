@@ -258,14 +258,18 @@ impl CurrentPlugin {
 
     /// Get a pointer to the plugin memory
     pub(crate) fn memory_ptr(&mut self) -> *mut u8 {
-        let (linker, mut store) = self.linker_and_store();
-        if let Some(mem) = linker.get(&mut store, "env", "memory") {
-            if let Some(mem) = mem.into_memory() {
-                return mem.data_ptr(&mut store);
-            }
+        if let Some(mem) = self.memory() {
+            let (_, mut store) = self.linker_and_store();
+            return mem.data_ptr(&mut store);
         }
 
         std::ptr::null_mut()
+    }
+
+    /// Get extism memory
+    pub(crate) fn memory(&mut self) -> Option<wasmtime::Memory> {
+        let (linker, mut store) = self.linker_and_store();
+        linker.get(&mut store, "env", "memory")?.into_memory()
     }
 
     /// Get a `MemoryHandle` from a `Val` reference - this can be used to convert a host function's

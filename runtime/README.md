@@ -15,6 +15,16 @@ To use the `extism` crate, you can add it to your Cargo file:
 extism = "*"
 ```
 
+## Environment variables
+
+There are a few environment variables that can be used for debugging purposes:
+
+- `EXTISM_ENABLE_WASI_OUTPUT=1`: show WASI stdout/stderr
+- `EXTISM_MEMDUMP=extism.mem`: dump Extism linear memory to a file
+- `EXTISM_COREDUMP=extism.core`: write [coredump](https://github.com/WebAssembly/tool-conventions/blob/main/Coredump.md) to a file when a WebAssembly function traps
+- `EXTISM_DEBUG=1`: generate debug information
+- `EXTISM_PROFILE=perf|jitdump|vtune`: enable Wasmtime profiling
+
 ## Getting Started
 
 This guide should walk you through some of the concepts in Extism and the `extism` crate.
@@ -39,7 +49,7 @@ fn main() {
 }
 ```
 
-> **Note**: See [the Manifest docs](https://docs.rs/extism-manifest/0.5.0/extism_manifest/) as it has a rich schema and a lot of options.
+> **Note**: See [the Manifest docs](https://docs.rs/extism-manifest/extism_manifest/) as it has a rich schema and a lot of options.
 
 ### Calling A Plug-in's Exports
 

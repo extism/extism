@@ -17,13 +17,13 @@
 //! ## Input/Output
 //!
 //! Input and output are just allocated blocks of memory that are marked as either input or output using
-//! the `extism_input_set` or `extism_output_set` functions. The global variables `INPUT_OFFSET` contains
-//! the offset in memory to the input data and `INPUT_LENGTH` contains the size of the input data. `OUTPUT_OFFSET`
-//! and `OUTPUT_LENGTH` are used for the output data.
+//! the `extism_input_set` or `extism_output_set` functions. The MemoryRoot field `input_offset` contains
+//! the offset in memory to the input data and `input_length` contains the size of the input data. `output_offset`
+//! and `output_length` are used for the output data.
 //!
 //! ## Error handling
 //!
-//! The `ERROR` global is used to track the current error message. If it is set to `0` then there is no error.
+//! The `error` field is used to track the current error message. If it is set to `0` then there is no error.
 //! The length of the error message can be retreived using `extism_length`.
 //!
 //! ## Memory offsets
@@ -44,31 +44,6 @@ pub type Length = u64;
 
 /// WebAssembly page size
 const PAGE_SIZE: usize = 65536;
-
-/// Determines the amount of bytes that can be wasted by re-using a block. If more than this number is wasted by re-using
-/// a block then it will be split into two smaller blocks.
-const BLOCK_SPLIT_SIZE: usize = 128;
-
-/// Offset to the input data
-static mut INPUT_OFFSET: Pointer = 0;
-
-/// Length of the input data
-static mut INPUT_LENGTH: Length = 0;
-
-/// Offset to the output data
-static mut OUTPUT_OFFSET: Pointer = 0;
-
-/// Offset to the input data
-static mut OUTPUT_LENGTH: Length = 0;
-
-/// Current error message
-static mut ERROR: AtomicU64 = AtomicU64::new(0);
-
-/// Determines if the kernel has been initialized already
-static mut INITIALIZED: AtomicBool = AtomicBool::new(false);
-
-/// A pointer to the first page that will be managed by Extism, this is set during initialization
-static mut START_PAGE: usize = 0;
 
 /// Provides information about the usage status of a `MemoryBlock`
 #[repr(u8)]
@@ -98,10 +73,22 @@ pub enum MemoryStatus {
 /// including their data.
 #[repr(C)]
 pub struct MemoryRoot {
+    /// Set to true after initialization
+    pub initialized: AtomicBool,
     /// Position of the bump allocator, relative to `blocks` field
     pub position: AtomicU64,
     /// The total size of all data allocated using this allocator
     pub length: AtomicU64,
+    /// Offset of error block
+    pub error: AtomicU64,
+    /// Input position in memory
+    pub input_offset: Pointer,
+    /// Input length
+    pub input_length: Length,
+    /// Output position in memory
+    pub output_offset: Pointer,
+    /// Output length
+    pub output_length: Length,
     /// A pointer to the start of the first block
     pub blocks: [MemoryBlock; 0],
 }
@@ -131,32 +118,41 @@ pub fn num_pages(nbytes: u64) -> usize {
     }
 }
 
-// Get the `MemoryRoot` at the correct offset in memory
+// Get the `MemoryRoot`, this is always stored at offset 1 in memory
 #[inline]
 unsafe fn memory_root() -> &'static mut MemoryRoot {
-    &mut *((START_PAGE * PAGE_SIZE) as *mut MemoryRoot)
+    &mut *(1 as *mut MemoryRoot)
 }
 
 impl MemoryRoot {
     /// Initialize or load the `MemoryRoot` from the correct position in memory
     pub unsafe fn new() -> &'static mut MemoryRoot {
+        let root = memory_root();
+
         // If this fails then `INITIALIZED` is already `true` and we can just return the
         // already initialized `MemoryRoot`
-        if INITIALIZED
+        if root
+            .initialized
             .compare_exchange(false, true, Ordering::Acquire, Ordering::Relaxed)
             .is_err()
         {
-            return memory_root();
+            return root;
         }
 
         // Ensure that at least one page is allocated to store the `MemoryRoot` data
-        START_PAGE = core::arch::wasm32::memory_grow(0, 1);
-        if START_PAGE == usize::MAX {
-            panic!("Out of memory");
+        if core::arch::wasm32::memory_size(0) == 0 {
+            if core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
+                core::arch::wasm32::unreachable()
+            }
         }
 
+        root.input_offset = 0;
+        root.input_length = 0;
+        root.output_offset = 0;
+        root.output_length = 0;
+        root.error.store(0, Ordering::Release);
+
         // Initialize the `MemoryRoot` length, position and data
-        let root = memory_root();
         root.length.store(
             PAGE_SIZE as u64 - core::mem::size_of::<MemoryRoot>() as u64,
             Ordering::Release,
@@ -181,6 +177,11 @@ impl MemoryRoot {
             self.length.load(Ordering::Acquire) as usize,
         );
         self.position.store(0, Ordering::Release);
+        self.error.store(0, Ordering::Release);
+        self.input_offset = 0;
+        self.input_length = 0;
+        self.output_offset = 0;
+        self.output_length = 0;
     }
 
     #[inline(always)]
@@ -224,7 +225,7 @@ impl MemoryRoot {
             // Re-use freed blocks when they're large enough
             if status == MemoryStatus::Free as u8 && b.size >= length as usize {
                 // Split block if there is too much excess
-                if b.size - length as usize >= BLOCK_SPLIT_SIZE {
+                if b.size - length as usize >= 128 {
                     b.size -= length as usize;
                     b.used = 0;
 
@@ -348,14 +349,15 @@ pub unsafe fn extism_free(p: Pointer) {
     if p == 0 {
         return;
     }
-    let block = MemoryRoot::new().find_block(p);
+    let root = MemoryRoot::new();
+    let block = root.find_block(p);
     if let Some(block) = block {
         block.free();
 
         // If the input pointer is freed for some reason, make sure the input length to 0
         // since the original data is gone
-        if p == INPUT_OFFSET {
-            INPUT_LENGTH = 0;
+        if p == root.input_offset {
+            root.input_length = 0;
         }
     }
 }
@@ -396,21 +398,23 @@ pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
 /// Load a byte from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
+    let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
-    if p >= INPUT_LENGTH {
+    if p >= root.input_length {
         return 0;
     }
-    *((INPUT_OFFSET + p) as *mut u8)
+    *((root.input_offset + p) as *mut u8)
 }
 
 /// Load a u64 from the input data
 #[no_mangle]
 pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
+    let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
-    if p + core::mem::size_of::<u64>() as Pointer > INPUT_LENGTH {
+    if p + core::mem::size_of::<u64>() as Pointer > root.input_length {
         return 0;
     }
-    *((INPUT_OFFSET + p) as *mut u64)
+    *((root.input_offset + p) as *mut u64)
 }
 
 /// Write a byte in Extism-managed memory
@@ -436,82 +440,83 @@ pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
 /// Set the range of the input data in memory
 #[no_mangle]
 pub unsafe fn extism_input_set(p: Pointer, len: Length) {
+    let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
-        let root = MemoryRoot::new();
         if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(p + len - 1) {
             return;
         }
     }
-    INPUT_OFFSET = p;
-    INPUT_LENGTH = len;
+    root.input_offset = p;
+    root.input_length = len;
 }
 
 /// Set the range of the output data in memory
 #[no_mangle]
 pub unsafe fn extism_output_set(p: Pointer, len: Length) {
+    let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
-        let root = MemoryRoot::new();
         if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(p + len - 1) {
             return;
         }
     }
-    OUTPUT_OFFSET = p;
-    OUTPUT_LENGTH = len;
+    root.output_offset = p;
+    root.output_length = len;
 }
 
 /// Get the input length
 #[no_mangle]
 pub fn extism_input_length() -> Length {
-    unsafe { INPUT_LENGTH }
+    unsafe { MemoryRoot::new().input_length }
 }
 
 /// Get the input offset in Exitsm-managed memory
 #[no_mangle]
 pub fn extism_input_offset() -> Length {
-    unsafe { INPUT_OFFSET }
+    unsafe { MemoryRoot::new().input_offset }
 }
 
 /// Get the output length
 #[no_mangle]
-pub fn extism_output_length() -> Length {
-    unsafe { OUTPUT_LENGTH }
+pub unsafe fn extism_output_length() -> Length {
+    unsafe { MemoryRoot::new().output_length }
 }
 
 /// Get the output offset in Extism-managed memory
 #[no_mangle]
-pub fn extism_output_offset() -> Length {
-    unsafe { OUTPUT_OFFSET }
+pub unsafe fn extism_output_offset() -> Length {
+    MemoryRoot::new().output_offset
 }
 
 /// Reset the allocator
 #[no_mangle]
 pub unsafe fn extism_reset() {
-    ERROR.store(0, Ordering::SeqCst);
     MemoryRoot::new().reset()
 }
 
 /// Set the error message offset
 #[no_mangle]
 pub unsafe fn extism_error_set(ptr: Pointer) {
+    let root = MemoryRoot::new();
+
     // Allow ERROR to be set to 0
     if ptr == 0 {
-        ERROR.store(ptr, Ordering::SeqCst);
+        root.error.store(ptr, Ordering::SeqCst);
         return;
     }
 
     #[cfg(feature = "bounds-checking")]
-    if !MemoryRoot::new().pointer_in_bounds(ptr) {
+    if !root.pointer_in_bounds(ptr) {
         return;
     }
-    ERROR.store(ptr, Ordering::SeqCst);
+    root.error.store(ptr, Ordering::SeqCst);
 }
 
 /// Get the error message offset, if it's `0` then no error has been set
 #[no_mangle]
 pub unsafe fn extism_error_get() -> Pointer {
-    ERROR.load(Ordering::SeqCst)
+    MemoryRoot::new().error.load(Ordering::SeqCst)
 }
 
 /// Get the position of the allocator, this can be used as an indication of how many bytes are currently in-use

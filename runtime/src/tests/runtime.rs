@@ -214,7 +214,9 @@ fn test_timeout() {
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Timed out plugin ran for {:?}", time);
-    assert!(output.unwrap_err().root_cause().to_string() == "timeout");
+    let s = output.unwrap_err().root_cause().to_string();
+    println!("{}", s);
+    assert!(s == "timeout");
     // std::io::stdout().write_all(output).unwrap();
 }
 
@@ -236,7 +238,7 @@ fn test_typed_plugin_macro() {
         hello_world,
     );
 
-    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().into();
+    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().try_into().unwrap();
 
     let Json(output0): Json<Count> = plugin.count_vowels("abc123").unwrap();
     let Json(output1): Json<Count> = plugin.0.call("count_vowels", "abc123").unwrap();
@@ -254,7 +256,7 @@ fn test_multiple_instantiations() {
         hello_world,
     );
 
-    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().into();
+    let mut plugin: CountVowelsPlugin = Plugin::new(WASM, [f], true).unwrap().try_into().unwrap();
 
     // This is 10,001 because the wasmtime store limit is 10,000 - we want to test
     // that our reinstantiation process is working and that limit is never hit.
@@ -314,7 +316,10 @@ fn test_memory_max() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_err());
-    assert!(output.unwrap_err().root_cause().to_string() == "oom");
+
+    let err = output.unwrap_err().root_cause().to_string();
+    println!("{:?}", err);
+    assert_eq!(err, "oom");
 
     // Should pass with memory.max set to a large enough number
     let manifest =
@@ -355,4 +360,48 @@ fn test_extism_error() {
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
     assert!(output.is_err());
     assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
+}
+
+#[test]
+fn test_extism_memdump() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world_set_error,
+    );
+    let mut plugin = PluginBuilder::new_with_module(WASM)
+        .with_wasi(true)
+        .with_functions([f])
+        .with_memdump("extism.mem")
+        .build()
+        .unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+    assert!(output.is_err());
+    assert!(std::path::PathBuf::from("extism.mem").exists());
+    let _ = std::fs::remove_file("extism.mem");
+}
+
+#[test]
+fn test_extism_coredump() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        None,
+        hello_world_set_error,
+    );
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
+        .with_timeout(std::time::Duration::from_secs(1));
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_wasi(true)
+        .with_functions([f])
+        .with_coredump("extism.core")
+        .build()
+        .unwrap();
+    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    assert!(output.is_err());
+    assert!(std::path::PathBuf::from("extism.core").exists());
+    let _ = std::fs::remove_file("extism.core");
 }

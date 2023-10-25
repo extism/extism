@@ -5,11 +5,20 @@ enum Source {
     Data(Vec<u8>),
 }
 
+#[derive(Default, Clone)]
+pub(crate) struct DebugOptions {
+    pub(crate) profiling_strategy: Option<wasmtime::ProfilingStrategy>,
+    pub(crate) coredump: Option<std::path::PathBuf>,
+    pub(crate) memdump: Option<std::path::PathBuf>,
+    pub(crate) debug_info: bool,
+}
+
 /// PluginBuilder is used to configure and create `Plugin` instances
 pub struct PluginBuilder {
     source: Source,
     wasi: bool,
     functions: Vec<Function>,
+    debug_options: DebugOptions,
 }
 
 impl PluginBuilder {
@@ -19,6 +28,7 @@ impl PluginBuilder {
             source: Source::Data(data.into()),
             wasi: false,
             functions: vec![],
+            debug_options: DebugOptions::default(),
         }
     }
 
@@ -28,6 +38,7 @@ impl PluginBuilder {
             source: Source::Manifest(manifest),
             wasi: false,
             functions: vec![],
+            debug_options: DebugOptions::default(),
         }
     }
 
@@ -68,11 +79,34 @@ impl PluginBuilder {
         self
     }
 
+    pub fn with_profiling_strategy(mut self, p: wasmtime::ProfilingStrategy) -> Self {
+        self.debug_options.profiling_strategy = Some(p);
+        self
+    }
+
+    pub fn with_coredump(mut self, path: impl AsRef<std::path::Path>) -> Self {
+        self.debug_options.coredump = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    pub fn with_memdump(mut self, path: impl AsRef<std::path::Path>) -> Self {
+        self.debug_options.memdump = Some(path.as_ref().to_path_buf());
+        self
+    }
+
+    pub fn with_debug_info(mut self) -> Self {
+        self.debug_options.debug_info = true;
+        self
+    }
+
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
         match self.source {
-            Source::Manifest(m) => Plugin::new_with_manifest(&m, self.functions, self.wasi),
-            Source::Data(d) => Plugin::new(d, self.functions, self.wasi),
+            Source::Manifest(m) => {
+                let data = serde_json::to_vec(&m)?;
+                Plugin::build_new(&data, self.functions, self.wasi, self.debug_options)
+            }
+            Source::Data(d) => Plugin::build_new(d, self.functions, self.wasi, self.debug_options),
         }
     }
 }
