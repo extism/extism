@@ -1,5 +1,5 @@
 use crate::*;
-use std::time::Instant;
+use std::{io::Write, time::Instant};
 
 const WASM: &[u8] = include_bytes!("../../../wasm/code-functions.wasm");
 const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../../wasm/code.wasm");
@@ -410,27 +410,38 @@ fn hello_world_user_data(
     _plugin: &mut CurrentPlugin,
     inputs: &[Val],
     outputs: &mut [Val],
-    user_data: UserData<String>,
+    user_data: UserData<std::fs::File>,
 ) -> Result<(), Error> {
-    assert_eq!(*user_data.get().unwrap().lock().unwrap(), "This is a test!");
+    let data = user_data.get()?;
+    let mut data = data.lock().unwrap();
+    let s = _plugin.memory_get_val(&inputs[0])?;
+    data.write_all(s)?;
     outputs[0] = inputs[0].clone();
     Ok(())
 }
 
 #[test]
 fn test_userdata() {
-    let f = Function::new(
-        "hello_world",
-        [ValType::I64],
-        [ValType::I64],
-        Some(UserData::new("This is a test!".to_string())),
-        hello_world_user_data,
-    );
-    let mut plugin = PluginBuilder::new_with_module(WASM)
-        .with_wasi(true)
-        .with_functions([f])
-        .build()
-        .unwrap();
-    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
-    assert!(output.is_ok());
+    let path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("tmp");
+    {
+        if path.exists() {
+            std::fs::remove_file(&path).unwrap();
+        }
+        let file = std::fs::File::create(&path).unwrap();
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            Some(UserData::new(file)),
+            hello_world_user_data,
+        );
+        let mut plugin = PluginBuilder::new_with_module(WASM)
+            .with_wasi(true)
+            .with_functions([f])
+            .build()
+            .unwrap();
+        let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+        assert!(output.is_ok());
+    }
+    assert!(path.exists());
 }
