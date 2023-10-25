@@ -334,23 +334,25 @@ impl Plugin {
             internal.linker = linker;
         }
 
-        let bytes = unsafe { std::slice::from_raw_parts(input, len) };
-        trace!("Input size: {}", bytes.len());
+        if len > 0 {
+            let bytes = unsafe { std::slice::from_raw_parts(input, len) };
+            trace!("Input size: {}", bytes.len());
 
-        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
-            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
-        } else {
-            error!("Call to extism_reset failed");
-        }
+            if let Some(f) = self.linker.get(&mut self.store, "env", "extism_reset") {
+                f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+            } else {
+                error!("Call to extism_reset failed");
+            }
 
-        let offs = self.memory_alloc_bytes(bytes)?;
+            let offs = self.memory_alloc_bytes(bytes)?;
 
-        if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
-            f.into_func().unwrap().call(
-                &mut self.store,
-                &[Val::I64(offs as i64), Val::I64(len as i64)],
-                &mut [],
-            )?;
+            if let Some(f) = self.linker.get(&mut self.store, "env", "extism_input_set") {
+                f.into_func().unwrap().call(
+                    &mut self.store,
+                    &[Val::I64(offs as i64), Val::I64(len as i64)],
+                    &mut [],
+                )?;
+            }
         }
 
         Ok(())
