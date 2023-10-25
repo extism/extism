@@ -401,7 +401,7 @@ fn test_extism_coredump() {
         .with_coredump("extism.core")
         .build()
         .unwrap();
-    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
     assert!(output.is_err());
     assert!(std::path::PathBuf::from("extism.core").exists());
     let _ = std::fs::remove_file("extism.core");
