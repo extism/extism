@@ -259,8 +259,8 @@ impl CurrentPlugin {
     /// Get a pointer to the plugin memory
     pub(crate) fn memory_ptr(&mut self) -> *mut u8 {
         if let Some(mem) = self.memory() {
-            let (_, mut store) = self.linker_and_store();
-            return mem.data_ptr(&mut store);
+            let (_, store) = self.linker_and_store();
+            return mem.data_ptr(store);
         }
 
         std::ptr::null_mut()
@@ -327,7 +327,7 @@ impl CurrentPlugin {
     pub fn set_error(&mut self, s: impl AsRef<str>) -> Result<(u64, u64), Error> {
         let s = s.as_ref();
         debug!("Set error: {:?}", s);
-        let handle = self.current_plugin_mut().memory_new(&s)?;
+        let handle = self.current_plugin_mut().memory_new(s)?;
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
             f.into_func().unwrap().call(
@@ -335,7 +335,7 @@ impl CurrentPlugin {
                 &[Val::I64(handle.offset() as i64)],
                 &mut [],
             )?;
-            return Ok((handle.offset(), s.len() as u64));
+            Ok((handle.offset(), s.len() as u64))
         } else {
             anyhow::bail!("extism:host/env::error_set not found");
         }

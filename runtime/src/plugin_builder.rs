@@ -104,7 +104,7 @@ impl PluginBuilder {
         match self.source {
             Source::Manifest(m) => {
                 let data = serde_json::to_vec(&m)?;
-                Plugin::build_new(&data, self.functions, self.wasi, self.debug_options)
+                Plugin::build_new(data, self.functions, self.wasi, self.debug_options)
             }
             Source::Data(d) => Plugin::build_new(d, self.functions, self.wasi, self.debug_options),
         }
