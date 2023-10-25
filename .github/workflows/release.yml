@@ -93,12 +93,22 @@ jobs:
         # maturin's cffi integration struggles with gnu headers on windows.
         # there's partial work towards fixing this in `extism-maturin/build.rs`, but it's
         # not sufficient to get it to work. omit it for now!
-        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' }}
+        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' && matrix.target != 'aarch64-unknown-linux-gnu' }}
         with:
           target: ${{ matrix.target }}
           args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
           sccache: 'true'
           manylinux: auto
+
+      - name: Build GNU Linux wheels
+        uses: PyO3/maturin-action@v1
+        # One of our deps, "ring", needs a newer sysroot than what "manylinux: auto" provides.
+        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
+          sccache: 'true'
+          manylinux: 2_28
 
       - name: Prepare Artifact
         shell: bash
