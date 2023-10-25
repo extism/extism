@@ -139,10 +139,8 @@ impl MemoryRoot {
         }
 
         // Ensure that at least one page is allocated to store the `MemoryRoot` data
-        if core::arch::wasm32::memory_size(0) == 0 {
-            if core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
-                core::arch::wasm32::unreachable()
-            }
+        if core::arch::wasm32::memory_size(0) == 0 && core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
+            core::arch::wasm32::unreachable()
         }
 
         root.input_offset = 0;
