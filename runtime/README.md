@@ -189,10 +189,12 @@ fn main() {
         .build()
         .unwrap();
 
-    let res = plugin
-        .call::<&str, &str>("count_vowels", "Hello, world!")
-        .unwrap();
-    println!("{}", res);
+    for _ in 0 .. 5 {
+        let res = plugin
+            .call::<&str, &str>("count_vowels", "Hello, world!")
+            .unwrap();
+        println!("{}", res);
+    }
 }
 ```
 
