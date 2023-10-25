@@ -54,7 +54,7 @@ impl PluginBuilder {
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
         returns: impl IntoIterator<Item = ValType>,
-        user_data: Option<UserData<T>>,
+        user_data: UserData<T>,
         f: F,
     ) -> Self
     where
@@ -75,7 +75,7 @@ impl PluginBuilder {
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
         returns: impl IntoIterator<Item = ValType>,
-        user_data: Option<UserData<T>>,
+        user_data: UserData<T>,
         f: F,
     ) -> Self
     where

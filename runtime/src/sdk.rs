@@ -195,7 +195,7 @@ pub unsafe extern "C" fn extism_function_new(
         name,
         inputs,
         output_types.clone(),
-        Some(user_data),
+        user_data,
         move |plugin, inputs, outputs, user_data| {
             let inputs: Vec<_> = inputs.iter().map(ExtismVal::from).collect();
             let mut output_tmp: Vec<_> = output_types

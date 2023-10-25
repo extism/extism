@@ -83,6 +83,12 @@ pub enum UserData<T: Sized> {
     Rust(Arc<std::sync::Mutex<T>>),
 }
 
+impl<T: Default> Default for UserData<T> {
+    fn default() -> Self {
+        UserData::new(T::default())
+    }
+}
+
 impl<T> Clone for UserData<T> {
     fn clone(&self) -> Self {
         match self {
@@ -124,18 +130,9 @@ impl<T> UserData<T> {
     /// Get a copy of the inner value
     pub fn get(&self) -> Result<Arc<std::sync::Mutex<T>>, Error> {
         match self {
-            UserData::C { .. } => anyhow::bail!("Unable to convert C UserData to Rust type"),
+            UserData::C { .. } => anyhow::bail!("C UserData should not be used from Rust"),
             UserData::Rust(data) => Ok(data.clone()),
         }
-    }
-}
-
-impl<T> Default for UserData<T> {
-    fn default() -> Self {
-        UserData::C(Arc::new(CPtr {
-            ptr: std::ptr::null_mut(),
-            free: None,
-        }))
     }
 }
 
@@ -182,7 +179,7 @@ impl Function {
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
         returns: impl IntoIterator<Item = ValType>,
-        user_data: Option<UserData<T>>,
+        user_data: UserData<T>,
         f: F,
     ) -> Function
     where
@@ -191,7 +188,6 @@ impl Function {
             + Sync
             + Send,
     {
-        let user_data = user_data.unwrap_or_default();
         let data = user_data.clone();
         Function {
             name: name.into(),

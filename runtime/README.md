@@ -176,20 +176,20 @@ fn main() {
             "kv_read",
             [ValType::I64],
             [ValType::I64],
-            Some(kv_store.clone()),
+            kv_store.clone(),
             kv_read,
         )
         .with_function(
             "kv_write",
             [ValType::I64, ValType::I64],
             [],
-            Some(kv_store),
+            kv_store.clone(),
             kv_write,
         )
         .build()
         .unwrap();
 
-    for _ in 0 .. 5 {
+    for _ in 0..5 {
         let res = plugin
             .call::<&str, &str>("count_vowels", "Hello, world!")
             .unwrap();

@@ -14,7 +14,7 @@ host_fn!(hello_world (a: String) -> String { Ok(a) });
 //     plugin: &mut CurrentPlugin,
 //     inputs: &[Val],
 //     outputs: &mut [Val],
-//     _user_data: UserData,
+//     _user_data: UserData<()>,
 // ) -> Result<(), Error> {
 //     let input: String = plugin.memory_get_val(&inputs[0]).unwrap();
 //     let output = plugin.memory_new(&input).unwrap();
@@ -44,7 +44,7 @@ fn it_works() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     )
     .with_namespace("env");
@@ -52,7 +52,7 @@ fn it_works() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_panic,
     )
     .with_namespace("test");
@@ -143,7 +143,7 @@ fn test_plugin_threads() {
                 "hello_world",
                 [ValType::I64],
                 [ValType::I64],
-                None,
+                UserData::default(),
                 hello_world,
             )
             .with_wasi(true)
@@ -176,7 +176,7 @@ fn test_cancel() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -201,7 +201,7 @@ fn test_timeout() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -234,7 +234,7 @@ fn test_typed_plugin_macro() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -252,7 +252,7 @@ fn test_multiple_instantiations() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -294,7 +294,7 @@ fn test_fuzz_reflect_plugin() {
         "host_reflect",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -353,7 +353,7 @@ fn test_extism_error() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_set_error,
     );
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
@@ -368,7 +368,7 @@ fn test_extism_memdump() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_set_error,
     );
     let mut plugin = PluginBuilder::new_with_module(WASM)
@@ -389,7 +389,7 @@ fn test_extism_coredump() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_set_error,
     );
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
@@ -432,7 +432,7 @@ fn test_userdata() {
             "hello_world",
             [ValType::I64],
             [ValType::I64],
-            Some(UserData::new(file)),
+            UserData::new(file),
             hello_world_user_data,
         );
         let mut plugin = PluginBuilder::new_with_module(WASM)
