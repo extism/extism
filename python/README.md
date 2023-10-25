@@ -1,3 +1,4 @@
-# Extism Python Host SDK
+# Python Host SDK
 
-See [https://extism.org/docs/integrate-into-your-codebase/python-host-sdk/](https://extism.org/docs/integrate-into-your-codebase/python-host-sdk/).
+This contains the `0.x` version of the SDK. Development of this library has moved to [this repo](https://github.com/extism/python-sdk#readme).
+
