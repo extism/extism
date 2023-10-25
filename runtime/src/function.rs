@@ -95,7 +95,10 @@ impl<T> UserData<T> {
     pub(crate) fn as_ptr(&self) -> *mut std::ffi::c_void {
         match self {
             UserData::C { ptr, .. } => *ptr,
-            _ => std::ptr::null_mut(),
+            _ => {
+                log::error!("Rust UserData cannot be used by C");
+                std::ptr::null_mut()
+            }
         }
     }
 
