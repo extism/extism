@@ -142,56 +142,58 @@ We want to expose two functions to our plugin, `kv_write(key: String, value: Byt
 use extism::*;
 
 // pretend this is redis or something :)
-type Map = std::collections::BTreeMap<String, Vec<u8>>;
-type KVStore = std::sync::Arc<std::sync::Mutex<Map>>;
+type KVStore = std::collections::BTreeMap<String, Vec<u8>>;
 
-// When an untyped first argument is provided to `host_fn` it is used as the 
-// variable name for the `UserData` parameter 
-host_fn!(kv_read(user_data, key: String) -> u32 {
-    let kv = user_data.get::<KVStore>().unwrap();
+// When a first argument separated with a semicolon is provided to `host_fn` it is used as the
+// variable name and type for the `UserData` parameter
+host_fn!(kv_read(user_data: KVStore; key: String) -> u32 {
+    let kv = user_data.get().unwrap();
+    let kv = kv.lock().unwrap();
     let value = kv
-        .lock()
-        .unwrap()
         .get(&key)
         .map(|x| u32::from_le_bytes(x.clone().try_into().unwrap()))
         .unwrap_or_else(|| 0u32);
     Ok(value)
 });
 
-host_fn!(kv_write(user_data, key: String, value: u32) {
-    let kv = user_data.get_mut::<KVStore>().unwrap();
-    kv.lock().unwrap().insert(key, value.to_le_bytes().to_vec());
+host_fn!(kv_write(user_data: KVStore; key: String, value: u32) {
+    let kv = user_data.get().unwrap();
+    let mut kv = kv.lock().unwrap();
+    kv.insert(key, value.to_le_bytes().to_vec());
     Ok(())
 });
 
 fn main() {
-    let kv_store = KVStore::default();
-
-    // Wrap kv_read function
-    let kv_read = Function::new(
-        "kv_read",
-        [ValType::I64],
-        [ValType::I64],
-        Some(UserData::new(kv_store.clone())),
-        kv_read,
-    );
-
-    // Wrap kv_write function
-    let kv_write = Function::new(
-        "kv_write",
-        [ValType::I64, ValType::I64],
-        [],
-        Some(UserData::new(kv_store.clone())),
-        kv_write,
-    );
+    let kv_store = UserData::new(KVStore::default());
 
     let url = Wasm::url(
         "https://github.com/extism/plugins/releases/latest/download/count_vowels_kvstore.wasm",
     );
     let manifest = Manifest::new([url]);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [kv_read, kv_write], true);
-    let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_wasi(true)
+        .with_function(
+            "kv_read",
+            [ValType::I64],
+            [ValType::I64],
+            Some(kv_store.clone()),
+            kv_read,
+        )
+        .with_function(
+            "kv_write",
+            [ValType::I64, ValType::I64],
+            [],
+            Some(kv_store),
+            kv_write,
+        )
+        .build()
+        .unwrap();
+
+    let res = plugin
+        .call::<&str, &str>("count_vowels", "Hello, world!")
+        .unwrap();
     println!("{}", res);
+}
 }
 ```
 

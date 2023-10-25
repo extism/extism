@@ -26,7 +26,7 @@ fn hello_world_panic(
     _plugin: &mut CurrentPlugin,
     _inputs: &[Val],
     _outputs: &mut [Val],
-    _user_data: UserData,
+    _user_data: UserData<()>,
 ) -> Result<(), Error> {
     panic!("This should not run");
 }
@@ -339,7 +339,7 @@ fn hello_world_set_error(
     plugin: &mut CurrentPlugin,
     inputs: &[Val],
     outputs: &mut [Val],
-    _user_data: UserData,
+    _user_data: UserData<()>,
 ) -> Result<(), Error> {
     plugin.set_error("TEST")?;
     outputs[0] = inputs[0].clone();
@@ -404,4 +404,33 @@ fn test_extism_coredump() {
     assert!(output.is_err());
     assert!(std::path::PathBuf::from("extism.core").exists());
     let _ = std::fs::remove_file("extism.core");
+}
+
+fn hello_world_user_data(
+    _plugin: &mut CurrentPlugin,
+    inputs: &[Val],
+    outputs: &mut [Val],
+    user_data: UserData<String>,
+) -> Result<(), Error> {
+    assert_eq!(*user_data.get().unwrap().lock().unwrap(), "This is a test!");
+    outputs[0] = inputs[0].clone();
+    Ok(())
+}
+
+#[test]
+fn test_userdata() {
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        Some(UserData::new("This is a test!".to_string())),
+        hello_world_user_data,
+    );
+    let mut plugin = PluginBuilder::new_with_module(WASM)
+        .with_wasi(true)
+        .with_functions([f])
+        .build()
+        .unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+    assert!(output.is_ok());
 }

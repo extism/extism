@@ -190,7 +190,7 @@ pub unsafe extern "C" fn extism_function_new(
     }
     .to_vec();
 
-    let user_data = UserData::new_pointer(user_data, free_user_data);
+    let user_data: UserData<()> = UserData::new_pointer(user_data, free_user_data);
     let f = Function::new(
         name,
         inputs,
@@ -277,7 +277,7 @@ pub unsafe extern "C" fn extism_plugin_new(
                 if f.is_null() {
                     continue;
                 }
-                let f = (*f).clone();
+                let f = (&*f).clone();
                 funcs.push(f);
             }
         }
