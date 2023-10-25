@@ -627,16 +627,7 @@ impl Plugin {
         }
 
         match res {
-            Ok(()) => {
-                // If `results` is empty and the return value wasn't a WASI exit code then
-                // the call succeeded
-                if results.is_empty() {
-                    return Ok(0);
-                }
-
-                // Return result to caller
-                Ok(0)
-            }
+            Ok(()) => Ok(0),
             Err(e) => {
                 if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
                     if let Some(file) = self.debug_options.coredump.clone() {
