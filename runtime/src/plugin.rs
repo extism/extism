@@ -711,8 +711,23 @@ impl Plugin {
         }
     }
 
-    /// Call a function by name with the given input, the return value is the output data returned by the plugin.
-    /// This data will be invalidated next time the plugin is called.
+    /// Call a function by name with the given input, the return value is
+    /// the output data returned by the plugin. The return type can be anything that implements
+    /// [FromBytes]. This data will be invalidated next time the plugin is called.
+    ///
+    /// # Arguments
+    ///
+    /// * `name` - A string representing the name of the export function to call
+    /// * `input` - The input argument to the function. Type should implment [ToBytes].
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// // call takes a ToBytes and FromBytes type
+    /// // this function takes an &str and returns an &str
+    /// let output = plugin.call::<&str, &str>("greet", "Benjamin")?;
+    /// assert_eq!(output, "Hello, Benjamin!");
+    /// ```
     pub fn call<'a, 'b, T: ToBytes<'a>, U: FromBytes<'b>>(
         &'b mut self,
         name: impl AsRef<str>,
