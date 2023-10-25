@@ -194,7 +194,6 @@ fn main() {
         .unwrap();
     println!("{}", res);
 }
-}
 ```
 
 > *Note*: In order to write host functions you should get familiar with the methods on the [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.CurrentPlugin.html) and [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.UserData.html) types.
