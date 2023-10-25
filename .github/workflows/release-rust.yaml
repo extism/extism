@@ -20,6 +20,7 @@ jobs:
           target: ${{ matrix.target }}
 
       - name: Release Rust Manifest Crate
+        if: always()
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
