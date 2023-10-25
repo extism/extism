@@ -127,13 +127,12 @@ impl<T> Default for UserData<T> {
 
 impl<T> Drop for UserData<T> {
     fn drop(&mut self) {
-        match self {
-            UserData::C { ptr, free } => {
-                if let Some(free) = free {
-                    free(*ptr);
-                }
-            }
-            _ => (),
+        if let UserData::C {
+            ptr,
+            free: Some(free),
+        } = self
+        {
+            free(*ptr);
         }
     }
 }

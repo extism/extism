@@ -160,7 +160,7 @@ impl Plugin {
         let profiling_strategy = debug_options
             .profiling_strategy
             .map_or(ProfilingStrategy::None, |_| profiling_strategy());
-        debug_options.profiling_strategy = Some(profiling_strategy.clone());
+        debug_options.profiling_strategy = Some(profiling_strategy);
 
         // Setup wasmtime types
         let engine = Engine::new(
@@ -663,7 +663,7 @@ impl Plugin {
                     if let Some(memory) = self.current_plugin_mut().memory() {
                         debug!("Dumping memory to {}", file.display());
                         let data = memory.data(&mut self.store);
-                        if let Err(e) = std::fs::write(file, &data) {
+                        if let Err(e) = std::fs::write(file, data) {
                             error!("Unable to write memory dump: {:?}", e);
                         }
                     } else {
@@ -703,10 +703,10 @@ impl Plugin {
                 }
 
                 error!("Call to {name} encountered an error: {e:?}");
-                return Err((
+                Err((
                     e.context(msg.unwrap_or_else(|| "Error in Extism plugin call".to_string())),
                     -1,
-                ));
+                ))
             }
         }
     }

@@ -277,7 +277,7 @@ pub unsafe extern "C" fn extism_plugin_new(
                 if f.is_null() {
                     continue;
                 }
-                let f = (&*f).clone();
+                let f = (*f).clone();
                 funcs.push(f);
             }
         }
