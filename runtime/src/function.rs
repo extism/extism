@@ -1,3 +1,4 @@
+use std::sync::Arc;
 use wasmtime::Caller;
 
 use crate::{CurrentPlugin, Error};
@@ -57,25 +58,35 @@ impl From<ValType> for wasmtime::ValType {
 /// Raw WebAssembly values
 pub type Val = wasmtime::Val;
 
-/// UserData is an opaque pointer used to store additional data
-/// that gets passed into host function callbacks
+/// A pointer to C userdata
+#[derive(Debug)]
+pub struct CPtr {
+    ptr: *mut std::ffi::c_void,
+    free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
+}
+
+/// UserDataHandle is an untyped version of `UserData` that is stored inside `Function` to keep a live reference.
+#[derive(Clone)]
+pub(crate) enum UserDataHandle {
+    C(Arc<CPtr>),
+    Rust(Arc<std::sync::Mutex<dyn std::any::Any>>),
+}
+
+/// UserData is used to store additional data that gets passed into host function callbacks
+///
+/// `UserData` is used to store `C` and `Rust` data from hosts. The Rust data in wrapped in an `Arc<Mutex<T>>` and can be accessed
+/// using `UserData::get`. The `C` data is stored as a pointer and cleanup function and isn't usable from Rust. The cleanup function
+/// will be called when the inner `CPtr` is dropped.
 #[derive(Debug)]
 pub enum UserData<T: Sized> {
-    C {
-        ptr: *mut std::ffi::c_void,
-        free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
-    },
-    // Ref(UserDataPointer),
-    Rust(std::sync::Arc<std::sync::Mutex<T>>),
+    C(Arc<CPtr>),
+    Rust(Arc<std::sync::Mutex<T>>),
 }
 
 impl<T> Clone for UserData<T> {
     fn clone(&self) -> Self {
         match self {
-            UserData::C { ptr, .. } => UserData::C {
-                ptr: *ptr,
-                free: None,
-            },
+            UserData::C(ptr) => UserData::C(ptr.clone()),
             UserData::Rust(data) => UserData::Rust(data.clone()),
         }
     }
@@ -88,12 +99,13 @@ impl<T> UserData<T> {
         ptr: *mut std::ffi::c_void,
         free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
     ) -> Self {
-        UserData::C { ptr, free }
+        UserData::C(Arc::new(CPtr { ptr, free }))
     }
 
+    /// Access the underlying C pointer
     pub(crate) fn as_ptr(&self) -> *mut std::ffi::c_void {
         match self {
-            UserData::C { ptr, .. } => *ptr,
+            UserData::C(ptr) => ptr.ptr,
             _ => {
                 log::error!("Rust UserData cannot be used by C");
                 std::ptr::null_mut()
@@ -101,38 +113,39 @@ impl<T> UserData<T> {
         }
     }
 
-    /// Create a new `UserData` with any Rust type
+    /// Create a new `UserData` from a Rust value
+    ///
+    /// This will wrap the provided value in a reference-counted mutex
     pub fn new(x: T) -> Self {
-        let data = std::sync::Arc::new(std::sync::Mutex::new(x));
+        let data = Arc::new(std::sync::Mutex::new(x));
         UserData::Rust(data)
     }
 
-    /// Get a reference to the value stored in `UserData` if it matches the initial type    
-    pub fn get(&self) -> Option<std::sync::Arc<std::sync::Mutex<T>>> {
+    /// Get a copy of the inner value
+    pub fn get(&self) -> Result<Arc<std::sync::Mutex<T>>, Error> {
         match self {
-            UserData::C { .. } => None,
-            UserData::Rust(data) => Some(data.clone()),
+            UserData::C { .. } => anyhow::bail!("Unable to convert C UserData to Rust type"),
+            UserData::Rust(data) => Ok(data.clone()),
         }
     }
 }
 
 impl<T> Default for UserData<T> {
     fn default() -> Self {
-        UserData::C {
+        UserData::C(Arc::new(CPtr {
             ptr: std::ptr::null_mut(),
             free: None,
-        }
+        }))
     }
 }
 
-impl Drop for OriginalUserData {
+impl Drop for CPtr {
     fn drop(&mut self) {
-        if let OriginalUserData::C {
-            ptr,
-            free: Some(free),
-        } = self
-        {
-            free(*ptr);
+        if self.ptr.is_null() {
+            if let Some(free) = &self.free {
+                free(self.ptr);
+                self.ptr = std::ptr::null_mut();
+            }
         }
     }
 }
@@ -145,6 +158,7 @@ type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &
     + Send;
 
 /// Wraps raw host functions with some additional metadata and user data
+#[derive(Clone)]
 pub struct Function {
     /// Function name
     pub(crate) name: String,
@@ -156,36 +170,10 @@ pub struct Function {
     pub(crate) ty: wasmtime::FuncType,
 
     /// Function handle
-    pub(crate) f: std::sync::Arc<FunctionInner>,
+    pub(crate) f: Arc<FunctionInner>,
 
     /// UserData
-    pub(crate) _user_data: OriginalUserData,
-}
-
-pub(crate) enum OriginalUserData {
-    C {
-        ptr: *mut std::ffi::c_void,
-        free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
-    },
-    Rust(std::sync::Arc<std::sync::Mutex<dyn std::any::Any>>),
-}
-
-impl Clone for Function {
-    fn clone(&self) -> Self {
-        Function {
-            name: self.name.clone(),
-            namespace: self.namespace.clone(),
-            ty: self.ty.clone(),
-            f: self.f.clone(),
-            _user_data: match &self._user_data {
-                OriginalUserData::C { ptr, .. } => OriginalUserData::C {
-                    ptr: *ptr,
-                    free: None,
-                },
-                OriginalUserData::Rust(x) => OriginalUserData::Rust(x.clone()),
-            },
-        }
-    }
+    pub(crate) _user_data: UserDataHandle,
 }
 
 impl Function {
@@ -211,7 +199,7 @@ impl Function {
                 args.into_iter().map(wasmtime::ValType::from),
                 returns.into_iter().map(wasmtime::ValType::from),
             ),
-            f: std::sync::Arc::new(
+            f: Arc::new(
                 move |mut caller: Caller<_>, inp: &[Val], outp: &mut [Val]| {
                     let x = data.clone();
                     f(caller.data_mut(), inp, outp, x)
@@ -219,11 +207,8 @@ impl Function {
             ),
             namespace: None,
             _user_data: match &user_data {
-                UserData::C { ptr, free } => OriginalUserData::C {
-                    ptr: *ptr,
-                    free: *free,
-                },
-                UserData::Rust(x) => OriginalUserData::Rust(x.clone()),
+                UserData::C(ptr) => UserDataHandle::C(ptr.clone()),
+                UserData::Rust(x) => UserDataHandle::Rust(x.clone()),
             },
         }
     }
