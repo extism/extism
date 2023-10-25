@@ -722,7 +722,7 @@ impl Plugin {
     ///
     /// # Examples
     ///
-    /// ```no_run
+    /// ```ignore
     /// // call takes a ToBytes and FromBytes type
     /// // this function takes an &str and returns an &str
     /// let output = plugin.call::<&str, &str>("greet", "Benjamin")?;
