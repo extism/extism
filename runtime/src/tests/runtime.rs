@@ -423,7 +423,7 @@ fn hello_world_user_data(
 #[test]
 fn test_userdata() {
     let path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("tmp");
-    {
+    let output = {
         if path.exists() {
             std::fs::remove_file(&path).unwrap();
         }
@@ -442,6 +442,8 @@ fn test_userdata() {
             .unwrap();
         let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
         assert!(output.is_ok());
-    }
+        output.unwrap()
+    };
     assert!(path.exists());
+    assert_eq!(std::fs::read(path).unwrap(), output.as_bytes());
 }
