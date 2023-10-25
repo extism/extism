@@ -76,7 +76,6 @@ impl<T> Clone for UserData<T> {
                 ptr: *ptr,
                 free: None,
             },
-            // UserData::Ref(ptr) => UserData::Ref(ptr.clone()),
             UserData::Rust(data) => UserData::Rust(data.clone()),
         }
     }
@@ -112,10 +111,6 @@ impl<T> UserData<T> {
     pub fn get(&self) -> Option<std::sync::Arc<std::sync::Mutex<T>>> {
         match self {
             UserData::C { .. } => None,
-            // UserData::Ref(UserDataPointer { ptr, .. }) => {
-            //     let ptr = unsafe { &*(*ptr as *mut UserData<T>) };
-            //     ptr.get()
-            // }
             UserData::Rust(data) => Some(data.clone()),
         }
     }
