@@ -125,9 +125,9 @@ impl<T> Default for UserData<T> {
     }
 }
 
-impl<T> Drop for UserData<T> {
+impl Drop for OriginalUserData {
     fn drop(&mut self) {
-        if let UserData::C {
+        if let OriginalUserData::C {
             ptr,
             free: Some(free),
         } = self
@@ -159,7 +159,15 @@ pub struct Function {
     pub(crate) f: std::sync::Arc<FunctionInner>,
 
     /// UserData
-    pub(crate) _user_data: std::sync::Arc<std::sync::Mutex<dyn std::any::Any>>,
+    pub(crate) _user_data: OriginalUserData,
+}
+
+pub(crate) enum OriginalUserData {
+    C {
+        ptr: *mut std::ffi::c_void,
+        free: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
+    },
+    Rust(std::sync::Arc<std::sync::Mutex<dyn std::any::Any>>),
 }
 
 impl Clone for Function {
@@ -169,7 +177,13 @@ impl Clone for Function {
             namespace: self.namespace.clone(),
             ty: self.ty.clone(),
             f: self.f.clone(),
-            _user_data: self._user_data.clone(),
+            _user_data: match &self._user_data {
+                OriginalUserData::C { ptr, .. } => OriginalUserData::C {
+                    ptr: *ptr,
+                    free: None,
+                },
+                OriginalUserData::Rust(x) => OriginalUserData::Rust(x.clone()),
+            },
         }
     }
 }
@@ -204,9 +218,13 @@ impl Function {
                 },
             ),
             namespace: None,
-            _user_data: user_data
-                .get()
-                .expect("Function::new should not be called with C-created user-data"),
+            _user_data: match &user_data {
+                UserData::C { ptr, free } => OriginalUserData::C {
+                    ptr: *ptr,
+                    free: *free,
+                },
+                UserData::Rust(x) => OriginalUserData::Rust(x.clone()),
+            },
         }
     }
 
