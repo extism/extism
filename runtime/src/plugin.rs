@@ -160,7 +160,7 @@ impl Plugin {
         let profiling_strategy = debug_options
             .profiling_strategy
             .map_or(ProfilingStrategy::None, |_| profiling_strategy());
-        debug_options.profiling_strategy = Some(profiling_strategy.clone());
+        debug_options.profiling_strategy = Some(profiling_strategy);
 
         // Setup wasmtime types
         let engine = Engine::new(
@@ -170,7 +170,6 @@ impl Plugin {
                 .coredump_on_trap(debug_options.coredump.is_some())
                 .profiler(profiling_strategy),
         )?;
-        let mut imports = imports.into_iter();
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
         let available_pages = manifest.memory.max_pages;
@@ -241,12 +240,13 @@ impl Plugin {
             }
         }
 
+        let mut imports: Vec<_> = imports.into_iter().collect();
         for f in &mut imports {
             let name = f.name().to_string();
             let ns = f.namespace().unwrap_or(EXPORT_MODULE_NAME);
-            linker.func_new(ns, &name, f.ty().clone(), unsafe {
-                &*std::sync::Arc::as_ptr(&f.f)
-            })?;
+            unsafe {
+                linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+            }
         }
 
         let instance_pre = linker.instantiate_pre(main)?;
@@ -264,9 +264,9 @@ impl Plugin {
             cancel_handle: CancelHandle { id, timer_tx },
             instantiations: 0,
             output: Output::default(),
-            _functions: imports.collect(),
             needs_reset: false,
             debug_options,
+            _functions: imports,
         };
 
         plugin.current_plugin_mut().store = &mut plugin.store;
@@ -663,7 +663,7 @@ impl Plugin {
                     if let Some(memory) = self.current_plugin_mut().memory() {
                         debug!("Dumping memory to {}", file.display());
                         let data = memory.data(&mut self.store);
-                        if let Err(e) = std::fs::write(file, &data) {
+                        if let Err(e) = std::fs::write(file, data) {
                             error!("Unable to write memory dump: {:?}", e);
                         }
                     } else {
@@ -703,10 +703,10 @@ impl Plugin {
                 }
 
                 error!("Call to {name} encountered an error: {e:?}");
-                return Err((
+                Err((
                     e.context(msg.unwrap_or_else(|| "Error in Extism plugin call".to_string())),
                     -1,
-                ));
+                ))
             }
         }
     }

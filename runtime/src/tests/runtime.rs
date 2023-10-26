@@ -1,5 +1,5 @@
 use crate::*;
-use std::time::Instant;
+use std::{io::Write, time::Instant};
 
 const WASM: &[u8] = include_bytes!("../../../wasm/code-functions.wasm");
 const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../../wasm/code.wasm");
@@ -14,7 +14,7 @@ host_fn!(hello_world (a: String) -> String { Ok(a) });
 //     plugin: &mut CurrentPlugin,
 //     inputs: &[Val],
 //     outputs: &mut [Val],
-//     _user_data: UserData,
+//     _user_data: UserData<()>,
 // ) -> Result<(), Error> {
 //     let input: String = plugin.memory_get_val(&inputs[0]).unwrap();
 //     let output = plugin.memory_new(&input).unwrap();
@@ -26,7 +26,7 @@ fn hello_world_panic(
     _plugin: &mut CurrentPlugin,
     _inputs: &[Val],
     _outputs: &mut [Val],
-    _user_data: UserData,
+    _user_data: UserData<()>,
 ) -> Result<(), Error> {
     panic!("This should not run");
 }
@@ -44,7 +44,7 @@ fn it_works() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     )
     .with_namespace("env");
@@ -52,7 +52,7 @@ fn it_works() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_panic,
     )
     .with_namespace("test");
@@ -143,7 +143,7 @@ fn test_plugin_threads() {
                 "hello_world",
                 [ValType::I64],
                 [ValType::I64],
-                None,
+                UserData::default(),
                 hello_world,
             )
             .with_wasi(true)
@@ -176,7 +176,7 @@ fn test_cancel() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -201,7 +201,7 @@ fn test_timeout() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -234,7 +234,7 @@ fn test_typed_plugin_macro() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -252,7 +252,7 @@ fn test_multiple_instantiations() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -294,7 +294,7 @@ fn test_fuzz_reflect_plugin() {
         "host_reflect",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world,
     );
 
@@ -339,7 +339,7 @@ fn hello_world_set_error(
     plugin: &mut CurrentPlugin,
     inputs: &[Val],
     outputs: &mut [Val],
-    _user_data: UserData,
+    _user_data: UserData<()>,
 ) -> Result<(), Error> {
     plugin.set_error("TEST")?;
     outputs[0] = inputs[0].clone();
@@ -353,7 +353,7 @@ fn test_extism_error() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_set_error,
     );
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
@@ -368,7 +368,7 @@ fn test_extism_memdump() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_set_error,
     );
     let mut plugin = PluginBuilder::new_with_module(WASM)
@@ -389,7 +389,7 @@ fn test_extism_coredump() {
         "hello_world",
         [ValType::I64],
         [ValType::I64],
-        None,
+        UserData::default(),
         hello_world_set_error,
     );
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
@@ -404,4 +404,46 @@ fn test_extism_coredump() {
     assert!(output.is_err());
     assert!(std::path::PathBuf::from("extism.core").exists());
     let _ = std::fs::remove_file("extism.core");
+}
+
+fn hello_world_user_data(
+    _plugin: &mut CurrentPlugin,
+    inputs: &[Val],
+    outputs: &mut [Val],
+    user_data: UserData<std::fs::File>,
+) -> Result<(), Error> {
+    let data = user_data.get()?;
+    let mut data = data.lock().unwrap();
+    let s = _plugin.memory_get_val(&inputs[0])?;
+    data.write_all(s)?;
+    outputs[0] = inputs[0].clone();
+    Ok(())
+}
+
+#[test]
+fn test_userdata() {
+    let path = std::path::PathBuf::from(std::env::var("OUT_DIR").unwrap()).join("tmp");
+    let output = {
+        if path.exists() {
+            std::fs::remove_file(&path).unwrap();
+        }
+        let file = std::fs::File::create(&path).unwrap();
+        let f = Function::new(
+            "hello_world",
+            [ValType::I64],
+            [ValType::I64],
+            UserData::new(file),
+            hello_world_user_data,
+        );
+        let mut plugin = PluginBuilder::new_with_module(WASM)
+            .with_wasi(true)
+            .with_functions([f])
+            .build()
+            .unwrap();
+        let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+        assert!(output.is_ok());
+        output.unwrap()
+    };
+    assert!(path.exists());
+    assert_eq!(std::fs::read(path).unwrap(), output.as_bytes());
 }

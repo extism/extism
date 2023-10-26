@@ -7,6 +7,7 @@ use crate::*;
 
 pub type ExtismMemoryHandle = u64;
 pub type Size = u64;
+pub struct ExtismFunction(std::cell::Cell<Option<Function>>);
 
 /// The return code used to specify a successful plugin call
 pub static EXTISM_SUCCESS: i32 = 0;
@@ -168,7 +169,7 @@ pub unsafe extern "C" fn extism_function_new(
     func: ExtismFunctionType,
     user_data: *mut std::ffi::c_void,
     free_user_data: Option<extern "C" fn(_: *mut std::ffi::c_void)>,
-) -> *mut Function {
+) -> *mut ExtismFunction {
     let name = match std::ffi::CStr::from_ptr(name).to_str() {
         Ok(x) => x.to_string(),
         Err(_) => {
@@ -190,12 +191,12 @@ pub unsafe extern "C" fn extism_function_new(
     }
     .to_vec();
 
-    let user_data = UserData::new_pointer(user_data, free_user_data);
+    let user_data: UserData<()> = UserData::new_pointer(user_data, free_user_data);
     let f = Function::new(
         name,
         inputs,
         output_types.clone(),
-        Some(user_data),
+        user_data,
         move |plugin, inputs, outputs, user_data| {
             let inputs: Vec<_> = inputs.iter().map(ExtismVal::from).collect();
             let mut output_tmp: Vec<_> = output_types
@@ -227,30 +228,35 @@ pub unsafe extern "C" fn extism_function_new(
             Ok(())
         },
     );
-    Box::into_raw(Box::new(f))
+    Box::into_raw(Box::new(ExtismFunction(std::cell::Cell::new(Some(f)))))
 }
 
 /// Free `ExtismFunction`
 #[no_mangle]
-pub unsafe extern "C" fn extism_function_free(f: *mut Function) {
+pub unsafe extern "C" fn extism_function_free(f: *mut ExtismFunction) {
     if f.is_null() {
         return;
     }
+
     drop(Box::from_raw(f))
 }
 
 /// Set the namespace of an `ExtismFunction`
 #[no_mangle]
 pub unsafe extern "C" fn extism_function_set_namespace(
-    ptr: *mut Function,
+    ptr: *mut ExtismFunction,
     namespace: *const std::ffi::c_char,
 ) {
     let namespace = std::ffi::CStr::from_ptr(namespace);
     let f = &mut *ptr;
-    f.set_namespace(namespace.to_string_lossy().to_string());
+    if let Some(x) = f.0.get_mut() {
+        x.set_namespace(namespace.to_string_lossy().to_string());
+    } else {
+        debug!("Trying to set namespace of already registered function")
+    }
 }
 
-/// Create a new plugin with additional host functions
+/// Create a new plugin with host functions, the functions passed to this function no longer need to be manually freed using
 ///
 /// `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
 /// `wasm_size`: the length of the `wasm` parameter
@@ -261,7 +267,7 @@ pub unsafe extern "C" fn extism_function_set_namespace(
 pub unsafe extern "C" fn extism_plugin_new(
     wasm: *const u8,
     wasm_size: Size,
-    functions: *mut *const Function,
+    functions: *mut *const ExtismFunction,
     n_functions: Size,
     with_wasi: bool,
     errmsg: *mut *mut std::ffi::c_char,
@@ -277,8 +283,15 @@ pub unsafe extern "C" fn extism_plugin_new(
                 if f.is_null() {
                     continue;
                 }
-                let f = (*f).clone();
-                funcs.push(f);
+                if let Some(f) = (*f).0.take() {
+                    funcs.push(f);
+                } else {
+                    let e = std::ffi::CString::new(
+                        "Function cannot be registered with multiple different Plugins",
+                    )
+                    .unwrap();
+                    *errmsg = e.into_raw();
+                }
             }
         }
     }

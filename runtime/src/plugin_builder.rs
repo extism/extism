@@ -49,27 +49,43 @@ impl PluginBuilder {
     }
 
     /// Add a single host function
-    pub fn with_function<F>(
+    pub fn with_function<T: 'static, F>(
         mut self,
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
         returns: impl IntoIterator<Item = ValType>,
-        user_data: Option<UserData>,
+        user_data: UserData<T>,
         f: F,
     ) -> Self
     where
         F: 'static
-            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData) -> Result<(), Error>
+            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData<T>) -> Result<(), Error>
             + Sync
             + Send,
     {
-        self.functions.push(Function::new(
-            name,
-            args,
-            returns,
-            user_data.map(UserData::new),
-            f,
-        ));
+        self.functions
+            .push(Function::new(name, args, returns, user_data, f));
+        self
+    }
+
+    /// Add a single host function in a specific namespace
+    pub fn with_function_in_namespace<T: 'static, F>(
+        mut self,
+        namespace: impl Into<String>,
+        name: impl Into<String>,
+        args: impl IntoIterator<Item = ValType>,
+        returns: impl IntoIterator<Item = ValType>,
+        user_data: UserData<T>,
+        f: F,
+    ) -> Self
+    where
+        F: 'static
+            + Fn(&mut CurrentPlugin, &[Val], &mut [Val], UserData<T>) -> Result<(), Error>
+            + Sync
+            + Send,
+    {
+        self.functions
+            .push(Function::new(name, args, returns, user_data, f).with_namespace(namespace));
         self
     }
 
@@ -104,7 +120,7 @@ impl PluginBuilder {
         match self.source {
             Source::Manifest(m) => {
                 let data = serde_json::to_vec(&m)?;
-                Plugin::build_new(&data, self.functions, self.wasi, self.debug_options)
+                Plugin::build_new(data, self.functions, self.wasi, self.debug_options)
             }
             Source::Data(d) => Plugin::build_new(d, self.functions, self.wasi, self.debug_options),
         }

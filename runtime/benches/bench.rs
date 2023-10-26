@@ -63,7 +63,7 @@ pub fn reflect_1(c: &mut Criterion) {
             "host_reflect",
             [ValType::I64],
             [ValType::I64],
-            None,
+            UserData::default(),
             hello_world,
         )
         .build()
@@ -87,7 +87,7 @@ pub fn reflect_10(c: &mut Criterion) {
             "host_reflect",
             [ValType::I64],
             [ValType::I64],
-            None,
+            UserData::default(),
             hello_world,
         )
         .build()
@@ -111,7 +111,7 @@ pub fn reflect_100(c: &mut Criterion) {
             "host_reflect",
             [ValType::I64],
             [ValType::I64],
-            None,
+            UserData::default(),
             hello_world,
         )
         .build()

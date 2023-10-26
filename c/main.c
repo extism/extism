@@ -24,6 +24,8 @@ void hello_world(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
   outputs[0].v.i64 = inputs[0].v.i64;
 }
 
+void free_data(void *x) { puts("FREE"); }
+
 uint8_t *read_file(const char *filename, size_t *len) {
 
   FILE *fp = fopen(filename, "rb");
@@ -57,8 +59,9 @@ int main(int argc, char *argv[]) {
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
   ExtismValType inputs[] = {I64};
   ExtismValType outputs[] = {I64};
-  ExtismFunction *f = extism_function_new("hello_world", inputs, 1, outputs, 1,
-                                          hello_world, "Hello, again!", NULL);
+  ExtismFunction *f =
+      extism_function_new("hello_world", inputs, 1, outputs, 1, hello_world,
+                          "Hello, again!", free_data);
 
   char *errmsg = NULL;
   ExtismPlugin *plugin = extism_plugin_new(
@@ -76,6 +79,9 @@ int main(int argc, char *argv[]) {
   const uint8_t *output = extism_plugin_output_data(plugin);
   write(STDOUT_FILENO, output, out_len);
   write(STDOUT_FILENO, "\n", 1);
+  puts("Freeing plugin");
   extism_plugin_free(plugin);
+  puts("Freeing function");
+  extism_function_free(f);
   return 0;
 }
