@@ -7,7 +7,7 @@ use crate::*;
 
 pub type ExtismMemoryHandle = u64;
 pub type Size = u64;
-pub struct ExtismFunction(Option<Function>);
+pub struct ExtismFunction(std::cell::Cell<Option<Function>>);
 
 /// The return code used to specify a successful plugin call
 pub static EXTISM_SUCCESS: i32 = 0;
@@ -228,7 +228,7 @@ pub unsafe extern "C" fn extism_function_new(
             Ok(())
         },
     );
-    Box::into_raw(Box::new(ExtismFunction(Some(f))))
+    Box::into_raw(Box::new(ExtismFunction(std::cell::Cell::new(Some(f)))))
 }
 
 /// Free `ExtismFunction`
@@ -249,7 +249,7 @@ pub unsafe extern "C" fn extism_function_set_namespace(
 ) {
     let namespace = std::ffi::CStr::from_ptr(namespace);
     let f = &mut *ptr;
-    if let Some(x) = &mut f.0 {
+    if let Some(x) = f.0.get_mut() {
         x.set_namespace(namespace.to_string_lossy().to_string());
     } else {
         debug!("Trying to set namespace of already registered function")
@@ -267,7 +267,7 @@ pub unsafe extern "C" fn extism_function_set_namespace(
 pub unsafe extern "C" fn extism_plugin_new(
     wasm: *const u8,
     wasm_size: Size,
-    functions: *const *mut ExtismFunction,
+    functions: *mut *const ExtismFunction,
     n_functions: Size,
     with_wasi: bool,
     errmsg: *mut *mut std::ffi::c_char,

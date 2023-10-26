@@ -170,7 +170,7 @@ void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
  */
 ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 ExtismSize wasm_size,
-                                ExtismFunction **functions,
+                                const ExtismFunction **functions,
                                 ExtismSize n_functions,
                                 bool with_wasi,
                                 char **errmsg);

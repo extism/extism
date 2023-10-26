@@ -64,8 +64,8 @@ int main(int argc, char *argv[]) {
                           "Hello, again!", free_data);
 
   char *errmsg = NULL;
-  ExtismPlugin *plugin =
-      extism_plugin_new(data, len, (ExtismFunction **)&f, 1, true, &errmsg);
+  ExtismPlugin *plugin = extism_plugin_new(
+      data, len, (const ExtismFunction **)&f, 1, true, &errmsg);
   free(data);
   if (plugin == NULL) {
     puts(errmsg);
@@ -79,8 +79,9 @@ int main(int argc, char *argv[]) {
   const uint8_t *output = extism_plugin_output_data(plugin);
   write(STDOUT_FILENO, output, out_len);
   write(STDOUT_FILENO, "\n", 1);
-  puts("Free plugin");
+  puts("Freeing plugin");
   extism_plugin_free(plugin);
+  puts("Freeing function");
   extism_function_free(f);
   return 0;
 }
