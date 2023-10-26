@@ -138,9 +138,9 @@ impl<T> UserData<T> {
 
 impl Drop for CPtr {
     fn drop(&mut self) {
-        if self.ptr.is_null() {
-            if let Some(free) = &self.free {
-                free(self.ptr);
+        if !self.ptr.is_null() {
+            if let Some(free_data) = &self.free {
+                free_data(self.ptr);
                 self.ptr = std::ptr::null_mut();
             }
         }

@@ -55,9 +55,6 @@ typedef struct ExtismCancelHandle ExtismCancelHandle;
  */
 typedef struct ExtismCurrentPlugin ExtismCurrentPlugin;
 
-/**
- * Wraps raw host functions with some additional metadata and user data
- */
 typedef struct ExtismFunction ExtismFunction;
 
 /**
@@ -163,7 +160,7 @@ void extism_function_free(ExtismFunction *f);
 void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
 
 /**
- * Create a new plugin with additional host functions
+ * Create a new plugin with host functions, the functions passed to this function no longer need to be manually freed using
  *
  * `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
  * `wasm_size`: the length of the `wasm` parameter
@@ -173,7 +170,7 @@ void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
  */
 ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 ExtismSize wasm_size,
-                                const ExtismFunction **functions,
+                                ExtismFunction **functions,
                                 ExtismSize n_functions,
                                 bool with_wasi,
                                 char **errmsg);
