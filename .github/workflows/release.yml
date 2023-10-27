@@ -51,7 +51,7 @@ jobs:
           - os: 'windows'
             target: 'x86_64-pc-windows-msvc'
             artifact: 'extism.dll'
-            static-artifact: 'libextism.lib'
+            static-artifact: 'extism.lib'
 
     steps:
       - name: Checkout
