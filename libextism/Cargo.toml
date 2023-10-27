@@ -10,7 +10,7 @@ description = "libextism"
 
 [lib]
 name = "extism"
-crate-type = ["cdylib"]
+crate-type = ["cdylib", "staticlib"]
 doc = false
 
 [dependencies]

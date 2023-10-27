@@ -1,5 +1,6 @@
 DEST?=/usr/local
 SOEXT=so
+AEXT=a
 FEATURES?=default
 DEFAULT_FEATURES?=yes
 
@@ -38,8 +39,9 @@ install:
 	mkdir -p $(DEST)/lib $(DEST)/include
 	install runtime/extism.h $(DEST)/include/extism.h
 	install target/release/libextism.$(SOEXT) $(DEST)/lib/libextism.$(SOEXT)
+	install target/release/libextism.$(AEXT) $(DEST)/lib/libextism.$(AEXT)
 
 uninstall:
-	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT)
+	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT) $(DEST)/lib/libextism.$(AEXT)
 
 
