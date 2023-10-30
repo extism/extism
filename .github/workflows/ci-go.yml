@@ -1,16 +1,4 @@
 on: 
-  pull_request:
-    paths:
-      - .github/actions/extism/**
-      - .github/workflows/ci-go.yml
-      - manifest/**
-      - runtime/**
-      - libextism/**
-      - extism.go
-      - extism_test.go
-      - go.mod
-      - libextism.pc 
-      - go/**
   workflow_dispatch:
 
 name: Go CI

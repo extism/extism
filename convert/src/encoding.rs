@@ -111,7 +111,7 @@ impl<'a, T: prost::Message> ToBytes<'a> for Protobuf<T> {
 }
 
 #[cfg(feature = "protobuf")]
-impl<'a, T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
+impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(Protobuf(T::decode(data)?))
     }

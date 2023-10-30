@@ -33,7 +33,7 @@ impl<'a, T: FromBytesOwned> FromBytes<'a> for T {
     }
 }
 
-impl<'a> FromBytesOwned for Box<[u8]> {
+impl FromBytesOwned for Box<[u8]> {
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(data.to_vec().into_boxed_slice())
     }

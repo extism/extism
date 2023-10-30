@@ -47,7 +47,7 @@ fn it_works() {
         UserData::default(),
         hello_world,
     )
-    .with_namespace("env");
+    .with_namespace(EXTISM_USER_MODULE);
     let g = Function::new(
         "hello_world",
         [ValType::I64],
@@ -188,7 +188,7 @@ fn test_cancel() {
         std::thread::sleep(std::time::Duration::from_secs(1));
         assert!(handle.cancel().is_ok());
     });
-    let _output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let _output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Cancelled plugin ran for {:?}", time);
@@ -210,14 +210,15 @@ fn test_timeout() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
-    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
-    println!("Timed out plugin ran for {:?}", time);
-    let s = output.unwrap_err().root_cause().to_string();
-    println!("{}", s);
-    assert!(s == "timeout");
-    // std::io::stdout().write_all(output).unwrap();
+    let err = output.unwrap_err().root_cause().to_string();
+    println!(
+        "Timed out plugin ran for {:?}, with error: {:?}",
+        time, &err
+    );
+    assert!(err == "timeout");
 }
 
 typed_plugin!(TestTypedPluginGenerics {
@@ -400,7 +401,7 @@ fn test_extism_coredump() {
         .with_coredump("extism.core")
         .build()
         .unwrap();
-    let output: Result<&[u8], Error> = plugin.call("infinite_loop", "abc123");
+    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
     assert!(output.is_err());
     assert!(std::path::PathBuf::from("extism.core").exists());
     let _ = std::fs::remove_file("extism.core");

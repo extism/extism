@@ -4,7 +4,6 @@
 //! - An allocator for managing that memory
 //! - Input/output handling
 //! - Error message handling
-//! - Backward compatible `extism_*` functions
 //!
 //! ## Allocator
 //!
@@ -17,14 +16,14 @@
 //! ## Input/Output
 //!
 //! Input and output are just allocated blocks of memory that are marked as either input or output using
-//! the `extism_input_set` or `extism_output_set` functions. The MemoryRoot field `input_offset` contains
+//! the `input_set` or `output_set` functions. The MemoryRoot field `input_offset` contains
 //! the offset in memory to the input data and `input_length` contains the size of the input data. `output_offset`
 //! and `output_length` are used for the output data.
 //!
 //! ## Error handling
 //!
 //! The `error` field is used to track the current error message. If it is set to `0` then there is no error.
-//! The length of the error message can be retreived using `extism_length`.
+//! The length of the error message can be retreived using `length`.
 //!
 //! ## Memory offsets
 //! An offset of `0` is similar to a `NULL` pointer in C - it implies an allocation failure or memory error
@@ -140,10 +139,8 @@ impl MemoryRoot {
         }
 
         // Ensure that at least one page is allocated to store the `MemoryRoot` data
-        if core::arch::wasm32::memory_size(0) == 0 {
-            if core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
-                core::arch::wasm32::unreachable()
-            }
+        if core::arch::wasm32::memory_size(0) == 0 && core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
+            core::arch::wasm32::unreachable()
         }
 
         root.input_offset = 0;
@@ -331,7 +328,7 @@ impl MemoryBlock {
 
 /// Allocate a block of memory and return the offset
 #[no_mangle]
-pub unsafe fn extism_alloc(n: Length) -> Pointer {
+pub unsafe fn alloc(n: Length) -> Pointer {
     if n == 0 {
         return 0;
     }
@@ -345,7 +342,7 @@ pub unsafe fn extism_alloc(n: Length) -> Pointer {
 
 /// Free allocated memory
 #[no_mangle]
-pub unsafe fn extism_free(p: Pointer) {
+pub unsafe fn free(p: Pointer) {
     if p == 0 {
         return;
     }
@@ -364,7 +361,7 @@ pub unsafe fn extism_free(p: Pointer) {
 
 /// Get the length of an allocated memory block
 #[no_mangle]
-pub unsafe fn extism_length(p: Pointer) -> Length {
+pub unsafe fn length(p: Pointer) -> Length {
     if p == 0 {
         return 0;
     }
@@ -377,7 +374,7 @@ pub unsafe fn extism_length(p: Pointer) -> Length {
 
 /// Load a byte from Extism-managed memory
 #[no_mangle]
-pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
+pub unsafe fn load_u8(p: Pointer) -> u8 {
     #[cfg(feature = "bounds-checking")]
     if !MemoryRoot::pointer_in_bounds_fast(p) {
         return 0;
@@ -387,7 +384,7 @@ pub unsafe fn extism_load_u8(p: Pointer) -> u8 {
 
 /// Load a u64 from Extism-managed memory
 #[no_mangle]
-pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
+pub unsafe fn load_u64(p: Pointer) -> u64 {
     #[cfg(feature = "bounds-checking")]
     if !MemoryRoot::pointer_in_bounds_fast(p + core::mem::size_of::<u64>() as u64 - 1) {
         return 0;
@@ -397,7 +394,7 @@ pub unsafe fn extism_load_u64(p: Pointer) -> u64 {
 
 /// Load a byte from the input data
 #[no_mangle]
-pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
+pub unsafe fn input_load_u8(p: Pointer) -> u8 {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     if p >= root.input_length {
@@ -408,7 +405,7 @@ pub unsafe fn extism_input_load_u8(p: Pointer) -> u8 {
 
 /// Load a u64 from the input data
 #[no_mangle]
-pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
+pub unsafe fn input_load_u64(p: Pointer) -> u64 {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     if p + core::mem::size_of::<u64>() as Pointer > root.input_length {
@@ -419,7 +416,7 @@ pub unsafe fn extism_input_load_u64(p: Pointer) -> u64 {
 
 /// Write a byte in Extism-managed memory
 #[no_mangle]
-pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
+pub unsafe fn store_u8(p: Pointer, x: u8) {
     #[cfg(feature = "bounds-checking")]
     if !MemoryRoot::pointer_in_bounds_fast(p) {
         return;
@@ -429,7 +426,7 @@ pub unsafe fn extism_store_u8(p: Pointer, x: u8) {
 
 /// Write a u64 in Extism-managed memory
 #[no_mangle]
-pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
+pub unsafe fn store_u64(p: Pointer, x: u64) {
     #[cfg(feature = "bounds-checking")]
     if !MemoryRoot::pointer_in_bounds_fast(p + core::mem::size_of::<u64>() as u64 - 1) {
         return;
@@ -439,7 +436,7 @@ pub unsafe fn extism_store_u64(p: Pointer, x: u64) {
 
 /// Set the range of the input data in memory
 #[no_mangle]
-pub unsafe fn extism_input_set(p: Pointer, len: Length) {
+pub unsafe fn input_set(p: Pointer, len: Length) {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
@@ -453,7 +450,7 @@ pub unsafe fn extism_input_set(p: Pointer, len: Length) {
 
 /// Set the range of the output data in memory
 #[no_mangle]
-pub unsafe fn extism_output_set(p: Pointer, len: Length) {
+pub unsafe fn output_set(p: Pointer, len: Length) {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
@@ -467,37 +464,37 @@ pub unsafe fn extism_output_set(p: Pointer, len: Length) {
 
 /// Get the input length
 #[no_mangle]
-pub fn extism_input_length() -> Length {
+pub fn input_length() -> Length {
     unsafe { MemoryRoot::new().input_length }
 }
 
 /// Get the input offset in Exitsm-managed memory
 #[no_mangle]
-pub fn extism_input_offset() -> Length {
+pub fn input_offset() -> Length {
     unsafe { MemoryRoot::new().input_offset }
 }
 
 /// Get the output length
 #[no_mangle]
-pub unsafe fn extism_output_length() -> Length {
+pub fn output_length() -> Length {
     unsafe { MemoryRoot::new().output_length }
 }
 
 /// Get the output offset in Extism-managed memory
 #[no_mangle]
-pub unsafe fn extism_output_offset() -> Length {
+pub unsafe fn output_offset() -> Length {
     MemoryRoot::new().output_offset
 }
 
 /// Reset the allocator
 #[no_mangle]
-pub unsafe fn extism_reset() {
+pub unsafe fn reset() {
     MemoryRoot::new().reset()
 }
 
 /// Set the error message offset
 #[no_mangle]
-pub unsafe fn extism_error_set(ptr: Pointer) {
+pub unsafe fn error_set(ptr: Pointer) {
     let root = MemoryRoot::new();
 
     // Allow ERROR to be set to 0
@@ -515,12 +512,12 @@ pub unsafe fn extism_error_set(ptr: Pointer) {
 
 /// Get the error message offset, if it's `0` then no error has been set
 #[no_mangle]
-pub unsafe fn extism_error_get() -> Pointer {
+pub unsafe fn error_get() -> Pointer {
     MemoryRoot::new().error.load(Ordering::SeqCst)
 }
 
 /// Get the position of the allocator, this can be used as an indication of how many bytes are currently in-use
 #[no_mangle]
-pub unsafe fn extism_memory_bytes() -> Length {
-    MemoryRoot::new().position.load(Ordering::Acquire)
+pub unsafe fn memory_bytes() -> Length {
+    MemoryRoot::new().length.load(Ordering::Acquire)
 }

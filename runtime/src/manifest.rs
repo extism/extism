@@ -16,7 +16,7 @@ fn hex(data: &[u8]) -> String {
 
 #[allow(unused)]
 fn cache_add_file(hash: &str, data: &[u8]) -> Result<(), Error> {
-    let cache_dir = std::env::temp_dir().join("exitsm-cache");
+    let cache_dir = std::env::temp_dir().join("extism-cache");
     let _ = std::fs::create_dir(&cache_dir);
     let file = cache_dir.join(hash);
     if file.exists() {
@@ -27,7 +27,7 @@ fn cache_add_file(hash: &str, data: &[u8]) -> Result<(), Error> {
 }
 
 fn cache_get_file(hash: &str) -> Result<Option<Vec<u8>>, Error> {
-    let cache_dir = std::env::temp_dir().join("exitsm-cache");
+    let cache_dir = std::env::temp_dir().join("extism-cache");
     let file = cache_dir.join(hash);
     if file.exists() {
         let r = std::fs::read(file)?;
@@ -172,20 +172,20 @@ pub(crate) fn load(
         if let Ok(s) = std::str::from_utf8(data) {
             if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
                 let mut m = modules(&t, engine)?;
-                m.insert("env".to_string(), extism_module);
+                m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
                 return Ok((t, m));
             }
         }
 
         let t = serde_json::from_slice::<extism_manifest::Manifest>(data)?;
         let mut m = modules(&t, engine)?;
-        m.insert("env".to_string(), extism_module);
+        m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
         return Ok((t, m));
     }
 
     let m = Module::new(engine, data)?;
     let mut modules = BTreeMap::new();
-    modules.insert("env".to_string(), extism_module);
+    modules.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
     modules.insert("main".to_string(), m);
     Ok((Default::default(), modules))
 }
