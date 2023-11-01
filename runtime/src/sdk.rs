@@ -124,7 +124,7 @@ pub unsafe extern "C" fn extism_current_plugin_memory_length(
     }
 
     let plugin = &mut *plugin;
-    plugin.memory_length(n)
+    plugin.memory_length(n).unwrap_or_default()
 }
 
 /// Free an allocated memory block
@@ -407,7 +407,7 @@ pub unsafe extern "C" fn extism_plugin_config(
         }
     }
 
-    plugin.clear_error();
+    let _ = plugin.clear_error();
     true
 }
 
@@ -434,7 +434,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
         }
     };
 
-    plugin.clear_error();
+    let _ = plugin.clear_error();
     plugin.function_exists(name)
 }
 

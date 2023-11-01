@@ -180,7 +180,6 @@ impl Plugin {
             &engine,
             CurrentPlugin::new(manifest, with_wasi, available_pages)?,
         );
-
         store.set_epoch_deadline(1);
 
         let mut linker = Linker::new(&engine);
@@ -284,7 +283,6 @@ impl Plugin {
                     internal.available_pages,
                 )?,
             );
-
             self.store.set_epoch_deadline(1);
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
@@ -364,7 +362,7 @@ impl Plugin {
     // Store input in memory and re-initialize `Internal` pointer
     pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
         self.output = Output::default();
-        self.clear_error();
+        self.clear_error()?;
 
         if input.is_null() {
             len = 0;
@@ -495,28 +493,30 @@ impl Plugin {
     }
 
     // Return the position of the output in memory
-    fn output_memory_position(&mut self) -> (u64, u64) {
+    fn output_memory_position(&mut self) -> Result<(u64, u64), Error> {
         let out = &mut [Val::I64(0)];
         let out_len = &mut [Val::I64(0)];
         let mut store = &mut self.store;
-        self.linker
+        if let Some(f) = self
+            .linker
             .get(&mut store, EXTISM_ENV_MODULE, "output_offset")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[], out)
-            .unwrap();
-        self.linker
+        {
+            f.into_func().unwrap().call(&mut store, &[], out)?;
+        } else {
+            anyhow::bail!("unable to set output")
+        }
+        if let Some(f) = self
+            .linker
             .get(&mut store, EXTISM_ENV_MODULE, "output_length")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[], out_len)
-            .unwrap();
+        {
+            f.into_func().unwrap().call(&mut store, &[], out_len)?;
+        } else {
+            anyhow::bail!("unable to set output length")
+        }
 
         let offs = out[0].unwrap_i64() as u64;
         let len = out_len[0].unwrap_i64() as u64;
-        (offs, len)
+        Ok((offs, len))
     }
 
     // Get the output data after a call has returned
@@ -531,14 +531,15 @@ impl Plugin {
     }
 
     // Cache output memory and error information after call is complete
-    fn get_output_after_call(&mut self) {
-        let (offs, len) = self.output_memory_position();
+    fn get_output_after_call(&mut self) -> Result<(), Error> {
+        let (offs, len) = self.output_memory_position()?;
         self.output.offset = offs;
         self.output.length = len;
 
         let err = self.current_plugin_mut().get_error_position();
         self.output.error_offset = err.0;
         self.output.error_length = err.1;
+        Ok(())
     }
 
     // Implements the build of the `call` function, `raw_call` is also used in the SDK
@@ -589,20 +590,20 @@ impl Plugin {
                     .timeout_ms
                     .map(std::time::Duration::from_millis),
             })
-            .unwrap();
+            .expect("Timer should start");
+        self.store.epoch_deadline_trap();
+        self.store.set_epoch_deadline(1);
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
         let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Stop timer
-        self.timer_tx
-            .send(TimerAction::Stop { id: self.id })
-            .unwrap();
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
+        let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
 
-        self.get_output_after_call();
+        self.get_output_after_call().map_err(|e| (e, -1))?;
         self.needs_reset = name == "_start";
 
         let mut msg = None;
@@ -729,16 +730,16 @@ impl Plugin {
         self.cancel_handle.clone()
     }
 
-    pub(crate) fn clear_error(&mut self) {
+    pub(crate) fn clear_error(&mut self) -> Result<(), Error> {
         trace!("Clearing error on plugin {}", self.id);
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
             f.into_func()
                 .unwrap()
-                .call(&mut store, &[Val::I64(0)], &mut [])
-                .unwrap();
+                .call(&mut store, &[Val::I64(0)], &mut [])?;
+            Ok(())
         } else {
-            error!("Plugin::clear_error failed, extism:host/env::error_set not found")
+            anyhow::bail!("Plugin::clear_error failed, extism:host/env::error_set not found")
         }
     }
 

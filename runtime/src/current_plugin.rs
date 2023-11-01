@@ -63,7 +63,7 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
 impl CurrentPlugin {
     /// Get a `MemoryHandle` from a memory offset
     pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
-        let len = self.memory_length(offs);
+        let len = self.memory_length(offs).unwrap_or_default();
         if len == 0 {
             return None;
         }
@@ -124,16 +124,16 @@ impl CurrentPlugin {
 
     pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
         let (linker, mut store) = self.linker_and_store();
-        let mem = linker
-            .get(&mut store, EXTISM_ENV_MODULE, "memory")
-            .unwrap()
-            .into_memory()
-            .unwrap();
-        let ptr = unsafe { mem.data_ptr(&store).add(handle.offset() as usize) };
-        if ptr.is_null() {
-            return Ok(&mut []);
+        if let Some(mem) = linker.get(&mut store, EXTISM_ENV_MODULE, "memory") {
+            let mem = mem.into_memory().unwrap();
+            let ptr = unsafe { mem.data_ptr(&store).add(handle.offset() as usize) };
+            if ptr.is_null() {
+                return Ok(&mut []);
+            }
+            return Ok(unsafe { std::slice::from_raw_parts_mut(ptr, handle.len()) });
         }
-        Ok(unsafe { std::slice::from_raw_parts_mut(ptr, handle.len()) })
+
+        anyhow::bail!("Unable to locate extism memory")
     }
 
     pub fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
@@ -166,28 +166,29 @@ impl CurrentPlugin {
     /// Free a block of Extism plugin memory
     pub fn memory_free(&mut self, handle: MemoryHandle) -> Result<(), Error> {
         let (linker, mut store) = self.linker_and_store();
-        linker
-            .get(&mut store, EXTISM_ENV_MODULE, "free")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(handle.offset as i64)], &mut [])?;
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "free") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(handle.offset as i64)], &mut [])?;
+        } else {
+            anyhow::bail!("Unable to locate an extism kernel function: free")
+        }
         Ok(())
     }
 
-    pub fn memory_length(&mut self, offs: u64) -> u64 {
+    pub fn memory_length(&mut self, offs: u64) -> Result<u64, Error> {
         let (linker, mut store) = self.linker_and_store();
         let output = &mut [Val::I64(0)];
-        linker
-            .get(&mut store, EXTISM_ENV_MODULE, "length")
-            .unwrap()
-            .into_func()
-            .unwrap()
-            .call(&mut store, &[Val::I64(offs as i64)], output)
-            .unwrap();
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "length") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(offs as i64)], output)?;
+        } else {
+            anyhow::bail!("Unable to locate an extism kernel function: length")
+        }
         let len = output[0].unwrap_i64() as u64;
         trace!("memory_length: {}, {}", offs, len);
-        len
+        Ok(len)
     }
 
     /// Access a plugin's variables
@@ -278,7 +279,7 @@ impl CurrentPlugin {
     /// argument directly to `MemoryHandle`
     pub fn memory_from_val(&mut self, offs: &Val) -> Option<MemoryHandle> {
         let offs = offs.i64()? as u64;
-        let length = self.memory_length(offs);
+        let length = self.memory_length(offs).unwrap_or_default();
         if length == 0 {
             return None;
         }
@@ -299,10 +300,13 @@ impl CurrentPlugin {
         trace!("CurrentPlugin::clear_error");
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
-            f.into_func()
+            let res = f
+                .into_func()
                 .unwrap()
-                .call(&mut store, &[Val::I64(0)], &mut [])
-                .unwrap();
+                .call(&mut store, &[Val::I64(0)], &mut []);
+            if let Err(e) = res {
+                error!("Unable to clear error: {:?}", e);
+            }
         }
     }
 
@@ -351,7 +355,7 @@ impl CurrentPlugin {
             }
         };
         let offs = output[0].unwrap_i64() as u64;
-        let length = self.memory_length(offs);
+        let length = self.memory_length(offs).unwrap_or_default();
         (offs, length)
     }
 }
