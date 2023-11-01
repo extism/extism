@@ -184,15 +184,25 @@ fn test_cancel() {
     let handle = plugin.cancel_handle();
 
     let start = std::time::Instant::now();
+    let h = handle.clone();
     std::thread::spawn(move || {
         std::thread::sleep(std::time::Duration::from_secs(1));
-        assert!(handle.cancel().is_ok());
+        assert!(h.cancel().is_ok());
     });
     let _output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
     let end = std::time::Instant::now();
     let time = end - start;
     println!("Cancelled plugin ran for {:?}", time);
-    // std::io::stdout().write_all(output).unwrap();
+    let start = std::time::Instant::now();
+    let h = handle.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_secs(1));
+        assert!(h.cancel().is_ok());
+    });
+    let _output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
+    let end = std::time::Instant::now();
+    let time = end - start;
+    println!("Cancelled plugin ran for {:?}", time);
 }
 
 #[test]

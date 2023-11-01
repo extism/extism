@@ -590,6 +590,9 @@ impl Plugin {
                     .map(std::time::Duration::from_millis),
             })
             .unwrap();
+        self.store.set_epoch_deadline(1);
+        self.store
+            .epoch_deadline_callback(|_| Err(wasmtime::Trap::Interrupt.into()));
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
