@@ -180,6 +180,7 @@ impl Plugin {
             &engine,
             CurrentPlugin::new(manifest, with_wasi, available_pages)?,
         );
+        store.set_epoch_deadline(1);
 
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
@@ -282,7 +283,7 @@ impl Plugin {
                     internal.available_pages,
                 )?,
             );
-
+            self.store.set_epoch_deadline(1);
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
             let current_plugin = self.current_plugin_mut();
@@ -590,8 +591,7 @@ impl Plugin {
                     .map(std::time::Duration::from_millis),
             })
             .expect("Timer should start");
-        self.store
-            .epoch_deadline_callback(|_| Err(wasmtime::Trap::Interrupt.into()));
+        self.store.epoch_deadline_trap();
         self.store.set_epoch_deadline(1);
 
         // Call the function
