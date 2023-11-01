@@ -181,8 +181,6 @@ impl Plugin {
             CurrentPlugin::new(manifest, with_wasi, available_pages)?,
         );
 
-        store.set_epoch_deadline(1);
-
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
@@ -285,7 +283,6 @@ impl Plugin {
                 )?,
             );
 
-            self.store.set_epoch_deadline(1);
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
             let current_plugin = self.current_plugin_mut();
@@ -579,6 +576,9 @@ impl Plugin {
         }
 
         // Start timer
+        self.store.set_epoch_deadline(1);
+        self.store
+            .epoch_deadline_callback(|_| Err(wasmtime::Trap::Interrupt.into()));
         self.timer_tx
             .send(TimerAction::Start {
                 id: self.id,
@@ -589,19 +589,14 @@ impl Plugin {
                     .timeout_ms
                     .map(std::time::Duration::from_millis),
             })
-            .unwrap();
-        self.store.set_epoch_deadline(1);
-        self.store
-            .epoch_deadline_callback(|_| Err(wasmtime::Trap::Interrupt.into()));
+            .expect("Timer should start");
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
         let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Stop timer
-        self.timer_tx
-            .send(TimerAction::Stop { id: self.id })
-            .unwrap();
+        let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
 
