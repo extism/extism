@@ -21,6 +21,8 @@ endif
 
 build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml
+	sed -e "s%PREFIX%$(DEST)%" libextism/extism.pc.skel > libextism/extism.pc
+	sed -e "s%PREFIX%$(DEST)%" libextism/extism-static.pc.skel > libextism/extism-static.pc
 
 bench:
 	@(cargo criterion || echo 'For nicer output use cargo-criterion: `cargo install cargo-criterion` - using `cargo bench`') && cargo bench
@@ -36,12 +38,15 @@ debug:
 	RUSTFLAGS=-g $(MAKE) build
 
 install:
-	mkdir -p $(DEST)/lib $(DEST)/include
+	mkdir -p $(DEST)/lib $(DEST)/include $(DEST)/lib/pkgconfig
 	install runtime/extism.h $(DEST)/include/extism.h
 	install target/release/libextism.$(SOEXT) $(DEST)/lib/libextism.$(SOEXT)
 	install target/release/libextism.$(AEXT) $(DEST)/lib/libextism.$(AEXT)
+	install libextism/extism.pc $(DEST)/lib/pkgconfig/extism.pc
+	install libextism/extism-static.pc $(DEST)/lib/pkgconfig/extism-static.pc
 
 uninstall:
-	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT) $(DEST)/lib/libextism.$(AEXT)
+	rm -f $(DEST)/include/extism.h $(DEST)/lib/libextism.$(SOEXT) $(DEST)/lib/libextism.$(AEXT) \
+	$(DEST)/lib/pkgconfig/extism*.pc
 
 
