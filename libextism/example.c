@@ -57,8 +57,8 @@ int main(int argc, char *argv[]) {
 
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
-  ExtismValType inputs[] = {I64};
-  ExtismValType outputs[] = {I64};
+  ExtismValType inputs[] = {PTR};
+  ExtismValType outputs[] = {PTR};
   ExtismFunction *f =
       extism_function_new("hello_world", inputs, 1, outputs, 1, hello_world,
                           "Hello, again!", free_data);

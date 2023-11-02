@@ -9,6 +9,9 @@
 /** The return code from extism_plugin_call used to signal a successful call with no errors */
 #define EXTISM_SUCCESS 0
 
+/** An alias for I64 to signify an Extism pointer */
+#define PTR I64
+
 
 /**
  * An enumeration of all possible value types in WebAssembly.
@@ -93,6 +96,8 @@ typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
                                    ExtismVal *outputs,
                                    ExtismSize n_outputs,
                                    void *data);
+
+
 
 /**
  * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUIDv4
