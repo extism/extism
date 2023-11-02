@@ -174,14 +174,14 @@ fn main() {
         .with_wasi(true)
         .with_function(
             "kv_read",
-            [ValType::I64],
-            [ValType::I64],
+            [PTR],
+            [PTR],
             kv_store.clone(),
             kv_read,
         )
         .with_function(
             "kv_write",
-            [ValType::I64, ValType::I64],
+            [PTR, PTR],
             [],
             kv_store.clone(),
             kv_write,

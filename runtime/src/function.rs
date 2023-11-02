@@ -25,6 +25,9 @@ pub enum ValType {
     ExternRef,
 }
 
+/// A wrapper around `ValType::I64` to specify arguments that are pointers to memory blocks
+pub const PTR: ValType = ValType::I64;
+
 impl From<wasmtime::ValType> for ValType {
     fn from(value: wasmtime::ValType) -> Self {
         use wasmtime::ValType::*;
