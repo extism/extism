@@ -28,30 +28,44 @@ jobs:
             target: 'x86_64-apple-darwin'
             artifact: 'libextism.dylib'
             static-artifact: 'libextism.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'macos'
             target: 'aarch64-apple-darwin'
             artifact: 'libextism.dylib'
             static-artifact: 'libextism.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'ubuntu'
             target: 'aarch64-unknown-linux-gnu'
             artifact: 'libextism.so'
             static-artifact: 'libextism.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'ubuntu'
             target: 'aarch64-unknown-linux-musl'
             artifact: 'libextism.so'
             static-artifact: 'libextism.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'ubuntu'
             target: 'x86_64-unknown-linux-gnu'
             artifact: 'libextism.so'
             static-artifact: 'libextism.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'windows'
             target: 'x86_64-pc-windows-gnu'
             artifact: 'extism.dll'
             static-artifact: 'libextism.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'windows'
             target: 'x86_64-pc-windows-msvc'
             artifact: 'extism.dll'
             static-artifact: 'extism.lib'
+            pc-in: ''
+            static-pc-in: ''
 
     steps:
       - name: Checkout
@@ -117,6 +131,13 @@ jobs:
           sccache: 'true'
           manylinux: 2_28
 
+      - name: Add pkg-config files except on MSVC
+        if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
+        shell: bash
+        run: |
+          SRC_DIR=target/${{ matrix.target }}/release
+          cp libextism/extism*.pc.in ${SRC_DIR}
+
       - name: Prepare Artifact
         shell: bash
         run: |
@@ -129,7 +150,9 @@ jobs:
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
           cp LICENSE ${SRC_DIR}
-          tar -C ${SRC_DIR} -czvf ${ARCHIVE} ${{ matrix.artifact }} ${{ matrix.static-artifact }} extism.h
+          tar -C ${SRC_DIR} -czvf ${ARCHIVE} extism.h \
+            ${{ matrix.artifact }} ${{ matrix.static-artifact }}  \
+            ${{ matrix.pc-in }} ${{ matrix.static-pc-in }}
           ls -ll ${ARCHIVE}
 
           if &>/dev/null which shasum; then
