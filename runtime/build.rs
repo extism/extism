@@ -7,6 +7,9 @@ fn main() {
 
 /** The return code from extism_plugin_call used to signal a successful call with no errors */
 #define EXTISM_SUCCESS 0
+
+/** An alias for I64 to signify an Extism pointer */
+#define PTR I64
 ";
     if let Ok(bindings) = cbindgen::Builder::new()
         .with_crate(".")

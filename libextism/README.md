@@ -205,7 +205,7 @@ void kv_get(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
   *(uint64_t *)(extism_current_plugin_memory(plugin) + outoffs) = value;
 
   // Return the offset to our allocated block
-  outputs[0].t = I64;
+  outputs[0].t = PTR;
   outputs[0].v.i64 = outoffs;
 }
 
@@ -234,13 +234,13 @@ int main(void) {
   const char *manifest = "{\"wasm\": [{\"url\": "
                          "\"https://github.com/extism/plugins/releases/latest/"
                          "download/count_vowels_kvstore.wasm\"}]}";
-  const ExtismValType kv_get_inputs[] = {I64};
-  const ExtismValType kv_get_outputs[] = {I64};
+  const ExtismValType kv_get_inputs[] = {PTR};
+  const ExtismValType kv_get_outputs[] = {PTR};
   ExtismFunction *kv_get_fn = extism_function_new(
       "kv_get", kv_get_inputs, 1, kv_get_outputs, 1, kv_get, kv, NULL);
 
-  const ExtismValType kv_set_inputs[] = {I64};
-  const ExtismValType kv_set_outputs[] = {I64};
+  const ExtismValType kv_set_inputs[] = {PTR};
+  const ExtismValType kv_set_outputs[] = {PTR};
   ExtismFunction *kv_set_fn = extism_function_new(
       "kv_set", kv_set_inputs, 1, kv_set_outputs, 1, kv_set, kv, NULL);
   const ExtismFunction *functions[] = {kv_get_fn};
