@@ -688,7 +688,9 @@ impl Plugin {
 
                 error!("Call to {name} encountered an error: {e:?}");
                 Err((
-                    e.context(msg.unwrap_or_else(|| "Error in Extism plugin call".to_string())),
+                    e.context(msg.unwrap_or_else(|| {
+                        format!("Call to Extism plugin function {name} encountered an error")
+                    })),
                     -1,
                 ))
             }

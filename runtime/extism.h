@@ -94,6 +94,8 @@ typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
                                    ExtismSize n_outputs,
                                    void *data);
 
+
+
 /**
  * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUIDv4
  */
