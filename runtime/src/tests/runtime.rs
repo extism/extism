@@ -457,19 +457,23 @@ fn test_http_not_allowed() {
     let manifest = Manifest::new([Wasm::data(WASM_HTTP)]);
     let mut plugin = PluginBuilder::new(manifest).build().unwrap();
     let res: Result<String, Error> =
-        plugin.call("http_request", r#"{"url": "https://google.com"}"#);
+        plugin.call("http_request", r#"{"url": "https://extism.org"}"#);
     assert!(res.is_err());
 }
 
 #[test]
 fn test_http_get() {
-    let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host("google.com");
+    let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host("extism.org");
     let mut plugin = PluginBuilder::new(manifest).build().unwrap();
     let res: String = plugin
-        .call("http_request", r#"{"url": "https://google.com"}"#)
+        .call("http_request", r#"{"url": "https://extism.org"}"#)
         .unwrap();
     assert!(res.len() > 0);
     assert!(res.contains("</html>"));
+    let res1: String = plugin
+        .call("http_request", r#"{"url": "https://extism.org"}"#)
+        .unwrap();
+    assert_eq!(res, res1);
 }
 
 #[test]
@@ -484,4 +488,18 @@ fn test_http_post() {
         .unwrap();
     assert!(res.len() > 0);
     assert!(res.contains(r#""data": "testing 123...""#));
+
+    // Bigger request
+    let data = "a".repeat(10000);
+    let res: String = plugin
+        .call(
+            "http_request",
+            format!(
+                r#"{}"url": "https://httpbin.org/post", "method": "POST", "data": "{}"{}"#,
+                "{", data, "}",
+            ),
+        )
+        .unwrap();
+    assert!(res.len() > 0);
+    assert!(res.contains(&data));
 }
