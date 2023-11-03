@@ -462,6 +462,7 @@ fn test_http_not_allowed() {
 }
 
 #[test]
+#[cfg(feature = "http")]
 fn test_http_get() {
     let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host("extism.org");
     let mut plugin = PluginBuilder::new(manifest).build().unwrap();
@@ -477,6 +478,7 @@ fn test_http_get() {
 }
 
 #[test]
+#[cfg(feature = "http")]
 fn test_http_post() {
     let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host("httpbin.org");
     let mut plugin = PluginBuilder::new(manifest).build().unwrap();
