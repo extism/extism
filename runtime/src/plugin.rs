@@ -121,26 +121,22 @@ fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
-impl Plugin {
-    /// Create a new plugin from the given manifest, and host functions. The `with_wasi` parameter determines
-    /// whether or not the module should be executed with WASI enabled.
-    pub fn new_with_manifest(
-        manifest: &Manifest,
-        functions: impl IntoIterator<Item = Function>,
-        with_wasi: bool,
-    ) -> Result<Plugin, Error> {
-        let data = serde_json::to_vec(manifest)?;
-        Self::new(data, functions, with_wasi)
-    }
+pub trait WasmInput<'a>: Into<std::borrow::Cow<'a, [u8]>> {}
 
-    /// Create a new plugin from the given WebAssembly module or JSON encoded manifest, and host functions. The `with_wasi`
+impl<'a> WasmInput<'a> for Manifest {}
+impl<'a> WasmInput<'a> for &Manifest {}
+impl<'a> WasmInput<'a> for &'a [u8] {}
+impl<'a> WasmInput<'a> for Vec<u8> {}
+
+impl Plugin {
+    /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
-    pub fn new(
-        wasm: impl AsRef<[u8]>,
+    pub fn new<'a>(
+        wasm: impl WasmInput<'a>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        Self::build_new(wasm, imports, with_wasi, Default::default())
+        Self::build_new(wasm.into(), imports, with_wasi, Default::default())
     }
 
     pub(crate) fn build_new(

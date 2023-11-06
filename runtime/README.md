@@ -43,7 +43,7 @@ fn main() {
     "https://github.com/extism/plugins/releases/latest/download/count_vowels.wasm"
   );
   let manifest = Manifest::new([url]);
-  let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+  let mut plugin = Plugin::new(&manifest, [], true).unwrap();
   let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
   println!("{}", res);
 }
@@ -105,11 +105,11 @@ Plug-ins may optionally take a configuration object. This is a static way to con
 
 ```rust
 let manifest = Manifest::new([url]);
-let mut plugin = Plugin::new_with_manifest(&manifest, [], true);
+let mut plugin = Plugin::new(&manifest, [], true);
 let res = plugin.call::<&str, &str>::("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
-let mut plugin = Plugin::new_with_manifest(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
+let mut plugin = Plugin::new(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
 let res = plugin.call::<&str, &str>::("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 4, "total": 4, "vowels": "aeiouyAEIOUY"}

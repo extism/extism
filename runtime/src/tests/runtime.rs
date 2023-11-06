@@ -210,7 +210,7 @@ fn test_timeout() {
 
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
         .with_timeout(std::time::Duration::from_secs(1));
-    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
     let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
@@ -317,7 +317,7 @@ fn test_memory_max() {
     // Should fail with memory.max set
     let manifest =
         Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(16);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_err());
 
@@ -328,13 +328,13 @@ fn test_memory_max() {
     // Should pass with memory.max set to a large enough number
     let manifest =
         Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(17);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 
     // Should pass without it
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 }
@@ -370,7 +370,7 @@ fn test_extism_error() {
         UserData::default(),
         hello_world_set_error,
     );
-    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
     assert!(output.is_err());
     assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
