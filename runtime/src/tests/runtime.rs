@@ -350,6 +350,16 @@ fn hello_world_set_error(
     Ok(())
 }
 
+fn hello_world_set_error_bail(
+    plugin: &mut CurrentPlugin,
+    _inputs: &[Val],
+    _outputs: &mut [Val],
+    _user_data: UserData<()>,
+) -> Result<(), Error> {
+    plugin.set_error("TEST")?;
+    anyhow::bail!("Error");
+}
+
 #[test]
 fn test_extism_error() {
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM)]);
@@ -363,6 +373,19 @@ fn test_extism_error() {
     let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
     assert!(output.is_err());
+    assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
+
+    let f = Function::new(
+        "hello_world",
+        [ValType::I64],
+        [ValType::I64],
+        UserData::default(),
+        hello_world_set_error_bail,
+    );
+    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
+    assert!(output.is_err());
+    println!("{:?}", output);
     assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
 }
 
