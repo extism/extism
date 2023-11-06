@@ -6,6 +6,7 @@ const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../../wasm/code.wasm");
 const WASM_LOOP: &[u8] = include_bytes!("../../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../../wasm/globals.wasm");
 const WASM_REFLECT: &[u8] = include_bytes!("../../../wasm/reflect.wasm");
+const WASM_HTTP: &[u8] = include_bytes!("../../../wasm/http.wasm");
 
 host_fn!(hello_world (a: String) -> String { Ok(a) });
 
@@ -449,4 +450,58 @@ fn test_userdata() {
     };
     assert!(path.exists());
     assert_eq!(std::fs::read(path).unwrap(), output.as_bytes());
+}
+
+#[test]
+fn test_http_not_allowed() {
+    let manifest = Manifest::new([Wasm::data(WASM_HTTP)]);
+    let mut plugin = PluginBuilder::new(manifest).build().unwrap();
+    let res: Result<String, Error> =
+        plugin.call("http_request", r#"{"url": "https://extism.org"}"#);
+    assert!(res.is_err());
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_get() {
+    let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host("extism.org");
+    let mut plugin = PluginBuilder::new(manifest).build().unwrap();
+    let res: String = plugin
+        .call("http_request", r#"{"url": "https://extism.org"}"#)
+        .unwrap();
+    assert!(res.len() > 0);
+    assert!(res.contains("</html>"));
+    let res1: String = plugin
+        .call("http_request", r#"{"url": "https://extism.org"}"#)
+        .unwrap();
+    assert_eq!(res, res1);
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_post() {
+    let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host("httpbin.org");
+    let mut plugin = PluginBuilder::new(manifest).build().unwrap();
+    let res: String = plugin
+        .call(
+            "http_request",
+            r#"{"url": "https://httpbin.org/post", "method": "POST", "data": "testing 123..."}"#,
+        )
+        .unwrap();
+    assert!(res.len() > 0);
+    assert!(res.contains(r#""data": "testing 123...""#));
+
+    // Bigger request
+    let data = "a".repeat(10000);
+    let res: String = plugin
+        .call(
+            "http_request",
+            format!(
+                r#"{}"url": "https://httpbin.org/post", "method": "POST", "data": "{}"{}"#,
+                "{", data, "}",
+            ),
+        )
+        .unwrap();
+    assert!(res.len() > 0);
+    assert!(res.contains(&data));
 }

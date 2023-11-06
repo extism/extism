@@ -148,21 +148,25 @@ pub(crate) fn http_request(
     input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
+    let data: &mut CurrentPlugin = caller.data_mut();
+    let http_req_offset = args!(input, 0, i64) as u64;
     #[cfg(not(feature = "http"))]
     {
-        let _ = (caller, input);
-
+        let handle = match data.memory_handle(http_req_offset) {
+            Some(h) => h,
+            None => anyhow::bail!("http_request input is invalid: {http_req_offset}"),
+        };
+        let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_bytes(handle)?)?;
         output[0] = Val::I64(0);
-        error!("http_request is not enabled");
-        return Ok(());
+        anyhow::bail!(
+            "http_request is not enabled, request to {} is not allowed",
+            &req.url
+        );
     }
 
     #[cfg(feature = "http")]
     {
         use std::io::Read;
-        let data: &mut CurrentPlugin = caller.data_mut();
-        let http_req_offset = args!(input, 0, i64) as u64;
-
         let handle = match data.memory_handle(http_req_offset) {
             Some(h) => h,
             None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
