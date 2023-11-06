@@ -25,7 +25,7 @@ pub fn create_plugin(c: &mut Criterion) {
     g.significance_level(0.2);
     g.bench_function("create_plugin", |b| {
         b.iter(|| {
-            let _plugin = PluginBuilder::new_with_module(COUNT_VOWELS)
+            let _plugin = PluginBuilder::new(COUNT_VOWELS)
                 .with_wasi(true)
                 .build()
                 .unwrap();
@@ -40,7 +40,7 @@ struct Count {
 pub fn count_vowels(c: &mut Criterion) {
     let mut g = c.benchmark_group("count_vowels");
     g.sample_size(500);
-    let mut plugin = PluginBuilder::new_with_module(COUNT_VOWELS)
+    let mut plugin = PluginBuilder::new(COUNT_VOWELS)
         .with_wasi(true)
         .build()
         .unwrap();
@@ -63,12 +63,12 @@ pub fn reflect_1(c: &mut Criterion) {
     g.sample_size(500);
     g.noise_threshold(1.0);
     g.significance_level(0.2);
-    let mut plugin = PluginBuilder::new_with_module(REFLECT)
+    let mut plugin = PluginBuilder::new(REFLECT)
         .with_wasi(true)
         .with_function(
             "host_reflect",
-            [ValType::I64],
-            [ValType::I64],
+            [PTR],
+            [PTR],
             UserData::default(),
             hello_world,
         )
@@ -87,12 +87,12 @@ pub fn reflect_10(c: &mut Criterion) {
     g.sample_size(200);
     g.noise_threshold(1.0);
     g.significance_level(0.2);
-    let mut plugin = PluginBuilder::new_with_module(REFLECT)
+    let mut plugin = PluginBuilder::new(REFLECT)
         .with_wasi(true)
         .with_function(
             "host_reflect",
-            [ValType::I64],
-            [ValType::I64],
+            [PTR],
+            [PTR],
             UserData::default(),
             hello_world,
         )
@@ -111,12 +111,12 @@ pub fn reflect_100(c: &mut Criterion) {
     g.sample_size(50);
     g.noise_threshold(1.0);
     g.significance_level(0.2);
-    let mut plugin = PluginBuilder::new_with_module(REFLECT)
+    let mut plugin = PluginBuilder::new(REFLECT)
         .with_wasi(true)
         .with_function(
             "host_reflect",
-            [ValType::I64],
-            [ValType::I64],
+            [PTR],
+            [PTR],
             UserData::default(),
             hello_world,
         )

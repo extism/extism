@@ -340,3 +340,17 @@ mod base64 {
             .map_err(serde::de::Error::custom)
     }
 }
+
+impl<'a> From<Manifest> for std::borrow::Cow<'a, [u8]> {
+    fn from(m: Manifest) -> Self {
+        let s = serde_json::to_vec(&m).unwrap();
+        std::borrow::Cow::Owned(s)
+    }
+}
+
+impl<'a> From<&Manifest> for std::borrow::Cow<'a, [u8]> {
+    fn from(m: &Manifest) -> Self {
+        let s = serde_json::to_vec(&m).unwrap();
+        std::borrow::Cow::Owned(s)
+    }
+}

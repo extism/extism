@@ -43,16 +43,16 @@ fn it_works() {
     assert!(set_log_file("test.log", log::Level::Trace).is_ok());
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world,
     )
     .with_namespace(EXTISM_USER_MODULE);
     let g = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world_panic,
     )
@@ -139,11 +139,11 @@ fn it_works() {
 #[test]
 fn test_plugin_threads() {
     let p = std::sync::Arc::new(std::sync::Mutex::new(
-        PluginBuilder::new_with_module(WASM)
+        PluginBuilder::new(WASM)
             .with_function(
                 "hello_world",
-                [ValType::I64],
-                [ValType::I64],
+                [PTR],
+                [PTR],
                 UserData::default(),
                 hello_world,
             )
@@ -175,8 +175,8 @@ fn test_plugin_threads() {
 fn test_cancel() {
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world,
     );
@@ -202,15 +202,15 @@ fn test_cancel() {
 fn test_timeout() {
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world,
     );
 
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
         .with_timeout(std::time::Duration::from_secs(1));
-    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
     let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
@@ -236,8 +236,8 @@ typed_plugin!(CountVowelsPlugin {
 fn test_typed_plugin_macro() {
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world,
     );
@@ -254,8 +254,8 @@ fn test_typed_plugin_macro() {
 fn test_multiple_instantiations() {
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world,
     );
@@ -296,8 +296,8 @@ fn test_fuzz_reflect_plugin() {
     // assert!(set_log_file("stdout", Some(log::Level::Trace)));
     let f = Function::new(
         "host_reflect",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world,
     );
@@ -317,7 +317,7 @@ fn test_memory_max() {
     // Should fail with memory.max set
     let manifest =
         Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(16);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_err());
 
@@ -328,13 +328,13 @@ fn test_memory_max() {
     // Should pass with memory.max set to a large enough number
     let manifest =
         Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(17);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 
     // Should pass without it
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);
-    let mut plugin = Plugin::new_with_manifest(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 }
@@ -365,24 +365,24 @@ fn test_extism_error() {
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM)]);
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world_set_error,
     );
-    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
     assert!(output.is_err());
     assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
 
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world_set_error_bail,
     );
-    let mut plugin = Plugin::new_with_manifest(&manifest, [f], true).unwrap();
+    let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
     assert!(output.is_err());
     println!("{:?}", output);
@@ -393,12 +393,12 @@ fn test_extism_error() {
 fn test_extism_memdump() {
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world_set_error,
     );
-    let mut plugin = PluginBuilder::new_with_module(WASM)
+    let mut plugin = PluginBuilder::new(WASM)
         .with_wasi(true)
         .with_functions([f])
         .with_memdump("extism.mem")
@@ -414,8 +414,8 @@ fn test_extism_memdump() {
 fn test_extism_coredump() {
     let f = Function::new(
         "hello_world",
-        [ValType::I64],
-        [ValType::I64],
+        [PTR],
+        [PTR],
         UserData::default(),
         hello_world_set_error,
     );
@@ -457,12 +457,12 @@ fn test_userdata() {
         let file = std::fs::File::create(&path).unwrap();
         let f = Function::new(
             "hello_world",
-            [ValType::I64],
-            [ValType::I64],
+            [PTR],
+            [PTR],
             UserData::new(file),
             hello_world_user_data,
         );
-        let mut plugin = PluginBuilder::new_with_module(WASM)
+        let mut plugin = PluginBuilder::new(WASM)
             .with_wasi(true)
             .with_functions([f])
             .build()

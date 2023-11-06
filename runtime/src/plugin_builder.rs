@@ -1,9 +1,4 @@
-use crate::*;
-
-enum Source {
-    Manifest(Manifest),
-    Data(Vec<u8>),
-}
+use crate::{plugin::WasmInput, *};
 
 #[derive(Default, Clone)]
 pub(crate) struct DebugOptions {
@@ -14,28 +9,18 @@ pub(crate) struct DebugOptions {
 }
 
 /// PluginBuilder is used to configure and create `Plugin` instances
-pub struct PluginBuilder {
-    source: Source,
+pub struct PluginBuilder<'a> {
+    source: std::borrow::Cow<'a, [u8]>,
     wasi: bool,
     functions: Vec<Function>,
     debug_options: DebugOptions,
 }
 
-impl PluginBuilder {
-    /// Create a new `PluginBuilder` with the given WebAssembly module
-    pub fn new_with_module(data: impl Into<Vec<u8>>) -> Self {
+impl<'a> PluginBuilder<'a> {
+    /// Create a new `PluginBuilder` from a `Manifest` or raw Wasm bytes
+    pub fn new(plugin: impl WasmInput<'a>) -> Self {
         PluginBuilder {
-            source: Source::Data(data.into()),
-            wasi: false,
-            functions: vec![],
-            debug_options: DebugOptions::default(),
-        }
-    }
-
-    /// Create a new `PluginBuilder` from a `Manifest`
-    pub fn new(manifest: Manifest) -> Self {
-        PluginBuilder {
-            source: Source::Manifest(manifest),
+            source: plugin.into(),
             wasi: false,
             functions: vec![],
             debug_options: DebugOptions::default(),
@@ -117,12 +102,6 @@ impl PluginBuilder {
 
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
-        match self.source {
-            Source::Manifest(m) => {
-                let data = serde_json::to_vec(&m)?;
-                Plugin::build_new(data, self.functions, self.wasi, self.debug_options)
-            }
-            Source::Data(d) => Plugin::build_new(d, self.functions, self.wasi, self.debug_options),
-        }
+        Plugin::build_new(self.source, self.functions, self.wasi, self.debug_options)
     }
 }
