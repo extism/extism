@@ -18,12 +18,16 @@ pkg-config-static:
 	$(CC) -g -o example example.c $(LDFLAGS_STATIC)
 
 # This produces an entirely static binary
-# You probably need to specifically build libextism for musl first,
-# For x86_64 in the parent directory:
+#
+# MUSL libc is highly recommended over glibc for this purpose as some glibc
+# functionality such as getaddrinfo, iconv depends on dynamically loading glibc.
+#
+# To build and install libextism with musl for x86_64 in the parent directory:
 # make RUST_TARGET=x86_64-unknown-linux-musl && sudo make RUST_TARGET=x86_64-unknown-linux-musl install
-.PHONY: musl-static
-musl-static:
-	musl-gcc -static -g -o example example.c $(LDFLAGS_STATIC)
+# Then, from this directory you can build with CC=musl-gcc make fully-static
+.PHONY: fully-static
+fully-static:
+	$(CC) -static -g -o example example.c $(LDFLAGS_STATIC)
 
 .PHONY: clean
 clean:
