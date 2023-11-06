@@ -139,7 +139,7 @@ fn it_works() {
 #[test]
 fn test_plugin_threads() {
     let p = std::sync::Arc::new(std::sync::Mutex::new(
-        PluginBuilder::new_with_module(WASM)
+        PluginBuilder::new(WASM)
             .with_function(
                 "hello_world",
                 [PTR],
@@ -398,7 +398,7 @@ fn test_extism_memdump() {
         UserData::default(),
         hello_world_set_error,
     );
-    let mut plugin = PluginBuilder::new_with_module(WASM)
+    let mut plugin = PluginBuilder::new(WASM)
         .with_wasi(true)
         .with_functions([f])
         .with_memdump("extism.mem")
@@ -462,7 +462,7 @@ fn test_userdata() {
             UserData::new(file),
             hello_world_user_data,
         );
-        let mut plugin = PluginBuilder::new_with_module(WASM)
+        let mut plugin = PluginBuilder::new(WASM)
             .with_wasi(true)
             .with_functions([f])
             .build()
