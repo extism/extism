@@ -536,9 +536,9 @@ impl Plugin {
         self.output.offset = offs;
         self.output.length = len;
 
-        let err = self.current_plugin_mut().get_error_position();
-        self.output.error_offset = err.0;
-        self.output.error_length = err.1;
+        let (offs, len) = self.current_plugin_mut().get_error_position();
+        self.output.error_offset = offs;
+        self.output.error_length = len;
         Ok(())
     }
 
@@ -602,11 +602,14 @@ impl Plugin {
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
-
-        self.get_output_after_call().map_err(|e| (e, -1))?;
         self.needs_reset = name == "_start";
 
-        let mut msg = None;
+        // Get extism error
+        self.get_output_after_call().map_err(|x| (x, -1))?;
+        let mut rc = -1;
+        if !results.is_empty() {
+            rc = results[0].i32().unwrap_or(-1);
+        }
 
         if self.output.error_offset != 0 && self.output.error_length != 0 {
             let handle = MemoryHandle {
@@ -616,19 +619,20 @@ impl Plugin {
             if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
                 let x = e.to_string();
                 error!("Call to {name} returned with error message: {}", x);
-
-                // If `res` is `Ok` and there is an error message set, then convert the response
-                // to an `Error`
-                if res.is_ok() {
-                    res = Err(Error::msg(x));
+                if let Err(e) = res {
+                    res = Err(Error::msg(x).context(e));
                 } else {
-                    msg = Some(x);
+                    res = Err(Error::msg(x))
                 }
+            } else {
+                res = Err(Error::msg(format!(
+                    "Call to Extism plugin function {name} encountered an error"
+                )));
             }
         }
 
         match res {
-            Ok(()) => Ok(0),
+            Ok(()) => Ok(rc),
             Err(e) => {
                 if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
                     if let Some(file) = self.debug_options.coredump.clone() {
@@ -664,35 +668,27 @@ impl Plugin {
                     });
                 if let Some(exit_code) = wasi_exit_code {
                     trace!("WASI exit code: {}", exit_code);
-                    if exit_code == 0 && msg.is_none() {
+                    if exit_code == 0 {
                         return Ok(0);
                     }
 
-                    return Err((
-                        Error::msg(msg.unwrap_or_else(|| "WASI exit code".to_string())),
-                        exit_code,
-                    ));
+                    return Err((e.context("WASI exit code"), exit_code));
                 }
 
                 // Handle timeout interrupts
                 if let Some(wasmtime::Trap::Interrupt) = e.downcast_ref::<wasmtime::Trap>() {
                     trace!("Call to {name} timed out");
-                    return Err((Error::msg("timeout"), -1));
+                    return Err((Error::msg("timeout"), rc));
                 }
 
                 // Handle out-of-memory error from `MemoryLimiter`
                 let cause = e.root_cause().to_string();
                 if cause == "oom" {
-                    return Err((Error::msg(cause), -1));
+                    return Err((Error::msg(cause), rc));
                 }
 
                 error!("Call to {name} encountered an error: {e:?}");
-                Err((
-                    e.context(msg.unwrap_or_else(|| {
-                        format!("Call to Extism plugin function {name} encountered an error")
-                    })),
-                    -1,
-                ))
+                Err((e, rc))
             }
         }
     }
