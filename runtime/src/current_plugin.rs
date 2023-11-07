@@ -14,6 +14,7 @@ pub struct CurrentPlugin {
     pub(crate) http_status: u16,
     pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
+    pub(crate) id: uuid::Uuid,
 }
 
 unsafe impl Send for CurrentPlugin {}
@@ -106,7 +107,7 @@ impl CurrentPlugin {
             let data = self.memory_bytes(handle)?;
             T::from_bytes(data)
         } else {
-            anyhow::bail!("invalid memory offset: {offs:?}")
+            anyhow::bail!("{} invalid memory offset: {offs:?}", self.id)
         }
     }
 
@@ -133,7 +134,7 @@ impl CurrentPlugin {
             return Ok(unsafe { std::slice::from_raw_parts_mut(ptr, handle.len()) });
         }
 
-        anyhow::bail!("Unable to locate extism memory")
+        anyhow::bail!("{} unable to locate extism memory", self.id)
     }
 
     pub fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
@@ -150,13 +151,13 @@ impl CurrentPlugin {
                 .unwrap()
                 .call(&mut store, &[Val::I64(n as i64)], output)?;
         } else {
-            anyhow::bail!("Unable to allocate memory");
+            anyhow::bail!("{} unable to allocate memory", self.id);
         }
         let offs = output[0].unwrap_i64() as u64;
         if offs == 0 {
-            anyhow::bail!("out of memory")
+            anyhow::bail!("{} out of memory", self.id)
         }
-        trace!("memory_alloc: {}, {}", offs, n);
+        trace!("{} memory_alloc: {}, {}", self.id, offs, n);
         Ok(MemoryHandle {
             offset: offs,
             length: n,
@@ -171,7 +172,7 @@ impl CurrentPlugin {
                 .unwrap()
                 .call(&mut store, &[Val::I64(handle.offset as i64)], &mut [])?;
         } else {
-            anyhow::bail!("Unable to locate an extism kernel function: free")
+            anyhow::bail!("unable to locate an extism kernel function: free",)
         }
         Ok(())
     }
@@ -184,10 +185,10 @@ impl CurrentPlugin {
                 .unwrap()
                 .call(&mut store, &[Val::I64(offs as i64)], output)?;
         } else {
-            anyhow::bail!("Unable to locate an extism kernel function: length")
+            anyhow::bail!("unable to locate an extism kernel function: length",)
         }
         let len = output[0].unwrap_i64() as u64;
-        trace!("memory_length: {}, {}", offs, len);
+        trace!("{} memory_length: {}, {}", self.id, offs, len);
         Ok(len)
     }
 
@@ -210,6 +211,7 @@ impl CurrentPlugin {
         manifest: extism_manifest::Manifest,
         wasi: bool,
         available_pages: Option<u32>,
+        id: uuid::Uuid,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasmtime_wasi::ambient_authority();
@@ -254,6 +256,7 @@ impl CurrentPlugin {
             store: std::ptr::null_mut(),
             available_pages,
             memory_limiter,
+            id,
         })
     }
 
@@ -297,7 +300,7 @@ impl CurrentPlugin {
 
     /// Clear the current plugin error
     pub fn clear_error(&mut self) {
-        trace!("CurrentPlugin::clear_error");
+        trace!("{} CurrentPlugin::clear_error", self.id);
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
             let res = f
@@ -305,7 +308,7 @@ impl CurrentPlugin {
                 .unwrap()
                 .call(&mut store, &[Val::I64(0)], &mut []);
             if let Err(e) = res {
-                error!("Unable to clear error: {:?}", e);
+                error!("{} unable to clear error: {:?}", self.id, e);
             }
         }
     }
@@ -330,7 +333,7 @@ impl CurrentPlugin {
     #[doc(hidden)]
     pub fn set_error(&mut self, s: impl AsRef<str>) -> Result<(u64, u64), Error> {
         let s = s.as_ref();
-        debug!("Set error: {:?}", s);
+        debug!("{} set error: {:?}", self.id, s);
         let handle = self.current_plugin_mut().memory_new(s)?;
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
@@ -350,7 +353,10 @@ impl CurrentPlugin {
         let output = &mut [Val::I64(0)];
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_get") {
             if let Err(e) = f.into_func().unwrap().call(&mut store, &[], output) {
-                error!("unable to call extism:host/env::error_get: {:?}", e);
+                error!(
+                    "{} unable to call extism:host/env::error_get: {:?}",
+                    self.id, e
+                );
                 return (0, 0);
             }
         };

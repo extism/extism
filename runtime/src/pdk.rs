@@ -269,6 +269,7 @@ pub fn log(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
+    let target = format!("extism::plugin::{}", data.id);
     let offset = args!(input, 0, i64) as u64;
 
     let handle = match data.memory_handle(offset) {
@@ -279,8 +280,8 @@ pub fn log(
     let buf = data.memory_str(handle);
 
     match buf {
-        Ok(buf) => log::log!(level, "{}", buf),
-        Err(_) => log::log!(level, "{:?}", buf),
+        Ok(buf) => log::log!(target: target.as_str(), level, "{}", buf),
+        Err(_) => log::log!(target: target.as_str(), level, "{:?}", buf),
     }
     Ok(())
 }
