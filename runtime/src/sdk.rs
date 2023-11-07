@@ -300,8 +300,8 @@ pub unsafe extern "C" fn extism_plugin_new(
     match plugin {
         Err(e) => {
             if !errmsg.is_null() {
-                let e =
-                    std::ffi::CString::new(format!("Unable to create plugin: {:?}", e)).unwrap();
+                let e = std::ffi::CString::new(format!("Unable to create Extism plugin: {}", e))
+                    .unwrap();
                 *errmsg = e.into_raw();
             }
             std::ptr::null_mut()
@@ -327,7 +327,7 @@ pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
     }
 
     let plugin = Box::from_raw(plugin);
-    trace!("Freeing plugin {}", plugin.id);
+    trace!("{} freeing", plugin.id);
     drop(plugin)
 }
 
@@ -366,7 +366,7 @@ pub unsafe extern "C" fn extism_plugin_config(
     let mut lock = _lock.lock().unwrap();
 
     trace!(
-        "Call to extism_plugin_config for {} with json pointer {:?}",
+        "{} call to extism_plugin_config with pointer {:?}",
         plugin.id,
         json
     );
@@ -393,15 +393,16 @@ pub unsafe extern "C" fn extism_plugin_config(
         }
     }
 
+    let id = plugin.id;
     let config = &mut plugin.current_plugin_mut().manifest.config;
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {
-                trace!("Config, adding {k}");
+                trace!("{} config, adding {k}", id);
                 config.insert(k, v);
             }
             None => {
-                trace!("Config, removing {k}");
+                trace!("{} config, removing {k}", id);
                 config.remove(&k);
             }
         }
@@ -425,7 +426,7 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let mut lock = _lock.lock().unwrap();
 
     let name = std::ffi::CStr::from_ptr(func_name);
-    trace!("Call to extism_plugin_function_exists for: {:?}", name);
+    trace!("{} extism_plugin_function_exists: {:?}", plugin.id, name);
 
     let name = match name.to_str() {
         Ok(x) => x,
@@ -464,7 +465,11 @@ pub unsafe extern "C" fn extism_plugin_call(
         Err(e) => return plugin.return_error(&mut lock, e, -1),
     };
 
-    trace!("Calling function {} of plugin {}", name, plugin.id);
+    trace!(
+        "{} calling function {} using extism_plugin_call",
+        plugin.id,
+        name
+    );
     let input = std::slice::from_raw_parts(data, data_len as usize);
     let res = plugin.raw_call(&mut lock, name, input);
 
@@ -490,10 +495,9 @@ pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_ch
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    trace!("Call to extism_plugin_error for plugin {}", plugin.id);
 
     if plugin.output.error_offset == 0 {
-        trace!("Error is NULL");
+        trace!("{} error is NULL", plugin.id);
         return std::ptr::null();
     }
 
@@ -512,7 +516,6 @@ pub unsafe extern "C" fn extism_plugin_output_length(plugin: *mut Plugin) -> Siz
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    trace!("Output length: {}", plugin.output.length);
     plugin.output.length
 }
 
@@ -525,7 +528,7 @@ pub unsafe extern "C" fn extism_plugin_output_data(plugin: *mut Plugin) -> *cons
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    trace!("Call to extism_plugin_output_data for plugin {}", plugin.id);
+    trace!("{} extism_plugin_output_data", plugin.id);
 
     let ptr = plugin.current_plugin_mut().memory_ptr();
     ptr.add(plugin.output.offset as usize)
