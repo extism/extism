@@ -25,6 +25,7 @@ unsafe impl Send for CancelHandle {}
 
 impl CancelHandle {
     pub fn cancel(&self) -> Result<(), Error> {
+        debug!("{} sending cancel event", self.id);
         self.timer_tx.send(TimerAction::Cancel { id: self.id })?;
         Ok(())
     }
@@ -170,11 +171,12 @@ impl Plugin {
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
         let available_pages = manifest.memory.max_pages;
-        log::trace!("Available pages: {available_pages:?}");
+        log::debug!("Available pages: {available_pages:?}");
 
+        let id = uuid::Uuid::new_v4();
         let mut store = Store::new(
             &engine,
-            CurrentPlugin::new(manifest, with_wasi, available_pages)?,
+            CurrentPlugin::new(manifest, with_wasi, available_pages, id)?,
         );
         store.set_epoch_deadline(1);
 
@@ -234,7 +236,6 @@ impl Plugin {
         }
 
         let instance_pre = linker.instantiate_pre(main)?;
-        let id = uuid::Uuid::new_v4();
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
             modules,
@@ -260,6 +261,7 @@ impl Plugin {
                 .store
                 .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
         }
+        debug!("{} created", plugin.id);
         Ok(plugin)
     }
 
@@ -277,6 +279,7 @@ impl Plugin {
                     internal.manifest.clone(),
                     internal.wasi.is_some(),
                     internal.available_pages,
+                    self.id,
                 )?,
             );
             self.store.set_epoch_deadline(1);
@@ -323,7 +326,7 @@ impl Plugin {
         }
 
         let instance = self.instance_pre.instantiate(&mut self.store)?;
-        trace!("Plugin::instance is none, instantiating");
+        trace!("{} Plugin::instance is none, instantiating", self.id);
         **instance_lock = Some(instance);
         self.instantiations += 1;
         if let Some(limiter) = &mut self.current_plugin_mut().memory_limiter {
@@ -373,12 +376,12 @@ impl Plugin {
         }
 
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
-        trace!("Input size: {}", bytes.len());
+        debug!("{} input size: {}", self.id, bytes.len());
 
         if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV_MODULE, "reset") {
             f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
         } else {
-            error!("Call to extism:host/env::reset failed");
+            error!("{} call to extism:host/env::reset failed", self.id);
         }
 
         let handle = self.current_plugin_mut().memory_new(bytes)?;
@@ -414,12 +417,13 @@ impl Plugin {
             let reactor_init = if let Some(init) = self.get_func(instance_lock, "_initialize") {
                 if init.typed::<(), ()>(&self.store()).is_err() {
                     trace!(
-                        "_initialize function found with type {:?}",
+                        "{} _initialize function found with type {:?}",
+                        self.id,
                         init.ty(self.store())
                     );
                     None
                 } else {
-                    trace!("WASI reactor module detected");
+                    trace!("{} WASI reactor module detected", self.id);
                     Some(init)
                 }
             } else {
@@ -434,22 +438,24 @@ impl Plugin {
         let init = if let Some(init) = self.get_func(instance_lock, "__wasm_call_ctors") {
             if init.typed::<(), ()>(&self.store()).is_err() {
                 trace!(
-                    "__wasm_call_ctors function found with type {:?}",
+                    "{} __wasm_call_ctors function found with type {:?}",
+                    self.id,
                     init.ty(self.store())
                 );
                 return;
             }
-            trace!("WASI runtime detected");
+            trace!("{} WASI runtime detected", self.id);
             init
         } else if let Some(init) = self.get_func(instance_lock, "_initialize") {
             if init.typed::<(), ()>(&self.store()).is_err() {
                 trace!(
-                    "_initialize function found with type {:?}",
+                    "{} _initialize function found with type {:?}",
+                    self.id,
                     init.ty(self.store())
                 );
                 return;
             }
-            trace!("Reactor module detected");
+            trace!("{} reactor module detected", self.id);
             init
         } else {
             return;
@@ -457,14 +463,14 @@ impl Plugin {
 
         self.runtime = Some(GuestRuntime::Wasi { init });
 
-        trace!("No runtime detected");
+        trace!("{} no runtime detected", self.id);
     }
 
     // Initialize the guest runtime
     pub(crate) fn initialize_guest_runtime(&mut self) -> Result<(), Error> {
         let mut store = &mut self.store;
         if let Some(runtime) = &self.runtime {
-            trace!("Plugin::initialize_runtime");
+            trace!("{} Plugin::initialize_runtime", self.id);
             match runtime {
                 GuestRuntime::Haskell { init, reactor_init } => {
                     if let Some(reactor_init) = reactor_init {
@@ -476,11 +482,11 @@ impl Plugin {
                         &[Val::I32(0), Val::I32(0)],
                         results.as_mut_slice(),
                     )?;
-                    debug!("Initialized Haskell language runtime");
+                    debug!("{} initialized Haskell language runtime", self.id);
                 }
                 GuestRuntime::Wasi { init } => {
                     init.call(&mut store, &[], &mut [])?;
-                    debug!("Initialied WASI runtime");
+                    debug!("{} initialied WASI runtime", self.id);
                 }
             }
         }
@@ -517,7 +523,6 @@ impl Plugin {
 
     // Get the output data after a call has returned
     fn output<'a, T: FromBytes<'a>>(&'a mut self) -> Result<T, Error> {
-        trace!("Output offset: {}", self.output.offset);
         let offs = self.output.offset;
         let len = self.output.length;
         T::from_bytes(
@@ -531,10 +536,12 @@ impl Plugin {
         let (offs, len) = self.output_memory_position()?;
         self.output.offset = offs;
         self.output.length = len;
+        debug!("{} output offset={}, length={}", self.id, offs, len);
 
         let (offs, len) = self.current_plugin_mut().get_error_position();
         self.output.error_offset = offs;
         self.output.error_length = len;
+        debug!("{} error offset={}, length={}", self.id, offs, len);
         Ok(())
     }
 
@@ -551,7 +558,7 @@ impl Plugin {
 
         if self.needs_reset {
             if let Err(e) = self.reset_store(lock) {
-                error!("Call to Plugin::reset_store failed: {e:?}");
+                error!("{} call to Plugin::reset_store failed: {e:?}", self.id);
             }
             self.needs_reset = false;
         }
@@ -605,6 +612,7 @@ impl Plugin {
         let mut rc = -1;
         if !results.is_empty() {
             rc = results[0].i32().unwrap_or(-1);
+            debug!("{} got return code: {}", self.id, rc);
         }
 
         if self.output.error_offset != 0 && self.output.error_length != 0 {
@@ -614,7 +622,10 @@ impl Plugin {
             };
             if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
                 let x = e.to_string();
-                error!("Call to {name} returned with error message: {}", x);
+                error!(
+                    "{} call to {name} returned with error message: {}",
+                    self.id, x
+                );
                 if let Err(e) = res {
                     res = Err(Error::msg(x).context(e));
                 } else {
@@ -632,26 +643,29 @@ impl Plugin {
             Err(e) => {
                 if let Some(coredump) = e.downcast_ref::<wasmtime::WasmCoreDump>() {
                     if let Some(file) = self.debug_options.coredump.clone() {
-                        debug!("Saving coredump to {}", file.display());
+                        debug!("{} saving coredump to {}", self.id, file.display());
 
                         if let Err(e) =
                             std::fs::write(file, coredump.serialize(self.store_mut(), "extism"))
                         {
-                            error!("Unable to write coredump: {:?}", e);
+                            error!("{} unable to write coredump: {:?}", self.id, e);
                         }
                     }
                 }
 
                 if let Some(file) = &self.debug_options.memdump.clone() {
-                    trace!("Memory dump enabled");
+                    trace!("{} memory dump enabled", self.id);
                     if let Some(memory) = self.current_plugin_mut().memory() {
-                        debug!("Dumping memory to {}", file.display());
+                        debug!("{} dumping memory to {}", self.id, file.display());
                         let data = memory.data(&mut self.store);
                         if let Err(e) = std::fs::write(file, data) {
-                            error!("Unable to write memory dump: {:?}", e);
+                            error!("{} unable to write memory dump: {:?}", self.id, e);
                         }
                     } else {
-                        error!("Unable to get extism memory for writing to disk");
+                        error!(
+                            "{} unable to get extism memory for writing to disk",
+                            self.id
+                        );
                     }
                 }
 
@@ -663,7 +677,7 @@ impl Plugin {
                             .map(|e| e.0)
                     });
                 if let Some(exit_code) = wasi_exit_code {
-                    trace!("WASI exit code: {}", exit_code);
+                    debug!("{} WASI exit code: {}", self.id, exit_code);
                     if exit_code == 0 {
                         return Ok(0);
                     }
@@ -673,17 +687,18 @@ impl Plugin {
 
                 // Handle timeout interrupts
                 if let Some(wasmtime::Trap::Interrupt) = e.downcast_ref::<wasmtime::Trap>() {
-                    trace!("Call to {name} timed out");
+                    debug!("{} call to {name} timed out", self.id);
                     return Err((Error::msg("timeout"), rc));
                 }
 
                 // Handle out-of-memory error from `MemoryLimiter`
                 let cause = e.root_cause().to_string();
                 if cause == "oom" {
+                    debug!("{} call to {name} ran out of memory", self.id);
                     return Err((Error::msg(cause), rc));
                 }
 
-                error!("Call to {name} encountered an error: {e:?}");
+                error!("{} call to {name} encountered an error: {e:?}", self.id);
                 Err((e, rc))
             }
         }
@@ -725,7 +740,7 @@ impl Plugin {
     }
 
     pub(crate) fn clear_error(&mut self) -> Result<(), Error> {
-        trace!("Clearing error on plugin {}", self.id);
+        trace!("{} clearing error", self.id);
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
             f.into_func()
@@ -745,7 +760,7 @@ impl Plugin {
         x: E,
     ) -> E {
         if instance_lock.is_none() {
-            error!("No instance, unable to set error: {}", e);
+            error!("{} no instance, unable to set error: {}", self.id, e);
             return x;
         }
         match self.current_plugin_mut().set_error(e.to_string()) {
@@ -754,7 +769,7 @@ impl Plugin {
                 self.output.error_length = b;
             }
             Err(e) => {
-                error!("Unable to set error: {e:?}")
+                error!("{} unable to set error: {e:?}", self.id)
             }
         }
         x

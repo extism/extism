@@ -134,6 +134,9 @@ fn it_works() {
     let avg: std::time::Duration = sum / num_tests as u32;
 
     println!("wasm function call (avg, N = {}): {:?}", num_tests, avg);
+
+    let meta = std::fs::metadata("test.log").unwrap();
+    assert!(meta.len() > 0);
 }
 
 #[test]
