@@ -28,8 +28,8 @@ endif
 
 build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml $(TARGET_FLAGS)
-	sed -e "s%PREFIX%$(DEST)%" libextism/extism.pc.in > libextism/extism.pc
-	sed -e "s%PREFIX%$(DEST)%" libextism/extism-static.pc.in > libextism/extism-static.pc
+	sed -e "s%@CMAKE_INSTALL_PREFIX@%$(DEST)%" libextism/extism.pc.in > libextism/extism.pc
+	sed -e "s%@CMAKE_INSTALL_PREFIX@%$(DEST)%" libextism/extism-static.pc.in > libextism/extism-static.pc
 
 bench:
 	@(cargo criterion $(TARGET_FLAGS) || echo 'For nicer output use cargo-criterion: `cargo install cargo-criterion` - using `cargo bench`') && cargo bench $(TARGET_FLAGS)
