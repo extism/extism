@@ -25,6 +25,8 @@ There are a few environment variables that can be used for debugging purposes:
 - `EXTISM_DEBUG=1`: generate debug information
 - `EXTISM_PROFILE=perf|jitdump|vtune`: enable Wasmtime profiling
 
+> *Note*: The debug and coredump info will only be written if the plug-in has an error.
+
 ## Getting Started
 
 This guide should walk you through some of the concepts in Extism and the `extism` crate.
