@@ -1,1 +1,0 @@
-#include "runtime/extism.h"

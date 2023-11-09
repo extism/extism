@@ -1,2 +1,0 @@
-build-env: [EXTISM_TEST_NO_LIB = ""]
-post-messages: ["See https://extism.org/docs/install/ for information about installing libextism"]
