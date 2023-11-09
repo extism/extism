@@ -11,5 +11,5 @@
       Pack="true"
       PackagePath="runtimes\win-x64\native\extism.dll" />
   </ItemGroup>
-  
+
 </Project>

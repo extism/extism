@@ -12,6 +12,10 @@
 		<Deterministic>true</Deterministic>
 		<NoBuild>true</NoBuild>
 		<IncludeBuildOutput>false</IncludeBuildOutput>
+
+		<MinVerIgnoreHeight>true</MinVerIgnoreHeight>
+		<MinVerTagPrefix>v</MinVerTagPrefix>
+		<MinVerVerbosity>normal</MinVerVerbosity>
 	</PropertyGroup>
 
 	<ItemGroup>
