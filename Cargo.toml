@@ -1,10 +1,4 @@
 [workspace]
 resolver = "2"
-members = [
-  "extism-maturin",
-  "manifest",
-  "runtime",
-  "libextism",
-  "convert"
-]
+members = ["extism-maturin", "manifest", "runtime", "libextism", "convert"]
 exclude = ["kernel"]
