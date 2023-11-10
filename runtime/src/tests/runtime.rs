@@ -40,7 +40,8 @@ pub struct Count {
 #[test]
 fn it_works() {
     tracing_subscriber::fmt()
-        .with_max_level(tracing::Level::DEBUG)
+        .with_ansi(false)
+        .with_env_filter("extism=debug")
         .with_writer(std::fs::File::create("test.log").unwrap())
         .init();
 

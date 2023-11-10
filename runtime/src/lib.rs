@@ -54,9 +54,9 @@ fn set_log_file(
     );
 
     if s == Some("-") || s == Some("stderr") {
-        cfg.with_writer(std::io::stderr).init();
+        cfg.with_ansi(true).with_writer(std::io::stderr).init();
     } else if s == Some("stdout") {
-        cfg.with_writer(std::io::stdout).init();
+        cfg.with_ansi(true).with_writer(std::io::stdout).init();
     } else {
         let log_file = log_file.to_path_buf();
         let f = std::fs::OpenOptions::new()
@@ -64,7 +64,9 @@ fn set_log_file(
             .append(true)
             .open(log_file)
             .expect("Open log file");
-        cfg.with_writer(move || f.try_clone().unwrap()).init();
+        cfg.with_ansi(false)
+            .with_writer(move || f.try_clone().unwrap())
+            .init();
     };
     Ok(())
 }
