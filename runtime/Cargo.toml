@@ -37,7 +37,6 @@ cbindgen = "0.26"
 
 [dev-dependencies]
 criterion = "0.5.1"
-log = "0.4"
 
 [[bench]]
 name = "bench"
