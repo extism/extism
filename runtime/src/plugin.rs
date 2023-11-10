@@ -115,7 +115,7 @@ fn profiling_strategy() -> ProfilingStrategy {
         Ok("jitdump") => ProfilingStrategy::JitDump,
         Ok("vtune") => ProfilingStrategy::VTune,
         Ok(x) => {
-            log::warn!("Invalid value for EXTISM_PROFILE: {x}");
+            warn!("Invalid value for EXTISM_PROFILE: {x}");
             ProfilingStrategy::None
         }
         Err(_) => ProfilingStrategy::None,
@@ -171,7 +171,7 @@ impl Plugin {
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
         let available_pages = manifest.memory.max_pages;
-        log::debug!("Available pages: {available_pages:?}");
+        debug!("Available pages: {available_pages:?}");
 
         let id = uuid::Uuid::new_v4();
         let mut store = Store::new(

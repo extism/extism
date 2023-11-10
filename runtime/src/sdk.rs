@@ -540,7 +540,7 @@ pub unsafe extern "C" fn extism_log_file(
     filename: *const c_char,
     log_level: *const c_char,
 ) -> bool {
-    use log::Level;
+    use tracing::Level;
 
     let file = if !filename.is_null() {
         let file = std::ffi::CStr::from_ptr(filename);

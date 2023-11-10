@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use wasmtime::Caller;
 
-use crate::{CurrentPlugin, Error};
+use crate::{error, CurrentPlugin, Error};
 
 /// An enumeration of all possible value types in WebAssembly.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -116,7 +116,7 @@ impl<T> UserData<T> {
         match self {
             UserData::C(ptr) => ptr.ptr,
             _ => {
-                log::error!("Rust UserData cannot be used by C");
+                error!("Rust UserData cannot be used by C");
                 std::ptr::null_mut()
             }
         }

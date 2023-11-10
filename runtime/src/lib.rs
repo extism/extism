@@ -26,9 +26,9 @@ pub use plugin::{CancelHandle, Plugin, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
 pub use plugin_builder::PluginBuilder;
 
 pub(crate) use internal::{Internal, Wasi};
-pub(crate) use log::{debug, error, trace};
 pub(crate) use plugin_builder::DebugOptions;
 pub(crate) use timer::{Timer, TimerAction};
+pub(crate) use tracing::{debug, error, trace, warn};
 
 #[cfg(test)]
 mod tests;
@@ -42,31 +42,29 @@ pub fn extism_version() -> &'static str {
 }
 
 /// Set the log file Extism will use, this is a global configuration
-pub fn set_log_file(file: impl AsRef<std::path::Path>, level: log::Level) -> Result<(), Error> {
-    let log_file = file.as_ref();
+fn set_log_file(
+    log_file: impl Into<std::path::PathBuf>,
+    level: tracing::Level,
+) -> Result<(), Error> {
+    let log_file = log_file.into();
     let s = log_file.to_str();
 
-    let mut d = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{} {} {}] {}",
-                humantime::format_rfc3339_seconds(std::time::SystemTime::now()),
-                record.level(),
-                record.target(),
-                message
-            ))
-        })
-        .level(log::LevelFilter::Off)
-        .level_for("extism", level.to_level_filter());
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
+        tracing_subscriber::EnvFilter::builder().parse(format!("extism={}", level))?,
+    );
 
     if s == Some("-") || s == Some("stderr") {
-        d = d.chain(std::io::stderr());
+        cfg.with_writer(std::io::stderr).init();
     } else if s == Some("stdout") {
-        d = d.chain(std::io::stdout());
+        cfg.with_writer(std::io::stdout).init();
     } else {
-        d = d.chain(fern::log_file(log_file)?);
-    }
-
-    d.apply()?;
+        let log_file = log_file.to_path_buf();
+        let f = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_file)
+            .expect("Open log file");
+        cfg.with_writer(move || f.try_clone().unwrap()).init();
+    };
     Ok(())
 }
