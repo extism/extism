@@ -22,7 +22,6 @@ pub(crate) struct Timer {
 
 #[cfg(not(target_family = "windows"))]
 extern "C" fn cleanup_timer() {
-    trace!("Cleaning up timer");
     let mut timer = match unsafe { TIMER.lock() } {
         Ok(x) => x,
         Err(e) => e.into_inner(),
