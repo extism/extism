@@ -44,7 +44,7 @@ pub fn extism_version() -> &'static str {
 /// Set the log file Extism will use, this is a global configuration
 fn set_log_file(
     log_file: impl Into<std::path::PathBuf>,
-    level: tracing::Level,
+    level: tracing::level_filters::LevelFilter,
 ) -> Result<(), Error> {
     let log_file = log_file.into();
     let s = log_file.to_str();

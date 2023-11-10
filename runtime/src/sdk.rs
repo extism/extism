@@ -540,8 +540,6 @@ pub unsafe extern "C" fn extism_log_file(
     filename: *const c_char,
     log_level: *const c_char,
 ) -> bool {
-    use tracing::Level;
-
     let file = if !filename.is_null() {
         let file = std::ffi::CStr::from_ptr(filename);
         match file.to_str() {
@@ -566,7 +564,7 @@ pub unsafe extern "C" fn extism_log_file(
         "error"
     };
 
-    let level = match Level::from_str(&level.to_ascii_lowercase()) {
+    let level = match tracing::level_filters::LevelFilter::from_str(&level.to_ascii_lowercase()) {
         Ok(x) => x,
         Err(_) => {
             return false;
