@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+void log_handler(const char *line, uintptr_t length) {
+  fwrite(line, length, 1, stderr);
+}
+
 void hello_world(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
                  uint64_t n_inputs, ExtismVal *outputs, uint64_t n_outputs,
                  void *data) {
@@ -54,6 +58,8 @@ int main(int argc, char *argv[]) {
     fputs("Not enough arguments\n", stderr);
     exit(1);
   }
+
+  extism_log_callback("trace", log_handler);
 
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
