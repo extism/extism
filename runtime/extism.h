@@ -248,6 +248,11 @@ const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
 bool extism_log_file(const char *filename, const char *log_level);
 
 /**
+ * Set log callback
+ */
+bool extism_log_callback(const char *log_level, void (*callback)(const char*, uintptr_t));
+
+/**
  * Get the Extism version string
  */
 const char *extism_version(void);

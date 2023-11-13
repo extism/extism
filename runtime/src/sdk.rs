@@ -1,7 +1,6 @@
 #![allow(clippy::missing_safety_doc)]
 
 use std::os::raw::c_char;
-use std::str::FromStr;
 
 use crate::*;
 
@@ -564,14 +563,31 @@ pub unsafe extern "C" fn extism_log_file(
         "error"
     };
 
-    let level = match tracing::level_filters::LevelFilter::from_str(&level.to_ascii_lowercase()) {
-        Ok(x) => x,
-        Err(_) => {
-            return false;
+    set_log_file(file, level).is_ok()
+}
+
+/// Set log callback
+#[no_mangle]
+pub unsafe extern "C" fn extism_log_callback(
+    log_level: *const c_char,
+    callback: extern "C" fn(*const c_char, usize),
+) -> bool {
+    let level = if !log_level.is_null() {
+        let level = std::ffi::CStr::from_ptr(log_level);
+        match level.to_str() {
+            Ok(x) => x,
+            Err(_) => {
+                return false;
+            }
         }
+    } else {
+        "error"
     };
 
-    set_log_file(file, level).is_ok()
+    set_log_callback(level, move |msg| {
+        callback(msg.as_ptr() as *const _, msg.len() as _)
+    })
+    .is_ok()
 }
 
 /// Get the Extism version string

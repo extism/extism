@@ -42,15 +42,14 @@ pub fn extism_version() -> &'static str {
 }
 
 /// Set the log file Extism will use, this is a global configuration
-fn set_log_file(
-    log_file: impl Into<std::path::PathBuf>,
-    level: tracing::level_filters::LevelFilter,
-) -> Result<(), Error> {
+fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result<(), Error> {
     let log_file = log_file.into();
     let s = log_file.to_str();
 
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
-        tracing_subscriber::EnvFilter::builder().parse(format!("extism={}", level))?,
+        tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into())
+            .parse_lossy(filter),
     );
 
     if s == Some("-") || s == Some("stderr") {
@@ -68,5 +67,47 @@ fn set_log_file(
             .with_writer(move || f.try_clone().unwrap())
             .init();
     };
+    Ok(())
+}
+
+struct LogFunction<F: Fn(&str)> {
+    func: std::sync::Arc<std::sync::Mutex<F>>,
+}
+
+unsafe impl<F: Fn(&str)> Send for LogFunction<F> {}
+unsafe impl<F: Fn(&str)> Sync for LogFunction<F> {}
+
+impl<F: Fn(&str)> Clone for LogFunction<F> {
+    fn clone(&self) -> Self {
+        LogFunction {
+            func: self.func.clone(),
+        }
+    }
+}
+
+impl<F: Fn(&str)> std::io::Write for LogFunction<F> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Ok(s) = std::str::from_utf8(buf) {
+            (self.func.lock().unwrap())(s);
+        }
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+pub fn set_log_callback<F: 'static + Fn(&str)>(filter: &str, func: F) -> Result<(), Error> {
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
+        tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into())
+            .parse_lossy(filter),
+    );
+    let w = LogFunction {
+        func: std::sync::Arc::new(std::sync::Mutex::new(func)),
+    };
+    cfg.with_ansi(false).with_writer(move || w.clone()).init();
     Ok(())
 }

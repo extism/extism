@@ -11,7 +11,7 @@ fn main() {
 /** An alias for I64 to signify an Extism pointer */
 #define PTR I64
 ";
-    match cbindgen::Builder::new()
+    cbindgen::Builder::new()
         .with_crate(".")
         .with_language(cbindgen::Language::C)
         .with_no_includes()
@@ -28,12 +28,6 @@ fn main() {
         .rename_item("Function", "ExtismFunction")
         .with_style(cbindgen::Style::Type)
         .generate()
-    {
-        Ok(bindings) => {
-            bindings.write_to_file("extism.h");
-        }
-        Err(e) => {
-            panic!("Error building header: {e}")
-        }
-    }
+        .unwrap()
+        .write_to_file("extism.h");
 }
