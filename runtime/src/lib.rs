@@ -100,6 +100,8 @@ impl<F: Clone + Fn(&str)> std::io::Write for LogFunction<F> {
     }
 }
 
+/// Sets a custom callback to handle logs, each line will be passed to the provided callback instead of being
+/// logged to a file. This initializes a default `tracing_subscriber` and should only be called once.
 pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(filter: &str, func: F) -> Result<(), Error> {
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
         tracing_subscriber::EnvFilter::builder()

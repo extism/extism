@@ -533,7 +533,9 @@ pub unsafe extern "C" fn extism_plugin_output_data(plugin: *mut Plugin) -> *cons
     ptr.add(plugin.output.offset as usize)
 }
 
-/// Set log file and level
+/// Set log file and level.
+/// Log level should be one of: info, error, trace, debug, warn
+/// The file will be created if it doesn't exist.
 #[no_mangle]
 pub unsafe extern "C" fn extism_log_file(
     filename: *const c_char,
@@ -567,6 +569,7 @@ pub unsafe extern "C" fn extism_log_file(
 }
 
 /// Set log callback
+/// Log level should be one of: info, error, trace, debug, warn
 #[no_mangle]
 pub unsafe extern "C" fn extism_log_callback(
     log_level: *const c_char,

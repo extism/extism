@@ -98,6 +98,14 @@ Set log file and level.
 bool extism_log_file(const char *filename, const char *log_level);
 ```
 
+### `extism_log_callback`
+
+Set a custom callback to handle logged lines.
+
+```c
+bool extism_log_callback(const char *log_level, void (*callback)(const char*, uintptr_t));
+```
+
 ### `extism_version`
 
 Get the Extism version string.
