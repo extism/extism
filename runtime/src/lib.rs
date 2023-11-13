@@ -78,14 +78,6 @@ struct LogFunction<F: Clone + Fn(&str)> {
 unsafe impl<F: Clone + Fn(&str)> Send for LogFunction<F> {}
 unsafe impl<F: Clone + Fn(&str)> Sync for LogFunction<F> {}
 
-// impl<F: Fn(&str)> Clone for LogFunction<F> {
-//     fn clone(&self) -> Self {
-//         LogFunction {
-//             func: self.func.clone(),
-//         }
-//     }
-// }
-
 impl<F: Clone + Fn(&str)> std::io::Write for LogFunction<F> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if let Ok(s) = std::str::from_utf8(buf) {
