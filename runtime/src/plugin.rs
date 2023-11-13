@@ -166,7 +166,9 @@ impl Plugin {
                 .epoch_interruption(true)
                 .debug_info(debug_options.debug_info)
                 .coredump_on_trap(debug_options.coredump.is_some())
-                .profiler(profiling_strategy),
+                .profiler(profiling_strategy)
+                .wasm_tail_call(true)
+                .wasm_function_references(true),
         )?;
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
