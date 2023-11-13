@@ -12,7 +12,7 @@ To use the `extism` crate, you can add it to your Cargo file:
 
 ```toml
 [depdendencies]
-extism = "*"
+extism = "^1.0.0-alpha.0"
 ```
 
 ## Environment variables
@@ -24,6 +24,8 @@ There are a few environment variables that can be used for debugging purposes:
 - `EXTISM_COREDUMP=extism.core`: write [coredump](https://github.com/WebAssembly/tool-conventions/blob/main/Coredump.md) to a file when a WebAssembly function traps
 - `EXTISM_DEBUG=1`: generate debug information
 - `EXTISM_PROFILE=perf|jitdump|vtune`: enable Wasmtime profiling
+
+> *Note*: The debug and coredump info will only be written if the plug-in has an error.
 
 ## Getting Started
 
@@ -44,7 +46,7 @@ fn main() {
   );
   let manifest = Manifest::new([url]);
   let mut plugin = Plugin::new(&manifest, [], true).unwrap();
-  let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+  let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
   println!("{}", res);
 }
 ```
@@ -56,7 +58,7 @@ fn main() {
 This plug-in was written in Rust and it does one thing, it counts vowels in a string. As such, it exposes one "export" function: `count_vowels`. We can call exports using [Extism::Plugin::call](https://docs.rs/extism/latest/extism/struct.Plugin.html#method.call):
 
 ```rust
-let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
 ```
@@ -78,7 +80,7 @@ struct VowelCount {
 Then we can use [Json](https://docs.rs/extism-convert/latest/extism_convert/struct.Json.html) to get the JSON results decoded into `VowelCount`:
 
 ```rust
-let Json(res) = plugin.call::<&str, Json<VowelCount>>::("count_vowels", "Hello, world!").unwrap();
+let Json(res) = plugin.call::<&str, Json<VowelCount>>("count_vowels", "Hello, world!").unwrap();
 println!("{:?}", res);
 # => VowelCount {count: 3, total: 3, vowels: "aeiouAEIOU"}
 ```
@@ -88,11 +90,11 @@ println!("{:?}", res);
 Plug-ins may be stateful or stateless. Plug-ins can maintain state b/w calls by the use of variables. Our count vowels plug-in remembers the total number of vowels it's ever counted in the "total" key in the result. You can see this by making subsequent calls to the export:
 
 ```rust
-let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}
 
-let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 9, "vowels": "aeiouAEIOU"}
 ```
@@ -106,11 +108,11 @@ Plug-ins may optionally take a configuration object. This is a static way to con
 ```rust
 let manifest = Manifest::new([url]);
 let mut plugin = Plugin::new(&manifest, [], true);
-let res = plugin.call::<&str, &str>::("count_vowels", "Yellow, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
 let mut plugin = Plugin::new(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
-let res = plugin.call::<&str, &str>::("count_vowels", "Yellow, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 4, "total": 4, "vowels": "aeiouyAEIOUY"}
 ```
@@ -203,13 +205,13 @@ fn main() {
 Now we can invoke the event:
 
 ```rust
-let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => Read from key=count-vowels"
 # => Writing value=3 from key=count-vowels"
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
 
-let res = plugin.call::<&str, &str>::("count_vowels", "Hello, world!").unwrap();
+let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
 println!("{}", res);
 # => Read from key=count-vowels"
 # => Writing value=6 from key=count-vowels"
