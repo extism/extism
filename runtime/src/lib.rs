@@ -70,25 +70,26 @@ fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result
     Ok(())
 }
 
-struct LogFunction<F: Fn(&str)> {
-    func: std::sync::Arc<std::sync::Mutex<F>>,
+#[derive(Clone)]
+struct LogFunction<F: Clone + Fn(&str)> {
+    func: F,
 }
 
-unsafe impl<F: Fn(&str)> Send for LogFunction<F> {}
-unsafe impl<F: Fn(&str)> Sync for LogFunction<F> {}
+unsafe impl<F: Clone + Fn(&str)> Send for LogFunction<F> {}
+unsafe impl<F: Clone + Fn(&str)> Sync for LogFunction<F> {}
 
-impl<F: Fn(&str)> Clone for LogFunction<F> {
-    fn clone(&self) -> Self {
-        LogFunction {
-            func: self.func.clone(),
-        }
-    }
-}
+// impl<F: Fn(&str)> Clone for LogFunction<F> {
+//     fn clone(&self) -> Self {
+//         LogFunction {
+//             func: self.func.clone(),
+//         }
+//     }
+// }
 
-impl<F: Fn(&str)> std::io::Write for LogFunction<F> {
+impl<F: Clone + Fn(&str)> std::io::Write for LogFunction<F> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if let Ok(s) = std::str::from_utf8(buf) {
-            (self.func.lock().unwrap())(s);
+            (self.func)(s);
         }
 
         Ok(buf.len())
@@ -99,15 +100,13 @@ impl<F: Fn(&str)> std::io::Write for LogFunction<F> {
     }
 }
 
-pub fn set_log_callback<F: 'static + Fn(&str)>(filter: &str, func: F) -> Result<(), Error> {
+pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(filter: &str, func: F) -> Result<(), Error> {
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
         tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into())
             .parse_lossy(filter),
     );
-    let w = LogFunction {
-        func: std::sync::Arc::new(std::sync::Mutex::new(func)),
-    };
+    let w = LogFunction { func };
     cfg.with_ansi(false).with_writer(move || w.clone()).init();
     Ok(())
 }
