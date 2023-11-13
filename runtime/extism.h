@@ -243,12 +243,15 @@ ExtismSize extism_plugin_output_length(ExtismPlugin *plugin);
 const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
 
 /**
- * Set log file and level
+ * Set log file and level.
+ * Log level should be one of: info, error, trace, debug, warn
+ * The file will be created if it doesn't exist.
  */
 bool extism_log_file(const char *filename, const char *log_level);
 
 /**
  * Set log callback
+ * Log level should be one of: info, error, trace, debug, warn
  */
 bool extism_log_callback(const char *log_level, void (*callback)(const char*, uintptr_t));
 
