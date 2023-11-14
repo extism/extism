@@ -110,7 +110,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                         name = n;
                     }
 
-                    if let Some(n) = file_name.strip_suffix(".wast") {
+                    if let Some(n) = file_name.strip_suffix(".wat") {
                         name = n;
                     }
                     name
