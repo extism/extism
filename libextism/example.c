@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  extism_log_custom("trace");
+  extism_log_custom("extism=trace,cranelift=trace");
 
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);

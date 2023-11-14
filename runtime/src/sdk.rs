@@ -534,7 +534,8 @@ pub unsafe extern "C" fn extism_plugin_output_data(plugin: *mut Plugin) -> *cons
 }
 
 /// Set log file and level.
-/// Log level should be one of: info, error, trace, debug, warn
+/// The log level can be either one of: info, error, trace, debug, warn or a more
+/// complex filter like `extism=trace,cranelift=debug`
 /// The file will be created if it doesn't exist.
 #[no_mangle]
 pub unsafe extern "C" fn extism_log_file(

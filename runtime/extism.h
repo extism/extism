@@ -244,7 +244,8 @@ const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
 
 /**
  * Set log file and level.
- * Log level should be one of: info, error, trace, debug, warn
+ * The log level can be either one of: info, error, trace, debug, warn or a more
+ * complex filter like `extism=trace,cranelift=debug`
  * The file will be created if it doesn't exist.
  */
 bool extism_log_file(const char *filename, const char *log_level);
