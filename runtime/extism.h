@@ -253,7 +253,7 @@ bool extism_log_file(const char *filename, const char *log_level);
  * Set log callback
  * Log level should be one of: info, error, trace, debug, warn
  */
-bool extism_log_callback(const char *log_level, void (*callback)(const char*, uintptr_t));
+bool extism_log_callback(void (*callback)(const char*, uintptr_t), const char *log_level);
 
 /**
  * Get the Extism version string

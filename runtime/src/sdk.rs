@@ -572,8 +572,8 @@ pub unsafe extern "C" fn extism_log_file(
 /// Log level should be one of: info, error, trace, debug, warn
 #[no_mangle]
 pub unsafe extern "C" fn extism_log_callback(
-    log_level: *const c_char,
     callback: extern "C" fn(*const c_char, usize),
+    log_level: *const c_char,
 ) -> bool {
     let level = if !log_level.is_null() {
         let level = std::ffi::CStr::from_ptr(log_level);
@@ -587,9 +587,10 @@ pub unsafe extern "C" fn extism_log_callback(
         "error"
     };
 
-    set_log_callback(level, move |msg| {
-        callback(msg.as_ptr() as *const _, msg.len() as _)
-    })
+    set_log_callback(
+        move |msg| callback(msg.as_ptr() as *const _, msg.len() as _),
+        level,
+    )
     .is_ok()
 }
 

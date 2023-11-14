@@ -7,7 +7,7 @@ fn handle_logs(msg: &str) {
 }
 
 fn main() {
-    set_log_callback("extism=trace", handle_logs).unwrap();
+    set_log_callback(handle_logs, "extism=trace").unwrap();
     let url = Wasm::file("../wasm/code.wasm");
     let manifest = Manifest::new([url]);
     let mut plugin = PluginBuilder::new(manifest)
