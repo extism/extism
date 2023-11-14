@@ -103,7 +103,7 @@ bool extism_log_file(const char *filename, const char *log_level);
 Set a custom callback to handle logged lines.
 
 ```c
-bool extism_log_callback(const char *log_level, void (*callback)(const char*, uintptr_t));
+bool extism_log_callback(void (*callback)(const char*, uintptr_t), const char *log_level);
 ```
 
 ### `extism_version`
