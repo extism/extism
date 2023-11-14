@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  extism_log_callback(log_handler, "trace");
+  extism_log_custom("trace");
 
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
@@ -87,5 +87,6 @@ int main(int argc, char *argv[]) {
   write(STDOUT_FILENO, "\n", 1);
   extism_plugin_free(plugin);
   extism_function_free(f);
+  extism_log_drain(log_handler);
   return 0;
 }

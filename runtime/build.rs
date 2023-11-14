@@ -1,6 +1,4 @@
 fn main() {
-    println!("cargo:rerun-if-changed=src/extism-runtime.wasm");
-
     let fn_macro = "
 #define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)
 #define EXTISM_GO_FUNCTION(N) extern void N(void*, ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, uintptr_t)

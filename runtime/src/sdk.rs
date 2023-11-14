@@ -568,13 +568,46 @@ pub unsafe extern "C" fn extism_log_file(
     set_log_file(file, level).is_ok()
 }
 
-/// Set log callback
+// Set the log file Extism will use, this is a global configuration
+fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result<(), Error> {
+    let log_file = log_file.into();
+    let s = log_file.to_str();
+
+    let is_level = tracing::Level::from_str(filter).is_ok();
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
+        let x = tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into());
+        if is_level {
+            x.parse_lossy(&format!("extism={}", filter))
+        } else {
+            x.parse_lossy(filter)
+        }
+    });
+
+    if s == Some("-") || s == Some("stderr") {
+        cfg.with_ansi(true).with_writer(std::io::stderr).init();
+    } else if s == Some("stdout") {
+        cfg.with_ansi(true).with_writer(std::io::stdout).init();
+    } else {
+        let log_file = log_file.to_path_buf();
+        let f = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_file)
+            .expect("Open log file");
+        cfg.with_ansi(false)
+            .with_writer(move || f.try_clone().unwrap())
+            .init();
+    };
+    Ok(())
+}
+
+static mut LOG_BUFFER: Option<LogBuffer> = None;
+
+/// Enable a custom log handler, this will buffer logs until `extism_log_drain` is called
 /// Log level should be one of: info, error, trace, debug, warn
 #[no_mangle]
-pub unsafe extern "C" fn extism_log_callback(
-    callback: extern "C" fn(*const c_char, usize),
-    log_level: *const c_char,
-) -> bool {
+pub unsafe extern "C" fn extism_log_custom(log_level: *const c_char) -> bool {
     let level = if !log_level.is_null() {
         let level = std::ffi::CStr::from_ptr(log_level);
         match level.to_str() {
@@ -586,12 +619,62 @@ pub unsafe extern "C" fn extism_log_callback(
     } else {
         "error"
     };
+    set_log_buffer(level).is_ok()
+}
 
-    set_log_callback(
-        move |msg| callback(msg.as_ptr() as *const _, msg.len() as _),
-        level,
-    )
-    .is_ok()
+unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
+    let is_level = tracing::Level::from_str(filter).is_ok();
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
+        let x = tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into());
+        if is_level {
+            x.parse_lossy(&format!("extism={}", filter))
+        } else {
+            x.parse_lossy(filter)
+        }
+    });
+    LOG_BUFFER = Some(LogBuffer::default());
+    let buf = LOG_BUFFER.clone().unwrap();
+    cfg.with_ansi(false).with_writer(move || buf.clone()).init();
+    Ok(())
+}
+
+#[no_mangle]
+/// Calls the provided callback function for each buffered log line.
+/// This is only needed when `extism_log_custom` is used.
+pub unsafe extern "C" fn extism_log_drain(handler: extern "C" fn(*const std::ffi::c_char, usize)) {
+    if let Some(buf) = &mut LOG_BUFFER {
+        if let Ok(mut buf) = buf.buffer.lock() {
+            while let Some((line, len)) = buf.pop_front() {
+                handler(line.as_ptr(), len);
+            }
+        }
+    }
+}
+
+#[derive(Default, Clone)]
+struct LogBuffer {
+    buffer:
+        std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(std::ffi::CString, usize)>>>,
+}
+
+unsafe impl Send for LogBuffer {}
+unsafe impl Sync for LogBuffer {}
+
+impl std::io::Write for LogBuffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Ok(s) = std::str::from_utf8(buf) {
+            if let Ok(mut buf) = self.buffer.lock() {
+                buf.push_back((std::ffi::CString::new(s)?, s.len()));
+            }
+        }
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// Get the Extism version string

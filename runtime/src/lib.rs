@@ -1,5 +1,6 @@
 pub(crate) use extism_convert::*;
 pub(crate) use std::collections::BTreeMap;
+use std::str::FromStr;
 pub(crate) use wasmtime::*;
 
 pub use extism_convert as convert;
@@ -41,35 +42,6 @@ pub fn extism_version() -> &'static str {
     VERSION
 }
 
-/// Set the log file Extism will use, this is a global configuration
-fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result<(), Error> {
-    let log_file = log_file.into();
-    let s = log_file.to_str();
-
-    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
-        tracing_subscriber::EnvFilter::builder()
-            .with_default_directive(tracing::Level::ERROR.into())
-            .parse_lossy(filter),
-    );
-
-    if s == Some("-") || s == Some("stderr") {
-        cfg.with_ansi(true).with_writer(std::io::stderr).init();
-    } else if s == Some("stdout") {
-        cfg.with_ansi(true).with_writer(std::io::stdout).init();
-    } else {
-        let log_file = log_file.to_path_buf();
-        let f = std::fs::OpenOptions::new()
-            .create(true)
-            .append(true)
-            .open(log_file)
-            .expect("Open log file");
-        cfg.with_ansi(false)
-            .with_writer(move || f.try_clone().unwrap())
-            .init();
-    };
-    Ok(())
-}
-
 #[derive(Clone)]
 struct LogFunction<F: Clone + Fn(&str)> {
     func: F,
@@ -81,7 +53,7 @@ unsafe impl<F: Clone + Fn(&str)> Sync for LogFunction<F> {}
 impl<F: Clone + Fn(&str)> std::io::Write for LogFunction<F> {
     fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
         if let Ok(s) = std::str::from_utf8(buf) {
-            (self.func)(s);
+            (self.func)(s)
         }
 
         Ok(buf.len())
