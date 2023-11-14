@@ -59,7 +59,7 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
-  extism_log_callback("trace", log_handler);
+  extism_log_callback(log_handler, "trace");
 
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
