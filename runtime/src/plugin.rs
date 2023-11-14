@@ -611,7 +611,7 @@ impl Plugin {
 
         // Get extism error
         self.get_output_after_call().map_err(|x| (x, -1))?;
-        let mut rc = -1;
+        let mut rc = 0;
         if !results.is_empty() {
             rc = results[0].i32().unwrap_or(-1);
             debug!("{} got return code: {}", self.id, rc);
