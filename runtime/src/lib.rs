@@ -65,8 +65,12 @@ impl<F: Clone + Fn(&str)> std::io::Write for LogFunction<F> {
 }
 
 /// Sets a custom callback to handle logs, each line will be passed to the provided callback instead of being
-/// logged to a file. This initializes a default `tracing_subscriber` and should only be called once.
-pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(func: F, filter: &str) -> Result<(), Error> {
+/// logged to a file. This initializes a default `tracing_subscriber` and should only be called once. 
+///
+/// `filter` may contain a general level like `trace` or `error`, but can also be more specific to enable logging only
+/// from specific crates. For example, to enable trace-level logging only for the extism crate use: `extism=trace`.
+pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(func: F, filter: impl AsRef<str>) -> Result<(), Error> {
+    let filter = filter.as_ref()
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
         tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into())
