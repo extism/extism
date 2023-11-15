@@ -59,16 +59,20 @@ impl Timer {
                             engine,
                             duration,
                         } => {
-                            let duration = duration.map(|x| std::time::Instant::now() + x);
-                            trace!("{} start event with timeout at {:?}", id, duration);
-                            plugins.insert(id, (engine, duration));
+                            let timeout = duration.map(|x| std::time::Instant::now() + x);
+                            trace!(
+                                plugin = id.to_string(),
+                                "start event with timeout: {:?}",
+                                duration
+                            );
+                            plugins.insert(id, (engine, timeout));
                         }
                         TimerAction::Stop { id } => {
-                            trace!("{} handling stop event", id);
+                            trace!(plugin = id.to_string(), "handling stop event");
                             plugins.remove(&id);
                         }
                         TimerAction::Cancel { id } => {
-                            trace!("{} handling cancel event", id);
+                            trace!(plugin = id.to_string(), "handling cancel event");
                             if let Some((engine, _)) = plugins.remove(&id) {
                                 engine.increment_epoch();
                             }
@@ -76,7 +80,7 @@ impl Timer {
                         TimerAction::Shutdown => {
                             trace!("Shutting down timer");
                             for (id, (engine, _)) in plugins.iter() {
-                                trace!("{} shutdown", id);
+                                trace!(plugin = id.to_string(), "handling shutdown event");
                                 engine.increment_epoch();
                             }
                             return;

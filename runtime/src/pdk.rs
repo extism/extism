@@ -282,22 +282,22 @@ pub fn log(
     match buf {
         Ok(buf) => match level {
             tracing::Level::ERROR => {
-                tracing::error!(plugin = id, message = buf)
+                tracing::error!(plugin = id, "{}", buf)
             }
             tracing::Level::DEBUG => {
-                tracing::debug!(plugin = id, message = buf)
+                tracing::debug!(plugin = id, "{}", buf)
             }
             tracing::Level::WARN => {
-                tracing::warn!(plugin = id, message = buf)
+                tracing::warn!(plugin = id, "{}", buf)
             }
             tracing::Level::INFO => {
-                tracing::info!(plugin = id, message = buf)
+                tracing::info!(plugin = id, "{}", buf)
             }
             tracing::Level::TRACE => {
-                tracing::trace!(plugin = id, message = buf)
+                tracing::trace!(plugin = id, "{}", buf)
             }
         },
-        Err(_) => tracing::error!("unable to log message: {:?}", buf),
+        Err(_) => tracing::error!(plugin = id, "unable to log message: {:?}", buf),
     }
     Ok(())
 }
