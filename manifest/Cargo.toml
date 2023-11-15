@@ -1,6 +1,10 @@
 [package]
 name = "extism-manifest"
+<<<<<<< Updated upstream
 version = "1.0.0-beta.0"
+=======
+version = "1.0.0-rc2"
+>>>>>>> Stashed changes
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"

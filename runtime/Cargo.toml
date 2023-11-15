@@ -1,6 +1,10 @@
 [package]
 name = "extism"
+<<<<<<< Updated upstream
 version = "1.0.0-beta.0"
+=======
+version = "1.0.0-rc2"
+>>>>>>> Stashed changes
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
@@ -21,7 +25,11 @@ fern = "0.6.2"
 url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
+<<<<<<< Updated upstream
 extism-manifest = { version = "1.0.0-beta.0", path = "../manifest" }
+=======
+extism-manifest = { version = "1.0.0-rc2", path = "../manifest" }
+>>>>>>> Stashed changes
 extism-convert = { version = "0.2", path = "../convert" }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
