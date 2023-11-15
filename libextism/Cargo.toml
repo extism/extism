@@ -1,6 +1,6 @@
 [package]
 name = "libextism"
-version = "1.0.0-beta.0"
+version = "1.0.0-rc2"
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
