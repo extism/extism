@@ -602,10 +602,10 @@ fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result
         }
     });
 
-    if s == Some("-") || s == Some("stderr") {
-        cfg.with_ansi(true).with_writer(std::io::stderr).init();
+    let res = if s == Some("-") || s == Some("stderr") {
+        cfg.with_ansi(true).with_writer(std::io::stderr).try_init()
     } else if s == Some("stdout") {
-        cfg.with_ansi(true).with_writer(std::io::stdout).init();
+        cfg.with_ansi(true).with_writer(std::io::stdout).try_init()
     } else {
         let log_file = log_file.to_path_buf();
         let f = std::fs::OpenOptions::new()
@@ -615,8 +615,12 @@ fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result
             .expect("Open log file");
         cfg.with_ansi(false)
             .with_writer(move || f.try_clone().unwrap())
-            .init();
+            .try_init()
     };
+
+    if let Err(e) = res {
+        return Err(Error::msg(e.to_string()));
+    }
     Ok(())
 }
 
@@ -653,7 +657,10 @@ unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
     });
     LOG_BUFFER = Some(LogBuffer::default());
     let buf = LOG_BUFFER.clone().unwrap();
-    cfg.with_ansi(false).with_writer(move || buf.clone()).init();
+    cfg.with_ansi(false)
+        .with_writer(move || buf.clone())
+        .try_init()
+        .map_err(|x| Error::msg(x.to_string()))?;
     Ok(())
 }
 

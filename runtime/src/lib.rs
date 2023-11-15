@@ -80,6 +80,9 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
             .parse_lossy(filter),
     );
     let w = LogFunction { func };
-    cfg.with_ansi(false).with_writer(move || w.clone()).init();
+    cfg.with_ansi(false)
+        .with_writer(move || w.clone())
+        .try_init()
+        .map_err(|x| Error::msg(x.to_string()))?;
     Ok(())
 }
