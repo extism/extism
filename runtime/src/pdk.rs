@@ -263,13 +263,12 @@ pub(crate) fn http_status_code(
 }
 
 pub fn log(
-    level: log::Level,
+    level: tracing::Level,
     mut caller: Caller<CurrentPlugin>,
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
-    let target = format!("extism::plugin::{}", data.id);
     let offset = args!(input, 0, i64) as u64;
 
     let handle = match data.memory_handle(offset) {
@@ -277,11 +276,28 @@ pub fn log(
         None => anyhow::bail!("invalid handle offset: {offset}"),
     };
 
+    let id = data.id.to_string();
     let buf = data.memory_str(handle);
 
     match buf {
-        Ok(buf) => log::log!(target: target.as_str(), level, "{}", buf),
-        Err(_) => log::log!(target: target.as_str(), level, "{:?}", buf),
+        Ok(buf) => match level {
+            tracing::Level::ERROR => {
+                tracing::error!(plugin = id, "{}", buf)
+            }
+            tracing::Level::DEBUG => {
+                tracing::debug!(plugin = id, "{}", buf)
+            }
+            tracing::Level::WARN => {
+                tracing::warn!(plugin = id, "{}", buf)
+            }
+            tracing::Level::INFO => {
+                tracing::info!(plugin = id, "{}", buf)
+            }
+            tracing::Level::TRACE => {
+                tracing::trace!(plugin = id, "{}", buf)
+            }
+        },
+        Err(_) => tracing::error!(plugin = id, "unable to log message: {:?}", buf),
     }
     Ok(())
 }
@@ -294,7 +310,7 @@ pub(crate) fn log_warn(
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    log(log::Level::Warn, caller, input, _output)
+    log(tracing::Level::WARN, caller, input, _output)
 }
 
 /// Write to logs (info)
@@ -305,7 +321,7 @@ pub(crate) fn log_info(
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    log(log::Level::Info, caller, input, _output)
+    log(tracing::Level::INFO, caller, input, _output)
 }
 
 /// Write to logs (debug)
@@ -316,7 +332,7 @@ pub(crate) fn log_debug(
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    log(log::Level::Debug, caller, input, _output)
+    log(tracing::Level::DEBUG, caller, input, _output)
 }
 
 /// Write to logs (error)
@@ -327,5 +343,5 @@ pub(crate) fn log_error(
     input: &[Val],
     _output: &mut [Val],
 ) -> Result<(), Error> {
-    log(log::Level::Error, caller, input, _output)
+    log(tracing::Level::ERROR, caller, input, _output)
 }

@@ -110,7 +110,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                         name = n;
                     }
 
-                    if let Some(n) = file_name.strip_suffix(".wast") {
+                    if let Some(n) = file_name.strip_suffix(".wat") {
                         name = n;
                     }
                     name
@@ -169,8 +169,10 @@ pub(crate) fn load(
     let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
     let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
     if !has_magic && !is_wast {
+        trace!("Loading manifest");
         if let Ok(s) = std::str::from_utf8(data) {
             if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
+                trace!("Manifest is TOML");
                 let mut m = modules(&t, engine)?;
                 m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
                 return Ok((t, m));
@@ -178,11 +180,13 @@ pub(crate) fn load(
         }
 
         let t = serde_json::from_slice::<extism_manifest::Manifest>(data)?;
+        trace!("Manifest is JSON");
         let mut m = modules(&t, engine)?;
         m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
         return Ok((t, m));
     }
 
+    trace!("Loading WASM module bytes");
     let m = Module::new(engine, data)?;
     let mut modules = BTreeMap::new();
     modules.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
@@ -209,6 +213,7 @@ pub(crate) fn modules(
 
     for f in &manifest.wasm {
         let (name, m) = to_module(engine, f)?;
+        trace!("Found module {}", name);
         modules.insert(name, m);
     }
 

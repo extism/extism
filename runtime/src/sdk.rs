@@ -1,7 +1,6 @@
 #![allow(clippy::missing_safety_doc)]
 
 use std::os::raw::c_char;
-use std::str::FromStr;
 
 use crate::*;
 
@@ -327,7 +326,7 @@ pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
     }
 
     let plugin = Box::from_raw(plugin);
-    trace!("{} freeing", plugin.id);
+    trace!(plugin = plugin.id.to_string(), "called extism_plugin_free");
     drop(plugin)
 }
 
@@ -338,6 +337,10 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(plugin: *const Plugin) -> *
         return std::ptr::null();
     }
     let plugin = &*plugin;
+    trace!(
+        plugin = plugin.id.to_string(),
+        "called extism_plugin_cancel_handle"
+    );
     &plugin.cancel_handle as *const _
 }
 
@@ -345,6 +348,10 @@ pub unsafe extern "C" fn extism_plugin_cancel_handle(plugin: *const Plugin) -> *
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_cancel(handle: *const CancelHandle) -> bool {
     let handle = &*handle;
+    trace!(
+        plugin = handle.id.to_string(),
+        "called extism_plugin_cancel"
+    );
     handle.cancel().is_ok()
 }
 
@@ -366,8 +373,8 @@ pub unsafe extern "C" fn extism_plugin_config(
     let mut lock = _lock.lock().unwrap();
 
     trace!(
-        "{} call to extism_plugin_config with pointer {:?}",
-        plugin.id,
+        plugin = plugin.id.to_string(),
+        "call to extism_plugin_config with pointer {:?}",
         json
     );
     let data = std::slice::from_raw_parts(json, json_size as usize);
@@ -398,11 +405,11 @@ pub unsafe extern "C" fn extism_plugin_config(
     for (k, v) in json.into_iter() {
         match v {
             Some(v) => {
-                trace!("{} config, adding {k}", id);
+                trace!(plugin = id.to_string(), "config, adding {k}");
                 config.insert(k, v);
             }
             None => {
-                trace!("{} config, removing {k}", id);
+                trace!(plugin = id.to_string(), "config, removing {k}");
                 config.remove(&k);
             }
         }
@@ -426,7 +433,11 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
     let mut lock = _lock.lock().unwrap();
 
     let name = std::ffi::CStr::from_ptr(func_name);
-    trace!("{} extism_plugin_function_exists: {:?}", plugin.id, name);
+    trace!(
+        plugin = plugin.id.to_string(),
+        "extism_plugin_function_exists: {:?}",
+        name
+    );
 
     let name = match name.to_str() {
         Ok(x) => x,
@@ -466,8 +477,8 @@ pub unsafe extern "C" fn extism_plugin_call(
     };
 
     trace!(
-        "{} calling function {} using extism_plugin_call",
-        plugin.id,
+        plugin = plugin.id.to_string(),
+        "calling function {} using extism_plugin_call",
         name
     );
     let input = std::slice::from_raw_parts(data, data_len as usize);
@@ -497,7 +508,7 @@ pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_ch
     let _lock = _lock.lock().unwrap();
 
     if plugin.output.error_offset == 0 {
-        trace!("{} error is NULL", plugin.id);
+        trace!(plugin = plugin.id.to_string(), "error is NULL");
         return std::ptr::null();
     }
 
@@ -528,20 +539,26 @@ pub unsafe extern "C" fn extism_plugin_output_data(plugin: *mut Plugin) -> *cons
     let plugin = &mut *plugin;
     let _lock = plugin.instance.clone();
     let _lock = _lock.lock().unwrap();
-    trace!("{} extism_plugin_output_data", plugin.id);
+    trace!(
+        plugin = plugin.id.to_string(),
+        "extism_plugin_output_data: offset={}, length={}",
+        plugin.output.offset,
+        plugin.output.length
+    );
 
     let ptr = plugin.current_plugin_mut().memory_ptr();
     ptr.add(plugin.output.offset as usize)
 }
 
-/// Set log file and level
+/// Set log file and level.
+/// The log level can be either one of: info, error, trace, debug, warn or a more
+/// complex filter like `extism=trace,cranelift=debug`
+/// The file will be created if it doesn't exist.
 #[no_mangle]
 pub unsafe extern "C" fn extism_log_file(
     filename: *const c_char,
     log_level: *const c_char,
 ) -> bool {
-    use log::Level;
-
     let file = if !filename.is_null() {
         let file = std::ffi::CStr::from_ptr(filename);
         match file.to_str() {
@@ -566,14 +583,123 @@ pub unsafe extern "C" fn extism_log_file(
         "error"
     };
 
-    let level = match Level::from_str(&level.to_ascii_lowercase()) {
-        Ok(x) => x,
-        Err(_) => {
-            return false;
+    set_log_file(file, level).is_ok()
+}
+
+// Set the log file Extism will use, this is a global configuration
+fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result<(), Error> {
+    let log_file = log_file.into();
+    let s = log_file.to_str();
+
+    let is_level = tracing::Level::from_str(filter).is_ok();
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
+        let x = tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into());
+        if is_level {
+            x.parse_lossy(&format!("extism={}", filter))
+        } else {
+            x.parse_lossy(filter)
         }
+    });
+
+    let res = if s == Some("-") || s == Some("stderr") {
+        cfg.with_ansi(true).with_writer(std::io::stderr).try_init()
+    } else if s == Some("stdout") {
+        cfg.with_ansi(true).with_writer(std::io::stdout).try_init()
+    } else {
+        let log_file = log_file.to_path_buf();
+        let f = std::fs::OpenOptions::new()
+            .create(true)
+            .append(true)
+            .open(log_file)
+            .expect("Open log file");
+        cfg.with_ansi(false)
+            .with_writer(move || f.try_clone().unwrap())
+            .try_init()
     };
 
-    set_log_file(file, level).is_ok()
+    if let Err(e) = res {
+        return Err(Error::msg(e.to_string()));
+    }
+    Ok(())
+}
+
+static mut LOG_BUFFER: Option<LogBuffer> = None;
+
+/// Enable a custom log handler, this will buffer logs until `extism_log_drain` is called
+/// Log level should be one of: info, error, trace, debug, warn
+#[no_mangle]
+pub unsafe extern "C" fn extism_log_custom(log_level: *const c_char) -> bool {
+    let level = if !log_level.is_null() {
+        let level = std::ffi::CStr::from_ptr(log_level);
+        match level.to_str() {
+            Ok(x) => x,
+            Err(_) => {
+                return false;
+            }
+        }
+    } else {
+        "error"
+    };
+    set_log_buffer(level).is_ok()
+}
+
+unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
+    let is_level = tracing::Level::from_str(filter).is_ok();
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
+        let x = tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into());
+        if is_level {
+            x.parse_lossy(&format!("extism={}", filter))
+        } else {
+            x.parse_lossy(filter)
+        }
+    });
+    LOG_BUFFER = Some(LogBuffer::default());
+    let buf = LOG_BUFFER.clone().unwrap();
+    cfg.with_ansi(false)
+        .with_writer(move || buf.clone())
+        .try_init()
+        .map_err(|x| Error::msg(x.to_string()))?;
+    Ok(())
+}
+
+#[no_mangle]
+/// Calls the provided callback function for each buffered log line.
+/// This is only needed when `extism_log_custom` is used.
+pub unsafe extern "C" fn extism_log_drain(handler: extern "C" fn(*const std::ffi::c_char, usize)) {
+    if let Some(buf) = &mut LOG_BUFFER {
+        if let Ok(mut buf) = buf.buffer.lock() {
+            for (line, len) in buf.drain(..) {
+                handler(line.as_ptr(), len);
+            }
+        }
+    }
+}
+
+#[derive(Default, Clone)]
+struct LogBuffer {
+    buffer:
+        std::sync::Arc<std::sync::Mutex<std::collections::VecDeque<(std::ffi::CString, usize)>>>,
+}
+
+unsafe impl Send for LogBuffer {}
+unsafe impl Sync for LogBuffer {}
+
+impl std::io::Write for LogBuffer {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Ok(s) = std::str::from_utf8(buf) {
+            if let Ok(mut buf) = self.buffer.lock() {
+                buf.push_back((std::ffi::CString::new(s)?, s.len()));
+            }
+        }
+
+        Ok(buf.len())
+    }
+
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
 }
 
 /// Get the Extism version string

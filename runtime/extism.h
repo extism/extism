@@ -243,9 +243,24 @@ ExtismSize extism_plugin_output_length(ExtismPlugin *plugin);
 const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
 
 /**
- * Set log file and level
+ * Set log file and level.
+ * The log level can be either one of: info, error, trace, debug, warn or a more
+ * complex filter like `extism=trace,cranelift=debug`
+ * The file will be created if it doesn't exist.
  */
 bool extism_log_file(const char *filename, const char *log_level);
+
+/**
+ * Enable a custom log handler, this will buffer logs until `extism_log_drain` is called
+ * Log level should be one of: info, error, trace, debug, warn
+ */
+bool extism_log_custom(const char *log_level);
+
+/**
+ * Calls the provided callback function for each buffered log line.
+ * This is only needed when `extism_log_custom` is used.
+ */
+void extism_log_drain(void (*handler)(const char*, uintptr_t));
 
 /**
  * Get the Extism version string

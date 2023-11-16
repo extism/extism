@@ -66,9 +66,17 @@ impl CurrentPlugin {
     pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
         let len = self.memory_length(offs).unwrap_or_default();
         if len == 0 {
+            trace!(
+                plugin = self.id.to_string(),
+                "memory handle not found: offs = {offs}",
+            );
             return None;
         }
 
+        trace!(
+            plugin = self.id.to_string(),
+            "memory handle found: offs = {offs}, length = {len}",
+        );
         Some(MemoryHandle {
             offset: offs,
             length: len,
@@ -103,6 +111,11 @@ impl CurrentPlugin {
 
     /// Decode a Rust type from Extism memory from an offset in memory specified by a `Val`
     pub fn memory_get_val<'a, T: FromBytes<'a>>(&'a mut self, offs: &Val) -> Result<T, Error> {
+        trace!(
+            plugin = self.id.to_string(),
+            "memory_set_val: val = {:?}",
+            offs
+        );
         if let Some(handle) = self.memory_handle(offs.i64().unwrap_or(0) as u64) {
             let data = self.memory_bytes(handle)?;
             T::from_bytes(data)
@@ -119,6 +132,11 @@ impl CurrentPlugin {
         data: T,
     ) -> Result<(), Error> {
         let mem = self.memory_new(data)?;
+        trace!(
+            plugin = self.id.to_string(),
+            "memory_set_val: val = {:?}",
+            offs
+        );
         *offs = Val::I64(mem.offset as i64);
         Ok(())
     }
@@ -157,7 +175,12 @@ impl CurrentPlugin {
         if offs == 0 {
             anyhow::bail!("{} out of memory", self.id)
         }
-        trace!("{} memory_alloc: {}, {}", self.id, offs, n);
+        trace!(
+            plugin = self.id.to_string(),
+            "memory_alloc({}) = {}",
+            offs,
+            n
+        );
         Ok(MemoryHandle {
             offset: offs,
             length: n,
@@ -188,7 +211,12 @@ impl CurrentPlugin {
             anyhow::bail!("unable to locate an extism kernel function: length",)
         }
         let len = output[0].unwrap_i64() as u64;
-        trace!("{} memory_length: {}, {}", self.id, offs, len);
+        trace!(
+            plugin = self.id.to_string(),
+            "memory_length({}) = {}",
+            offs,
+            len
+        );
         Ok(len)
     }
 
@@ -300,7 +328,7 @@ impl CurrentPlugin {
 
     /// Clear the current plugin error
     pub fn clear_error(&mut self) {
-        trace!("{} CurrentPlugin::clear_error", self.id);
+        trace!(plugin = self.id.to_string(), "CurrentPlugin::clear_error");
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
             let res = f
@@ -308,7 +336,10 @@ impl CurrentPlugin {
                 .unwrap()
                 .call(&mut store, &[Val::I64(0)], &mut []);
             if let Err(e) = res {
-                error!("{} unable to clear error: {:?}", self.id, e);
+                error!(
+                    plugin = self.id.to_string(),
+                    "unable to clear error: {:?}", e
+                );
             }
         }
     }
@@ -333,7 +364,7 @@ impl CurrentPlugin {
     #[doc(hidden)]
     pub fn set_error(&mut self, s: impl AsRef<str>) -> Result<(u64, u64), Error> {
         let s = s.as_ref();
-        debug!("{} set error: {:?}", self.id, s);
+        debug!(plugin = self.id.to_string(), "set error: {:?}", s);
         let handle = self.current_plugin_mut().memory_new(s)?;
         let (linker, mut store) = self.linker_and_store();
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
@@ -354,8 +385,8 @@ impl CurrentPlugin {
         if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_get") {
             if let Err(e) = f.into_func().unwrap().call(&mut store, &[], output) {
                 error!(
-                    "{} unable to call extism:host/env::error_get: {:?}",
-                    self.id, e
+                    plugin = self.id.to_string(),
+                    "unable to call extism:host/env::error_get: {:?}", e
                 );
                 return (0, 0);
             }

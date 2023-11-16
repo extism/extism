@@ -16,8 +16,8 @@ serde = {version = "1", features = ["derive"]}
 serde_json = "1"
 toml = "0.8"
 sha2 = "0.10"
-log = "0.4"
-fern = "0.6.2"
+tracing = "0.1"
+tracing-subscriber = {version = "0.3", features = ["std", "env-filter", "fmt"]}
 url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
@@ -25,7 +25,6 @@ extism-manifest = { version = "1.0.0-rc2", path = "../manifest" }
 extism-convert = { version = "0.2", path = "../convert" }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
-humantime = "2.1.0"
 
 [features]
 default = ["http", "register-http", "register-filesystem"]

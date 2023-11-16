@@ -1,7 +1,7 @@
 use std::sync::Arc;
 use wasmtime::Caller;
 
-use crate::{CurrentPlugin, Error};
+use crate::{error, trace, CurrentPlugin, Error};
 
 /// An enumeration of all possible value types in WebAssembly.
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
@@ -116,7 +116,7 @@ impl<T> UserData<T> {
         match self {
             UserData::C(ptr) => ptr.ptr,
             _ => {
-                log::error!("Rust UserData cannot be used by C");
+                error!("Rust UserData cannot be used by C");
                 std::ptr::null_mut()
             }
         }
@@ -192,12 +192,14 @@ impl Function {
             + Send,
     {
         let data = user_data.clone();
+        let name = name.into();
+        let args = args.into_iter().map(wasmtime::ValType::from);
+        let returns = returns.into_iter().map(wasmtime::ValType::from);
+        let ty = wasmtime::FuncType::new(args, returns);
+        trace!("Creating function {name}: type={ty:?}");
         Function {
-            name: name.into(),
-            ty: wasmtime::FuncType::new(
-                args.into_iter().map(wasmtime::ValType::from),
-                returns.into_iter().map(wasmtime::ValType::from),
-            ),
+            name,
+            ty,
             f: Arc::new(
                 move |mut caller: Caller<_>, inp: &[Val], outp: &mut [Val]| {
                     let x = data.clone();
@@ -224,7 +226,9 @@ impl Function {
 
     /// Set host function module name
     pub fn set_namespace(&mut self, namespace: impl Into<String>) {
-        self.namespace = Some(namespace.into());
+        let ns = namespace.into();
+        trace!("Setting namespace for {} to {ns}", self.name);
+        self.namespace = Some(ns);
     }
 
     /// Update host function module name

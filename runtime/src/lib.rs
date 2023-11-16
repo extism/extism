@@ -1,5 +1,6 @@
 pub(crate) use extism_convert::*;
 pub(crate) use std::collections::BTreeMap;
+use std::str::FromStr;
 pub(crate) use wasmtime::*;
 
 pub use extism_convert as convert;
@@ -26,9 +27,9 @@ pub use plugin::{CancelHandle, Plugin, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
 pub use plugin_builder::PluginBuilder;
 
 pub(crate) use internal::{Internal, Wasi};
-pub(crate) use log::{debug, error, trace};
 pub(crate) use plugin_builder::DebugOptions;
 pub(crate) use timer::{Timer, TimerAction};
+pub(crate) use tracing::{debug, error, trace, warn};
 
 #[cfg(test)]
 mod tests;
@@ -41,32 +42,47 @@ pub fn extism_version() -> &'static str {
     VERSION
 }
 
-/// Set the log file Extism will use, this is a global configuration
-pub fn set_log_file(file: impl AsRef<std::path::Path>, level: log::Level) -> Result<(), Error> {
-    let log_file = file.as_ref();
-    let s = log_file.to_str();
+#[derive(Clone)]
+struct LogFunction<F: Clone + Fn(&str)> {
+    func: F,
+}
 
-    let mut d = fern::Dispatch::new()
-        .format(|out, message, record| {
-            out.finish(format_args!(
-                "[{} {} {}] {}",
-                humantime::format_rfc3339_seconds(std::time::SystemTime::now()),
-                record.level(),
-                record.target(),
-                message
-            ))
-        })
-        .level(log::LevelFilter::Off)
-        .level_for("extism", level.to_level_filter());
+unsafe impl<F: Clone + Fn(&str)> Send for LogFunction<F> {}
+unsafe impl<F: Clone + Fn(&str)> Sync for LogFunction<F> {}
 
-    if s == Some("-") || s == Some("stderr") {
-        d = d.chain(std::io::stderr());
-    } else if s == Some("stdout") {
-        d = d.chain(std::io::stdout());
-    } else {
-        d = d.chain(fern::log_file(log_file)?);
+impl<F: Clone + Fn(&str)> std::io::Write for LogFunction<F> {
+    fn write(&mut self, buf: &[u8]) -> std::io::Result<usize> {
+        if let Ok(s) = std::str::from_utf8(buf) {
+            (self.func)(s)
+        }
+
+        Ok(buf.len())
     }
 
-    d.apply()?;
+    fn flush(&mut self) -> std::io::Result<()> {
+        Ok(())
+    }
+}
+
+/// Sets a custom callback to handle logs, each line will be passed to the provided callback instead of being
+/// logged to a file. This initializes a default `tracing_subscriber` and should only be called once.
+///
+/// `filter` may contain a general level like `trace` or `error`, but can also be more specific to enable logging only
+/// from specific crates. For example, to enable trace-level logging only for the extism crate use: `extism=trace`.
+pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
+    func: F,
+    filter: impl AsRef<str>,
+) -> Result<(), Error> {
+    let filter = filter.as_ref();
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
+        tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into())
+            .parse_lossy(filter),
+    );
+    let w = LogFunction { func };
+    cfg.with_ansi(false)
+        .with_writer(move || w.clone())
+        .try_init()
+        .map_err(|x| Error::msg(x.to_string()))?;
     Ok(())
 }

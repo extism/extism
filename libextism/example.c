@@ -9,6 +9,10 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+void log_handler(const char *line, uintptr_t length) {
+  fwrite(line, length, 1, stderr);
+}
+
 void hello_world(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
                  uint64_t n_inputs, ExtismVal *outputs, uint64_t n_outputs,
                  void *data) {
@@ -55,6 +59,8 @@ int main(int argc, char *argv[]) {
     exit(1);
   }
 
+  extism_log_custom("extism=trace,cranelift=trace");
+
   size_t len = 0;
   uint8_t *data = read_file("../wasm/code-functions.wasm", &len);
   ExtismValType inputs[] = {PTR};
@@ -81,5 +87,6 @@ int main(int argc, char *argv[]) {
   write(STDOUT_FILENO, "\n", 1);
   extism_plugin_free(plugin);
   extism_function_free(f);
+  extism_log_drain(log_handler);
   return 0;
 }

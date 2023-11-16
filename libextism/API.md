@@ -98,6 +98,24 @@ Set log file and level.
 bool extism_log_file(const char *filename, const char *log_level);
 ```
 
+### `extism_log_custom`
+
+Enable a custom log handler, this will buffer logs until `extism_log_drain`
+is called Log level should be one of: info, error, trace, debug, warn
+
+```c
+bool extism_log_custom(const char *log_level);
+```
+
+### `extism_log_drain`
+
+Calls the provided callback function for each buffered log line.
+This is only needed when `extism_log_custom` is used.
+
+```c
+void extism_log_drain(void (*handler)(const char *, uintptr_t));
+```
+
 ### `extism_version`
 
 Get the Extism version string.
