@@ -23,24 +23,43 @@ jobs:
           workflow: release.yml
           name: release-artifacts
       - name: Extract Archive
-        run: |
-          mkdir -p dotnet/nuget/runtimes/win-x64/native/
-          tar -xvzf libextism-x86_64-pc-windows-msvc-main.tar.gz -C dotnet/nuget/runtimes/win-x64/native/
-
-          mkdir -p dotnet/nuget/runtimes/osx-arm64/native/
-          tar -xvzf libextism-aarch64-apple-darwin-main.tar.gz -C dotnet/nuget/runtimes/osx-arm64/native/
-
-          mkdir -p dotnet/nuget/runtimes/osx-x64/native/
-          tar -xvzf libextism-x86_64-apple-darwin-main.tar.gz -C dotnet/nuget/runtimes/osx-x64/native/
-
-          mkdir -p dotnet/nuget/runtimes/linux-x64/native/
-          tar -xvzf libextism-x86_64-unknown-linux-gnu-main.tar.gz -C dotnet/nuget/runtimes/linux-x64/native/
-
-          mkdir -p dotnet/nuget/runtimes/linux-arm64/native/
-          tar -xvzf libextism-aarch64-unknown-linux-gnu-main.tar.gz -C dotnet/nuget/runtimes/linux-arm64/native/
-
-          mkdir -p dotnet/nuget/runtimes/linux-musl-arm64/native/
-          tar -xvzf libextism-aarch64-unknown-linux-musl-main.tar.gz -C dotnet/nuget/runtimes/linux-musl-arm64/native/
+        run: |      
+          extract_archive() {
+              # Check if both pattern and destination are provided
+              if [ -z "$1" ] || [ -z "$2" ]; then
+                  echo "Usage: $0 <filename_pattern> <destination_directory>"
+                  return 1
+              fi
+          
+              # Set the filename pattern and destination directory
+              filename_pattern="$1"
+              destination_directory="$2"
+          
+              # Find the archive file with the specified pattern
+              archive_file=$(ls $filename_pattern 2>/dev/null)
+          
+              # Check if an archive file is found
+              if [ -n "$archive_file" ]; then
+                  echo "Found archive file: $archive_file"
+          
+                  # Create the destination directory if it doesn't exist
+                  mkdir -p "$destination_directory"
+          
+                  # Extract the archive to the specified destination
+                  tar -xzvf "$archive_file" -C "$destination_directory"
+          
+                  echo "Extraction complete. Contents placed in: $destination_directory"
+              else
+                  echo "No matching archive file found with the pattern: $filename_pattern"
+              fi
+          }
+          
+          extract_archive "libextism-x86_64-pc-windows-msvc-*.tar.gz" "dotnet/nuget/runtimes/win-x64/native/"
+          extract_archive "libextism-aarch64-apple-darwin-*.tar.gz" "dotnet/nuget/runtimes/osx-arm64/native/"
+          extract_archive "libextism-x86_64-apple-darwin-*.tar.gz" "dotnet/nuget/runtimes/osx-x64/native/"
+          extract_archive "libextism-x86_64-unknown-linux-gnu-*.tar.gz" "dotnet/nuget/runtimes/linux-x64/native/"
+          extract_archive "libextism-aarch64-unknown-linux-gnu-*.tar.gz" "dotnet/nuget/runtimes/linux-arm64/native/"
+          extract_archive "libextism-aarch64-unknown-linux-musl-*.tar.gz" "dotnet/nuget/runtimes/linux-musl-arm64/native/"
 
       - name: Pack NuGet packages
         run: |
