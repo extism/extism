@@ -538,3 +538,23 @@ fn test_http_post() {
     assert!(res.len() > 0);
     assert!(res.contains(&data));
 }
+
+#[test]
+fn test_precompiled() {
+    // From raw data
+    let precompiled = compile(WASM_NO_FUNCTIONS, None).unwrap();
+    let mut plugin: CountVowelsPlugin = Plugin::new(&precompiled, [], true)
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+
+    // From manifest
+    let mut plugin: CountVowelsPlugin =
+        Plugin::new(Manifest::new([Wasm::data(precompiled)]), [], true)
+            .unwrap()
+            .try_into()
+            .unwrap();
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+}

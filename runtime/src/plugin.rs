@@ -128,6 +128,7 @@ impl<'a> WasmInput<'a> for Manifest {}
 impl<'a> WasmInput<'a> for &Manifest {}
 impl<'a> WasmInput<'a> for &'a [u8] {}
 impl<'a> WasmInput<'a> for Vec<u8> {}
+impl<'a> WasmInput<'a> for &'a Vec<u8> {}
 
 pub(crate) fn wasmtime_config(debug_options: &DebugOptions) -> wasmtime::Config {
     let mut config = Config::new();
