@@ -57,6 +57,15 @@ fn check_hash(hash: &Option<String>, data: &[u8]) -> Result<(), Error> {
 
 const WASM: &[u8] = include_bytes!("extism-runtime.wasm");
 
+fn new_module(engine: &Engine, buf: &[u8]) -> Result<Module, Error> {
+    let has_magic = buf.len() >= 4 && buf[0..4] == WASM_MAGIC;
+    if has_magic {
+        Ok(Module::new(engine, buf)?)
+    } else {
+        Ok(unsafe { Module::deserialize(engine, buf)? })
+    }
+}
+
 /// Convert from manifest to a wasmtime Module
 fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, Module), Error> {
     match wasm {
@@ -80,14 +89,13 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             file.read_to_end(&mut buf)?;
 
             check_hash(&meta.hash, &buf)?;
-
-            Ok((name, Module::new(engine, buf)?))
+            Ok((name, new_module(&engine, &buf)?))
         }
         extism_manifest::Wasm::Data { meta, data } => {
             check_hash(&meta.hash, data)?;
             Ok((
                 meta.name.as_deref().unwrap_or("main").to_string(),
-                Module::new(engine, data)?,
+                new_module(&engine, &data)?,
             ))
         }
         #[allow(unused)]
@@ -152,7 +160,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
-                let module = Module::new(engine, data)?;
+                let module = new_module(&engine, &data)?;
                 Ok((name.to_string(), module))
             }
         }
