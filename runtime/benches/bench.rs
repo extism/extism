@@ -35,6 +35,25 @@ pub fn create_plugin(c: &mut Criterion) {
     });
 }
 
+pub fn create_plugin_cwasm(c: &mut Criterion) {
+    if let Ok(data) =
+        std::fs::read("wasm/code.wasm").or_else(|_| std::fs::read("../wasm/code.wasm"))
+    {
+        let data = extism::compile(&data, None).unwrap();
+        let mut g = c.benchmark_group("create");
+        g.noise_threshold(1.0);
+        g.significance_level(0.2);
+        g.bench_function("create_plugin_cwasm", |b| {
+            b.iter(|| {
+                let _plugin = PluginBuilder::new(data.as_slice())
+                    .with_wasi(true)
+                    .build()
+                    .unwrap();
+            })
+        });
+    }
+}
+
 #[derive(Debug, serde::Deserialize, PartialEq)]
 struct Count {
     count: u32,
@@ -181,6 +200,7 @@ criterion_group!(
     reflect,
     basic,
     create_plugin,
+    create_plugin_cwasm,
     count_vowels
 );
 criterion_main!(benches);

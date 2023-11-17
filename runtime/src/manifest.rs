@@ -171,23 +171,30 @@ pub(crate) fn load(
     if !has_magic && !is_wast {
         trace!("Loading manifest");
         if let Ok(s) = std::str::from_utf8(data) {
-            if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
+            let (t, mut m) = if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
                 trace!("Manifest is TOML");
-                let mut m = modules(&t, engine)?;
-                m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
-                return Ok((t, m));
-            }
+                let m = modules(&t, engine)?;
+                (t, m)
+            } else if let Ok(t) = serde_json::from_str::<extism_manifest::Manifest>(s) {
+                trace!("Manifest is JSON");
+                let m = modules(&t, engine)?;
+                (t, m)
+            } else {
+                anyhow::bail!("Unknown manifest format");
+            };
+            m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
+            return Ok((t, m));
         }
-
-        let t = serde_json::from_slice::<extism_manifest::Manifest>(data)?;
-        trace!("Manifest is JSON");
-        let mut m = modules(&t, engine)?;
-        m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
-        return Ok((t, m));
     }
 
-    trace!("Loading WASM module bytes");
-    let m = Module::new(engine, data)?;
+    let m = if !has_magic {
+        trace!("Deserializing module");
+        unsafe { Module::deserialize(engine, data)? }
+    } else {
+        trace!("Loading WASM module bytes");
+        Module::new(engine, data)?
+    };
+
     let mut modules = BTreeMap::new();
     modules.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
     modules.insert("main".to_string(), m);

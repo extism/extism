@@ -47,3 +47,4 @@ extism-maturin/src/extism.h
 runtime/*.log
 libextism/example
 libextism/extism*.pc
+*.cwasm

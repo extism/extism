@@ -109,7 +109,7 @@ impl Internal for Plugin {
     }
 }
 
-fn profiling_strategy() -> ProfilingStrategy {
+pub(crate) fn profiling_strategy() -> ProfilingStrategy {
     match std::env::var("EXTISM_PROFILE").as_deref() {
         Ok("perf") => ProfilingStrategy::PerfMap,
         Ok("jitdump") => ProfilingStrategy::JitDump,
@@ -129,6 +129,18 @@ impl<'a> WasmInput<'a> for &Manifest {}
 impl<'a> WasmInput<'a> for &'a [u8] {}
 impl<'a> WasmInput<'a> for Vec<u8> {}
 
+pub(crate) fn wasmtime_config(debug_options: &DebugOptions) -> wasmtime::Config {
+    let mut config = Config::new();
+    config
+        .epoch_interruption(true)
+        .debug_info(debug_options.debug_info)
+        .coredump_on_trap(debug_options.coredump.is_some())
+        .profiler(debug_options.profiling_strategy)
+        .wasm_tail_call(true)
+        .wasm_function_references(true);
+    config
+}
+
 impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
@@ -144,32 +156,10 @@ impl Plugin {
         wasm: impl AsRef<[u8]>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
-        mut debug_options: DebugOptions,
+        debug_options: DebugOptions,
     ) -> Result<Plugin, Error> {
-        // Configure debug options
-        debug_options.debug_info =
-            debug_options.debug_info || std::env::var("EXTISM_DEBUG").is_ok();
-        if let Ok(x) = std::env::var("EXTISM_COREDUMP") {
-            debug_options.coredump = Some(std::path::PathBuf::from(x));
-        };
-        if let Ok(x) = std::env::var("EXTISM_MEMDUMP") {
-            debug_options.memdump = Some(std::path::PathBuf::from(x));
-        };
-        let profiling_strategy = debug_options
-            .profiling_strategy
-            .map_or(ProfilingStrategy::None, |_| profiling_strategy());
-        debug_options.profiling_strategy = Some(profiling_strategy);
-
         // Setup wasmtime types
-        let engine = Engine::new(
-            Config::new()
-                .epoch_interruption(true)
-                .debug_info(debug_options.debug_info)
-                .coredump_on_trap(debug_options.coredump.is_some())
-                .profiler(profiling_strategy)
-                .wasm_tail_call(true)
-                .wasm_function_references(true),
-        )?;
+        let engine = Engine::new(&wasmtime_config(&debug_options))?;
         let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
 
         let available_pages = manifest.memory.max_pages;

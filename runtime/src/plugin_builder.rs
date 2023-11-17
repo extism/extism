@@ -1,11 +1,33 @@
 use crate::{plugin::WasmInput, *};
 
-#[derive(Default, Clone)]
-pub(crate) struct DebugOptions {
-    pub(crate) profiling_strategy: Option<wasmtime::ProfilingStrategy>,
-    pub(crate) coredump: Option<std::path::PathBuf>,
-    pub(crate) memdump: Option<std::path::PathBuf>,
-    pub(crate) debug_info: bool,
+#[derive(Clone)]
+pub struct DebugOptions {
+    pub profiling_strategy: wasmtime::ProfilingStrategy,
+    pub coredump: Option<std::path::PathBuf>,
+    pub memdump: Option<std::path::PathBuf>,
+    pub debug_info: bool,
+}
+
+impl Default for DebugOptions {
+    fn default() -> Self {
+        let debug_info = std::env::var("EXTISM_DEBUG").is_ok();
+        let coredump = if let Ok(x) = std::env::var("EXTISM_COREDUMP") {
+            Some(std::path::PathBuf::from(x))
+        } else {
+            None
+        };
+        let memdump = if let Ok(x) = std::env::var("EXTISM_MEMDUMP") {
+            Some(std::path::PathBuf::from(x))
+        } else {
+            None
+        };
+        DebugOptions {
+            profiling_strategy: plugin::profiling_strategy(),
+            coredump,
+            memdump,
+            debug_info,
+        }
+    }
 }
 
 /// PluginBuilder is used to configure and create `Plugin` instances
@@ -80,23 +102,33 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
+    /// Set profiling strategy
     pub fn with_profiling_strategy(mut self, p: wasmtime::ProfilingStrategy) -> Self {
-        self.debug_options.profiling_strategy = Some(p);
+        self.debug_options.profiling_strategy = p;
         self
     }
 
+    /// Enable Wasmtime coredump on trap
     pub fn with_coredump(mut self, path: impl AsRef<std::path::Path>) -> Self {
         self.debug_options.coredump = Some(path.as_ref().to_path_buf());
         self
     }
 
+    /// Enable Extism memory dump when plugin calls return an error
     pub fn with_memdump(mut self, path: impl AsRef<std::path::Path>) -> Self {
         self.debug_options.memdump = Some(path.as_ref().to_path_buf());
         self
     }
 
+    /// Compile with debug info
     pub fn with_debug_info(mut self) -> Self {
         self.debug_options.debug_info = true;
+        self
+    }
+
+    /// Configure debug options
+    pub fn with_debug_options(mut self, options: DebugOptions) -> Self {
+        self.debug_options = options;
         self
     }
 
