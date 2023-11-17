@@ -4,6 +4,8 @@ use extism_convert::Json;
 
 const COUNT_VOWELS: &[u8] = include_bytes!("../../wasm/code.wasm");
 const REFLECT: &[u8] = include_bytes!("../../wasm/reflect.wasm");
+const ECHO: &[u8] = include_bytes!("../../wasm/echo.wasm");
+const CONSUME: &[u8] = include_bytes!("../../wasm/consume.wasm");
 
 host_fn!(hello_world (a: String) -> String { Ok(a) });
 
@@ -58,6 +60,82 @@ pub fn count_vowels(c: &mut Criterion) {
     });
 }
 
+pub fn consume(c: &mut Criterion) {
+    let mut g = c.benchmark_group("consume");
+    g.sample_size(500);
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
+    let mut plugin = PluginBuilder::new(CONSUME)
+        .with_wasi(true)
+        .with_function(
+            "host_reflect",
+            [PTR],
+            [PTR],
+            UserData::default(),
+            hello_world,
+        )
+        .build()
+        .unwrap();
+
+    for (i, elements) in [
+        b"a".repeat(65536),
+        b"a".repeat(65536 * 10),
+        b"a".repeat(65536 * 100),
+    ]
+    .iter()
+    .enumerate()
+    {
+        g.throughput(criterion::Throughput::Bytes(elements.len() as u64));
+        g.bench_with_input(
+            format!("consume {} bytes", 10u32.pow(i as u32) * 65536),
+            elements,
+            |b, elems| {
+                b.iter(|| {
+                    assert_eq!(b"", plugin.call::<_, &[u8]>("consume", &elems).unwrap());
+                });
+            },
+        );
+    }
+}
+
+pub fn echo(c: &mut Criterion) {
+    let mut g = c.benchmark_group("echo");
+    g.sample_size(500);
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
+    let mut plugin = PluginBuilder::new(ECHO)
+        .with_wasi(true)
+        .with_function(
+            "host_reflect",
+            [PTR],
+            [PTR],
+            UserData::default(),
+            hello_world,
+        )
+        .build()
+        .unwrap();
+
+    for (i, elements) in [
+        b"a".repeat(65536),
+        b"a".repeat(65536 * 10),
+        b"a".repeat(65536 * 100),
+    ]
+    .iter()
+    .enumerate()
+    {
+        g.throughput(criterion::Throughput::Bytes(elements.len() as u64));
+        g.bench_with_input(
+            format!("echo {} bytes", 10u32.pow(i as u32) * 65536),
+            elements,
+            |b, elems| {
+                b.iter(|| {
+                    plugin.call::<_, &[u8]>("echo", &elems).unwrap();
+                });
+            },
+        );
+    }
+}
+
 pub fn reflect(c: &mut Criterion) {
     let mut g = c.benchmark_group("reflect");
     g.sample_size(500);
@@ -85,7 +163,7 @@ pub fn reflect(c: &mut Criterion) {
     {
         g.throughput(criterion::Throughput::Bytes(elements.len() as u64));
         g.bench_with_input(
-            format!("reflect {}", 10u32.pow(i as u32)),
+            format!("reflect {} bytes", 10u32.pow(i as u32) * 65536),
             elements,
             |b, elems| {
                 b.iter(|| {
@@ -96,5 +174,13 @@ pub fn reflect(c: &mut Criterion) {
     }
 }
 
-criterion_group!(benches, basic, create_plugin, count_vowels, reflect);
+criterion_group!(
+    benches,
+    consume,
+    echo,
+    reflect,
+    basic,
+    create_plugin,
+    count_vowels
+);
 criterion_main!(benches);
