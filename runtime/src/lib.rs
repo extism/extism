@@ -87,7 +87,7 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
     Ok(())
 }
 
-/// AOT compile an Extism plugin
+/// Helper function to precompile an Extism plugin without creating a `Plugin`
 pub fn compile(input: impl AsRef<[u8]>, options: Option<DebugOptions>) -> Result<Vec<u8>, Error> {
     let engine = Engine::new(&wasmtime_config(&options.unwrap_or_default()))?;
     let m = Module::new(&engine, input.as_ref())?;
