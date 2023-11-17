@@ -11,7 +11,7 @@ This repo contains the code for the [Extism](https://extism.org/) runtime and ru
 To use the `extism` crate, you can add it to your Cargo file:
 
 ```toml
-[depdendencies]
+[dependencies]
 extism = "^1.0.0-rc2"
 ```
 
