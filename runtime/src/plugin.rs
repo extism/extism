@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::*;
 
@@ -109,7 +109,7 @@ impl Internal for Plugin {
     }
 }
 
-fn profiling_strategy() -> ProfilingStrategy {
+pub(crate) fn profiling_strategy() -> ProfilingStrategy {
     match std::env::var("EXTISM_PROFILE").as_deref() {
         Ok("perf") => ProfilingStrategy::PerfMap,
         Ok("jitdump") => ProfilingStrategy::JitDump,
@@ -122,55 +122,90 @@ fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
-pub trait WasmInput<'a>: Into<std::borrow::Cow<'a, [u8]>> {}
+pub enum WasmInput<'a> {
+    Data(std::borrow::Cow<'a, [u8]>),
+    Manifest(Manifest),
+    ManifestRef(&'a Manifest),
+}
 
-impl<'a> WasmInput<'a> for Manifest {}
-impl<'a> WasmInput<'a> for &Manifest {}
-impl<'a> WasmInput<'a> for &'a [u8] {}
-impl<'a> WasmInput<'a> for Vec<u8> {}
+impl<'a> From<Manifest> for WasmInput<'a> {
+    fn from(value: Manifest) -> Self {
+        WasmInput::Manifest(value)
+    }
+}
+impl<'a> From<&'a Manifest> for WasmInput<'a> {
+    fn from(value: &'a Manifest) -> Self {
+        WasmInput::ManifestRef(value)
+    }
+}
+impl<'a> From<&'a [u8]> for WasmInput<'a> {
+    fn from(value: &'a [u8]) -> Self {
+        WasmInput::Data(value.into())
+    }
+}
+
+impl<'a> From<&'a str> for WasmInput<'a> {
+    fn from(value: &'a str) -> Self {
+        WasmInput::Data(value.as_bytes().into())
+    }
+}
+
+impl<'a> From<Vec<u8>> for WasmInput<'a> {
+    fn from(value: Vec<u8>) -> Self {
+        WasmInput::Data(value.into())
+    }
+}
+
+impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
+    fn from(value: &'a Vec<u8>) -> Self {
+        WasmInput::Data(value.into())
+    }
+}
+
+pub(crate) fn wasmtime_config(debug_options: &DebugOptions) -> wasmtime::Config {
+    let mut config = Config::new();
+    config
+        .epoch_interruption(true)
+        .debug_info(debug_options.debug_info)
+        .coredump_on_trap(debug_options.coredump.is_some())
+        .profiler(debug_options.profiling_strategy)
+        .wasm_tail_call(true)
+        .wasm_function_references(true);
+    config
+}
 
 impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
     pub fn new<'a>(
-        wasm: impl WasmInput<'a>,
+        wasm: impl Into<WasmInput<'a>>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        Self::build_new(wasm.into(), imports, with_wasi, Default::default())
+        let cache_dir = if let Ok(d) = std::env::var("EXTISM_CACHE_DIR") {
+            Some(PathBuf::from(d))
+        } else {
+            None
+        };
+        Self::build_new(
+            wasm.into(),
+            imports,
+            with_wasi,
+            Default::default(),
+            Cache::new(cache_dir),
+        )
     }
 
-    pub(crate) fn build_new(
-        wasm: impl AsRef<[u8]>,
+    pub(crate) fn build_new<'a>(
+        wasm: WasmInput<'a>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
-        mut debug_options: DebugOptions,
+        debug_options: DebugOptions,
+        cache: Cache,
     ) -> Result<Plugin, Error> {
-        // Configure debug options
-        debug_options.debug_info =
-            debug_options.debug_info || std::env::var("EXTISM_DEBUG").is_ok();
-        if let Ok(x) = std::env::var("EXTISM_COREDUMP") {
-            debug_options.coredump = Some(std::path::PathBuf::from(x));
-        };
-        if let Ok(x) = std::env::var("EXTISM_MEMDUMP") {
-            debug_options.memdump = Some(std::path::PathBuf::from(x));
-        };
-        let profiling_strategy = debug_options
-            .profiling_strategy
-            .map_or(ProfilingStrategy::None, |_| profiling_strategy());
-        debug_options.profiling_strategy = Some(profiling_strategy);
-
         // Setup wasmtime types
-        let engine = Engine::new(
-            Config::new()
-                .epoch_interruption(true)
-                .debug_info(debug_options.debug_info)
-                .coredump_on_trap(debug_options.coredump.is_some())
-                .profiler(profiling_strategy)
-                .wasm_tail_call(true)
-                .wasm_function_references(true),
-        )?;
-        let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
+        let engine = Engine::new(&wasmtime_config(&debug_options))?;
+        let (manifest, modules) = manifest::load(&engine, wasm, &cache)?;
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");
@@ -265,6 +300,15 @@ impl Plugin {
         }
         debug!("{} created", plugin.id);
         Ok(plugin)
+    }
+
+    /// Compile an Extism plugin
+    pub fn compile(&self) -> Result<Vec<u8>, Error> {
+        let main = self.modules.get("main").map(|x| x).unwrap_or_else(|| {
+            let entry = self.modules.iter().last().unwrap();
+            entry.1
+        });
+        Ok(main.serialize()?)
     }
 
     // Resets the store and linker to avoid running into Wasmtime memory limits

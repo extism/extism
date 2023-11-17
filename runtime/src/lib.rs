@@ -1,4 +1,5 @@
 pub(crate) use extism_convert::*;
+use plugin::wasmtime_config;
 pub(crate) use std::collections::BTreeMap;
 use std::str::FromStr;
 pub(crate) use wasmtime::*;
@@ -23,11 +24,11 @@ pub use current_plugin::CurrentPlugin;
 pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
 pub use extism_manifest::{Manifest, Wasm, WasmMetadata};
 pub use function::{Function, UserData, Val, ValType, PTR};
+pub use manifest::Cache;
 pub use plugin::{CancelHandle, Plugin, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
-pub use plugin_builder::PluginBuilder;
+pub use plugin_builder::{DebugOptions, PluginBuilder};
 
 pub(crate) use internal::{Internal, Wasi};
-pub(crate) use plugin_builder::DebugOptions;
 pub(crate) use timer::{Timer, TimerAction};
 pub(crate) use tracing::{debug, error, trace, warn};
 
@@ -85,4 +86,12 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
         .try_init()
         .map_err(|x| Error::msg(x.to_string()))?;
     Ok(())
+}
+
+/// Pre-compile a Wasm module, this will detect any `EXTISM_` environment variables to determine which settings the
+/// module should be pre-compiled with
+pub fn compile(engine: &Engine, input: impl AsRef<[u8]>) -> Result<(Module, Vec<u8>), Error> {
+    let m = Module::new(&engine, input.as_ref())?;
+    let x = m.serialize()?;
+    Ok((m, x))
 }

@@ -329,7 +329,7 @@ mod base64 {
     use serde::{Deserializer, Serializer};
 
     pub fn serialize<S: Serializer>(v: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
-        let base64 = general_purpose::STANDARD.encode(v);
+        let base64 = general_purpose::STANDARD.encode(v.as_slice());
         String::serialize(&base64, s)
     }
 

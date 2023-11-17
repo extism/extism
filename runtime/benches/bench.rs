@@ -35,6 +35,50 @@ pub fn create_plugin(c: &mut Criterion) {
     });
 }
 
+pub fn create_plugin_cwasm(c: &mut Criterion) {
+    if let Ok(data) =
+        std::fs::read("wasm/code.wasm").or_else(|_| std::fs::read("../wasm/code.wasm"))
+    {
+        let engine = wasmtime::Engine::new(&DebugOptions::default().into()).unwrap();
+        let data = extism::compile(&engine, &data).unwrap().1;
+        let mut g = c.benchmark_group("create");
+        g.noise_threshold(1.0);
+        g.significance_level(0.2);
+        g.bench_function("create_plugin_cwasm", |b| {
+            b.iter(|| {
+                let _plugin = PluginBuilder::new(data.as_slice())
+                    .with_wasi(true)
+                    .build()
+                    .unwrap();
+            })
+        });
+    }
+}
+
+pub fn create_plugin_cache(c: &mut Criterion) {
+    if let Ok(data) =
+        std::fs::read("wasm/code.wasm").or_else(|_| std::fs::read("../wasm/code.wasm"))
+    {
+        let _plugin = PluginBuilder::new(data.as_slice())
+            .with_wasi(true)
+            .with_cache_dir("./test-cache")
+            .build()
+            .unwrap();
+        let mut g = c.benchmark_group("create");
+        g.noise_threshold(1.0);
+        g.significance_level(0.2);
+        g.bench_function("create_plugin_cached", |b| {
+            b.iter(|| {
+                let _plugin = PluginBuilder::new(data.as_slice())
+                    .with_wasi(true)
+                    .with_cache_dir("./test-cache")
+                    .build()
+                    .unwrap();
+            })
+        });
+    }
+}
+
 #[derive(Debug, serde::Deserialize, PartialEq)]
 struct Count {
     count: u32,
@@ -181,6 +225,8 @@ criterion_group!(
     reflect,
     basic,
     create_plugin,
+    create_plugin_cwasm,
+    create_plugin_cache,
     count_vowels
 );
 criterion_main!(benches);

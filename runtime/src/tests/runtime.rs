@@ -539,3 +539,45 @@ fn test_http_post() {
     assert!(!res.is_empty());
     assert!(res.contains(&data));
 }
+
+#[test]
+fn test_precompiled() {
+    let engine = Engine::new(&DebugOptions::default().into()).unwrap();
+    // From raw data
+    let precompiled = compile(&engine, WASM_NO_FUNCTIONS).unwrap().1;
+    let mut plugin: CountVowelsPlugin = Plugin::new(&precompiled, [], true)
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+
+    // From manifest
+    let mut plugin: CountVowelsPlugin =
+        Plugin::new(Manifest::new([Wasm::data(precompiled)]), [], true)
+            .unwrap()
+            .try_into()
+            .unwrap();
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+}
+
+#[test]
+fn test_compilation_cache() {
+    let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .with_cache_dir("./test-cache")
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+
+    // From manifest
+    let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .with_cache_dir("./test-cache")
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+}
