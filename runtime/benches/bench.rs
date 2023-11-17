@@ -58,8 +58,8 @@ pub fn count_vowels(c: &mut Criterion) {
     });
 }
 
-pub fn reflect_1(c: &mut Criterion) {
-    let mut g = c.benchmark_group("reflect_1");
+pub fn reflect(c: &mut Criterion) {
+    let mut g = c.benchmark_group("reflect");
     g.sample_size(500);
     g.noise_threshold(1.0);
     g.significance_level(0.2);
@@ -74,69 +74,27 @@ pub fn reflect_1(c: &mut Criterion) {
         )
         .build()
         .unwrap();
-    let data = "a".repeat(65536);
-    g.bench_function("reflect_1", |b| {
-        b.iter(|| {
-            assert_eq!(data, plugin.call::<_, &str>("reflect", &data).unwrap());
-        })
-    });
+
+    for (i, elements) in [
+        b"a".repeat(65536),
+        b"a".repeat(65536 * 10),
+        b"a".repeat(65536 * 100),
+    ]
+    .iter()
+    .enumerate()
+    {
+        g.throughput(criterion::Throughput::Bytes(elements.len() as u64));
+        g.bench_with_input(
+            format!("reflect {}", 10u32.pow(i as u32)),
+            elements,
+            |b, elems| {
+                b.iter(|| {
+                    assert_eq!(elems, plugin.call::<_, &[u8]>("reflect", &elems).unwrap());
+                });
+            },
+        );
+    }
 }
 
-pub fn reflect_10(c: &mut Criterion) {
-    let mut g = c.benchmark_group("reflect_10");
-    g.sample_size(200);
-    g.noise_threshold(1.0);
-    g.significance_level(0.2);
-    let mut plugin = PluginBuilder::new(REFLECT)
-        .with_wasi(true)
-        .with_function(
-            "host_reflect",
-            [PTR],
-            [PTR],
-            UserData::default(),
-            hello_world,
-        )
-        .build()
-        .unwrap();
-    let data = "a".repeat(65536 * 10);
-    g.bench_function("reflect_10", |b| {
-        b.iter(|| {
-            assert_eq!(data, plugin.call::<_, &str>("reflect", &data).unwrap());
-        })
-    });
-}
-
-pub fn reflect_100(c: &mut Criterion) {
-    let mut g = c.benchmark_group("reflect_100");
-    g.sample_size(50);
-    g.noise_threshold(1.0);
-    g.significance_level(0.2);
-    let mut plugin = PluginBuilder::new(REFLECT)
-        .with_wasi(true)
-        .with_function(
-            "host_reflect",
-            [PTR],
-            [PTR],
-            UserData::default(),
-            hello_world,
-        )
-        .build()
-        .unwrap();
-    let data = "a".repeat(65536 * 100);
-    g.bench_function("reflect_100", |b| {
-        b.iter(|| {
-            assert_eq!(data, plugin.call::<_, &str>("reflect", &data).unwrap());
-        })
-    });
-}
-
-criterion_group!(
-    benches,
-    basic,
-    create_plugin,
-    count_vowels,
-    reflect_1,
-    reflect_10,
-    reflect_100
-);
+criterion_group!(benches, basic, create_plugin, count_vowels, reflect);
 criterion_main!(benches);
