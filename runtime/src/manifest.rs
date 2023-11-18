@@ -212,10 +212,12 @@ pub(crate) fn load<'a>(
             Ok((Default::default(), mods))
         }
         WasmInput::Manifest(m) => {
+            trace!("Loading from existing manifest");
             modules(&m, engine, &mut mods)?;
             Ok((m, mods))
         }
         WasmInput::ManifestRef(m) => {
+            trace!("Loading from existing manifest");
             modules(&m, engine, &mut mods)?;
             Ok((m.clone(), mods))
         }
