@@ -4,6 +4,7 @@ use std::io::Read;
 
 use sha2::Digest;
 
+use crate::plugin::WasmInput;
 use crate::*;
 
 fn hex(data: &[u8]) -> String {
@@ -169,61 +170,72 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
 const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 
-pub(crate) fn load(
+pub(crate) fn load<'a>(
     engine: &Engine,
-    data: &[u8],
+    input: WasmInput<'a>,
 ) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
     let extism_module = Module::new(engine, WASM)?;
-    let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-    let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
-    if !has_magic && !is_wast {
-        trace!("Loading manifest");
-        if let Ok(s) = std::str::from_utf8(data) {
-            let (t, mut m) = if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
-                trace!("Manifest is TOML");
-                let m = modules(&t, engine)?;
-                (t, m)
-            } else if let Ok(t) = serde_json::from_str::<extism_manifest::Manifest>(s) {
-                trace!("Manifest is JSON");
-                let m = modules(&t, engine)?;
-                (t, m)
+    let mut mods = BTreeMap::new();
+    mods.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
+
+    match input {
+        WasmInput::Data(data) => {
+            let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
+            let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
+            if !has_magic && !is_wast {
+                trace!("Loading manifest");
+                if let Ok(s) = std::str::from_utf8(&data) {
+                    let t = if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
+                        trace!("Manifest is TOML");
+                        modules(&t, engine, &mut mods)?;
+                        t
+                    } else if let Ok(t) = serde_json::from_str::<extism_manifest::Manifest>(s) {
+                        trace!("Manifest is JSON");
+                        modules(&t, engine, &mut mods)?;
+                        t
+                    } else {
+                        anyhow::bail!("Unknown manifest format");
+                    };
+                    return Ok((t, mods));
+                }
+            }
+
+            let m = if !has_magic {
+                trace!("Deserializing module");
+                unsafe { Module::deserialize(engine, data)? }
             } else {
-                anyhow::bail!("Unknown manifest format");
+                trace!("Loading WASM module bytes");
+                Module::new(engine, data)?
             };
-            m.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
-            return Ok((t, m));
+
+            mods.insert("main".to_string(), m);
+            Ok((Default::default(), mods))
+        }
+        WasmInput::Manifest(m) => {
+            modules(&m, engine, &mut mods)?;
+            Ok((m, mods))
+        }
+        WasmInput::ManifestRef(m) => {
+            modules(&m, engine, &mut mods)?;
+            Ok((m.clone(), mods))
         }
     }
-
-    let m = if !has_magic {
-        trace!("Deserializing module");
-        unsafe { Module::deserialize(engine, data)? }
-    } else {
-        trace!("Loading WASM module bytes");
-        Module::new(engine, data)?
-    };
-
-    let mut modules = BTreeMap::new();
-    modules.insert(EXTISM_ENV_MODULE.to_string(), extism_module);
-    modules.insert("main".to_string(), m);
-    Ok((Default::default(), modules))
 }
 
 pub(crate) fn modules(
     manifest: &extism_manifest::Manifest,
     engine: &Engine,
-) -> Result<BTreeMap<String, Module>, Error> {
+    modules: &mut BTreeMap<String, Module>,
+) -> Result<(), Error> {
     if manifest.wasm.is_empty() {
         return Err(anyhow::format_err!("No wasm files specified"));
     }
-
-    let mut modules = BTreeMap::new();
 
     // If there's only one module, it should be called `main`
     if manifest.wasm.len() == 1 {
         let (_, m) = to_module(engine, &manifest.wasm[0])?;
         modules.insert("main".to_string(), m);
-        return Ok(modules);
+        return Ok(());
     }
 
     for f in &manifest.wasm {
@@ -232,5 +244,5 @@ pub(crate) fn modules(
         modules.insert(name, m);
     }
 
-    Ok(modules)
+    Ok(())
 }

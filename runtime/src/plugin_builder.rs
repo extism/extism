@@ -32,7 +32,7 @@ impl Default for DebugOptions {
 
 /// PluginBuilder is used to configure and create `Plugin` instances
 pub struct PluginBuilder<'a> {
-    source: std::borrow::Cow<'a, [u8]>,
+    source: WasmInput<'a>,
     wasi: bool,
     functions: Vec<Function>,
     debug_options: DebugOptions,
@@ -40,7 +40,7 @@ pub struct PluginBuilder<'a> {
 
 impl<'a> PluginBuilder<'a> {
     /// Create a new `PluginBuilder` from a `Manifest` or raw Wasm bytes
-    pub fn new(plugin: impl WasmInput<'a>) -> Self {
+    pub fn new(plugin: impl Into<WasmInput<'a>>) -> Self {
         PluginBuilder {
             source: plugin.into(),
             wasi: false,

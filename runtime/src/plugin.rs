@@ -122,13 +122,45 @@ pub(crate) fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
-pub trait WasmInput<'a>: Into<std::borrow::Cow<'a, [u8]>> {}
+pub enum WasmInput<'a> {
+    Data(std::borrow::Cow<'a, [u8]>),
+    Manifest(Manifest),
+    ManifestRef(&'a Manifest),
+}
 
-impl<'a> WasmInput<'a> for Manifest {}
-impl<'a> WasmInput<'a> for &Manifest {}
-impl<'a> WasmInput<'a> for &'a [u8] {}
-impl<'a> WasmInput<'a> for Vec<u8> {}
-impl<'a> WasmInput<'a> for &'a Vec<u8> {}
+impl<'a> From<Manifest> for WasmInput<'a> {
+    fn from(value: Manifest) -> Self {
+        WasmInput::Manifest(value)
+    }
+}
+impl<'a> From<&'a Manifest> for WasmInput<'a> {
+    fn from(value: &'a Manifest) -> Self {
+        WasmInput::ManifestRef(value)
+    }
+}
+impl<'a> From<&'a [u8]> for WasmInput<'a> {
+    fn from(value: &'a [u8]) -> Self {
+        WasmInput::Data(value.into())
+    }
+}
+
+impl<'a> From<&'a str> for WasmInput<'a> {
+    fn from(value: &'a str) -> Self {
+        WasmInput::Data(value.as_bytes().into())
+    }
+}
+
+impl<'a> From<Vec<u8>> for WasmInput<'a> {
+    fn from(value: Vec<u8>) -> Self {
+        WasmInput::Data(value.into())
+    }
+}
+
+impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
+    fn from(value: &'a Vec<u8>) -> Self {
+        WasmInput::Data(value.into())
+    }
+}
 
 pub(crate) fn wasmtime_config(debug_options: &DebugOptions) -> wasmtime::Config {
     let mut config = Config::new();
@@ -146,22 +178,22 @@ impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
     pub fn new<'a>(
-        wasm: impl WasmInput<'a>,
+        wasm: impl Into<WasmInput<'a>>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
         Self::build_new(wasm.into(), imports, with_wasi, Default::default())
     }
 
-    pub(crate) fn build_new(
-        wasm: impl AsRef<[u8]>,
+    pub(crate) fn build_new<'a>(
+        wasm: WasmInput<'a>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
         debug_options: DebugOptions,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let engine = Engine::new(&wasmtime_config(&debug_options))?;
-        let (manifest, modules) = manifest::load(&engine, wasm.as_ref())?;
+        let (manifest, modules) = manifest::load(&engine, wasm)?;
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");
