@@ -25,6 +25,12 @@ macro_rules! encoding {
             }
         }
 
+        impl<T> From<T> for $name<T> {
+            fn from(data: T) -> Self {
+                Self(data)
+            }
+        }
+
         impl<T: serde::de::DeserializeOwned> $crate::FromBytesOwned for $name<T> {
             fn from_bytes_owned(data: &[u8]) -> std::result::Result<Self, $crate::Error> {
                 let x = $from_slice(data)?;
@@ -71,6 +77,12 @@ impl FromBytesOwned for serde_json::Value {
 /// already be base64 encoded.
 pub struct Base64<T: AsRef<[u8]>>(pub T);
 
+impl<T: AsRef<[u8]>> From<T> for Base64<T> {
+    fn from(data: T) -> Self {
+        Self(data)
+    }
+}
+
 impl<'a, T: AsRef<[u8]>> ToBytes<'a> for Base64<T> {
     type Bytes = String;
 
@@ -100,6 +112,13 @@ impl FromBytesOwned for Base64<String> {
 /// Allows for `prost` Protobuf messages to be used as arguments to Extism plugin calls
 #[cfg(feature = "protobuf")]
 pub struct Protobuf<T: prost::Message>(pub T);
+
+#[cfg(feature = "protobuf")]
+impl<T: prost::Message> From<T> for Protobuf<T> {
+    fn from(data: T) -> Self {
+        Self(data)
+    }
+}
 
 #[cfg(feature = "protobuf")]
 impl<'a, T: prost::Message> ToBytes<'a> for Protobuf<T> {
