@@ -17,6 +17,7 @@ use base64::Engine;
 macro_rules! encoding {
     ($name:ident, $to_vec:expr, $from_slice:expr) => {
         #[doc = concat!(stringify!($name), " encoding")]
+        #[derive(Debug)]
         pub struct $name<T>(pub T);
 
         impl<T> $name<T> {
@@ -75,6 +76,7 @@ impl FromBytesOwned for serde_json::Value {
 ///
 /// A value wrapped in `Base64` will automatically be encoded/decoded using base64, the inner value should not
 /// already be base64 encoded.
+#[derive(Debug)]
 pub struct Base64<T: AsRef<[u8]>>(pub T);
 
 impl<T: AsRef<[u8]>> From<T> for Base64<T> {
@@ -111,6 +113,7 @@ impl FromBytesOwned for Base64<String> {
 ///
 /// Allows for `prost` Protobuf messages to be used as arguments to Extism plugin calls
 #[cfg(feature = "protobuf")]
+#[derive(Debug)]
 pub struct Protobuf<T: prost::Message>(pub T);
 
 #[cfg(feature = "protobuf")]
