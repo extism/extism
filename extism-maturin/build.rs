@@ -13,20 +13,21 @@ fn rewrite(line: &'_ str) -> Option<Cow<'_, str>> {
 
     if cfg!(target_os = "macos") {
         if line.starts_with("typedef __builtin_va_list ") {
-            return None
+            return None;
         }
     } else if cfg!(target_os = "windows") {
-        if line.contains("__gnuc_va_list") ||
-        line.starts_with("__pragma") ||
-        line.contains("__attribute__") ||
-        line.contains("uintptr_t") ||
-        line.contains("intptr_t") ||
-        line.contains("size_t") ||
-        line.contains("ptrdiff_t") {
-            return None
+        if line.contains("__gnuc_va_list")
+            || line.starts_with("__pragma")
+            || line.contains("__attribute__")
+            || line.contains("uintptr_t")
+            || line.contains("intptr_t")
+            || line.contains("size_t")
+            || line.contains("ptrdiff_t")
+        {
+            return None;
         }
 
-        return Some(Cow::Owned(line.replace("__attribute__((__cdecl__))", "")))
+        return Some(Cow::Owned(line.replace("__attribute__((__cdecl__))", "")));
     };
 
     Some(Cow::Borrowed(line))
@@ -51,7 +52,6 @@ fn main() {
         .filter_map(rewrite)
         .collect::<Vec<Cow<'_, str>>>()
         .join("\n\n");
-
 
     std::fs::write("../target/header.h", data).unwrap();
 }
