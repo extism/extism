@@ -82,15 +82,15 @@ jobs:
           path: target/**
           key: ${{ runner.os }}-target-${{ github.sha }}
       - name: Format
-        run: cargo fmt --check -p ${{ env.RUNTIME_CRATE }}
+        run: cargo fmt --check
       - name: Lint
-        run: cargo clippy --release --all-features --no-deps -p ${{ env.RUNTIME_CRATE }}
+        run: cargo clippy --release --all-features --no-deps
       - name: Test
-        run: cargo test --release -p ${{ env.RUNTIME_CRATE }}
+        run: cargo test --release
       - name: Test all features
-        run: cargo test --all-features --release -p ${{ env.RUNTIME_CRATE }}
+        run: cargo test --all-features --release
       - name: Test no features
-        run: cargo test --no-default-features --release -p ${{ env.RUNTIME_CRATE }}
+        run: cargo test --no-default-features --release
   bench:
     name: Benchmarking
     runs-on: ${{ matrix.os }}
