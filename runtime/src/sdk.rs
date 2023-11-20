@@ -596,7 +596,7 @@ fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result
         let x = tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into());
         if is_level {
-            x.parse_lossy(&format!("extism={}", filter))
+            x.parse_lossy(format!("extism={}", filter))
         } else {
             x.parse_lossy(filter)
         }
@@ -650,7 +650,7 @@ unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
         let x = tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into());
         if is_level {
-            x.parse_lossy(&format!("extism={}", filter))
+            x.parse_lossy(format!("extism={}", filter))
         } else {
             x.parse_lossy(filter)
         }
