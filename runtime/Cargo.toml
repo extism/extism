@@ -1,12 +1,12 @@
 [package]
 name = "extism"
-version = "1.0.0-rc3"
-edition = "2021"
-authors = ["The Extism Authors", "oss@extism.org"]
-license = "BSD-3-Clause"
-homepage = "https://extism.org"
-repository = "https://github.com/extism/extism"
 description = "Extism runtime and Rust SDK"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+version.workspace = true
 
 [dependencies]
 wasmtime = ">= 14.0.0, < 16.0.0"
@@ -21,8 +21,8 @@ tracing-subscriber = {version = "0.3", features = ["std", "env-filter", "fmt"]}
 url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
-extism-manifest = { version = "1.0.0-rc3", path = "../manifest" }
-extism-convert = { version = "0.2", path = "../convert" }
+extism-manifest = { workspace = true }
+extism-convert = { workspace = true }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
 

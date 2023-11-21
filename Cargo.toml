@@ -2,3 +2,16 @@
 resolver = "2"
 members = ["extism-maturin", "manifest", "runtime", "libextism", "convert"]
 exclude = ["kernel"]
+
+[workspace.package]
+edition = "2021"
+authors = ["The Extism Authors", "oss@extism.org"]
+license = "BSD-3-Clause"
+homepage = "https://extism.org"
+repository = "https://github.com/extism/extism"
+version = "0.0.0+replaced-by-ci"
+
+[workspace.dependencies]
+extism = { path = "./runtime", version = "0.0.0+replaced-by-ci" }
+extism-convert = { path = "./convert", version = "0.0.0+replaced-by-ci" }
+extism-manifest = { path = "./manifest", version = "0.0.0+replaced-by-ci" }

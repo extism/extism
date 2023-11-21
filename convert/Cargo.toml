@@ -1,12 +1,12 @@
 [package]
 name = "extism-convert"
-version = "0.2.0"
-edition = "2021"
-authors = ["The Extism Authors", "oss@extism.org"]
-license = "BSD-3-Clause"
 readme = "./README.md"
-homepage = "https://extism.org"
-repository = "https://github.com/extism/extism"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+version.workspace = true
 description = "Traits to make Rust types usable with Extism"
 
 [dependencies]

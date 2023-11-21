@@ -1,7 +1,7 @@
 on:
   workflow_dispatch:
   push:
-    branches: [ main ]
+    branches: [ main, "v*" ]
     tags:
       - 'v*'
 
@@ -77,6 +77,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
+      - name: Set version
+        shell: bash
+        run: |
+          version="${{ github.ref }}"
+          if [[ "$version" = "refs/heads/main" ]]; then
+            version="0.0.0-dev"
+          else
+            version="${version/refs\/tags\/v/}"
+          fi
+          sed -i -e "s/0.0.0+replaced-by-ci/${version}/g" Cargo.toml
+
       - name: Install Rust
         uses: actions-rs/toolchain@v1
         with:
@@ -97,19 +108,6 @@ jobs:
           use-cross: ${{ matrix.os != 'windows' }}
           command: build
           args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
-
-      - name: set extism-maturin version
-        shell: bash
-        run: |
-          pyproject="$(cat extism-maturin/pyproject.toml)"
-          version="${{ github.ref }}"
-          if [[ "$version" = "refs/heads/main" ]]; then
-            version="0.0.0-dev"
-          else
-            version="${version/refs\/tags\/v/}"
-          fi
-
-          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
 
       - uses: actions/setup-python@v4
         with:
