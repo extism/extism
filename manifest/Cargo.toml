@@ -1,6 +1,6 @@
 [package]
 name = "extism-manifest"
-version = "1.0.0-rc2"
+version = "1.0.0-rc3"
 edition = "2021"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
