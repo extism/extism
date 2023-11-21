@@ -205,7 +205,7 @@ impl Plugin {
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let engine = Engine::new(&wasmtime_config(&debug_options))?;
-        let (manifest, modules) = manifest::load(&engine, wasm, cache_dir, &debug_options)?;
+        let (manifest, modules) = manifest::load(&engine, wasm, cache_dir)?;
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");

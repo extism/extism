@@ -8,6 +8,18 @@ pub struct DebugOptions {
     pub debug_info: bool,
 }
 
+impl From<DebugOptions> for wasmtime::Config {
+    fn from(value: DebugOptions) -> Self {
+        wasmtime_config(&value)
+    }
+}
+
+impl<'a> From<&'a DebugOptions> for wasmtime::Config {
+    fn from(value: &'a DebugOptions) -> Self {
+        wasmtime_config(&value)
+    }
+}
+
 impl Default for DebugOptions {
     fn default() -> Self {
         let debug_info = std::env::var("EXTISM_DEBUG").is_ok();

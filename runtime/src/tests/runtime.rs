@@ -541,8 +541,9 @@ fn test_http_post() {
 
 #[test]
 fn test_precompiled() {
+    let engine = Engine::new(&DebugOptions::default().into()).unwrap();
     // From raw data
-    let precompiled = compile(WASM_NO_FUNCTIONS, None).unwrap().1;
+    let precompiled = compile(&engine, WASM_NO_FUNCTIONS).unwrap().1;
     let mut plugin: CountVowelsPlugin = Plugin::new(&precompiled, [], true)
         .unwrap()
         .try_into()

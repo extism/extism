@@ -7,7 +7,8 @@ fn main() -> Result<(), Error> {
         anyhow::bail!("Not enough arguments");
     }
     let input = std::fs::read(&args[0])?;
-    let (_, data) = compile(input, None)?;
+    let engine = wasmtime::Engine::new(&DebugOptions::default().into())?;
+    let (_, data) = compile(&engine, input)?;
     if args.len() > 1 {
         std::fs::write(&args[1], data)?;
     } else {

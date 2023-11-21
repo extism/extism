@@ -63,7 +63,6 @@ const WASM: &[u8] = include_bytes!("extism-runtime.wasm");
 fn to_module(
     engine: &Engine,
     cache_dir: Option<&Path>,
-    debug_opts: &DebugOptions,
     wasm: &extism_manifest::Wasm,
 ) -> Result<(String, Module), Error> {
     match wasm {
@@ -89,14 +88,14 @@ fn to_module(
             let hash = check_hash(&meta.hash, &buf)?;
             Ok((
                 name,
-                precompile_or_get_cached(&engine, cache_dir, debug_opts, &buf, hash)?,
+                precompile_or_get_cached(&engine, cache_dir, &buf, hash)?,
             ))
         }
         extism_manifest::Wasm::Data { meta, data } => {
             let hash = check_hash(&meta.hash, data)?;
             Ok((
                 meta.name.as_deref().unwrap_or("main").to_string(),
-                precompile_or_get_cached(&engine, cache_dir, debug_opts, &data, hash)?,
+                precompile_or_get_cached(&engine, cache_dir, &data, hash)?,
             ))
         }
         #[allow(unused)]
@@ -129,8 +128,7 @@ fn to_module(
             if let Some(h) = &meta.hash {
                 if let Ok(Some(data)) = cache_get_file(h) {
                     let hash = check_hash(&meta.hash, &data)?;
-                    let module =
-                        precompile_or_get_cached(&engine, cache_dir, debug_opts, &data, hash)?;
+                    let module = precompile_or_get_cached(&engine, cache_dir, &data, hash)?;
                     return Ok((name.to_string(), module));
                 }
             }
@@ -162,7 +160,7 @@ fn to_module(
                 let hash = check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
-                let module = precompile_or_get_cached(&engine, cache_dir, debug_opts, &data, hash)?;
+                let module = precompile_or_get_cached(&engine, cache_dir, &data, hash)?;
 
                 Ok((name.to_string(), module))
             }
@@ -175,7 +173,6 @@ const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 fn precompile_or_get_cached<'a>(
     engine: &Engine,
     dir: Option<&Path>,
-    debug_opts: &DebugOptions,
     data: &'a [u8],
     hash: Option<String>,
 ) -> Result<Module, Error> {
@@ -184,17 +181,25 @@ fn precompile_or_get_cached<'a>(
         hex(&digest)
     });
 
-    if let Some(dir) = dir {
-        let path = dir.join(hash);
-        if !path.exists() {
-            let (m, compiled) = crate::compile(data, Some(debug_opts.clone()))?;
-            std::fs::write(&path, &compiled)?;
-            return Ok(m);
-        }
+    let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
+    let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
 
-        unsafe { Ok(Module::from_trusted_file(&engine, path)?) }
+    if has_magic || is_wat {
+        if let Some(dir) = dir {
+            let path = dir.join(hash);
+            if !path.exists() {
+                let (m, compiled) = crate::compile(engine, data)?;
+                std::fs::write(&path, &compiled)?;
+                return Ok(m);
+            }
+
+            unsafe { Ok(Module::from_trusted_file(&engine, path)?) }
+        } else {
+            Ok(Module::new(engine, data)?)
+        }
     } else {
-        Ok(Module::new(engine, data)?)
+        trace!("Found precompiled Wasm module");
+        unsafe { Ok(Module::deserialize(&engine, data)?) }
     }
 }
 
@@ -202,31 +207,31 @@ pub(crate) fn load<'a>(
     engine: &Engine,
     input: WasmInput<'a>,
     cache_dir: Option<PathBuf>,
-    debug_opts: &DebugOptions,
 ) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
     if let Some(dir) = &cache_dir {
         let _ = std::fs::create_dir(&dir);
     }
+
     let mut mods = BTreeMap::new();
     mods.insert(
         EXTISM_ENV_MODULE.to_string(),
-        precompile_or_get_cached(engine, cache_dir.as_deref(), debug_opts, WASM, None)?,
+        precompile_or_get_cached(engine, cache_dir.as_deref(), WASM, None)?,
     );
 
     match input {
         WasmInput::Data(data) => {
             let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-            let is_wast = data.starts_with(b"(module") || data.starts_with(b";;");
-            if !has_magic && !is_wast {
+            let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
+            if !has_magic && !is_wat {
                 trace!("Loading manifest");
                 if let Ok(s) = std::str::from_utf8(&data) {
                     let t = if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
                         trace!("Manifest is TOML");
-                        modules(engine, cache_dir.as_deref(), debug_opts, &t, &mut mods)?;
+                        modules(engine, cache_dir.as_deref(), &t, &mut mods)?;
                         t
                     } else if let Ok(t) = serde_json::from_str::<extism_manifest::Manifest>(s) {
                         trace!("Manifest is JSON");
-                        modules(engine, cache_dir.as_deref(), debug_opts, &t, &mut mods)?;
+                        modules(engine, cache_dir.as_deref(), &t, &mut mods)?;
                         t
                     } else {
                         anyhow::bail!("Unknown manifest format");
@@ -235,25 +240,19 @@ pub(crate) fn load<'a>(
                 }
             }
 
-            let m = if !has_magic {
-                trace!("Deserializing module");
-                unsafe { Module::deserialize(engine, data)? }
-            } else {
-                trace!("Loading WASM module bytes");
-                precompile_or_get_cached(engine, cache_dir.as_deref(), debug_opts, WASM, None)?
-            };
+            let m = precompile_or_get_cached(engine, cache_dir.as_deref(), &data, None)?;
 
             mods.insert("main".to_string(), m);
             Ok((Default::default(), mods))
         }
         WasmInput::Manifest(m) => {
             trace!("Loading from existing manifest");
-            modules(engine, cache_dir.as_deref(), debug_opts, &m, &mut mods)?;
+            modules(engine, cache_dir.as_deref(), &m, &mut mods)?;
             Ok((m, mods))
         }
         WasmInput::ManifestRef(m) => {
             trace!("Loading from existing manifest");
-            modules(engine, cache_dir.as_deref(), debug_opts, &m, &mut mods)?;
+            modules(engine, cache_dir.as_deref(), &m, &mut mods)?;
             Ok((m.clone(), mods))
         }
     }
@@ -262,7 +261,6 @@ pub(crate) fn load<'a>(
 pub(crate) fn modules(
     engine: &Engine,
     cache_dir: Option<&Path>,
-    debug_opts: &DebugOptions,
     manifest: &extism_manifest::Manifest,
     modules: &mut BTreeMap<String, Module>,
 ) -> Result<(), Error> {
@@ -272,13 +270,13 @@ pub(crate) fn modules(
 
     // If there's only one module, it should be called `main`
     if manifest.wasm.len() == 1 {
-        let (_, m) = to_module(engine, cache_dir, debug_opts, &manifest.wasm[0])?;
+        let (_, m) = to_module(engine, cache_dir, &manifest.wasm[0])?;
         modules.insert("main".to_string(), m);
         return Ok(());
     }
 
     for f in &manifest.wasm {
-        let (name, m) = to_module(engine, cache_dir, debug_opts, f)?;
+        let (name, m) = to_module(engine, cache_dir, f)?;
         trace!("Found module {}", name);
         modules.insert(name, m);
     }
