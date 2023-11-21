@@ -1,4 +1,4 @@
-use std::collections::BTreeMap;
+use std::{collections::BTreeMap, path::PathBuf};
 
 use crate::*;
 
@@ -182,7 +182,18 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        Self::build_new(wasm.into(), imports, with_wasi, Default::default())
+        let cache_dir = if let Ok(d) = std::env::var("EXTISM_CACHE_DIR") {
+            Some(PathBuf::from(d))
+        } else {
+            None
+        };
+        Self::build_new(
+            wasm.into(),
+            imports,
+            with_wasi,
+            Default::default(),
+            cache_dir,
+        )
     }
 
     pub(crate) fn build_new<'a>(
@@ -190,10 +201,11 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
         debug_options: DebugOptions,
+        cache_dir: Option<PathBuf>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let engine = Engine::new(&wasmtime_config(&debug_options))?;
-        let (manifest, modules) = manifest::load(&engine, wasm)?;
+        let (manifest, modules) = manifest::load(&engine, wasm, cache_dir, &debug_options)?;
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");

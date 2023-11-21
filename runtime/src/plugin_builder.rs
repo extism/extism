@@ -36,16 +36,23 @@ pub struct PluginBuilder<'a> {
     wasi: bool,
     functions: Vec<Function>,
     debug_options: DebugOptions,
+    cache_dir: Option<std::path::PathBuf>,
 }
 
 impl<'a> PluginBuilder<'a> {
     /// Create a new `PluginBuilder` from a `Manifest` or raw Wasm bytes
     pub fn new(plugin: impl Into<WasmInput<'a>>) -> Self {
+        let cache_dir = if let Ok(d) = std::env::var("EXTISM_CACHE_DIR") {
+            Some(std::path::PathBuf::from(d))
+        } else {
+            None
+        };
         PluginBuilder {
             source: plugin.into(),
             wasi: false,
             functions: vec![],
             debug_options: DebugOptions::default(),
+            cache_dir,
         }
     }
 
@@ -109,14 +116,14 @@ impl<'a> PluginBuilder<'a> {
     }
 
     /// Enable Wasmtime coredump on trap
-    pub fn with_coredump(mut self, path: impl AsRef<std::path::Path>) -> Self {
-        self.debug_options.coredump = Some(path.as_ref().to_path_buf());
+    pub fn with_coredump(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.debug_options.coredump = Some(path.into());
         self
     }
 
     /// Enable Extism memory dump when plugin calls return an error
-    pub fn with_memdump(mut self, path: impl AsRef<std::path::Path>) -> Self {
-        self.debug_options.memdump = Some(path.as_ref().to_path_buf());
+    pub fn with_memdump(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.debug_options.memdump = Some(path.into());
         self
     }
 
@@ -132,8 +139,20 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
+    /// Enable pre-compilation cache at the specified path
+    pub fn with_cache_dir(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        self.cache_dir = Some(path.into());
+        self
+    }
+
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
-        Plugin::build_new(self.source, self.functions, self.wasi, self.debug_options)
+        Plugin::build_new(
+            self.source,
+            self.functions,
+            self.wasi,
+            self.debug_options,
+            self.cache_dir,
+        )
     }
 }

@@ -87,9 +87,14 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
     Ok(())
 }
 
-/// Helper function to precompile an Extism plugin without creating a `Plugin`
-pub fn compile(input: impl AsRef<[u8]>, options: Option<DebugOptions>) -> Result<Vec<u8>, Error> {
+/// Pre-compile a Wasm module, this will detect any `EXTISM_` environment variables to determine which settings the
+/// module should be pre-compiled with
+pub fn compile(
+    input: impl AsRef<[u8]>,
+    options: Option<DebugOptions>,
+) -> Result<(Module, Vec<u8>), Error> {
     let engine = Engine::new(&wasmtime_config(&options.unwrap_or_default()))?;
     let m = Module::new(&engine, input.as_ref())?;
-    Ok(m.serialize()?)
+    let x = m.serialize()?;
+    Ok((m, x))
 }

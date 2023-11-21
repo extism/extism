@@ -542,7 +542,7 @@ fn test_http_post() {
 #[test]
 fn test_precompiled() {
     // From raw data
-    let precompiled = compile(WASM_NO_FUNCTIONS, None).unwrap();
+    let precompiled = compile(WASM_NO_FUNCTIONS, None).unwrap().1;
     let mut plugin: CountVowelsPlugin = Plugin::new(&precompiled, [], true)
         .unwrap()
         .try_into()
@@ -556,5 +556,26 @@ fn test_precompiled() {
             .unwrap()
             .try_into()
             .unwrap();
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+}
+
+#[test]
+fn test_compilation_cache() {
+    let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .with_cache_dir("./test-cache")
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+
+    // From manifest
+    let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .with_cache_dir("./test-cache")
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
     let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
 }

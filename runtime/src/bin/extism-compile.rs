@@ -7,7 +7,7 @@ fn main() -> Result<(), Error> {
         anyhow::bail!("Not enough arguments");
     }
     let input = std::fs::read(&args[0])?;
-    let data = compile(input, None)?;
+    let (_, data) = compile(input, None)?;
     if args.len() > 1 {
         std::fs::write(&args[1], data)?;
     } else {
