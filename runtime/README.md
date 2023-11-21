@@ -12,7 +12,7 @@ To use the `extism` crate, you can add it to your Cargo file:
 
 ```toml
 [dependencies]
-extism = "^1.0.0-rc2"
+extism = "^1.0.0-rc3"
 ```
 
 ## Environment variables
