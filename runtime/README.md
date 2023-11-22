@@ -24,7 +24,7 @@ There are a few environment variables that can be used for debugging purposes:
 - `EXTISM_COREDUMP=extism.core`: write [coredump](https://github.com/WebAssembly/tool-conventions/blob/main/Coredump.md) to a file when a WebAssembly function traps
 - `EXTISM_DEBUG=1`: generate debug information
 - `EXTISM_PROFILE=perf|jitdump|vtune`: enable Wasmtime profiling
-- `EXTISM_CACHE_DIR=/path/to/precompilation/cache`: enable precompilation cache
+- `EXTISM_CACHE_CONFIG=path/to/config.toml`: enable Wasmtime cache, see [the docs](https://docs.wasmtime.dev/cli-cache.html) for details about configuration.
 
 > *Note*: The debug and coredump info will only be written if the plug-in has an error.
 

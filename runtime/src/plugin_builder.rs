@@ -1,3 +1,5 @@
+use std::path::PathBuf;
+
 use crate::{plugin::WasmInput, *};
 
 #[derive(Clone)]
@@ -8,15 +10,17 @@ pub struct DebugOptions {
     pub debug_info: bool,
 }
 
-impl From<DebugOptions> for wasmtime::Config {
-    fn from(value: DebugOptions) -> Self {
-        wasmtime_config(&value)
+impl TryFrom<DebugOptions> for wasmtime::Config {
+    type Error = Error;
+    fn try_from(value: DebugOptions) -> Result<wasmtime::Config, Self::Error> {
+        wasmtime_config(&value, None)
     }
 }
 
-impl<'a> From<&'a DebugOptions> for wasmtime::Config {
-    fn from(value: &'a DebugOptions) -> Self {
-        wasmtime_config(&value)
+impl<'a> TryFrom<&'a DebugOptions> for wasmtime::Config {
+    type Error = Error;
+    fn try_from(value: &'a DebugOptions) -> Result<wasmtime::Config, Self::Error> {
+        wasmtime_config(&value, None)
     }
 }
 
@@ -48,13 +52,13 @@ pub struct PluginBuilder<'a> {
     wasi: bool,
     functions: Vec<Function>,
     debug_options: DebugOptions,
-    cache: Cache,
+    cache_config: Option<PathBuf>,
 }
 
 impl<'a> PluginBuilder<'a> {
     /// Create a new `PluginBuilder` from a `Manifest` or raw Wasm bytes
     pub fn new(plugin: impl Into<WasmInput<'a>>) -> Self {
-        let cache_dir = if let Ok(d) = std::env::var("EXTISM_CACHE_DIR") {
+        let cache_config = if let Ok(d) = std::env::var("EXTISM_CACHE_CONFIG") {
             Some(std::path::PathBuf::from(d))
         } else {
             None
@@ -64,7 +68,7 @@ impl<'a> PluginBuilder<'a> {
             wasi: false,
             functions: vec![],
             debug_options: DebugOptions::default(),
-            cache: Cache::new(cache_dir),
+            cache_config: cache_config.map(PathBuf::from),
         }
     }
 
@@ -151,17 +155,9 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
-    /// Enable pre-compilation cache at the specified path
-    pub fn with_cache_dir(mut self, path: impl Into<std::path::PathBuf>) -> Self {
-        let path = path.into();
-        let _ = std::fs::create_dir(&path);
-        self.cache.dir = Some(path.into());
-        self
-    }
-
-    /// Enable pre-compilation cache
-    pub fn with_cache(mut self, cache: Cache) -> Self {
-        self.cache = cache;
+    /// Set wasmtime cache config
+    pub fn with_cache_config(mut self, dir: impl Into<PathBuf>) -> Self {
+        self.cache_config = Some(dir.into());
         self
     }
 
@@ -172,7 +168,7 @@ impl<'a> PluginBuilder<'a> {
             self.functions,
             self.wasi,
             self.debug_options,
-            self.cache,
+            self.cache_config,
         )
     }
 }

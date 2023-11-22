@@ -542,7 +542,7 @@ fn test_http_post() {
 
 #[test]
 fn test_precompiled() {
-    let engine = Engine::new(&DebugOptions::default().into()).unwrap();
+    let engine = Engine::new(&DebugOptions::default().try_into().unwrap()).unwrap();
     // From raw data
     let precompiled = compile(&engine, WASM_NO_FUNCTIONS).unwrap().1;
     let mut plugin: CountVowelsPlugin = Plugin::new(&precompiled, [], true)
@@ -563,8 +563,9 @@ fn test_precompiled() {
 
 #[test]
 fn test_compilation_cache() {
+    std::fs::write("test-cache", "[cache]\nenabled = true\n").unwrap();
     let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
-        .with_cache_dir("./test-cache")
+        .with_cache_config("test-cache")
         .build()
         .unwrap()
         .try_into()
@@ -574,7 +575,7 @@ fn test_compilation_cache() {
 
     // From manifest
     let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
-        .with_cache_dir("./test-cache")
+        .with_cache_config("test-cache")
         .build()
         .unwrap()
         .try_into()

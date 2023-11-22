@@ -162,7 +162,10 @@ impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
     }
 }
 
-pub(crate) fn wasmtime_config(debug_options: &DebugOptions) -> wasmtime::Config {
+pub(crate) fn wasmtime_config(
+    debug_options: &DebugOptions,
+    path: Option<PathBuf>,
+) -> Result<wasmtime::Config, Error> {
     let mut config = Config::new();
     config
         .epoch_interruption(true)
@@ -171,7 +174,18 @@ pub(crate) fn wasmtime_config(debug_options: &DebugOptions) -> wasmtime::Config 
         .profiler(debug_options.profiling_strategy)
         .wasm_tail_call(true)
         .wasm_function_references(true);
-    config
+
+    if let Some(path) = &path {
+        config.cache_config_load(&path)?;
+    } else {
+        if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
+            config.cache_config_load(&env)?;
+        } else {
+            config.cache_config_load_default()?;
+        }
+    }
+
+    Ok(config)
 }
 
 impl Plugin {
@@ -192,7 +206,7 @@ impl Plugin {
             imports,
             with_wasi,
             Default::default(),
-            Cache::new(cache_dir),
+            cache_dir,
         )
     }
 
@@ -201,11 +215,11 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
         debug_options: DebugOptions,
-        cache: Cache,
+        cache_dir: Option<PathBuf>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
-        let engine = Engine::new(&wasmtime_config(&debug_options))?;
-        let (manifest, modules) = manifest::load(&engine, wasm, &cache)?;
+        let engine = Engine::new(&wasmtime_config(&debug_options, cache_dir)?)?;
+        let (manifest, modules) = manifest::load(&engine, wasm)?;
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");
