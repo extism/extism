@@ -20,7 +20,7 @@ impl TryFrom<DebugOptions> for wasmtime::Config {
 impl<'a> TryFrom<&'a DebugOptions> for wasmtime::Config {
     type Error = Error;
     fn try_from(value: &'a DebugOptions) -> Result<wasmtime::Config, Self::Error> {
-        wasmtime_config(&value, None)
+        wasmtime_config(value, None)
     }
 }
 

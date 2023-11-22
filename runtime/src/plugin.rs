@@ -176,13 +176,11 @@ pub(crate) fn wasmtime_config(
         .wasm_function_references(true);
 
     if let Some(path) = &path {
-        config.cache_config_load(&path)?;
+        config.cache_config_load(path)?;
+    } else if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
+        config.cache_config_load(&env)?;
     } else {
-        if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
-            config.cache_config_load(&env)?;
-        } else {
-            config.cache_config_load_default()?;
-        }
+        config.cache_config_load_default()?;
     }
 
     Ok(config)
@@ -210,8 +208,8 @@ impl Plugin {
         )
     }
 
-    pub(crate) fn build_new<'a>(
-        wasm: WasmInput<'a>,
+    pub(crate) fn build_new(
+        wasm: WasmInput<'_>,
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
         debug_options: DebugOptions,
@@ -318,11 +316,11 @@ impl Plugin {
 
     /// Compile an Extism plugin
     pub fn compile(&self) -> Result<Vec<u8>, Error> {
-        let main = self.modules.get("main").map(|x| x).unwrap_or_else(|| {
+        let main = self.modules.get("main").unwrap_or_else(|| {
             let entry = self.modules.iter().last().unwrap();
             entry.1
         });
-        Ok(main.serialize()?)
+        main.serialize()
     }
 
     // Resets the store and linker to avoid running into Wasmtime memory limits

@@ -40,7 +40,7 @@ pub fn create_plugin_cwasm(c: &mut Criterion) {
         std::fs::read("wasm/code.wasm").or_else(|_| std::fs::read("../wasm/code.wasm"))
     {
         let engine = wasmtime::Engine::new(&DebugOptions::default().try_into().unwrap()).unwrap();
-        let data = extism::compile(&engine, &data).unwrap().1;
+        let data = extism::compile(&engine, data).unwrap().1;
         let mut g = c.benchmark_group("create");
         g.noise_threshold(1.0);
         g.significance_level(0.2);

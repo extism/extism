@@ -58,13 +58,13 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             file.read_to_end(&mut buf)?;
 
             check_hash(&meta.hash, &buf)?;
-            Ok((name, new_module(&engine, &buf)?))
+            Ok((name, new_module(engine, &buf)?))
         }
         extism_manifest::Wasm::Data { meta, data } => {
             check_hash(&meta.hash, data)?;
             Ok((
                 meta.name.as_deref().unwrap_or("main").to_string(),
-                new_module(&engine, &data)?,
+                new_module(engine, data)?,
             ))
         }
         #[allow(unused)]
@@ -117,7 +117,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
-                let module = new_module(&engine, &data)?;
+                let module = new_module(engine, &data)?;
 
                 Ok((name.to_string(), module))
             }
@@ -127,9 +127,9 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
 const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 
-pub(crate) fn load<'a>(
+pub(crate) fn load(
     engine: &Engine,
-    input: WasmInput<'a>,
+    input: WasmInput<'_>,
 ) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
     let mut mods = BTreeMap::new();
     mods.insert(EXTISM_ENV_MODULE.to_string(), new_module(engine, WASM)?);
@@ -167,7 +167,7 @@ pub(crate) fn load<'a>(
         }
         WasmInput::ManifestRef(m) => {
             trace!("Loading from existing manifest");
-            modules(engine, &m, &mut mods)?;
+            modules(engine, m, &mut mods)?;
             Ok((m.clone(), mods))
         }
     }
@@ -199,14 +199,14 @@ pub(crate) fn modules(
 }
 
 /// Precompile a Wasm module or get the cached pre-compiled module if it's available
-pub fn new_module<'a>(engine: &Engine, data: &'a [u8]) -> Result<Module, Error> {
+pub fn new_module(engine: &Engine, data: &[u8]) -> Result<Module, Error> {
     let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
     let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
 
     if has_magic || is_wat {
-        Ok(Module::new(&engine, data)?)
+        Ok(Module::new(engine, data)?)
     } else {
         trace!("Found precompiled Wasm module");
-        unsafe { Ok(Module::deserialize(&engine, data)?) }
+        unsafe { Ok(Module::deserialize(engine, data)?) }
     }
 }
