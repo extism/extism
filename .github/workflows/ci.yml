@@ -84,7 +84,7 @@ jobs:
       - name: Format
         run: cargo fmt --check
       - name: Lint
-        run: cargo clippy --release --all-features --no-deps
+        run: cargo clippy --all --release --all-features --no-deps -- -D "clippy::all"
       - name: Test
         run: cargo test --release
       - name: Test all features
