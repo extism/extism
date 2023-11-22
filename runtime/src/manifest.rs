@@ -218,16 +218,27 @@ pub struct Cache {
 impl Cache {
     /// Create a new cache at the specified path
     pub fn new(dir: Option<PathBuf>) -> Cache {
+        let dir = if dir.is_none() {
+            if let Ok(d) = std::env::var("EXTISM_CACHE_DIR") {
+                Some(PathBuf::from(d))
+            } else {
+                None
+            }
+        } else {
+            dir
+        };
         if let Some(dir) = &dir {
             let _ = std::fs::create_dir(&dir);
         }
         Cache { dir }
     }
 
+    /// Path on disk, or `None` if caching is disabled
     pub fn path(&self) -> Option<&Path> {
         self.dir.as_deref()
     }
 
+    /// Returns `true` when the cache is enabled
     pub fn enabled(&self) -> bool {
         self.dir.is_some()
     }
@@ -272,6 +283,23 @@ impl Cache {
         Ok(())
     }
 
+    /// Find a cached module from the original Wasm data
+    pub fn find(&self, engine: &Engine, module: impl AsRef<[u8]>) -> Result<Option<Module>, Error> {
+        if let Some(dir) = &self.dir {
+            let digest = sha2::Sha256::digest(module.as_ref());
+            let hash = hex(&digest);
+            let path = dir.join(hash);
+            if path.exists() {
+                unsafe { Ok(Some(Module::from_trusted_file(&engine, path)?)) }
+            } else {
+                Ok(None)
+            }
+        } else {
+            Ok(None)
+        }
+    }
+
+    /// Precompile a Wasm module or get the cached pre-compiled module if it's available
     pub fn precompile_or_get<'a>(
         &self,
         engine: &Engine,

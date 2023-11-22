@@ -153,6 +153,8 @@ impl<'a> PluginBuilder<'a> {
 
     /// Enable pre-compilation cache at the specified path
     pub fn with_cache_dir(mut self, path: impl Into<std::path::PathBuf>) -> Self {
+        let path = path.into();
+        let _ = std::fs::create_dir(&path);
         self.cache.dir = Some(path.into());
         self
     }
