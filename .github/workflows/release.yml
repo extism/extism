@@ -87,6 +87,8 @@ jobs:
             version="${version/refs\/tags\/v/}"
           fi
           sed -i -e "s/0.0.0+replaced-by-ci/${version}/g" Cargo.toml
+          pyproject="$(cat extism-maturin/pyproject.toml)"
+          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
