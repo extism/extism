@@ -16,29 +16,6 @@ fn hex(data: &[u8]) -> String {
     s
 }
 
-#[allow(unused)]
-fn cache_add_file(hash: &str, data: &[u8]) -> Result<(), Error> {
-    let cache_dir = std::env::temp_dir().join("extism-cache");
-    let _ = std::fs::create_dir(&cache_dir);
-    let file = cache_dir.join(hash);
-    if file.exists() {
-        return Ok(());
-    }
-    std::fs::write(file, data)?;
-    Ok(())
-}
-
-fn cache_get_file(hash: &str) -> Result<Option<Vec<u8>>, Error> {
-    let cache_dir = std::env::temp_dir().join("extism-cache");
-    let file = cache_dir.join(hash);
-    if file.exists() {
-        let r = std::fs::read(file)?;
-        return Ok(Some(r));
-    }
-
-    Ok(None)
-}
-
 fn check_hash(hash: &Option<String>, data: &[u8]) -> Result<Option<String>, Error> {
     match hash {
         None => Ok(None),
@@ -125,14 +102,6 @@ fn to_module(
                 }
             };
 
-            if let Some(h) = &meta.hash {
-                if let Ok(Some(data)) = cache_get_file(h) {
-                    let hash = check_hash(&meta.hash, &data)?;
-                    let module = precompile_or_get_cached(&engine, cache_dir, &data, hash)?;
-                    return Ok((name.to_string(), module));
-                }
-            }
-
             #[cfg(not(feature = "register-http"))]
             {
                 return Err(anyhow::format_err!("HTTP registration is disabled"));
@@ -152,11 +121,7 @@ fn to_module(
                 let mut data = Vec::new();
                 r.read_to_end(&mut data)?;
 
-                // Try to cache file
-                if let Some(hash) = &meta.hash {
-                    cache_add_file(hash, &data);
-                }
-
+                // Check hash against manifest
                 let hash = check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
