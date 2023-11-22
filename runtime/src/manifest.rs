@@ -39,7 +39,7 @@ const WASM: &[u8] = include_bytes!("extism-runtime.wasm");
 /// Convert from manifest to a wasmtime Module
 fn to_module(
     engine: &Engine,
-    cache_dir: Option<&Path>,
+    cache: &Cache,
     wasm: &extism_manifest::Wasm,
 ) -> Result<(String, Module), Error> {
     match wasm {
@@ -63,16 +63,13 @@ fn to_module(
             file.read_to_end(&mut buf)?;
 
             let hash = check_hash(&meta.hash, &buf)?;
-            Ok((
-                name,
-                precompile_or_get_cached(&engine, cache_dir, &buf, hash)?,
-            ))
+            Ok((name, cache.precompile_or_get(&engine, &buf, hash)?))
         }
         extism_manifest::Wasm::Data { meta, data } => {
             let hash = check_hash(&meta.hash, data)?;
             Ok((
                 meta.name.as_deref().unwrap_or("main").to_string(),
-                precompile_or_get_cached(&engine, cache_dir, &data, hash)?,
+                cache.precompile_or_get(&engine, &data, hash)?,
             ))
         }
         #[allow(unused)]
@@ -104,7 +101,7 @@ fn to_module(
 
             #[cfg(not(feature = "register-http"))]
             {
-                return Err(anyhow::format_err!("HTTP registration is disabled"));
+                return anyhow::bail!("HTTP registration is disabled");
             }
 
             #[cfg(feature = "register-http")]
@@ -125,7 +122,7 @@ fn to_module(
                 let hash = check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
-                let module = precompile_or_get_cached(&engine, cache_dir, &data, hash)?;
+                let module = cache.precompile_or_get(&engine, &data, hash)?;
 
                 Ok((name.to_string(), module))
             }
@@ -135,52 +132,15 @@ fn to_module(
 
 const WASM_MAGIC: [u8; 4] = [0x00, 0x61, 0x73, 0x6d];
 
-fn precompile_or_get_cached<'a>(
-    engine: &Engine,
-    dir: Option<&Path>,
-    data: &'a [u8],
-    hash: Option<String>,
-) -> Result<Module, Error> {
-    let hash = hash.unwrap_or_else(|| {
-        let digest = sha2::Sha256::digest(data);
-        hex(&digest)
-    });
-
-    let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-    let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
-
-    if has_magic || is_wat {
-        if let Some(dir) = dir {
-            let path = dir.join(hash);
-            if !path.exists() {
-                let (m, compiled) = crate::compile(engine, data)?;
-                std::fs::write(&path, &compiled)?;
-                return Ok(m);
-            }
-
-            unsafe { Ok(Module::from_trusted_file(&engine, path)?) }
-        } else {
-            Ok(Module::new(engine, data)?)
-        }
-    } else {
-        trace!("Found precompiled Wasm module");
-        unsafe { Ok(Module::deserialize(&engine, data)?) }
-    }
-}
-
 pub(crate) fn load<'a>(
     engine: &Engine,
     input: WasmInput<'a>,
-    cache_dir: Option<PathBuf>,
+    cache: &Cache,
 ) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
-    if let Some(dir) = &cache_dir {
-        let _ = std::fs::create_dir(&dir);
-    }
-
     let mut mods = BTreeMap::new();
     mods.insert(
         EXTISM_ENV_MODULE.to_string(),
-        precompile_or_get_cached(engine, cache_dir.as_deref(), WASM, None)?,
+        cache.precompile_or_get(engine, WASM, None)?,
     );
 
     match input {
@@ -192,11 +152,11 @@ pub(crate) fn load<'a>(
                 if let Ok(s) = std::str::from_utf8(&data) {
                     let t = if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
                         trace!("Manifest is TOML");
-                        modules(engine, cache_dir.as_deref(), &t, &mut mods)?;
+                        modules(engine, cache, &t, &mut mods)?;
                         t
                     } else if let Ok(t) = serde_json::from_str::<extism_manifest::Manifest>(s) {
                         trace!("Manifest is JSON");
-                        modules(engine, cache_dir.as_deref(), &t, &mut mods)?;
+                        modules(engine, cache, &t, &mut mods)?;
                         t
                     } else {
                         anyhow::bail!("Unknown manifest format");
@@ -205,19 +165,19 @@ pub(crate) fn load<'a>(
                 }
             }
 
-            let m = precompile_or_get_cached(engine, cache_dir.as_deref(), &data, None)?;
+            let m = cache.precompile_or_get(engine, &data, None)?;
 
             mods.insert("main".to_string(), m);
             Ok((Default::default(), mods))
         }
         WasmInput::Manifest(m) => {
             trace!("Loading from existing manifest");
-            modules(engine, cache_dir.as_deref(), &m, &mut mods)?;
+            modules(engine, cache, &m, &mut mods)?;
             Ok((m, mods))
         }
         WasmInput::ManifestRef(m) => {
             trace!("Loading from existing manifest");
-            modules(engine, cache_dir.as_deref(), &m, &mut mods)?;
+            modules(engine, cache, &m, &mut mods)?;
             Ok((m.clone(), mods))
         }
     }
@@ -225,7 +185,7 @@ pub(crate) fn load<'a>(
 
 pub(crate) fn modules(
     engine: &Engine,
-    cache_dir: Option<&Path>,
+    cache: &Cache,
     manifest: &extism_manifest::Manifest,
     modules: &mut BTreeMap<String, Module>,
 ) -> Result<(), Error> {
@@ -235,16 +195,113 @@ pub(crate) fn modules(
 
     // If there's only one module, it should be called `main`
     if manifest.wasm.len() == 1 {
-        let (_, m) = to_module(engine, cache_dir, &manifest.wasm[0])?;
+        let (_, m) = to_module(engine, cache, &manifest.wasm[0])?;
         modules.insert("main".to_string(), m);
         return Ok(());
     }
 
     for f in &manifest.wasm {
-        let (name, m) = to_module(engine, cache_dir, f)?;
+        let (name, m) = to_module(engine, cache, f)?;
         trace!("Found module {}", name);
         modules.insert(name, m);
     }
 
     Ok(())
+}
+
+/// Handles caching compiled code
+#[derive(Debug, Clone, Default)]
+pub struct Cache {
+    pub(crate) dir: Option<PathBuf>,
+}
+
+impl Cache {
+    /// Create a new cache at the specified path
+    pub fn new(dir: Option<PathBuf>) -> Cache {
+        if let Some(dir) = &dir {
+            let _ = std::fs::create_dir(&dir);
+        }
+        Cache { dir }
+    }
+
+    pub fn path(&self) -> Option<&Path> {
+        self.dir.as_deref()
+    }
+
+    pub fn enabled(&self) -> bool {
+        self.dir.is_some()
+    }
+
+    /// Removes all plugins created before the specified date
+    pub fn remove_created_before(&self, created: std::time::SystemTime) -> Result<(), Error> {
+        if let Some(dir) = &self.dir {
+            for file in std::fs::read_dir(&dir)? {
+                if let Ok(file) = file {
+                    if let Ok(metadata) = file.metadata() {
+                        if metadata.created()? < created {
+                            std::fs::remove_file(file.path())?;
+                        }
+                    } else {
+                        let _ = std::fs::remove_file(file.path());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    /// Removes all plugins that haven't been accessed since the specified date.
+    /// NOTE: some systems may not support last access time for files, `Cache::remove_created_before`
+    /// can be used instead.
+    pub fn gc(&self, access: std::time::Duration) -> Result<(), Error> {
+        if let Some(dir) = &self.dir {
+            for file in std::fs::read_dir(&dir)? {
+                if let Ok(file) = file {
+                    if let Ok(metadata) = file.metadata() {
+                        if metadata.accessed()? < std::time::SystemTime::now() - access {
+                            std::fs::remove_file(file.path())?;
+                        }
+                    } else {
+                        let _ = std::fs::remove_file(file.path());
+                    }
+                }
+            }
+        }
+
+        Ok(())
+    }
+
+    pub fn precompile_or_get<'a>(
+        &self,
+        engine: &Engine,
+        data: &'a [u8],
+        hash: Option<String>,
+    ) -> Result<Module, Error> {
+        let hash = hash.unwrap_or_else(|| {
+            let digest = sha2::Sha256::digest(data);
+            hex(&digest)
+        });
+
+        let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
+        let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
+
+        if has_magic || is_wat {
+            if let Some(dir) = &self.dir {
+                let path = dir.join(hash);
+                if !path.exists() {
+                    let (m, compiled) = crate::compile(engine, data)?;
+                    std::fs::write(&path, &compiled)?;
+                    return Ok(m);
+                }
+
+                unsafe { Ok(Module::from_trusted_file(&engine, path)?) }
+            } else {
+                Ok(Module::new(&engine, data)?)
+            }
+        } else {
+            trace!("Found precompiled Wasm module");
+            unsafe { Ok(Module::deserialize(&engine, data)?) }
+        }
+    }
 }

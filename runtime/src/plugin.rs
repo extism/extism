@@ -192,7 +192,7 @@ impl Plugin {
             imports,
             with_wasi,
             Default::default(),
-            cache_dir,
+            Cache::new(cache_dir),
         )
     }
 
@@ -201,11 +201,11 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
         debug_options: DebugOptions,
-        cache_dir: Option<PathBuf>,
+        cache: Cache,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let engine = Engine::new(&wasmtime_config(&debug_options))?;
-        let (manifest, modules) = manifest::load(&engine, wasm, cache_dir)?;
+        let (manifest, modules) = manifest::load(&engine, wasm, &cache)?;
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");

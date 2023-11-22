@@ -48,7 +48,7 @@ pub struct PluginBuilder<'a> {
     wasi: bool,
     functions: Vec<Function>,
     debug_options: DebugOptions,
-    cache_dir: Option<std::path::PathBuf>,
+    cache: Cache,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -64,7 +64,7 @@ impl<'a> PluginBuilder<'a> {
             wasi: false,
             functions: vec![],
             debug_options: DebugOptions::default(),
-            cache_dir,
+            cache: Cache::new(cache_dir),
         }
     }
 
@@ -153,7 +153,7 @@ impl<'a> PluginBuilder<'a> {
 
     /// Enable pre-compilation cache at the specified path
     pub fn with_cache_dir(mut self, path: impl Into<std::path::PathBuf>) -> Self {
-        self.cache_dir = Some(path.into());
+        self.cache.dir = Some(path.into());
         self
     }
 
@@ -164,7 +164,7 @@ impl<'a> PluginBuilder<'a> {
             self.functions,
             self.wasi,
             self.debug_options,
-            self.cache_dir,
+            self.cache,
         )
     }
 }
