@@ -122,9 +122,15 @@ pub(crate) fn profiling_strategy() -> ProfilingStrategy {
     }
 }
 
+/// Defines an input type for Wasm data.
+///
+/// Types that implement `Into<WasmInput>` can be passed directly into `Plugin::new`
 pub enum WasmInput<'a> {
+    /// Raw Wasm module
     Data(std::borrow::Cow<'a, [u8]>),
+    /// Owned manifest
     Manifest(Manifest),
+    /// Borrowed manifest
     ManifestRef(&'a Manifest),
 }
 
@@ -133,11 +139,19 @@ impl<'a> From<Manifest> for WasmInput<'a> {
         WasmInput::Manifest(value)
     }
 }
+
 impl<'a> From<&'a Manifest> for WasmInput<'a> {
     fn from(value: &'a Manifest) -> Self {
         WasmInput::ManifestRef(value)
     }
 }
+
+impl<'a> From<&'a mut Manifest> for WasmInput<'a> {
+    fn from(value: &'a mut Manifest) -> Self {
+        WasmInput::ManifestRef(value)
+    }
+}
+
 impl<'a> From<&'a [u8]> for WasmInput<'a> {
     fn from(value: &'a [u8]) -> Self {
         WasmInput::Data(value.into())
