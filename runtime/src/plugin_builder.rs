@@ -38,7 +38,7 @@ pub struct PluginBuilder<'a> {
     wasi: bool,
     functions: Vec<Function>,
     debug_options: DebugOptions,
-    cache_config: Option<PathBuf>,
+    cache_config: Option<Option<PathBuf>>,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -136,9 +136,15 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
-    /// Set wasmtime cache config
+    /// Set wasmtime compilation cache config path
     pub fn with_cache_config(mut self, dir: impl Into<PathBuf>) -> Self {
-        self.cache_config = Some(dir.into());
+        self.cache_config = Some(Some(dir.into()));
+        self
+    }
+
+    /// Turn wasmtime compilation caching off
+    pub fn with_cache_disabled(mut self) -> Self {
+        self.cache_config = Some(None);
         self
     }
 

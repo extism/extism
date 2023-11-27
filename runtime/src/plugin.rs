@@ -192,7 +192,7 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
         debug_options: DebugOptions,
-        cache_dir: Option<PathBuf>,
+        cache_dir: Option<Option<PathBuf>>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let mut config = Config::new();
@@ -204,12 +204,20 @@ impl Plugin {
             .wasm_tail_call(true)
             .wasm_function_references(true);
 
-        if let Some(path) = &cache_dir {
-            config.cache_config_load(path)?;
-        } else if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
-            config.cache_config_load(&env)?;
-        } else {
-            config.cache_config_load_default()?;
+        match cache_dir {
+            Some(None) => (),
+            Some(Some(path)) => {
+                config.cache_config_load(path)?;
+            }
+            None => {
+                if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
+                    if env != "" {
+                        config.cache_config_load(&env)?;
+                    }
+                } else {
+                    config.cache_config_load_default()?;
+                }
+            }
         }
 
         let engine = Engine::new(&config)?;
