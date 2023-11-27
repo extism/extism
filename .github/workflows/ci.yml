@@ -1,25 +1,119 @@
-on: [pull_request, workflow_dispatch]
+on: 
+  pull_request:
+    paths:
+      - .github/actions/extism/**
+      - .github/workflows/ci-rust.yml
+      - convert/**
+      - manifest/**
+      - runtime/**
+      - rust/**
+      - libextism/**
+  workflow_dispatch:
 
-name: CI
+name: Rust CI
+
+env:
+  RUNTIME_CRATE: extism
+  LIBEXTISM_CRATE: libextism
 
 jobs:
-  sdk_api_coverage:
-    name: SDK API Coverage Report
-    runs-on: ubuntu-latest
+  lib:
+    name: Extism runtime lib
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
     steps:
       - name: Checkout sources
         uses: actions/checkout@v3
-      - name: Setup Python env
-        uses: actions/setup-python@v4
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
         with:
-          python-version: "3.9"
-          check-latest: true
-      - name: Install dependencies
-        run: |
-          sudo apt-get install ripgrep
-          pip3 install pycparser
-      - name: Run coverage script
-        id: coverage
-        run: |
-          python scripts/sdk_coverage.py
-
+          toolchain: stable
+          override: true
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
+      - name: Cache libextism
+        id: cache-libextism
+        uses: actions/cache@v3
+        with:
+          path: target/release/libextism.*
+          key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('convert/**') }}
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v3
+        with:
+          path: target/**
+          key: ${{ runner.os }}-target-${{ github.sha }}
+      - name: Build
+        if: steps.cache-libextism.outputs.cache-hit != 'true'
+        shell: bash
+        run: cargo build --release -p ${{ env.LIBEXTISM_CRATE }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: libextism-${{ matrix.os }}
+          path: |
+              target/release/libextism.*
+  lint_and_test:
+    name: Extism runtime lint and test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v3
+        with:
+          path: target/**
+          key: ${{ runner.os }}-target-${{ github.sha }}
+      - name: Format
+        run: cargo fmt --check
+      - name: Lint
+        run: cargo clippy --all --release --all-features --no-deps -- -D "clippy::all"
+      - name: Test
+        run: cargo test --release
+      - name: Test all features
+        run: cargo test --all-features --release
+      - name: Test no features
+        run: cargo test --no-default-features --release
+  bench:
+    name: Benchmarking
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest]
+        rust:
+          - stable
+    steps:
+      - name: Checkout sources
+        uses: actions/checkout@v3
+      - name: Install Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+      - name: Cache Rust environment
+        uses: Swatinem/rust-cache@v1
+      - name: Cache target
+        id: cache-target
+        uses: actions/cache@v3
+        with:
+          path: target/**
+          key: ${{ runner.os }}-target-${{ github.sha }}
+      - run: cargo install cargo-criterion
+      - run: cargo criterion

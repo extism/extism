@@ -262,8 +262,8 @@ fn test_load_store() {
 
     let mut buf = [0u8; 8];
 
-    for i in 0..8 {
-        buf[i] = extism_load_u8(&mut store, instance, p + i as u64);
+    for (i, b) in buf.iter_mut().enumerate() {
+        *b = extism_load_u8(&mut store, instance, p + i as u64);
     }
     assert_eq!(u64::from_le_bytes(buf), 999);
 

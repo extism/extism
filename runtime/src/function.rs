@@ -152,6 +152,8 @@ impl Drop for CPtr {
 
 unsafe impl<T> Send for UserData<T> {}
 unsafe impl<T> Sync for UserData<T> {}
+unsafe impl Send for CPtr {}
+unsafe impl Sync for CPtr {}
 
 type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
     + Sync

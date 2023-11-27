@@ -100,17 +100,18 @@ fn it_works() {
         let native_start = Instant::now();
         let mut _native_vowel_count = 0;
         let input: &[u8] = input.as_ref();
-        for i in 0..input.len() {
-            if input[i] == b'A'
-                || input[i] == b'E'
-                || input[i] == b'I'
-                || input[i] == b'O'
-                || input[i] == b'U'
-                || input[i] == b'a'
-                || input[i] == b'e'
-                || input[i] == b'i'
-                || input[i] == b'o'
-                || input[i] == b'u'
+        for i in input {
+            let i = *i;
+            if i == b'A'
+                || i == b'E'
+                || i == b'I'
+                || i == b'O'
+                || i == b'U'
+                || i == b'a'
+                || i == b'e'
+                || i == b'i'
+                || i == b'o'
+                || i == b'u'
             {
                 _native_vowel_count += 1;
             }
@@ -220,7 +221,7 @@ fn test_timeout() {
 
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)])
         .with_timeout(std::time::Duration::from_secs(1));
-    let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
+    let mut plugin = Plugin::new(manifest, [f], true).unwrap();
 
     let start = std::time::Instant::now();
     let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
@@ -327,7 +328,7 @@ fn test_memory_max() {
     // Should fail with memory.max set
     let manifest =
         Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(16);
-    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_err());
 
@@ -338,13 +339,13 @@ fn test_memory_max() {
     // Should pass with memory.max set to a large enough number
     let manifest =
         Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(17);
-    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 
     // Should pass without it
     let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);
-    let mut plugin = Plugin::new(&manifest, [], true).unwrap();
+    let mut plugin = Plugin::new(manifest, [], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
     assert!(output.is_ok());
 }
@@ -502,7 +503,7 @@ fn test_http_get() {
     let res: String = plugin
         .call("http_request", r#"{"url": "https://extism.org"}"#)
         .unwrap();
-    assert!(res.len() > 0);
+    assert!(!res.is_empty());
     assert!(res.contains("</html>"));
     let res1: String = plugin
         .call("http_request", r#"{"url": "https://extism.org"}"#)
@@ -521,7 +522,7 @@ fn test_http_post() {
             r#"{"url": "https://httpbin.org/post", "method": "POST", "data": "testing 123..."}"#,
         )
         .unwrap();
-    assert!(res.len() > 0);
+    assert!(!res.is_empty());
     assert!(res.contains(r#""data": "testing 123...""#));
 
     // Bigger request
@@ -535,6 +536,6 @@ fn test_http_post() {
             ),
         )
         .unwrap();
-    assert!(res.len() > 0);
+    assert!(!res.is_empty());
     assert!(res.contains(&data));
 }
