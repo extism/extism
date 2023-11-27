@@ -211,7 +211,7 @@ impl Plugin {
             }
             None => {
                 if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
-                    if env != "" {
+                    if !env.is_empty() {
                         config.cache_config_load(&env)?;
                     }
                 } else {
