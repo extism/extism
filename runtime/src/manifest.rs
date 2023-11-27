@@ -58,7 +58,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             file.read_to_end(&mut buf)?;
 
             check_hash(&meta.hash, &buf)?;
-            Ok((name, Module::new(engine, &buf)?))
+            Ok((name, Module::new(engine, buf)?))
         }
         extism_manifest::Wasm::Data { meta, data } => {
             check_hash(&meta.hash, data)?;
@@ -117,7 +117,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
-                let module = Module::new(engine, &data)?;
+                let module = Module::new(engine, data)?;
 
                 Ok((name.to_string(), module))
             }
@@ -156,7 +156,7 @@ pub(crate) fn load(
                 }
             }
 
-            let m = Module::new(engine, &data)?;
+            let m = Module::new(engine, data)?;
             mods.insert("main".to_string(), m);
             Ok((Default::default(), mods))
         }
