@@ -1,5 +1,4 @@
 pub(crate) use extism_convert::*;
-use plugin::wasmtime_config;
 pub(crate) use std::collections::BTreeMap;
 use std::str::FromStr;
 pub(crate) use wasmtime::*;
