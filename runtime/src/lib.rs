@@ -86,11 +86,3 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
         .map_err(|x| Error::msg(x.to_string()))?;
     Ok(())
 }
-
-/// Pre-compile a Wasm module, this will detect any `EXTISM_` environment variables to determine which settings the
-/// module should be pre-compiled with
-pub fn compile(engine: &Engine, input: impl AsRef<[u8]>) -> Result<(Module, Vec<u8>), Error> {
-    let m = Module::new(engine, input.as_ref())?;
-    let x = m.serialize()?;
-    Ok((m, x))
-}

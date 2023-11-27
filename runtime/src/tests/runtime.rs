@@ -541,28 +541,7 @@ fn test_http_post() {
 }
 
 #[test]
-fn test_precompiled() {
-    let engine = Engine::new(&DebugOptions::default().try_into().unwrap()).unwrap();
-    // From raw data
-    let precompiled = compile(&engine, WASM_NO_FUNCTIONS).unwrap().1;
-    let mut plugin: CountVowelsPlugin = Plugin::new(&precompiled, [], true)
-        .unwrap()
-        .try_into()
-        .unwrap();
-
-    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
-
-    // From manifest
-    let mut plugin: CountVowelsPlugin =
-        Plugin::new(Manifest::new([Wasm::data(precompiled)]), [], true)
-            .unwrap()
-            .try_into()
-            .unwrap();
-    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
-}
-
-#[test]
-fn test_compilation_cache() {
+fn test_compilation_cache_config() {
     std::fs::write("test-cache", "[cache]\nenabled = true\n").unwrap();
     let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
         .with_cache_config("test-cache")

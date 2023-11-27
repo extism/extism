@@ -314,15 +314,6 @@ impl Plugin {
         Ok(plugin)
     }
 
-    /// Compile an Extism plugin
-    pub fn compile(&self) -> Result<Vec<u8>, Error> {
-        let main = self.modules.get("main").unwrap_or_else(|| {
-            let entry = self.modules.iter().last().unwrap();
-            entry.1
-        });
-        main.serialize()
-    }
-
     // Resets the store and linker to avoid running into Wasmtime memory limits
     pub(crate) fn reset_store(
         &mut self,
