@@ -10,20 +10,6 @@ pub struct DebugOptions {
     pub debug_info: bool,
 }
 
-impl TryFrom<DebugOptions> for wasmtime::Config {
-    type Error = Error;
-    fn try_from(value: DebugOptions) -> Result<wasmtime::Config, Self::Error> {
-        wasmtime_config(&value, None)
-    }
-}
-
-impl<'a> TryFrom<&'a DebugOptions> for wasmtime::Config {
-    type Error = Error;
-    fn try_from(value: &'a DebugOptions) -> Result<wasmtime::Config, Self::Error> {
-        wasmtime_config(value, None)
-    }
-}
-
 impl Default for DebugOptions {
     fn default() -> Self {
         let debug_info = std::env::var("EXTISM_DEBUG").is_ok();

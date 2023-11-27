@@ -198,7 +198,7 @@ impl Plugin {
             config.cache_config_load_default()?;
         }
 
-        let engine = Engine::new(&wasmtime_config(&debug_options, cache_dir)?)?;
+        let engine = Engine::new(&config)?;
         let (manifest, modules) = manifest::load(&engine, wasm)?;
 
         let available_pages = manifest.memory.max_pages;
