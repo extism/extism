@@ -58,17 +58,12 @@ pub struct PluginBuilder<'a> {
 impl<'a> PluginBuilder<'a> {
     /// Create a new `PluginBuilder` from a `Manifest` or raw Wasm bytes
     pub fn new(plugin: impl Into<WasmInput<'a>>) -> Self {
-        let cache_config = if let Ok(d) = std::env::var("EXTISM_CACHE_CONFIG") {
-            Some(std::path::PathBuf::from(d))
-        } else {
-            None
-        };
         PluginBuilder {
             source: plugin.into(),
             wasi: false,
             functions: vec![],
             debug_options: DebugOptions::default(),
-            cache_config: cache_config.map(PathBuf::from),
+            cache_config: None,
         }
     }
 

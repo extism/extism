@@ -162,30 +162,6 @@ impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
     }
 }
 
-pub(crate) fn wasmtime_config(
-    debug_options: &DebugOptions,
-    path: Option<PathBuf>,
-) -> Result<wasmtime::Config, Error> {
-    let mut config = Config::new();
-    config
-        .epoch_interruption(true)
-        .debug_info(debug_options.debug_info)
-        .coredump_on_trap(debug_options.coredump.is_some())
-        .profiler(debug_options.profiling_strategy)
-        .wasm_tail_call(true)
-        .wasm_function_references(true);
-
-    if let Some(path) = &path {
-        config.cache_config_load(path)?;
-    } else if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
-        config.cache_config_load(&env)?;
-    } else {
-        config.cache_config_load_default()?;
-    }
-
-    Ok(config)
-}
-
 impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
@@ -194,18 +170,7 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        let cache_dir = if let Ok(d) = std::env::var("EXTISM_CACHE_DIR") {
-            Some(PathBuf::from(d))
-        } else {
-            None
-        };
-        Self::build_new(
-            wasm.into(),
-            imports,
-            with_wasi,
-            Default::default(),
-            cache_dir,
-        )
+        Self::build_new(wasm.into(), imports, with_wasi, Default::default(), None)
     }
 
     pub(crate) fn build_new(
@@ -216,6 +181,23 @@ impl Plugin {
         cache_dir: Option<PathBuf>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
+        let mut config = Config::new();
+        config
+            .epoch_interruption(true)
+            .debug_info(debug_options.debug_info)
+            .coredump_on_trap(debug_options.coredump.is_some())
+            .profiler(debug_options.profiling_strategy)
+            .wasm_tail_call(true)
+            .wasm_function_references(true);
+
+        if let Some(path) = &cache_dir {
+            config.cache_config_load(path)?;
+        } else if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
+            config.cache_config_load(&env)?;
+        } else {
+            config.cache_config_load_default()?;
+        }
+
         let engine = Engine::new(&wasmtime_config(&debug_options, cache_dir)?)?;
         let (manifest, modules) = manifest::load(&engine, wasm)?;
 

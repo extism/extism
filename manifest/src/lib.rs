@@ -181,6 +181,18 @@ impl Wasm {
             Wasm::Url { req: _, meta } => meta,
         }
     }
+
+    /// Update Wasm module name
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.meta_mut().name = Some(name.into());
+        self
+    }
+
+    /// Update Wasm module hash
+    pub fn with_hash(mut self, hash: impl Into<String>) -> Self {
+        self.meta_mut().hash = Some(hash.into());
+        self
+    }
 }
 
 #[cfg(feature = "json_schema")]
@@ -235,6 +247,11 @@ impl Manifest {
             timeout_ms: default_timeout(),
             ..Default::default()
         }
+    }
+
+    pub fn with_wasm(mut self, wasm: impl Into<Wasm>) -> Self {
+        self.wasm.push(wasm.into());
+        self
     }
 
     /// Disallow HTTP requests to all hosts
