@@ -58,13 +58,13 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             file.read_to_end(&mut buf)?;
 
             check_hash(&meta.hash, &buf)?;
-            Ok((name, new_module(engine, &buf)?))
+            Ok((name, Module::new(engine, &buf)?))
         }
         extism_manifest::Wasm::Data { meta, data } => {
             check_hash(&meta.hash, data)?;
             Ok((
                 meta.name.as_deref().unwrap_or("main").to_string(),
-                new_module(engine, data)?,
+                Module::new(engine, data)?,
             ))
         }
         #[allow(unused)]
@@ -117,7 +117,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 check_hash(&meta.hash, &data)?;
 
                 // Convert fetched data to module
-                let module = new_module(engine, &data)?;
+                let module = Module::new(engine, &data)?;
 
                 Ok((name.to_string(), module))
             }
@@ -132,7 +132,7 @@ pub(crate) fn load(
     input: WasmInput<'_>,
 ) -> Result<(extism_manifest::Manifest, BTreeMap<String, Module>), Error> {
     let mut mods = BTreeMap::new();
-    mods.insert(EXTISM_ENV_MODULE.to_string(), new_module(engine, WASM)?);
+    mods.insert(EXTISM_ENV_MODULE.to_string(), Module::new(engine, WASM)?);
 
     match input {
         WasmInput::Data(data) => {
@@ -156,7 +156,7 @@ pub(crate) fn load(
                 }
             }
 
-            let m = new_module(engine, &data)?;
+            let m = Module::new(engine, &data)?;
             mods.insert("main".to_string(), m);
             Ok((Default::default(), mods))
         }
@@ -196,17 +196,4 @@ pub(crate) fn modules(
     }
 
     Ok(())
-}
-
-/// Precompile a Wasm module or get the cached pre-compiled module if it's available
-pub fn new_module(engine: &Engine, data: &[u8]) -> Result<Module, Error> {
-    let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-    let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
-
-    if has_magic || is_wat {
-        Ok(Module::new(engine, data)?)
-    } else {
-        trace!("Found precompiled Wasm module");
-        unsafe { Ok(Module::deserialize(engine, data)?) }
-    }
 }
