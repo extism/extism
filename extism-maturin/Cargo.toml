@@ -1,11 +1,13 @@
 [package]
 name = "extism-sys"
 edition.workspace = true
-authors.workspace = true
 license.workspace = true
 homepage.workspace = true
 repository.workspace = true
 version.workspace = true
+# Explicitly omit authors from this package since our Cargo "authors" are
+# incompatible with PyPI's requirements.
+# authors.workspace = true
 
 [lib]
 name = "extism_sys"
