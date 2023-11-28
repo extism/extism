@@ -4,6 +4,7 @@ use crate::*;
 
 pub const EXTISM_ENV_MODULE: &str = "extism:host/env";
 pub const EXTISM_USER_MODULE: &str = "extism:host/user";
+pub(crate) const MAIN_KEY: &str = "main";
 
 #[derive(Default, Clone)]
 pub(crate) struct Output {
@@ -248,11 +249,11 @@ impl Plugin {
 
         // Get the `main` module, or the last one if `main` doesn't exist
         let main = modules
-            .get("main")
+            .get(MAIN_KEY)
             .unwrap_or_else(|| modules.values().last().unwrap());
 
         for (name, module) in modules.iter() {
-            if name != "main" {
+            if name != MAIN_KEY {
                 linker.module(&mut store, name, module)?;
             }
         }
@@ -350,11 +351,11 @@ impl Plugin {
 
             let main = self
                 .modules
-                .get("main")
+                .get(MAIN_KEY)
                 .unwrap_or_else(|| self.modules.values().last().unwrap());
 
             for (name, module) in self.modules.iter() {
-                if name != "main" {
+                if name != MAIN_KEY {
                     self.linker.module(&mut self.store, name, module)?;
                 }
             }
@@ -406,7 +407,7 @@ impl Plugin {
 
     /// Returns `true` if the given function exists, otherwise `false`
     pub fn function_exists(&mut self, function: impl AsRef<str>) -> bool {
-        self.modules["main"]
+        self.modules[MAIN_KEY]
             .get_export(function.as_ref())
             .map(|x| x.func().is_some())
             .unwrap_or(false)

@@ -4,7 +4,7 @@ use std::io::Read;
 
 use sha2::Digest;
 
-use crate::plugin::WasmInput;
+use crate::plugin::{WasmInput, MAIN_KEY};
 use crate::*;
 
 fn hex(data: &[u8]) -> String {
@@ -45,7 +45,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
             // Figure out a good name for the file
             let name = match &meta.name {
-                None => meta.name.as_deref().unwrap_or("main").to_string(),
+                None => meta.name.as_deref().unwrap_or(MAIN_KEY).to_string(),
                 Some(n) => n.clone(),
             };
 
@@ -60,7 +60,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
         extism_manifest::Wasm::Data { meta, data } => {
             check_hash(&meta.hash, data)?;
             Ok((
-                meta.name.as_deref().unwrap_or("main").to_string(),
+                meta.name.as_deref().unwrap_or(MAIN_KEY).to_string(),
                 Module::new(engine, data)?,
             ))
         }
@@ -78,7 +78,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             let file_name = url.split('/').last().unwrap_or_default();
             let name = match &meta.name {
                 Some(name) => name.as_str(),
-                None => meta.name.as_deref().unwrap_or("main"),
+                None => meta.name.as_deref().unwrap_or(MAIN_KEY),
             };
 
             #[cfg(not(feature = "register-http"))]
@@ -144,7 +144,7 @@ pub(crate) fn load(
             }
 
             let m = Module::new(engine, data)?;
-            mods.insert("main".to_string(), m);
+            mods.insert(MAIN_KEY.to_string(), m);
             Ok((Default::default(), mods))
         }
         WasmInput::Manifest(m) => {
@@ -172,7 +172,7 @@ pub(crate) fn modules(
     // If there's only one module, it should be called `main`
     if manifest.wasm.len() == 1 {
         let (_, m) = to_module(engine, &manifest.wasm[0])?;
-        modules.insert("main".to_string(), m);
+        modules.insert(MAIN_KEY.to_string(), m);
         return Ok(());
     }
 
