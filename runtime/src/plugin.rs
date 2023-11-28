@@ -222,6 +222,9 @@ impl Plugin {
 
         let engine = Engine::new(&config)?;
         let (manifest, modules) = manifest::load(&engine, wasm)?;
+        if modules.len() <= 1 {
+            anyhow::bail!("No wasm modules provided");
+        }
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");
@@ -244,13 +247,12 @@ impl Plugin {
         }
 
         // Get the `main` module, or the last one if `main` doesn't exist
-        let (main_name, main) = modules.get("main").map(|x| ("main", x)).unwrap_or_else(|| {
-            let entry = modules.iter().last().unwrap();
-            (entry.0.as_str(), entry.1)
-        });
+        let main = modules
+            .get("main")
+            .unwrap_or_else(|| modules.values().last().unwrap());
 
         for (name, module) in modules.iter() {
-            if name != main_name {
+            if name != "main" {
                 linker.module(&mut store, name, module)?;
             }
         }
@@ -346,17 +348,13 @@ impl Plugin {
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
 
-            let (main_name, main) = self
+            let main = self
                 .modules
                 .get("main")
-                .map(|x| ("main", x))
-                .unwrap_or_else(|| {
-                    let entry = self.modules.iter().last().unwrap();
-                    (entry.0.as_str(), entry.1)
-                });
+                .unwrap_or_else(|| self.modules.values().last().unwrap());
 
             for (name, module) in self.modules.iter() {
-                if name != main_name {
+                if name != "main" {
                     self.linker.module(&mut self.store, name, module)?;
                 }
             }

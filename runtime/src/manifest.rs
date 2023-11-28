@@ -45,10 +45,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
             // Figure out a good name for the file
             let name = match &meta.name {
-                None => {
-                    let name = path.with_extension("");
-                    name.file_name().unwrap().to_string_lossy().to_string()
-                }
+                None => meta.name.as_deref().unwrap_or("main").to_string(),
                 Some(n) => n.clone(),
             };
 
@@ -81,17 +78,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             let file_name = url.split('/').last().unwrap_or_default();
             let name = match &meta.name {
                 Some(name) => name.as_str(),
-                None => {
-                    let mut name = "main";
-                    if let Some(n) = file_name.strip_suffix(".wasm") {
-                        name = n;
-                    }
-
-                    if let Some(n) = file_name.strip_suffix(".wat") {
-                        name = n;
-                    }
-                    name
-                }
+                None => meta.name.as_deref().unwrap_or("main"),
             };
 
             #[cfg(not(feature = "register-http"))]
