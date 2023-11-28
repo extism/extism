@@ -36,6 +36,18 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
+      - name: Release Rust Convert Crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          cargo publish --manifest-path convert/Cargo.toml --allow-dirty
+
+      - name: Release Rust Manifest Crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          cargo publish --manifest-path manifest/Cargo.toml --allow-dirty
+
       - name: Release Runtime
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
