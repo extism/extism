@@ -23,11 +23,10 @@ pub use current_plugin::CurrentPlugin;
 pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
 pub use extism_manifest::{Manifest, Wasm, WasmMetadata};
 pub use function::{Function, UserData, Val, ValType, PTR};
-pub use plugin::{CancelHandle, Plugin, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
-pub use plugin_builder::PluginBuilder;
+pub use plugin::{CancelHandle, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
+pub use plugin_builder::{DebugOptions, PluginBuilder};
 
 pub(crate) use internal::{Internal, Wasi};
-pub(crate) use plugin_builder::DebugOptions;
 pub(crate) use timer::{Timer, TimerAction};
 pub(crate) use tracing::{debug, error, trace, warn};
 

@@ -539,3 +539,36 @@ fn test_http_post() {
     assert!(!res.is_empty());
     assert!(res.contains(&data));
 }
+
+#[test]
+fn test_disable_cache() {
+    // Warmup cache
+    let _plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
+
+    // This should be fast
+    let start = std::time::Instant::now();
+    let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let t = std::time::Instant::now() - start;
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+
+    // This should take longer than the first run
+    let start = std::time::Instant::now();
+    let mut plugin: CountVowelsPlugin = PluginBuilder::new(WASM_NO_FUNCTIONS)
+        .with_cache_disabled()
+        .build()
+        .unwrap()
+        .try_into()
+        .unwrap();
+    let t1 = std::time::Instant::now() - start;
+    let _output: Json<Count> = plugin.count_vowels("abc123").unwrap();
+
+    assert!(t < t1);
+}
