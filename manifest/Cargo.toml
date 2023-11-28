@@ -1,12 +1,12 @@
 [package]
 name = "extism-manifest"
-version = "1.0.0-rc3"
-edition = "2021"
-authors = ["The Extism Authors", "oss@extism.org"]
-license = "BSD-3-Clause"
-homepage = "https://extism.org"
-repository = "https://github.com/extism/extism"
 description = "Extism plug-in manifest crate"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+version.workspace = true
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
