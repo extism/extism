@@ -225,6 +225,8 @@ impl Plugin {
         let (manifest, modules) = manifest::load(&engine, wasm)?;
         if modules.len() <= 1 {
             anyhow::bail!("No wasm modules provided");
+        } else if !modules.contains_key(MAIN_KEY) {
+            anyhow::bail!("No main module provided");
         }
 
         let available_pages = manifest.memory.max_pages;
@@ -247,11 +249,7 @@ impl Plugin {
             })?;
         }
 
-        // Get the `main` module, or the last one if `main` doesn't exist
-        let main = modules
-            .get(MAIN_KEY)
-            .unwrap_or_else(|| modules.values().last().unwrap());
-
+        let main = &modules[MAIN_KEY];
         for (name, module) in modules.iter() {
             if name != MAIN_KEY {
                 linker.module(&mut store, name, module)?;
@@ -349,11 +347,7 @@ impl Plugin {
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
 
-            let main = self
-                .modules
-                .get(MAIN_KEY)
-                .unwrap_or_else(|| self.modules.values().last().unwrap());
-
+            let main = &self.modules[MAIN_KEY];
             for (name, module) in self.modules.iter() {
                 if name != MAIN_KEY {
                     self.linker.module(&mut self.store, name, module)?;
