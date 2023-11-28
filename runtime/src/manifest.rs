@@ -166,7 +166,9 @@ pub(crate) fn modules(
     modules: &mut BTreeMap<String, Module>,
 ) -> Result<(), Error> {
     if manifest.wasm.is_empty() {
-        return Err(anyhow::format_err!("No wasm files specified"));
+        return Err(anyhow::format_err!(
+            "No wasm files specified in Extism manifest"
+        ));
     }
 
     // If there's only one module, it should be called `main`
@@ -178,6 +180,9 @@ pub(crate) fn modules(
 
     for f in &manifest.wasm {
         let (name, m) = to_module(engine, f)?;
+        if modules.contains_key(&name) {
+            anyhow::bail!("Duplicate module name found in Extism manifest: {name}");
+        }
         trace!("Found module {}", name);
         modules.insert(name, m);
     }
