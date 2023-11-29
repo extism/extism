@@ -4,6 +4,7 @@ use crate::*;
 
 pub const EXTISM_ENV_MODULE: &str = "extism:host/env";
 pub const EXTISM_USER_MODULE: &str = "extism:host/user";
+pub(crate) const MAIN_KEY: &str = "main";
 
 #[derive(Default, Clone)]
 pub(crate) struct Output {
@@ -222,6 +223,11 @@ impl Plugin {
 
         let engine = Engine::new(&config)?;
         let (manifest, modules) = manifest::load(&engine, wasm)?;
+        if modules.len() <= 1 {
+            anyhow::bail!("No wasm modules provided");
+        } else if !modules.contains_key(MAIN_KEY) {
+            anyhow::bail!("No main module provided");
+        }
 
         let available_pages = manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");
@@ -243,14 +249,9 @@ impl Plugin {
             })?;
         }
 
-        // Get the `main` module, or the last one if `main` doesn't exist
-        let (main_name, main) = modules.get("main").map(|x| ("main", x)).unwrap_or_else(|| {
-            let entry = modules.iter().last().unwrap();
-            (entry.0.as_str(), entry.1)
-        });
-
+        let main = &modules[MAIN_KEY];
         for (name, module) in modules.iter() {
-            if name != main_name {
+            if name != MAIN_KEY {
                 linker.module(&mut store, name, module)?;
             }
         }
@@ -346,17 +347,9 @@ impl Plugin {
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
 
-            let (main_name, main) = self
-                .modules
-                .get("main")
-                .map(|x| ("main", x))
-                .unwrap_or_else(|| {
-                    let entry = self.modules.iter().last().unwrap();
-                    (entry.0.as_str(), entry.1)
-                });
-
+            let main = &self.modules[MAIN_KEY];
             for (name, module) in self.modules.iter() {
-                if name != main_name {
+                if name != MAIN_KEY {
                     self.linker.module(&mut self.store, name, module)?;
                 }
             }
@@ -408,7 +401,7 @@ impl Plugin {
 
     /// Returns `true` if the given function exists, otherwise `false`
     pub fn function_exists(&mut self, function: impl AsRef<str>) -> bool {
-        self.modules["main"]
+        self.modules[MAIN_KEY]
             .get_export(function.as_ref())
             .map(|x| x.func().is_some())
             .unwrap_or(false)

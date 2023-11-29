@@ -4,7 +4,7 @@ use std::io::Read;
 
 use sha2::Digest;
 
-use crate::plugin::WasmInput;
+use crate::plugin::{WasmInput, MAIN_KEY};
 use crate::*;
 
 fn hex(data: &[u8]) -> String {
@@ -45,10 +45,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
 
             // Figure out a good name for the file
             let name = match &meta.name {
-                None => {
-                    let name = path.with_extension("");
-                    name.file_name().unwrap().to_string_lossy().to_string()
-                }
+                None => meta.name.as_deref().unwrap_or(MAIN_KEY).to_string(),
                 Some(n) => n.clone(),
             };
 
@@ -63,7 +60,7 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
         extism_manifest::Wasm::Data { meta, data } => {
             check_hash(&meta.hash, data)?;
             Ok((
-                meta.name.as_deref().unwrap_or("main").to_string(),
+                meta.name.as_deref().unwrap_or(MAIN_KEY).to_string(),
                 Module::new(engine, data)?,
             ))
         }
@@ -78,20 +75,9 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             meta,
         } => {
             // Get the file name
-            let file_name = url.split('/').last().unwrap_or_default();
             let name = match &meta.name {
                 Some(name) => name.as_str(),
-                None => {
-                    let mut name = "main";
-                    if let Some(n) = file_name.strip_suffix(".wasm") {
-                        name = n;
-                    }
-
-                    if let Some(n) = file_name.strip_suffix(".wat") {
-                        name = n;
-                    }
-                    name
-                }
+                None => meta.name.as_deref().unwrap_or(MAIN_KEY),
             };
 
             #[cfg(not(feature = "register-http"))]
@@ -157,7 +143,7 @@ pub(crate) fn load(
             }
 
             let m = Module::new(engine, data)?;
-            mods.insert("main".to_string(), m);
+            mods.insert(MAIN_KEY.to_string(), m);
             Ok((Default::default(), mods))
         }
         WasmInput::Manifest(m) => {
@@ -179,18 +165,27 @@ pub(crate) fn modules(
     modules: &mut BTreeMap<String, Module>,
 ) -> Result<(), Error> {
     if manifest.wasm.is_empty() {
-        return Err(anyhow::format_err!("No wasm files specified"));
+        return Err(anyhow::format_err!(
+            "No wasm files specified in Extism manifest"
+        ));
     }
 
     // If there's only one module, it should be called `main`
     if manifest.wasm.len() == 1 {
         let (_, m) = to_module(engine, &manifest.wasm[0])?;
-        modules.insert("main".to_string(), m);
+        modules.insert(MAIN_KEY.to_string(), m);
         return Ok(());
     }
 
-    for f in &manifest.wasm {
-        let (name, m) = to_module(engine, f)?;
+    for (i, f) in manifest.wasm.iter().enumerate() {
+        let (mut name, m) = to_module(engine, f)?;
+        // Rename the last module to `main` if no main is defined already
+        if i == manifest.wasm.len() - 1 && !modules.contains_key(MAIN_KEY) {
+            name = MAIN_KEY.to_string();
+        }
+        if modules.contains_key(&name) {
+            anyhow::bail!("Duplicate module name found in Extism manifest: {name}");
+        }
         trace!("Found module {}", name);
         modules.insert(name, m);
     }
