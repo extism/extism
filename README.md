@@ -1,7 +1,10 @@
 # [Extism](https://extism.org)
 
 [![Discord](https://img.shields.io/discord/1011124058408112148?color=%23404eed&label=Community%20Chat&logo=Discord&logoColor=%23404eed)](https://discord.gg/cx3usBCWnc)
+![GitHub Org's stars](https://img.shields.io/github/stars/extism)
 ![GitHub all releases](https://img.shields.io/github/downloads/extism/extism/total)
+![GitHub License](https://img.shields.io/github/license/extism/extism)
+![GitHub release (with filter)](https://img.shields.io/github/v/release/extism/extism)
 
 The universal plug-in system. Run WebAssembly extensions inside your app. Use idiomatic Host SDKs for [Go](https://github.com/extism/go-sdk#readme),
 [Ruby](https://github.com/extism/ruby-sdk#readme),
