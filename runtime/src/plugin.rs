@@ -132,7 +132,8 @@ impl Plugin {
             Config::new()
                 .epoch_interruption(true)
                 .debug_info(std::env::var("EXTISM_DEBUG").is_ok())
-                .profiler(profiling_strategy()),
+                .profiler(profiling_strategy())
+                .cache_config_load_default()?,
         )?;
         let mut imports = imports.into_iter();
         let (manifest, modules) = Manifest::new(&engine, wasm.as_ref())?;
