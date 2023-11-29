@@ -43,11 +43,8 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 return Err(anyhow::format_err!("File-based registration is disabled"));
             }
 
-            // Figure out a good name for the file
-            let name = match &meta.name {
-                None => meta.name.as_deref().unwrap_or(MAIN_KEY).to_string(),
-                Some(n) => n.clone(),
-            };
+            // Use the configured name or `MAIN_KEY`
+            let name = meta.name.as_deref().unwrap_or(MAIN_KEY).to_string();
 
             // Load file
             let mut buf = Vec::new();
@@ -74,11 +71,8 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
                 },
             meta,
         } => {
-            // Get the file name
-            let name = match &meta.name {
-                Some(name) => name.as_str(),
-                None => meta.name.as_deref().unwrap_or(MAIN_KEY),
-            };
+            // Use the configured name or `MAIN_KEY`
+            let name = meta.name.as_deref().unwrap_or(MAIN_KEY).to_string();
 
             #[cfg(not(feature = "register-http"))]
             {
