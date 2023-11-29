@@ -40,7 +40,7 @@ Load WebAssembly modules at any time in your app's lifetime and Extism will exec
 # API Status
 
 **Please note:** This project still under active development and APIs are still changing. We are aiming for a stable 1.0 release in January, 2024.
-The main branch may have breaking changes until that point, but if you starting today, an a 1.0.0-rcx release is the best place to start.
+The main branch may have breaking changes until that point, but if you starting today, a 1.0.0-rcx release is the best place to start.
 
 If you experience any problems or have any questions, please join our [Discord](https://discord.gg/cx3usBCWnc) and let us know.
 Our community is very responsive and happy to help get you started.
