@@ -75,7 +75,6 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             meta,
         } => {
             // Get the file name
-            let file_name = url.split('/').last().unwrap_or_default();
             let name = match &meta.name {
                 Some(name) => name.as_str(),
                 None => meta.name.as_deref().unwrap_or(MAIN_KEY),
@@ -178,8 +177,12 @@ pub(crate) fn modules(
         return Ok(());
     }
 
-    for f in &manifest.wasm {
-        let (name, m) = to_module(engine, f)?;
+    for (i, f) in manifest.wasm.iter().enumerate() {
+        let (mut name, m) = to_module(engine, f)?;
+        // Rename the last module to `main` if no main is defined already
+        if i == manifest.wasm.len() - 1 && !modules.contains_key(MAIN_KEY) {
+            name = MAIN_KEY.to_string();
+        }
         if modules.contains_key(&name) {
             anyhow::bail!("Duplicate module name found in Extism manifest: {name}");
         }
