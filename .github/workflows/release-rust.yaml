@@ -36,8 +36,38 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
+      - name: Release Rust Convert Crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          version=$(cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "extism") | .version')
+
+          if ! &>/dev/null curl -sLIf https://crates.io/api/v1/crates/extism-convert/${version}/download; then
+            cargo publish --manifest-path convert/Cargo.toml --allow-dirty
+          else
+            echo "already published ${version}"
+          fi
+
+      - name: Release Rust Manifest Crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          version=$(cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "extism") | .version')
+
+          if ! &>/dev/null curl -sLIf https://crates.io/api/v1/crates/extism-manifest/${version}/download; then
+            cargo publish --manifest-path manifest/Cargo.toml --allow-dirty
+          else
+            echo "already published ${version}"
+          fi
+
       - name: Release Runtime
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
         run: |
-          cargo publish --manifest-path runtime/Cargo.toml --allow-dirty
+          version=$(cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "extism") | .version')
+
+          if ! &>/dev/null curl -sLIf https://crates.io/api/v1/crates/extism/${version}/download; then
+            cargo publish --manifest-path runtime/Cargo.toml --allow-dirty
+          else
+            echo "already published ${version}"
+          fi
