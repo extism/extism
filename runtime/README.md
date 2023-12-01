@@ -52,7 +52,7 @@ fn main() {
 }
 ```
 
-> **Note**: See [the Manifest docs](https://docs.rs/extism-manifest/extism_manifest/) as it has a rich schema and a lot of options.
+> **Note**: See [the Manifest docs](https://docs.rs/extism-manifest/latest/extism_manifest/) as it has a rich schema and a lot of options.
 
 ### Calling A Plug-in's Exports
 
