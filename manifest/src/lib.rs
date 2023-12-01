@@ -5,7 +5,7 @@ use std::path::{Path, PathBuf};
 pub type ManifestMemory = MemoryOptions;
 
 /// Configure memory settings
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct MemoryOptions {
@@ -15,7 +15,7 @@ pub struct MemoryOptions {
 }
 
 /// Generic HTTP request structure
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct HttpRequest {
@@ -55,7 +55,7 @@ impl HttpRequest {
 }
 
 /// Provides additional metadata about a Webassembly module
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct WasmMetadata {
@@ -97,7 +97,7 @@ impl From<Vec<u8>> for Wasm {
 pub type ManifestWasm = Wasm;
 
 /// The `Wasm` type specifies how to access a WebAssembly module
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(untagged)]
 #[serde(deny_unknown_fields)]
@@ -204,7 +204,7 @@ fn base64_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::
 }
 
 /// The `Manifest` type is used to configure the runtime and specify how to load modules.
-#[derive(Default, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Default, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 #[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 #[serde(deny_unknown_fields)]
 pub struct Manifest {
