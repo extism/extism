@@ -270,16 +270,19 @@ macro_rules! host_fn {
             #[allow(unused)]
             mut $user_data: $crate::UserData<$dataty>,
         ) -> Result<(), $crate::Error> {
-            let mut index = 0;
-            $(
-                let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
-                #[allow(unused_assignments)]
-                {
-                    index += 1;
-                }
-            )*
-            let output = move || -> Result<_, $crate::Error> { $b };
-            let output: $crate::convert::MemoryHandle = plugin.memory_new(&output()?)?;
+            let output = {
+                let mut index = 0;
+                $(
+                    let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
+                    #[allow(unused_assignments)]
+                    {
+                        index += 1;
+                    }
+                )*
+                move || -> Result<_, $crate::Error> { $b }
+            };
+            let output = output()?;
+            let output: $crate::convert::MemoryHandle = plugin.memory_new(&output)?;
             if !outputs.is_empty() {
                 outputs[0] = plugin.memory_to_val(output);
             }
