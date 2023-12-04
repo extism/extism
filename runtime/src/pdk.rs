@@ -30,7 +30,7 @@ pub(crate) fn config_get(
     let offset = args!(input, 0, i64) as u64;
     let handle = match data.memory_handle(offset) {
         Some(h) => h,
-        None => anyhow::bail!("invalid handle offset: {offset}"),
+        None => anyhow::bail!("invalid handle offset for config key: {offset}"),
     };
     let key = data.memory_str(handle)?;
     let key = unsafe {
@@ -65,7 +65,7 @@ pub(crate) fn var_get(
     let offset = args!(input, 0, i64) as u64;
     let handle = match data.memory_handle(offset) {
         Some(h) => h,
-        None => anyhow::bail!("invalid handle offset: {offset}"),
+        None => anyhow::bail!("invalid handle offset for var key: {offset}"),
     };
     let key = data.memory_str(handle)?;
     let key = unsafe {
@@ -113,7 +113,7 @@ pub(crate) fn var_set(
     let key = {
         let handle = match data.memory_handle(key_offs) {
             Some(h) => h,
-            None => anyhow::bail!("invalid handle offset: {key_offs}"),
+            None => anyhow::bail!("invalid handle offset for var key: {key_offs}"),
         };
         let key = data.memory_str(handle)?;
         let key_len = key.len();
@@ -129,7 +129,7 @@ pub(crate) fn var_set(
 
     let handle = match data.memory_handle(voffset) {
         Some(h) => h,
-        None => anyhow::bail!("invalid handle offset: {key_offs}"),
+        None => anyhow::bail!("invalid handle offset for var value: {voffset}"),
     };
 
     let value = data.memory_bytes(handle)?.to_vec();
@@ -169,7 +169,7 @@ pub(crate) fn http_request(
         use std::io::Read;
         let handle = match data.memory_handle(http_req_offset) {
             Some(h) => h,
-            None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
+            None => anyhow::bail!("invalid handle offset for http request: {http_req_offset}"),
         };
         let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_bytes(handle)?)?;
 
@@ -210,7 +210,9 @@ pub(crate) fn http_request(
         let res = if body_offset > 0 {
             let handle = match data.memory_handle(body_offset) {
                 Some(h) => h,
-                None => anyhow::bail!("invalid handle offset: {http_req_offset}"),
+                None => {
+                    anyhow::bail!("invalid handle offset for http request body: {http_req_offset}")
+                }
             };
             let buf: &[u8] = data.memory_bytes(handle)?;
             r.send_bytes(buf)
@@ -273,7 +275,7 @@ pub fn log(
 
     let handle = match data.memory_handle(offset) {
         Some(h) => h,
-        None => anyhow::bail!("invalid handle offset: {offset}"),
+        None => anyhow::bail!("invalid handle offset for log message: {offset}"),
     };
 
     let id = data.id.to_string();

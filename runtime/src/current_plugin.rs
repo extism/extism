@@ -64,6 +64,9 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
 impl CurrentPlugin {
     /// Get a `MemoryHandle` from a memory offset
     pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
+        if offs == 0 {
+            return Some(MemoryHandle::null());
+        }
         let len = self.memory_length(offs).unwrap_or_default();
         if len == 0 {
             trace!(
