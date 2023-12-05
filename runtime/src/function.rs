@@ -259,11 +259,11 @@ impl Function {
 //     definition.
 #[macro_export]
 macro_rules! host_fn {
-    ($name: ident  ($($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
-        $crate::host_fn!($name (user_data: (); $($arg : $argty),*) $(-> $ret)? {$b});
+    ($pub:vis $name: ident  ($($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
+       $crate::host_fn!($pub $name (user_data: (); $($arg : $argty),*) $(-> $ret)? {$b});
     };
-    ($name: ident  ($user_data:ident : $dataty:ty; $($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
-        fn $name(
+    ($pub:vis $name: ident  ($user_data:ident : $dataty:ty; $($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
+        $pub fn $name(
             plugin: &mut $crate::CurrentPlugin,
             inputs: &[$crate::Val],
             outputs: &mut [$crate::Val],

@@ -15,10 +15,10 @@ use base64::Engine;
 /// and `FromBytesOwned` using `serde_json::from_vec`
 #[macro_export]
 macro_rules! encoding {
-    ($name:ident, $to_vec:expr, $from_slice:expr) => {
+    ($pub:vis $name:ident, $to_vec:expr, $from_slice:expr) => {
         #[doc = concat!(stringify!($name), " encoding")]
         #[derive(Debug)]
-        pub struct $name<T>(pub T);
+        $pub struct $name<T>(pub T);
 
         impl<T> $name<T> {
             pub fn into_inner(self) -> T {
@@ -50,10 +50,10 @@ macro_rules! encoding {
     };
 }
 
-encoding!(Json, serde_json::to_vec, serde_json::from_slice);
+encoding!(pub Json, serde_json::to_vec, serde_json::from_slice);
 
 #[cfg(feature = "msgpack")]
-encoding!(Msgpack, rmp_serde::to_vec, rmp_serde::from_slice);
+encoding!(pub Msgpack, rmp_serde::to_vec, rmp_serde::from_slice);
 
 impl<'a> ToBytes<'a> for serde_json::Value {
     type Bytes = Vec<u8>;

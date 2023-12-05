@@ -8,7 +8,7 @@ const WASM_GLOBALS: &[u8] = include_bytes!("../../../wasm/globals.wasm");
 const WASM_REFLECT: &[u8] = include_bytes!("../../../wasm/reflect.wasm");
 const WASM_HTTP: &[u8] = include_bytes!("../../../wasm/http.wasm");
 
-host_fn!(hello_world (a: String) -> String { Ok(a) });
+host_fn!(pub hello_world (a: String) -> String { Ok(a) });
 
 // Which is the same as:
 // fn hello_world(
@@ -235,7 +235,7 @@ fn test_timeout() {
     assert!(err == "timeout");
 }
 
-typed_plugin!(TestTypedPluginGenerics {
+typed_plugin!(pub TestTypedPluginGenerics {
     count_vowels<T: FromBytes<'a>>(&str) -> T
 });
 

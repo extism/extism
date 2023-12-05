@@ -897,8 +897,8 @@ pub(crate) enum GuestRuntime {
 /// ```
 #[macro_export]
 macro_rules! typed_plugin {
-    ($name:ident {$($f:ident $(< $( $lt:tt $( : $clt:path )? ),+ >)? ($input:ty) -> $output:ty);*$(;)?}) => {
-        pub struct $name(pub $crate::Plugin);
+    ($pub:vis $name:ident {$($f:ident $(< $( $lt:tt $( : $clt:path )? ),+ >)? ($input:ty) -> $output:ty);*$(;)?}) => {
+        $pub struct $name(pub $crate::Plugin);
 
         unsafe impl Send for $name {}
         unsafe impl Sync for $name {}
