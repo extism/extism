@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Extism.runtime.linux-musl-arm64</PackageId>
+    <Description>Internal implementation package for Extism to work on Linux Musl ARM64</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="runtimes\linux-musl-arm64\native\libextism.so"
+      CopyToOutputDirectory="Always"
+      Pack="true"
+      PackagePath="runtimes\linux-musl-arm64\native\libextism.so" />
+  </ItemGroup>
+
+</Project>

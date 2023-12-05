@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <PackageId>Extism.runtime.win-x64</PackageId>
+    <Description>Internal implementation package for Extism to work on Windows x64</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Content Include="runtimes\win-x64\native\extism.dll"
+      CopyToOutputDirectory="Always"
+      Pack="true"
+      PackagePath="runtimes\win-x64\native\extism.dll" />
+  </ItemGroup>
+
+</Project>

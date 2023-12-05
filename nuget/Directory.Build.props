@@ -1,0 +1,32 @@
+<Project>
+
+	<PropertyGroup>
+		<Authors>Extism Contributors</Authors>
+		<PackageTags>extism, wasm, plugin</PackageTags>
+		<PackageLicenseExpression>BSD-3-Clause</PackageLicenseExpression>
+		<PackageReadmeFile>README.md</PackageReadmeFile>
+		<PackageProjectUrl>https://extism.org</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/your/repository.git</RepositoryUrl>
+
+		<TargetFramework>netstandard2.1</TargetFramework>
+		<Deterministic>true</Deterministic>
+		<NoBuild>true</NoBuild>
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+
+		<MinVerIgnoreHeight>true</MinVerIgnoreHeight>
+		<MinVerTagPrefix>v</MinVerTagPrefix>
+		<MinVerVerbosity>normal</MinVerVerbosity>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<None Include="README.md" Pack="true" PackagePath="\" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="MinVer" Version="4.3.0">
+			<PrivateAssets>all</PrivateAssets>
+			<IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+		</PackageReference>
+	</ItemGroup>
+
+</Project>
