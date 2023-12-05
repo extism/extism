@@ -54,16 +54,16 @@ jobs:
               fi
           }
           
-          extract_archive "libextism-x86_64-pc-windows-msvc-*.tar.gz" "dotnet/nuget/runtimes/win-x64/native/"
-          extract_archive "libextism-aarch64-apple-darwin-*.tar.gz" "dotnet/nuget/runtimes/osx-arm64/native/"
-          extract_archive "libextism-x86_64-apple-darwin-*.tar.gz" "dotnet/nuget/runtimes/osx-x64/native/"
-          extract_archive "libextism-x86_64-unknown-linux-gnu-*.tar.gz" "dotnet/nuget/runtimes/linux-x64/native/"
-          extract_archive "libextism-aarch64-unknown-linux-gnu-*.tar.gz" "dotnet/nuget/runtimes/linux-arm64/native/"
-          extract_archive "libextism-aarch64-unknown-linux-musl-*.tar.gz" "dotnet/nuget/runtimes/linux-musl-arm64/native/"
+          extract_archive "libextism-x86_64-pc-windows-msvc-*.tar.gz" "nuget/runtimes/win-x64/native/"
+          extract_archive "libextism-aarch64-apple-darwin-*.tar.gz" "nuget/runtimes/osx-arm64/native/"
+          extract_archive "libextism-x86_64-apple-darwin-*.tar.gz" "nuget/runtimes/osx-x64/native/"
+          extract_archive "libextism-x86_64-unknown-linux-gnu-*.tar.gz" "nuget/runtimes/linux-x64/native/"
+          extract_archive "libextism-aarch64-unknown-linux-gnu-*.tar.gz" "nuget/runtimes/linux-arm64/native/"
+          extract_archive "libextism-aarch64-unknown-linux-musl-*.tar.gz" "nuget/runtimes/linux-musl-arm64/native/"
 
       - name: Pack NuGet packages
         run: |
-          find ./dotnet/nuget -type f -name "*.csproj" -exec dotnet pack {} -o release-artifacts \;
+          find ./nuget -type f -name "*.csproj" -exec dotnet pack {} -o release-artifacts \;
 
       - name: Publish NuGet packages
         run: |
