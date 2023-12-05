@@ -259,27 +259,30 @@ impl Function {
 //     definition.
 #[macro_export]
 macro_rules! host_fn {
-    ($name: ident  ($($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
-        $crate::host_fn!($name (user_data: (); $($arg : $argty),*) $(-> $ret)? {$b});
+    ($pub:vis $name: ident  ($($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
+       $crate::host_fn!($pub $name (user_data: (); $($arg : $argty),*) $(-> $ret)? {$b});
     };
-    ($name: ident  ($user_data:ident : $dataty:ty; $($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
-        fn $name(
+    ($pub:vis $name: ident  ($user_data:ident : $dataty:ty; $($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {
+        $pub fn $name(
             plugin: &mut $crate::CurrentPlugin,
             inputs: &[$crate::Val],
             outputs: &mut [$crate::Val],
             #[allow(unused)]
             mut $user_data: $crate::UserData<$dataty>,
         ) -> Result<(), $crate::Error> {
-            let mut index = 0;
-            $(
-                let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
-                #[allow(unused_assignments)]
-                {
-                    index += 1;
-                }
-            )*
-            let output = move || -> Result<_, $crate::Error> { $b };
-            let output: $crate::convert::MemoryHandle = plugin.memory_new(&output()?)?;
+            let output = {
+                let mut index = 0;
+                $(
+                    let $arg: $argty = plugin.memory_get_val(&inputs[index])?;
+                    #[allow(unused_assignments)]
+                    {
+                        index += 1;
+                    }
+                )*
+                move || -> Result<_, $crate::Error> { $b }
+            };
+            let output = output()?;
+            let output: $crate::convert::MemoryHandle = plugin.memory_new(&output)?;
             if !outputs.is_empty() {
                 outputs[0] = plugin.memory_to_val(output);
             }

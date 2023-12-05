@@ -17,3 +17,12 @@ fn test_issue_620() {
 
     println!("{}", p);
 }
+
+// https://github.com/extism/extism/issues/619
+host_fn!(
+    _resolve_file_path(path: &str) -> String {
+        let path = std::path::PathBuf::from(path);
+        let path = path.canonicalize()?;
+        Ok(path.display().to_string())
+    }
+);
