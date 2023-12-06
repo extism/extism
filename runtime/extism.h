@@ -3,10 +3,6 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#ifdef __cplusplus
-extern "C" {
-#endif
-
 #define EXTISM_FUNCTION(N) extern void N(ExtismCurrentPlugin*, const ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, void*)
 #define EXTISM_GO_FUNCTION(N) extern void N(void*, ExtismVal*, ExtismSize, ExtismVal*, ExtismSize, uintptr_t)
 
@@ -270,7 +266,3 @@ void extism_log_drain(void (*handler)(const char*, uintptr_t));
  * Get the Extism version string
  */
 const char *extism_version(void);
-
-#ifdef __cplusplus
-}
-#endif
