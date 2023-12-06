@@ -99,6 +99,10 @@ typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
 
 
 
+#ifdef __cplusplus
+extern "C" {
+#endif // __cplusplus
+
 /**
  * Get a plugin's ID, the returned bytes are a 16 byte buffer that represent a UUIDv4
  */
@@ -266,3 +270,7 @@ void extism_log_drain(void (*handler)(const char*, uintptr_t));
  * Get the Extism version string
  */
 const char *extism_version(void);
+
+#ifdef __cplusplus
+} // extern "C"
+#endif // __cplusplus
