@@ -16,6 +16,7 @@ fn main() {
         .with_sys_include("stdint.h")
         .with_sys_include("stdbool.h")
         .with_pragma_once(true)
+        .with_cpp_compat(true)
         .with_after_include(fn_macro)
         .rename_item("Size", "ExtismSize")
         .rename_item("ValType", "ExtismValType")
