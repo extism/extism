@@ -1,7 +1,6 @@
 target
 runtime/ast.json
 runtime/target
-Cargo.lock
 .DS_Store
 .vscode
 **/libextism.dylib
