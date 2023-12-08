@@ -20,7 +20,7 @@
           name = "libextism";
           src = ./.;
           copyLibs = true;
-          # copyTarget = true;
+          postInstall = "mkdir -p $out/include; cp runtime/extism.h $out/include";
         };
 
         # For `nix develop`:
