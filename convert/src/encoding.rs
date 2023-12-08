@@ -142,82 +142,47 @@ impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
 /// Raw does no conversion, it just copies the memory directly.
 /// Note: This should be used with caution and will not work with any Rust types that use pointers internally or
 // implement `Drop` - it should primarily be used with `repr(C)` structs that embed numeric fields.
+/// See [](https://docs.rs/bytemuck/latest/bytemuck/trait.NoUninit.html#safety)
 #[cfg(feature = "raw")]
-pub struct Raw<'a, T> {
-    ptr: *const T,
-    _t: std::marker::PhantomData<&'a ()>,
-}
+pub struct Raw<'a, T: bytemuck::Pod>(pub &'a T);
 
 #[cfg(feature = "raw")]
-impl<'a, T> Raw<'a, T> {
-    /// Create a new `Raw` handle from a reference.
-    ///
-    /// # Safety
-    /// This is unsafe because there is no way to statically guarantee that `T` can be copied in an out of memory, as a user
-    /// it is your job to ensure this is only used on structs that don't contain any pointers.
-    pub unsafe fn new(data: &'a T) -> Self {
-        Self {
-            ptr: data as *const T,
-            _t: Default::default(),
-        }
-    }
-
-    /// Get a reference from the `Raw` handle.
-    ///
-    /// # Safety
-    /// There is no guarantee that the resulting value was created from an actual `T`, so even if it was created from the corect
-    /// number of bytes, the layout of the resulting value might not be correct.
-    pub unsafe fn get(&self) -> &T {
-        &*self.ptr
-    }
-}
-
-#[cfg(feature = "raw")]
-impl<'a, T> ToBytes<'a> for Raw<'a, T> {
-    type Bytes = Vec<u8>;
+impl<'a, T: bytemuck::Pod> ToBytes<'a> for Raw<'a, T> {
+    type Bytes = &'a [u8];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
-        let mem = self.ptr as *const u8;
-        let slice = unsafe { std::slice::from_raw_parts(mem, std::mem::size_of::<T>()) };
-        Ok(slice.to_vec())
+        Ok(bytemuck::bytes_of(self.0))
     }
 }
 
 #[cfg(feature = "raw")]
-impl<'a, T> FromBytes<'a> for Raw<'a, T> {
-    fn from_bytes(data: &[u8]) -> Result<Self, Error> {
-        if data.len() != std::mem::size_of::<T>() {
-            let name = std::any::type_name::<T>();
-            anyhow::bail!("invalid memory size for Raw type: {}", name);
-        }
-        Ok(Raw {
-            ptr: data.as_ptr() as *const T,
-            _t: Default::default(),
-        })
+impl<'a, T: bytemuck::Pod> FromBytes<'a> for Raw<'a, T> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        let x = bytemuck::try_from_bytes(data).map_err(|x| Error::msg(x.to_string()))?;
+        Ok(Raw(x))
     }
 }
 
 #[test]
 #[cfg(feature = "raw")]
 fn test_raw() {
-    #[derive(Debug, Clone, PartialEq)]
+    #[derive(Debug, Clone, Copy, PartialEq)]
     struct TestRaw {
         a: i32,
         b: f64,
         c: bool,
     }
+    unsafe impl bytemuck::Pod for TestRaw {}
+    unsafe impl bytemuck::Zeroable for TestRaw {}
     let x = TestRaw {
         a: 123,
         b: 45678.91011,
         c: true,
     };
-    let raw = unsafe { Raw::new(&x).to_bytes().unwrap() };
+    let raw = Raw(&x).to_bytes().unwrap();
     let y = Raw::from_bytes(&raw).unwrap();
-    assert_eq!(&x, unsafe { y.get() });
+    assert_eq!(&x, y.0);
 
     let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(&raw);
     assert!(y.is_ok());
-
-    let y: Result<Raw<String>, Error> = Raw::from_bytes(&raw);
-    assert!(y.is_err());
 }
