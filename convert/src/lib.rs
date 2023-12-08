@@ -21,7 +21,7 @@ pub use encoding::Msgpack;
 #[cfg(feature = "protobuf")]
 pub use encoding::Protobuf;
 
-#[cfg(feature = "raw")]
+#[cfg(all(feature = "raw", target_endian = "little"))]
 pub use encoding::Raw;
 
 pub use from_bytes::{FromBytes, FromBytesOwned};

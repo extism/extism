@@ -143,10 +143,10 @@ impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
 /// Note: This should be used with caution and will not work with any Rust types that use pointers internally or
 // implement `Drop` - it should primarily be used with `repr(C)` structs that embed numeric fields.
 /// See [](https://docs.rs/bytemuck/latest/bytemuck/trait.NoUninit.html#safety)
-#[cfg(feature = "raw")]
+#[cfg(all(feature = "raw", target_endian = "little"))]
 pub struct Raw<'a, T: bytemuck::Pod>(pub &'a T);
 
-#[cfg(feature = "raw")]
+#[cfg(all(feature = "raw", target_endian = "little"))]
 impl<'a, T: bytemuck::Pod> ToBytes<'a> for Raw<'a, T> {
     type Bytes = &'a [u8];
 
@@ -155,7 +155,7 @@ impl<'a, T: bytemuck::Pod> ToBytes<'a> for Raw<'a, T> {
     }
 }
 
-#[cfg(feature = "raw")]
+#[cfg(all(feature = "raw", target_endian = "little"))]
 impl<'a, T: bytemuck::Pod> FromBytes<'a> for Raw<'a, T> {
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
         let x = bytemuck::try_from_bytes(data).map_err(|x| Error::msg(x.to_string()))?;
@@ -163,26 +163,30 @@ impl<'a, T: bytemuck::Pod> FromBytes<'a> for Raw<'a, T> {
     }
 }
 
-#[test]
-#[cfg(feature = "raw")]
-fn test_raw() {
-    #[derive(Debug, Clone, Copy, PartialEq)]
-    struct TestRaw {
-        a: i32,
-        b: f64,
-        c: bool,
-    }
-    unsafe impl bytemuck::Pod for TestRaw {}
-    unsafe impl bytemuck::Zeroable for TestRaw {}
-    let x = TestRaw {
-        a: 123,
-        b: 45678.91011,
-        c: true,
-    };
-    let raw = Raw(&x).to_bytes().unwrap();
-    let y = Raw::from_bytes(&raw).unwrap();
-    assert_eq!(&x, y.0);
+#[cfg(all(test, feature = "raw", target_endian = "little"))]
+mod tests {
+    use crate::*;
 
-    let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(&raw);
-    assert!(y.is_ok());
+    #[test]
+    fn test_raw() {
+        #[derive(Debug, Clone, Copy, PartialEq)]
+        struct TestRaw {
+            a: i32,
+            b: f64,
+            c: bool,
+        }
+        unsafe impl bytemuck::Pod for TestRaw {}
+        unsafe impl bytemuck::Zeroable for TestRaw {}
+        let x = TestRaw {
+            a: 123,
+            b: 45678.91011,
+            c: true,
+        };
+        let raw = Raw(&x).to_bytes().unwrap();
+        let y = Raw::from_bytes(&raw).unwrap();
+        assert_eq!(&x, y.0);
+
+        let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(&raw);
+        assert!(y.is_ok());
+    }
 }
