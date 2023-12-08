@@ -140,9 +140,7 @@ impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
 }
 
 /// Raw does no conversion, it just copies the memory directly.
-/// Note: This should be used with caution and will not work with any Rust types that use pointers internally or
-// implement `Drop` - it should primarily be used with `repr(C)` structs that embed numeric fields.
-/// See [](https://docs.rs/bytemuck/latest/bytemuck/trait.NoUninit.html#safety)
+/// Note: This will only work for types that implement [bytemuck::Pod](https://docs.rs/bytemuck/latest/bytemuck/trait.Pod.html)
 #[cfg(all(feature = "raw", target_endian = "little"))]
 pub struct Raw<'a, T: bytemuck::Pod>(pub &'a T);
 
