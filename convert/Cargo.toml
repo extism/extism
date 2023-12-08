@@ -24,3 +24,4 @@ serde = { version = "1.0.186", features = ["derive"] }
 default = ["msgpack", "protobuf"]
 msgpack = ["rmp-serde"]
 protobuf = ["prost"]
+raw = []
