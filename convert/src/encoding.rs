@@ -138,3 +138,53 @@ impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
         Ok(Protobuf(T::decode(data)?))
     }
 }
+
+/// Raw does no conversion, it just copies the memory directly.
+/// Note: This will only work for types that implement [bytemuck::Pod](https://docs.rs/bytemuck/latest/bytemuck/trait.Pod.html)
+#[cfg(all(feature = "raw", target_endian = "little"))]
+pub struct Raw<'a, T: bytemuck::Pod>(pub &'a T);
+
+#[cfg(all(feature = "raw", target_endian = "little"))]
+impl<'a, T: bytemuck::Pod> ToBytes<'a> for Raw<'a, T> {
+    type Bytes = &'a [u8];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(bytemuck::bytes_of(self.0))
+    }
+}
+
+#[cfg(all(feature = "raw", target_endian = "little"))]
+impl<'a, T: bytemuck::Pod> FromBytes<'a> for Raw<'a, T> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        let x = bytemuck::try_from_bytes(data).map_err(|x| Error::msg(x.to_string()))?;
+        Ok(Raw(x))
+    }
+}
+
+#[cfg(all(test, feature = "raw", target_endian = "little"))]
+mod tests {
+    use crate::*;
+
+    #[test]
+    fn test_raw() {
+        #[derive(Debug, Clone, Copy, PartialEq)]
+        struct TestRaw {
+            a: i32,
+            b: f64,
+            c: bool,
+        }
+        unsafe impl bytemuck::Pod for TestRaw {}
+        unsafe impl bytemuck::Zeroable for TestRaw {}
+        let x = TestRaw {
+            a: 123,
+            b: 45678.91011,
+            c: true,
+        };
+        let raw = Raw(&x).to_bytes().unwrap();
+        let y = Raw::from_bytes(&raw).unwrap();
+        assert_eq!(&x, y.0);
+
+        let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(&raw);
+        assert!(y.is_ok());
+    }
+}
