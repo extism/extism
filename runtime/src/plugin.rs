@@ -324,7 +324,7 @@ impl Plugin {
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
     ) -> Result<(), Error> {
-        if self.instantiations > 100 {
+        if self.needs_reset {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
             self.store = Store::new(
@@ -355,9 +355,9 @@ impl Plugin {
             }
             self.instantiations = 0;
             self.instance_pre = self.linker.instantiate_pre(main)?;
+            **instance_lock = None;
+            self.needs_reset = false;
         }
-
-        **instance_lock = None;
         Ok(())
     }
 
@@ -615,14 +615,11 @@ impl Plugin {
         let name = name.as_ref();
         let input = input.as_ref();
 
-        if self.needs_reset {
-            if let Err(e) = self.reset_store(lock) {
-                error!(
-                    plugin = self.id.to_string(),
-                    "call to Plugin::reset_store failed: {e:?}"
-                );
-            }
-            self.needs_reset = false;
+        if let Err(e) = self.reset_store(lock) {
+            error!(
+                plugin = self.id.to_string(),
+                "call to Plugin::reset_store failed: {e:?}"
+            );
         }
 
         self.instantiate(lock).map_err(|e| (e, -1))?;

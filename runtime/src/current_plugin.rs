@@ -97,6 +97,9 @@ impl CurrentPlugin {
     pub fn memory_new<'a, T: ToBytes<'a>>(&mut self, t: T) -> Result<MemoryHandle, Error> {
         let data = t.to_bytes()?;
         let data = data.as_ref();
+        if data.is_empty() {
+            return Ok(MemoryHandle::null());
+        }
         let handle = self.memory_alloc(data.len() as u64)?;
         let bytes = self.memory_bytes(handle)?;
         bytes.copy_from_slice(data.as_ref());

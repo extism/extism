@@ -283,7 +283,7 @@ fn test_multiple_instantiations() {
 #[test]
 fn test_globals() {
     let mut plugin = Plugin::new(WASM_GLOBALS, [], true).unwrap();
-    for i in 0..1000 {
+    for i in 0..100000 {
         let Json(count) = plugin.call::<_, Json<Count>>("globals", "").unwrap();
         assert_eq!(count.count, i);
     }
