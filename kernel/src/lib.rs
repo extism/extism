@@ -171,16 +171,14 @@ impl MemoryRoot {
     /// Resets the position of the allocator and zeroes out all allocations
     pub unsafe fn reset(&mut self) {
         // Clear allocated data
-        let blocks = self.blocks.as_mut_ptr();
-        let self_position = self.position.load(Ordering::Acquire);
+        let self_position = self.position.fetch_and(0, Ordering::SeqCst);
         core::ptr::write_bytes(
-            blocks as *mut u8,
+            self.blocks.as_mut_ptr() as *mut u8,
             MemoryStatus::Unused as u8,
             self_position as usize,
         );
 
         // Clear extism runtime metadata
-        self.position.store(0, Ordering::Release);
         self.error.store(0, Ordering::Release);
         self.input_offset = 0;
         self.input_length = 0;
