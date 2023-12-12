@@ -90,6 +90,14 @@ Get the plugin's output data.
 const uint8_t *extism_plugin_output_data(ExtismPlugin *plugin);
 ```
 
+### `extism_plugin_reset`
+
+Reset the Extism runtime, this will invalidate all allocated memory.
+
+```c
+bool extism_plugin_reset(ExtismPlugin *plugin);
+```
+
 ### `extism_log_file`
 
 Set log file and level.

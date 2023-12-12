@@ -702,6 +702,7 @@ impl std::io::Write for LogBuffer {
     }
 }
 
+/// Reset the Extism runtime, this will invalidate all allocated memory
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_reset(plugin: *mut Plugin) -> bool {
     let plugin = &mut *plugin;
