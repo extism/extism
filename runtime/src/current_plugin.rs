@@ -87,9 +87,15 @@ impl CurrentPlugin {
     }
 
     /// Access memory bytes as `str`
-    pub fn memory_str(&mut self, handle: MemoryHandle) -> Result<&mut str, Error> {
-        let bytes = self.memory_bytes(handle)?;
+    pub fn memory_str_mut(&mut self, handle: MemoryHandle) -> Result<&mut str, Error> {
+        let bytes = self.memory_bytes_mut(handle)?;
         let s = std::str::from_utf8_mut(bytes)?;
+        Ok(s)
+    }
+
+    pub fn memory_str(&mut self, handle: MemoryHandle) -> Result<&str, Error> {
+        let bytes = self.memory_bytes(handle)?;
+        let s = std::str::from_utf8(bytes)?;
         Ok(s)
     }
 
@@ -101,7 +107,7 @@ impl CurrentPlugin {
             return Ok(MemoryHandle::null());
         }
         let handle = self.memory_alloc(data.len() as u64)?;
-        let bytes = self.memory_bytes(handle)?;
+        let bytes = self.memory_bytes_mut(handle)?;
         bytes.copy_from_slice(data.as_ref());
         Ok(handle)
     }
@@ -147,7 +153,7 @@ impl CurrentPlugin {
         Ok(())
     }
 
-    pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
+    pub fn memory_bytes_mut(&mut self, handle: MemoryHandle) -> Result<&mut [u8], Error> {
         let (linker, mut store) = self.linker_and_store();
         if let Some(mem) = linker.get(&mut store, EXTISM_ENV_MODULE, "memory") {
             let mem = mem.into_memory().unwrap();
@@ -156,6 +162,20 @@ impl CurrentPlugin {
                 return Ok(&mut []);
             }
             return Ok(unsafe { std::slice::from_raw_parts_mut(ptr, handle.len()) });
+        }
+
+        anyhow::bail!("{} unable to locate extism memory", self.id)
+    }
+
+    pub fn memory_bytes(&mut self, handle: MemoryHandle) -> Result<&[u8], Error> {
+        let (linker, mut store) = self.linker_and_store();
+        if let Some(mem) = linker.get(&mut store, EXTISM_ENV_MODULE, "memory") {
+            let mem = mem.into_memory().unwrap();
+            let ptr = unsafe { mem.data_ptr(&store).add(handle.offset() as usize) };
+            if ptr.is_null() {
+                return Ok(&[]);
+            }
+            return Ok(unsafe { std::slice::from_raw_parts(ptr, handle.len()) });
         }
 
         anyhow::bail!("{} unable to locate extism memory", self.id)

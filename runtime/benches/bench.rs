@@ -146,6 +146,7 @@ pub fn reflect(c: &mut Criterion) {
             |b, elems| {
                 b.iter(|| {
                     assert_eq!(elems, plugin.call::<_, &[u8]>("reflect", &elems).unwrap());
+                    // plugin.reset().unwrap();
                 });
             },
         );
