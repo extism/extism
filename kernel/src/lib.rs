@@ -139,7 +139,9 @@ impl MemoryRoot {
         }
 
         // Ensure that at least one page is allocated to store the `MemoryRoot` data
-        if core::arch::wasm32::memory_size(0) == 0 && core::arch::wasm32::memory_grow(0, 1) == usize::MAX {
+        if core::arch::wasm32::memory_size(0) == 0
+            && core::arch::wasm32::memory_grow(0, 1) == usize::MAX
+        {
             core::arch::wasm32::unreachable()
         }
 
@@ -168,12 +170,15 @@ impl MemoryRoot {
 
     /// Resets the position of the allocator and zeroes out all allocations
     pub unsafe fn reset(&mut self) {
+        // Clear allocated data
+        let self_position = self.position.fetch_and(0, Ordering::SeqCst);
         core::ptr::write_bytes(
             self.blocks.as_mut_ptr() as *mut u8,
-            0,
-            self.length.load(Ordering::Acquire) as usize,
+            MemoryStatus::Unused as u8,
+            self_position as usize,
         );
-        self.position.store(0, Ordering::Release);
+
+        // Clear extism runtime metadata
         self.error.store(0, Ordering::Release);
         self.input_offset = 0;
         self.input_length = 0;

@@ -267,6 +267,11 @@ bool extism_log_custom(const char *log_level);
 void extism_log_drain(void (*handler)(const char*, uintptr_t));
 
 /**
+ * Reset the Extism runtime, this will invalidate all allocated memory
+ */
+bool extism_plugin_reset(ExtismPlugin *plugin);
+
+/**
  * Get the Extism version string
  */
 const char *extism_version(void);

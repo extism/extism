@@ -118,9 +118,7 @@ pub fn echo(c: &mut Criterion) {
 
 pub fn reflect(c: &mut Criterion) {
     let mut g = c.benchmark_group("reflect");
-    g.sample_size(500);
-    g.noise_threshold(1.0);
-    g.significance_level(0.2);
+
     let mut plugin = PluginBuilder::new(REFLECT)
         .with_wasi(true)
         .with_function(
@@ -132,22 +130,23 @@ pub fn reflect(c: &mut Criterion) {
         )
         .build()
         .unwrap();
-
     for (i, elements) in [
         b"a".repeat(65536),
         b"a".repeat(65536 * 10),
         b"a".repeat(65536 * 100),
+        b"a".repeat(65536),
     ]
     .iter()
     .enumerate()
     {
         g.throughput(criterion::Throughput::Bytes(elements.len() as u64));
         g.bench_with_input(
-            format!("reflect {} bytes", 10u32.pow(i as u32) * 65536),
+            format!("{i}: reflect {} bytes", elements.len()),
             elements,
             |b, elems| {
                 b.iter(|| {
                     assert_eq!(elems, plugin.call::<_, &[u8]>("reflect", &elems).unwrap());
+                    // plugin.reset().unwrap();
                 });
             },
         );

@@ -74,7 +74,7 @@ pub struct Plugin {
 
     /// Set to `true` when de-initializarion may have occured (i.e.a call to `_start`),
     /// in this case we need to re-initialize the entire module.
-    pub(crate) needs_reset: bool,
+    pub(crate) store_needs_reset: bool,
 
     pub(crate) debug_options: DebugOptions,
 }
@@ -303,7 +303,7 @@ impl Plugin {
             cancel_handle: CancelHandle { id, timer_tx },
             instantiations: 0,
             output: Output::default(),
-            needs_reset: false,
+            store_needs_reset: false,
             debug_options,
             _functions: imports,
         };
@@ -324,7 +324,7 @@ impl Plugin {
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
     ) -> Result<(), Error> {
-        if self.instantiations > 100 {
+        if self.store_needs_reset {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
             self.store = Store::new(
@@ -355,9 +355,9 @@ impl Plugin {
             }
             self.instantiations = 0;
             self.instance_pre = self.linker.instantiate_pre(main)?;
+            **instance_lock = None;
+            self.store_needs_reset = false;
         }
-
-        **instance_lock = None;
         Ok(())
     }
 
@@ -428,12 +428,7 @@ impl Plugin {
         let bytes = unsafe { std::slice::from_raw_parts(input, len) };
         debug!(plugin = &id, "input size: {}", bytes.len());
 
-        if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV_MODULE, "reset") {
-            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
-        } else {
-            error!(plugin = &id, "call to extism:host/env::reset failed");
-        }
-
+        self.reset()?;
         let handle = self.current_plugin_mut().memory_new(bytes)?;
 
         if let Some(f) = self
@@ -445,6 +440,19 @@ impl Plugin {
                 &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
                 &mut [],
             )?;
+        }
+
+        Ok(())
+    }
+
+    /// Reset Extism runtime, this will invalidate all allocated memory
+    pub fn reset(&mut self) -> Result<(), Error> {
+        let id = self.id.to_string();
+
+        if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV_MODULE, "reset") {
+            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+        } else {
+            error!(plugin = &id, "call to extism:host/env::reset failed");
         }
 
         Ok(())
@@ -615,14 +623,11 @@ impl Plugin {
         let name = name.as_ref();
         let input = input.as_ref();
 
-        if self.needs_reset {
-            if let Err(e) = self.reset_store(lock) {
-                error!(
-                    plugin = self.id.to_string(),
-                    "call to Plugin::reset_store failed: {e:?}"
-                );
-            }
-            self.needs_reset = false;
+        if let Err(e) = self.reset_store(lock) {
+            error!(
+                plugin = self.id.to_string(),
+                "call to Plugin::reset_store failed: {e:?}"
+            );
         }
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
@@ -667,7 +672,7 @@ impl Plugin {
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
-        self.needs_reset = name == "_start";
+        self.store_needs_reset = name == "_start";
 
         // Get extism error
         self.get_output_after_call().map_err(|x| (x, -1))?;
