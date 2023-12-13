@@ -24,55 +24,55 @@ jobs:
     strategy:
       matrix:
         include:
-          # - os: 'macos'
-          #   target: 'x86_64-apple-darwin'
-          #   artifact: 'libextism.dylib'
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: ''
-          #   pc-in: 'extism.pc.in'
-          #   static-pc-in: 'extism-static.pc.in'
-          # - os: 'macos'
-          #   target: 'aarch64-apple-darwin'
-          #   artifact: 'libextism.dylib'
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: ''
-          #   pc-in: 'extism.pc.in'
-          #   static-pc-in: 'extism-static.pc.in'
-          # - os: 'ubuntu'
-          #   target: 'aarch64-unknown-linux-gnu'
-          #   artifact: 'libextism.so'
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: ''
-          #   pc-in: 'extism.pc.in'
-          #   static-pc-in: 'extism-static.pc.in'
-          # - os: 'ubuntu'
-          #   target: 'aarch64-unknown-linux-musl'
-          #   artifact: 'libextism.so'
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: ''
-          #   pc-in: 'extism.pc.in'
-          #   static-pc-in: 'extism-static.pc.in'
-          # - os: 'ubuntu'
-          #   target: 'x86_64-unknown-linux-gnu'
-          #   artifact: 'libextism.so'
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: ''
-          #   pc-in: 'extism.pc.in'
-          #   static-pc-in: 'extism-static.pc.in'
-          # - os: 'ubuntu'
-          #   target: 'x86_64-unknown-linux-musl'
-          #   artifact: ''
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: ''
-          #   pc-in: ''
-          #   static-pc-in: 'extism-static.pc.in'
-          # - os: 'windows'
-          #   target: 'x86_64-pc-windows-gnu'
-          #   artifact: 'extism.dll'
-          #   static-artifact: 'libextism.a'
-          #   static-dll-artifact: 'extism.dll.a'
-          #   pc-in: 'extism.pc.in'
-          #   static-pc-in: 'extism-static.pc.in'
+          - os: 'macos'
+            target: 'x86_64-apple-darwin'
+            artifact: 'libextism.dylib'
+            static-artifact: 'libextism.a'
+            static-dll-artifact: ''
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
+          - os: 'macos'
+            target: 'aarch64-apple-darwin'
+            artifact: 'libextism.dylib'
+            static-artifact: 'libextism.a'
+            static-dll-artifact: ''
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
+          - os: 'ubuntu'
+            target: 'aarch64-unknown-linux-gnu'
+            artifact: 'libextism.so'
+            static-artifact: 'libextism.a'
+            static-dll-artifact: ''
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
+          - os: 'ubuntu'
+            target: 'aarch64-unknown-linux-musl'
+            artifact: 'libextism.so'
+            static-artifact: 'libextism.a'
+            static-dll-artifact: ''
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
+          - os: 'ubuntu'
+            target: 'x86_64-unknown-linux-gnu'
+            artifact: 'libextism.so'
+            static-artifact: 'libextism.a'
+            static-dll-artifact: ''
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
+          - os: 'ubuntu'
+            target: 'x86_64-unknown-linux-musl'
+            artifact: ''
+            static-artifact: 'libextism.a'
+            static-dll-artifact: ''
+            pc-in: ''
+            static-pc-in: 'extism-static.pc.in'
+          - os: 'windows'
+            target: 'x86_64-pc-windows-gnu'
+            artifact: 'extism.dll'
+            static-artifact: 'libextism.a'
+            static-dll-artifact: 'extism.dll.a'
+            pc-in: 'extism.pc.in'
+            static-pc-in: 'extism-static.pc.in'
           - os: 'windows'
             target: 'x86_64-pc-windows-msvc'
             artifact: 'extism.dll'
@@ -85,18 +85,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      # - name: Set version
-      #   shell: bash
-      #   run: |
-      #     version="${{ github.ref }}"
-      #     if [[ "$version" = "refs/heads/main" ]]; then
-      #       version="0.0.0-dev"
-      #     else
-      #       version="${version/refs\/tags\/v/}"
-      #     fi
-      #     sed -i -e "s/0.0.0+replaced-by-ci/${version}/g" Cargo.toml
-      #     pyproject="$(cat extism-maturin/pyproject.toml)"
-      #     <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
+      - name: Set version
+        shell: bash
+        run: |
+          version="${{ github.ref }}"
+          if [[ "$version" = "refs/heads/main" ]]; then
+            version="0.0.0-dev"
+          else
+            version="${version/refs\/tags\/v/}"
+          fi
+          sed -i -e "s/0.0.0+replaced-by-ci/${version}/g" Cargo.toml
+          pyproject="$(cat extism-maturin/pyproject.toml)"
+          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -119,38 +119,38 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
-      # - uses: actions/setup-python@v4
-      #   with:
-      #     python-version: '3.10'
+      - uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
 
-      # - name: Build wheels
-      #   uses: PyO3/maturin-action@v1
-      #   # maturin's cffi integration struggles with gnu headers on windows.
-      #   # there's partial work towards fixing this in `extism-maturin/build.rs`, but it's
-      #   # not sufficient to get it to work. omit it for now!
-      #   if: ${{ matrix.target != 'x86_64-pc-windows-gnu' && matrix.target != 'aarch64-unknown-linux-gnu' }}
-      #   with:
-      #     target: ${{ matrix.target }}
-      #     args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
-      #     sccache: 'true'
-      #     manylinux: auto
+      - name: Build wheels
+        uses: PyO3/maturin-action@v1
+        # maturin's cffi integration struggles with gnu headers on windows.
+        # there's partial work towards fixing this in `extism-maturin/build.rs`, but it's
+        # not sufficient to get it to work. omit it for now!
+        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' && matrix.target != 'aarch64-unknown-linux-gnu' }}
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
+          sccache: 'true'
+          manylinux: auto
 
-      # - name: Build GNU Linux wheels
-      #   uses: PyO3/maturin-action@v1
-      #   # One of our deps, "ring", needs a newer sysroot than what "manylinux: auto" provides.
-      #   if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-      #   with:
-      #     target: ${{ matrix.target }}
-      #     args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
-      #     sccache: 'true'
-      #     manylinux: 2_28
+      - name: Build GNU Linux wheels
+        uses: PyO3/maturin-action@v1
+        # One of our deps, "ring", needs a newer sysroot than what "manylinux: auto" provides.
+        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+        with:
+          target: ${{ matrix.target }}
+          args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
+          sccache: 'true'
+          manylinux: 2_28
 
-      # - name: Add pkg-config files except on MSVC
-      #   if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
-      #   shell: bash
-      #   run: |
-      #     SRC_DIR=target/${{ matrix.target }}/release
-      #     cp libextism/extism*.pc.in ${SRC_DIR}
+      - name: Add pkg-config files except on MSVC
+        if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
+        shell: bash
+        run: |
+          SRC_DIR=target/${{ matrix.target }}/release
+          cp libextism/extism*.pc.in ${SRC_DIR}
 
       - name: Prepare Artifact
         shell: bash
