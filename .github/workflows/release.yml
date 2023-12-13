@@ -70,7 +70,7 @@ jobs:
             target: 'x86_64-pc-windows-gnu'
             artifact: 'extism.dll'
             static-artifact: 'libextism.a'
-            static-dll-artifact: 'extism.dll.a'
+            static-dll-artifact: 'libextism.dll.a'
             pc-in: 'extism.pc.in'
             static-pc-in: 'extism-static.pc.in'
           - os: 'windows'
