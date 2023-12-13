@@ -156,7 +156,7 @@ jobs:
         shell: bash
         run: |
           SRC_DIR=target/${{ matrix.target }}/release
-          ls SRC_DIR
+          ls ${SRC_DIR}
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
