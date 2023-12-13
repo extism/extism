@@ -85,18 +85,18 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
 
-      - name: Set version
-        shell: bash
-        run: |
-          version="${{ github.ref }}"
-          if [[ "$version" = "refs/heads/main" ]]; then
-            version="0.0.0-dev"
-          else
-            version="${version/refs\/tags\/v/}"
-          fi
-          sed -i -e "s/0.0.0+replaced-by-ci/${version}/g" Cargo.toml
-          pyproject="$(cat extism-maturin/pyproject.toml)"
-          <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
+      # - name: Set version
+      #   shell: bash
+      #   run: |
+      #     version="${{ github.ref }}"
+      #     if [[ "$version" = "refs/heads/main" ]]; then
+      #       version="0.0.0-dev"
+      #     else
+      #       version="${version/refs\/tags\/v/}"
+      #     fi
+      #     sed -i -e "s/0.0.0+replaced-by-ci/${version}/g" Cargo.toml
+      #     pyproject="$(cat extism-maturin/pyproject.toml)"
+      #     <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
 
       - name: Install Rust
         uses: actions-rs/toolchain@v1
@@ -156,17 +156,11 @@ jobs:
         shell: bash
         run: |
           SRC_DIR=target/${{ matrix.target }}/release
-          ls ${SRC_DIR}
 
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
           CHECKSUM=${RELEASE_NAME}.checksum.txt
-          
-          echo 'tar -C ${SRC_DIR} -czvf ${ARCHIVE} extism.h \
-            ${{ matrix.artifact }} ${{ matrix.static-artifact }}  \
-            ${{ matrix.pc-in }} ${{ matrix.static-pc-in }} \
-            ${{ matrix.static-dll-artifact }}'
 
           # compress the shared library & create checksum
           cp runtime/extism.h ${SRC_DIR}
