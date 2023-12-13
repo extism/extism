@@ -24,55 +24,55 @@ jobs:
     strategy:
       matrix:
         include:
-          - os: 'macos'
-            target: 'x86_64-apple-darwin'
-            artifact: 'libextism.dylib'
-            static-artifact: 'libextism.a'
-            static-dll-artifact: ''
-            pc-in: 'extism.pc.in'
-            static-pc-in: 'extism-static.pc.in'
-          - os: 'macos'
-            target: 'aarch64-apple-darwin'
-            artifact: 'libextism.dylib'
-            static-artifact: 'libextism.a'
-            static-dll-artifact: ''
-            pc-in: 'extism.pc.in'
-            static-pc-in: 'extism-static.pc.in'
-          - os: 'ubuntu'
-            target: 'aarch64-unknown-linux-gnu'
-            artifact: 'libextism.so'
-            static-artifact: 'libextism.a'
-            static-dll-artifact: ''
-            pc-in: 'extism.pc.in'
-            static-pc-in: 'extism-static.pc.in'
-          - os: 'ubuntu'
-            target: 'aarch64-unknown-linux-musl'
-            artifact: 'libextism.so'
-            static-artifact: 'libextism.a'
-            static-dll-artifact: ''
-            pc-in: 'extism.pc.in'
-            static-pc-in: 'extism-static.pc.in'
-          - os: 'ubuntu'
-            target: 'x86_64-unknown-linux-gnu'
-            artifact: 'libextism.so'
-            static-artifact: 'libextism.a'
-            static-dll-artifact: ''
-            pc-in: 'extism.pc.in'
-            static-pc-in: 'extism-static.pc.in'
-          - os: 'ubuntu'
-            target: 'x86_64-unknown-linux-musl'
-            artifact: ''
-            static-artifact: 'libextism.a'
-            static-dll-artifact: ''
-            pc-in: ''
-            static-pc-in: 'extism-static.pc.in'
-          - os: 'windows'
-            target: 'x86_64-pc-windows-gnu'
-            artifact: 'extism.dll'
-            static-artifact: 'libextism.a'
-            static-dll-artifact: 'extism.dll.a'
-            pc-in: 'extism.pc.in'
-            static-pc-in: 'extism-static.pc.in'
+          # - os: 'macos'
+          #   target: 'x86_64-apple-darwin'
+          #   artifact: 'libextism.dylib'
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: ''
+          #   pc-in: 'extism.pc.in'
+          #   static-pc-in: 'extism-static.pc.in'
+          # - os: 'macos'
+          #   target: 'aarch64-apple-darwin'
+          #   artifact: 'libextism.dylib'
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: ''
+          #   pc-in: 'extism.pc.in'
+          #   static-pc-in: 'extism-static.pc.in'
+          # - os: 'ubuntu'
+          #   target: 'aarch64-unknown-linux-gnu'
+          #   artifact: 'libextism.so'
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: ''
+          #   pc-in: 'extism.pc.in'
+          #   static-pc-in: 'extism-static.pc.in'
+          # - os: 'ubuntu'
+          #   target: 'aarch64-unknown-linux-musl'
+          #   artifact: 'libextism.so'
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: ''
+          #   pc-in: 'extism.pc.in'
+          #   static-pc-in: 'extism-static.pc.in'
+          # - os: 'ubuntu'
+          #   target: 'x86_64-unknown-linux-gnu'
+          #   artifact: 'libextism.so'
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: ''
+          #   pc-in: 'extism.pc.in'
+          #   static-pc-in: 'extism-static.pc.in'
+          # - os: 'ubuntu'
+          #   target: 'x86_64-unknown-linux-musl'
+          #   artifact: ''
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: ''
+          #   pc-in: ''
+          #   static-pc-in: 'extism-static.pc.in'
+          # - os: 'windows'
+          #   target: 'x86_64-pc-windows-gnu'
+          #   artifact: 'extism.dll'
+          #   static-artifact: 'libextism.a'
+          #   static-dll-artifact: 'extism.dll.a'
+          #   pc-in: 'extism.pc.in'
+          #   static-pc-in: 'extism-static.pc.in'
           - os: 'windows'
             target: 'x86_64-pc-windows-msvc'
             artifact: 'extism.dll'
@@ -145,17 +145,18 @@ jobs:
           sccache: 'true'
           manylinux: 2_28
 
-      - name: Add pkg-config files except on MSVC
-        if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
-        shell: bash
-        run: |
-          SRC_DIR=target/${{ matrix.target }}/release
-          cp libextism/extism*.pc.in ${SRC_DIR}
+      # - name: Add pkg-config files except on MSVC
+      #   if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
+      #   shell: bash
+      #   run: |
+      #     SRC_DIR=target/${{ matrix.target }}/release
+      #     cp libextism/extism*.pc.in ${SRC_DIR}
 
       - name: Prepare Artifact
         shell: bash
         run: |
           SRC_DIR=target/${{ matrix.target }}/release
+          ls SRC_DIR
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
