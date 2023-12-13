@@ -119,31 +119,31 @@ jobs:
           command: build
           args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
+      # - uses: actions/setup-python@v4
+      #   with:
+      #     python-version: '3.10'
 
-      - name: Build wheels
-        uses: PyO3/maturin-action@v1
-        # maturin's cffi integration struggles with gnu headers on windows.
-        # there's partial work towards fixing this in `extism-maturin/build.rs`, but it's
-        # not sufficient to get it to work. omit it for now!
-        if: ${{ matrix.target != 'x86_64-pc-windows-gnu' && matrix.target != 'aarch64-unknown-linux-gnu' }}
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
-          sccache: 'true'
-          manylinux: auto
+      # - name: Build wheels
+      #   uses: PyO3/maturin-action@v1
+      #   # maturin's cffi integration struggles with gnu headers on windows.
+      #   # there's partial work towards fixing this in `extism-maturin/build.rs`, but it's
+      #   # not sufficient to get it to work. omit it for now!
+      #   if: ${{ matrix.target != 'x86_64-pc-windows-gnu' && matrix.target != 'aarch64-unknown-linux-gnu' }}
+      #   with:
+      #     target: ${{ matrix.target }}
+      #     args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
+      #     sccache: 'true'
+      #     manylinux: auto
 
-      - name: Build GNU Linux wheels
-        uses: PyO3/maturin-action@v1
-        # One of our deps, "ring", needs a newer sysroot than what "manylinux: auto" provides.
-        if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
-        with:
-          target: ${{ matrix.target }}
-          args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
-          sccache: 'true'
-          manylinux: 2_28
+      # - name: Build GNU Linux wheels
+      #   uses: PyO3/maturin-action@v1
+      #   # One of our deps, "ring", needs a newer sysroot than what "manylinux: auto" provides.
+      #   if: ${{ matrix.target == 'aarch64-unknown-linux-gnu' }}
+      #   with:
+      #     target: ${{ matrix.target }}
+      #     args: --release --out dist --find-interpreter -m extism-maturin/Cargo.toml
+      #     sccache: 'true'
+      #     manylinux: 2_28
 
       # - name: Add pkg-config files except on MSVC
       #   if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
@@ -157,6 +157,11 @@ jobs:
         run: |
           SRC_DIR=target/${{ matrix.target }}/release
           ls ${SRC_DIR}
+          echo 'tar -C ${SRC_DIR} -czvf ${ARCHIVE} extism.h \
+            ${{ matrix.artifact }} ${{ matrix.static-artifact }}  \
+            ${{ matrix.pc-in }} ${{ matrix.static-pc-in }} \
+            ${{ matrix.static-dll-artifact }}'
+
           DEST_DIR=${{ env.ARTIFACT_DIR }}
           RELEASE_NAME=libextism-${{ matrix.target }}-${{ github.ref_name }}
           ARCHIVE=${RELEASE_NAME}.tar.gz
