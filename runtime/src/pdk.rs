@@ -1,3 +1,5 @@
+use std::cmp::Ordering;
+
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
 
@@ -140,6 +142,26 @@ pub(crate) fn var_set(
     Ok(())
 }
 
+#[derive(Default, Debug)]
+struct Resolver;
+
+impl ureq::Resolver for Resolver {
+    fn resolve(&self, netloc: &str) -> std::io::Result<Vec<std::net::SocketAddr>> {
+        let addrs = std::net::ToSocketAddrs::to_socket_addrs(netloc)?.into_iter();
+        let mut addrs: Vec<_> = addrs.collect();
+        addrs.sort_by(|a, b| {
+            if a.is_ipv4() && b.is_ipv6() {
+                Ordering::Less
+            } else if a.is_ipv6() && b.is_ipv4() {
+                Ordering::Greater
+            } else {
+                Ordering::Equal
+            }
+        });
+        Ok(addrs)
+    }
+}
+
 /// Make an HTTP request
 /// Params: i64 (offset to JSON encoded HttpRequest), i64 (offset to body or 0)
 /// Returns: i64 (offset)
@@ -150,6 +172,7 @@ pub(crate) fn http_request(
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
     let http_req_offset = args!(input, 0, i64) as u64;
+
     #[cfg(not(feature = "http"))]
     {
         let handle = match data.memory_handle(http_req_offset) {
@@ -201,7 +224,8 @@ pub(crate) fn http_request(
             )));
         }
 
-        let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
+        let agent = ureq::builder().resolver(Resolver).build();
+        let mut r = agent.request(req.method.as_deref().unwrap_or("GET"), &req.url);
 
         for (k, v) in req.headers.iter() {
             r = r.set(k, v);
