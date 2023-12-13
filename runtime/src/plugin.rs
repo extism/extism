@@ -238,6 +238,20 @@ impl Plugin {
             CurrentPlugin::new(manifest, with_wasi, available_pages, id)?,
         );
         store.set_epoch_deadline(1);
+        store.call_hook(|data, hook| {
+            if hook.entering_host() {
+                let tx = Timer::tx();
+                tx.send(TimerAction::EnterHost {
+                    id: data.id.clone(),
+                })?;
+            } else if hook.exiting_host() {
+                let tx = Timer::tx();
+                tx.send(TimerAction::ExitHost {
+                    id: data.id.clone(),
+                })?;
+            }
+            Ok(())
+        });
 
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);

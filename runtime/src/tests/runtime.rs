@@ -235,6 +235,43 @@ fn test_timeout() {
     assert!(err == "timeout");
 }
 
+fn hello_world_timeout_manager(
+    plugin: &mut CurrentPlugin,
+    inputs: &[Val],
+    outputs: &mut [Val],
+    _user_data: UserData<()>,
+) -> Result<(), Error> {
+    let mgr = plugin.timeout_manager().map(|x| x.add_on_drop());
+    std::thread::sleep(std::time::Duration::from_secs(3));
+    outputs[0] = inputs[0].clone();
+    drop(mgr);
+    Ok(())
+}
+
+#[test]
+fn test_timeout_manager() {
+    let f = Function::new(
+        "hello_world",
+        [PTR],
+        [PTR],
+        UserData::default(),
+        hello_world_timeout_manager,
+    );
+
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM)])
+        .with_timeout(std::time::Duration::from_secs(1));
+    let mut plugin = Plugin::new(manifest, [f], true).unwrap();
+
+    let start = std::time::Instant::now();
+    let output: Result<&[u8], Error> = plugin.call("count_vowels", "testing");
+    println!("Result {:?}", output);
+    assert!(output.is_ok());
+    let end = std::time::Instant::now();
+    let time = end - start;
+    println!("Plugin ran for {:?}", time);
+    assert!(time.as_secs() >= 3);
+}
+
 typed_plugin!(pub TestTypedPluginGenerics {
     count_vowels<T: FromBytes<'a>>(&str) -> T
 });

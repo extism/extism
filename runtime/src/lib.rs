@@ -14,6 +14,7 @@ pub(crate) mod manifest;
 pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
+mod timeout_manager;
 mod timer;
 
 /// Extism C API
@@ -25,6 +26,7 @@ pub use extism_manifest::{Manifest, Wasm, WasmMetadata};
 pub use function::{Function, UserData, Val, ValType, PTR};
 pub use plugin::{CancelHandle, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
 pub use plugin_builder::{DebugOptions, PluginBuilder};
+pub use timeout_manager::TimeoutManager;
 
 pub(crate) use internal::{Internal, Wasi};
 pub(crate) use timer::{Timer, TimerAction};
