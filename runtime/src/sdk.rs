@@ -146,6 +146,25 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(
     }
 }
 
+/// Add milliseconds to a plug-in's timeout
+/// NOTE: this should only be called from host functions.
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_timeout_add_ms(
+    plugin: *mut CurrentPlugin,
+    ms: u64,
+) -> bool {
+    if plugin.is_null() {
+        return false;
+    }
+
+    let plugin = &mut *plugin;
+    if let Some(mgr) = plugin.timeout_manager() {
+        return mgr.add(std::time::Duration::from_millis(ms)).is_ok();
+    }
+
+    false
+}
+
 /// Create a new host function
 ///
 /// Arguments
