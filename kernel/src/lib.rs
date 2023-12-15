@@ -306,9 +306,26 @@ impl MemoryRoot {
         if !Self::pointer_in_bounds_fast(offs) {
             return None;
         }
-        let ptr = offs - core::mem::size_of::<MemoryBlock>() as u64;
-        let ptr = ptr as *mut MemoryBlock;
-        Some(&mut *ptr)
+
+        // Get the first block
+        let mut block = self.blocks.as_mut_ptr();
+
+        // Only loop while the block pointer is less then the current position
+        while (block as u64) < self.blocks.as_ptr() as u64 + offs {
+            let b = &mut *block;
+
+            // Get the block status, this lets us know if we are able to re-use it
+            let status = b.status.load(Ordering::Acquire);
+
+            if status == MemoryStatus::Active as u8 && b.data.as_ptr() as Pointer == offs {
+                return Some(b);
+            }
+
+            // Get the next block
+            block = b.next_ptr();
+        }
+
+        None
     }
 }
 
