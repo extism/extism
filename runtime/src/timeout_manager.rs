@@ -13,7 +13,6 @@ pub struct TimeoutManager {
     start_time: std::time::Instant,
     id: uuid::Uuid,
     tx: std::sync::mpsc::Sender<TimerAction>,
-    cost: f64,
     drop_behavior: Option<DropBehavior>,
 }
 
@@ -25,28 +24,48 @@ impl TimeoutManager {
             start_time: std::time::Instant::now(),
             id: plugin.id.clone(),
             tx: Timer::tx(),
-            cost: 1.0,
             drop_behavior: None,
         })
     }
 
     /// Add to the configured timeout
     pub fn add(&self, duration: std::time::Duration) -> Result<(), Error> {
-        let d = duration.mul_f64(self.cost);
+        self.tx.send(TimerAction::Extend {
+            id: self.id.clone(),
+            duration: duration.into(),
+        })?;
+        Ok(())
+    }
+
+    /// Add the amount of time this value has existed to the configured timeout
+    pub fn add_elapsed(&mut self) -> Result<(), Error> {
+        let d = self.start_time.elapsed();
         self.tx.send(TimerAction::Extend {
             id: self.id.clone(),
             duration: d.into(),
         })?;
+        self.start_time = std::time::Instant::now();
         Ok(())
     }
 
     /// Subtract from the configured timeout
     pub fn sub(&self, duration: std::time::Duration) -> Result<(), Error> {
-        let d: timer::ExtendTimeout = duration.mul_f64(self.cost).into();
+        let d: timer::ExtendTimeout = duration.into();
         self.tx.send(TimerAction::Extend {
             id: self.id.clone(),
             duration: -d,
         })?;
+        Ok(())
+    }
+
+    /// Subtract the amount of time this value has existed to the configured timeout
+    pub fn sub_elapsed(&mut self) -> Result<(), Error> {
+        let d: timer::ExtendTimeout = self.start_time.elapsed().into();
+        self.tx.send(TimerAction::Extend {
+            id: self.id.clone(),
+            duration: -d,
+        })?;
+        self.start_time = std::time::Instant::now();
         Ok(())
     }
 
@@ -63,22 +82,14 @@ impl TimeoutManager {
         self.drop_behavior = Some(DropBehavior::Sub);
         self
     }
-
-    /// Adjust the cost of added/subtracted values, this will scale all durations
-    /// submitted to this manager by the provided factor.
-    pub fn cost(mut self, cost: f64) -> Self {
-        self.cost = cost;
-        self
-    }
 }
 
 impl Drop for TimeoutManager {
     fn drop(&mut self) {
         if let Some(b) = &self.drop_behavior {
-            let duration = self.start_time.elapsed();
             let x = match b {
-                DropBehavior::Add => self.add(duration),
-                DropBehavior::Sub => self.sub(duration),
+                DropBehavior::Add => self.add_elapsed(),
+                DropBehavior::Sub => self.sub_elapsed(),
             };
             if let Err(e) = x {
                 error!(
