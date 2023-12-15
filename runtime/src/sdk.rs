@@ -38,6 +38,9 @@ pub type ExtismFunctionType = extern "C" fn(
     data: *mut std::ffi::c_void,
 );
 
+/// Log drain callback
+pub type ExtismLogDrainFunctionType = extern "C" fn(data: *const std::ffi::c_char, size: Size);
+
 impl From<&wasmtime::Val> for ExtismVal {
     fn from(value: &wasmtime::Val) -> Self {
         match value.ty() {
@@ -667,11 +670,11 @@ unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
 #[no_mangle]
 /// Calls the provided callback function for each buffered log line.
 /// This is only needed when `extism_log_custom` is used.
-pub unsafe extern "C" fn extism_log_drain(handler: extern "C" fn(*const std::ffi::c_char, usize)) {
+pub unsafe extern "C" fn extism_log_drain(handler: ExtismLogDrainFunctionType) {
     if let Some(buf) = &mut LOG_BUFFER {
         if let Ok(mut buf) = buf.buffer.lock() {
             for (line, len) in buf.drain(..) {
-                handler(line.as_ptr(), len);
+                handler(line.as_ptr(), len as u64);
             }
         }
     }
