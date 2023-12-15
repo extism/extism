@@ -97,6 +97,11 @@ typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
                                    ExtismSize n_outputs,
                                    void *data);
 
+/**
+ * Log drain callback
+ */
+typedef void (*ExtismLogDrainFunctionType)(const char *data, ExtismSize size);
+
 
 
 #ifdef __cplusplus
@@ -264,7 +269,7 @@ bool extism_log_custom(const char *log_level);
  * Calls the provided callback function for each buffered log line.
  * This is only needed when `extism_log_custom` is used.
  */
-void extism_log_drain(void (*handler)(const char*, uintptr_t));
+void extism_log_drain(ExtismLogDrainFunctionType handler);
 
 /**
  * Reset the Extism runtime, this will invalidate all allocated memory
