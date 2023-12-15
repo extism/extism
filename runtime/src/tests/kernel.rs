@@ -198,6 +198,10 @@ fn test_kernel_allocations() {
     // 512 bytes, test block re-use + splitting
     let p = extism_alloc(&mut store, instance, 512);
     assert_eq!(extism_length(&mut store, instance, p), 512);
+    assert_eq!(extism_length(&mut store, instance, p + 1), 0);
+    assert_eq!(extism_length(&mut store, instance, p + 2), 0);
+    assert_eq!(extism_length(&mut store, instance, p + 3), 0);
+    assert_eq!(extism_length(&mut store, instance, p + 4), 0);
     extism_free(&mut store, instance, p);
 
     // 128 bytes, should be split off the 512 byte block
@@ -210,7 +214,7 @@ fn test_kernel_allocations() {
     let r = extism_alloc(&mut store, instance, 128);
     assert!(p <= r && r < p + 512);
     assert!(r > p);
-    assert_eq!(extism_length(&mut store, instance, q), 128);
+    assert_eq!(extism_length(&mut store, instance, r), 128);
     extism_free(&mut store, instance, q);
 
     // 100 pages
