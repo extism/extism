@@ -231,12 +231,8 @@ pub struct Manifest {
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
 
     /// The plugin timeout, by default this is set to 30s
-    #[serde(default = "default_timeout")]
+    #[serde(default)]
     pub timeout_ms: Option<u64>,
-}
-
-fn default_timeout() -> Option<u64> {
-    Some(30000)
 }
 
 impl Manifest {
@@ -244,7 +240,6 @@ impl Manifest {
     pub fn new(wasm: impl IntoIterator<Item = impl Into<Wasm>>) -> Manifest {
         Manifest {
             wasm: wasm.into_iter().map(|x| x.into()).collect(),
-            timeout_ms: default_timeout(),
             ..Default::default()
         }
     }
