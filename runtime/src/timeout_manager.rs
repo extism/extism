@@ -14,6 +14,7 @@ pub struct TimeoutManager {
     id: uuid::Uuid,
     tx: std::sync::mpsc::Sender<TimerAction>,
     drop_behavior: Option<DropBehavior>,
+    cost: f64,
 }
 
 impl TimeoutManager {
@@ -25,6 +26,7 @@ impl TimeoutManager {
             id: plugin.id.clone(),
             tx: Timer::tx(),
             drop_behavior: None,
+            cost: 1.0,
         })
     }
 
@@ -32,14 +34,14 @@ impl TimeoutManager {
     pub fn add(&self, duration: std::time::Duration) -> Result<(), Error> {
         self.tx.send(TimerAction::Extend {
             id: self.id.clone(),
-            duration: duration.into(),
+            duration: duration.mul_f64(self.cost).into(),
         })?;
         Ok(())
     }
 
     /// Add the amount of time this value has existed to the configured timeout
     pub fn add_elapsed(&mut self) -> Result<(), Error> {
-        let d = self.start_time.elapsed();
+        let d = self.start_time.elapsed().mul_f64(self.cost);
         self.tx.send(TimerAction::Extend {
             id: self.id.clone(),
             duration: d.into(),
@@ -50,7 +52,7 @@ impl TimeoutManager {
 
     /// Subtract from the configured timeout
     pub fn sub(&self, duration: std::time::Duration) -> Result<(), Error> {
-        let d: timer::ExtendTimeout = duration.into();
+        let d: timer::ExtendTimeout = duration.mul_f64(self.cost).into();
         self.tx.send(TimerAction::Extend {
             id: self.id.clone(),
             duration: -d,
@@ -60,7 +62,7 @@ impl TimeoutManager {
 
     /// Subtract the amount of time this value has existed to the configured timeout
     pub fn sub_elapsed(&mut self) -> Result<(), Error> {
-        let d: timer::ExtendTimeout = self.start_time.elapsed().into();
+        let d: timer::ExtendTimeout = self.start_time.elapsed().mul_f64(self.cost).into();
         self.tx.send(TimerAction::Extend {
             id: self.id.clone(),
             duration: -d,
@@ -81,6 +83,19 @@ impl TimeoutManager {
     pub fn sub_on_drop(mut self) -> Self {
         self.drop_behavior = Some(DropBehavior::Sub);
         self
+    }
+
+    pub fn cost(&self) -> f64 {
+        self.cost
+    }
+
+    pub fn with_cost(mut self, cost: f64) -> Self {
+        self.cost = cost;
+        self
+    }
+
+    pub fn set_cost(&mut self, cost: f64) {
+        self.cost = cost;
     }
 }
 
