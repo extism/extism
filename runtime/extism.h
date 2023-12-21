@@ -138,12 +138,6 @@ ExtismSize extism_current_plugin_memory_length(ExtismCurrentPlugin *plugin, Exti
 void extism_current_plugin_memory_free(ExtismCurrentPlugin *plugin, ExtismMemoryHandle ptr);
 
 /**
- * Add milliseconds to a plug-in's timeout
- * NOTE: this should only be called from host functions.
- */
-bool extism_current_plugin_timeout_add_ms(ExtismCurrentPlugin *plugin, uint64_t ms);
-
-/**
  * Create a new host function
  *
  * Arguments
@@ -178,6 +172,13 @@ void extism_function_free(ExtismFunction *f);
  * Set the namespace of an `ExtismFunction`
  */
 void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
+
+/**
+ * Set the cost of an `ExtismFunction`, when set to 0 this has no effect, when set to `1` this will add
+ * the runtime of the function back to the plugin timer.
+ */
+void extism_function_set_cost(ExtismFunction *ptr,
+                              double cost);
 
 /**
  * Create a new plugin with host functions, the functions passed to this function no longer need to be manually freed using

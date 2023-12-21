@@ -155,7 +155,7 @@ unsafe impl<T> Sync for UserData<T> {}
 unsafe impl Send for CPtr {}
 unsafe impl Sync for CPtr {}
 
-type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
+pub(crate) type FunctionInner = dyn Fn(wasmtime::Caller<CurrentPlugin>, &[wasmtime::Val], &mut [wasmtime::Val]) -> Result<(), Error>
     + Sync
     + Send;
 
@@ -173,6 +173,9 @@ pub struct Function {
 
     /// Function handle
     pub(crate) f: Arc<FunctionInner>,
+
+    /// Function cost (in terms of time)
+    pub(crate) cost: f64,
 
     /// UserData
     pub(crate) _user_data: UserDataHandle,
@@ -204,10 +207,12 @@ impl Function {
             ty,
             f: Arc::new(
                 move |mut caller: Caller<_>, inp: &[Val], outp: &mut [Val]| {
+                    let plugin = caller.data_mut();
                     let x = data.clone();
-                    f(caller.data_mut(), inp, outp, x)
+                    f(plugin, inp, outp, x)
                 },
             ),
+            cost: 0.0,
             namespace: None,
             _user_data: match &user_data {
                 UserData::C(ptr) => UserDataHandle::C(ptr.clone()),
@@ -236,6 +241,23 @@ impl Function {
     /// Update host function module name
     pub fn with_namespace(mut self, namespace: impl Into<String>) -> Self {
         self.set_namespace(namespace);
+        self
+    }
+
+    /// Function cost
+    pub fn cost(&self) -> f64 {
+        self.cost
+    }
+
+    /// Set host function cost
+    pub fn set_cost(&mut self, cost: f64) {
+        trace!("Setting cost for {} to {cost}", self.name);
+        self.cost = cost;
+    }
+
+    /// Update host function cost
+    pub fn with_cost(mut self, cost: f64) -> Self {
+        self.set_cost(cost);
         self
     }
 

@@ -421,12 +421,6 @@ impl CurrentPlugin {
         let length = self.memory_length(offs).unwrap_or_default();
         (offs, length)
     }
-
-    /// Create a new `TimeoutManager` that can be used to adjust timeouts for the
-    /// current plugin. Returns `None` when no timeout has been configured.
-    pub fn timeout_manager(&self) -> Option<TimeoutManager> {
-        TimeoutManager::new(self)
-    }
 }
 
 impl Internal for CurrentPlugin {

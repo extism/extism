@@ -298,9 +298,13 @@ impl Plugin {
         for f in &mut imports {
             let name = f.name().to_string();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
-            unsafe {
-                linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
-            }
+            let cost = f.cost();
+            let inner: &function::FunctionInner = unsafe { &*(f.f.as_ref() as *const _) };
+            linker.func_new(ns, &name, f.ty().clone(), move |caller, params, results| {
+                let _timeout =
+                    TimeoutManager::new(caller.data()).map(|x| x.with_cost(cost.clone()));
+                inner(caller, params, results)
+            })?;
         }
 
         let instance_pre = linker.instantiate_pre(main)?;

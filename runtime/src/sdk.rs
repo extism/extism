@@ -146,25 +146,6 @@ pub unsafe extern "C" fn extism_current_plugin_memory_free(
     }
 }
 
-/// Add milliseconds to a plug-in's timeout
-/// NOTE: this should only be called from host functions.
-#[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_timeout_add_ms(
-    plugin: *mut CurrentPlugin,
-    ms: u64,
-) -> bool {
-    if plugin.is_null() {
-        return false;
-    }
-
-    let plugin = &mut *plugin;
-    if let Some(mgr) = plugin.timeout_manager() {
-        return mgr.add(std::time::Duration::from_millis(ms)).is_ok();
-    }
-
-    false
-}
-
 /// Create a new host function
 ///
 /// Arguments
@@ -274,6 +255,18 @@ pub unsafe extern "C" fn extism_function_set_namespace(
         x.set_namespace(namespace.to_string_lossy().to_string());
     } else {
         debug!("Trying to set namespace of already registered function")
+    }
+}
+
+/// Set the cost of an `ExtismFunction`, when set to 0 this has no effect, when set to `1` this will add
+/// the runtime of the function back to the plugin timer.
+#[no_mangle]
+pub unsafe extern "C" fn extism_function_set_cost(ptr: *mut ExtismFunction, cost: f64) {
+    let f = &mut *ptr;
+    if let Some(x) = f.0.get_mut() {
+        x.set_cost(cost);
+    } else {
+        debug!("Trying to set the cost of already registered function")
     }
 }
 
