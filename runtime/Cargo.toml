@@ -33,7 +33,7 @@ register-filesystem = [] # enables wasm to be loaded from disk
 http = ["ureq"]          # enables extism_http_request
 
 [build-dependencies]
-cbindgen = "0.26"
+cbindgen = { version = "0.26", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5.1"
