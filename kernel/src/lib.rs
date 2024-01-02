@@ -386,7 +386,7 @@ pub unsafe fn free(p: Pointer) {
 /// Note: this should only be called on memory handles returned
 /// by a call to `alloc` - it will return garbage on invalid offsets
 #[no_mangle]
-pub unsafe fn length(p: Pointer) -> Length {
+pub unsafe fn unsafe_length(p: Pointer) -> Length {
     if p == 0 {
         return 0;
     }
@@ -406,12 +406,12 @@ pub unsafe fn length(p: Pointer) -> Length {
     block.used as Length
 }
 
-/// Similar to `length` but returns 0 if the offset is not a valid handle.
+/// Get the length but returns 0 if the offset is not a valid handle.
 ///
 /// Note: this function walks each node in the allocations list, which ensures correctness, but is also
 /// slow
 #[no_mangle]
-pub unsafe fn handle_length(p: Pointer) -> Length {
+pub unsafe fn length(p: Pointer) -> Length {
     if p == 0 {
         return 0;
     }
