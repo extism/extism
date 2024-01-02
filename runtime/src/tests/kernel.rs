@@ -234,7 +234,7 @@ fn test_kernel_allocations() {
     // 100 pages
     let p = extism_alloc(&mut store, instance, 6553600);
     assert!(p > 0);
-    assert_eq!(extism_handle_length(&mut store, instance, p), 6553600);
+    assert_eq!(extism_length(&mut store, instance, p), 6553600);
     extism_free(&mut store, instance, p);
 
     // One more page
