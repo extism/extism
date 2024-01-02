@@ -382,11 +382,40 @@ pub unsafe fn free(p: Pointer) {
 }
 
 /// Get the length of an allocated memory block
+///
+/// Note: this should only be called on memory handles returned
+/// by a call to `alloc` - it will return garbage on invalid offsets
 #[no_mangle]
 pub unsafe fn length(p: Pointer) -> Length {
     if p == 0 {
         return 0;
     }
+
+    if !MemoryRoot::pointer_in_bounds_fast(p) {
+        return 0;
+    }
+
+    let ptr = p - core::mem::size_of::<MemoryBlock>() as u64;
+    let block = &mut *(ptr as *mut MemoryBlock);
+
+    // Simplest sanity check to verify the pointer is a block
+    if block.status.load(Ordering::Acquire) != MemoryStatus::Active as u8 {
+        return 0;
+    }
+
+    block.used as Length
+}
+
+/// Similar to `length` but returns 0 if the offset is not a valid handle.
+///
+/// Note: this function walks each node in the allocations list, which ensures correctness, but is also
+/// slow
+#[no_mangle]
+pub unsafe fn handle_length(p: Pointer) -> Length {
+    if p == 0 {
+        return 0;
+    }
+
     if let Some(block) = MemoryRoot::new().find_block(p) {
         block.used as Length
     } else {

@@ -22,6 +22,20 @@ fn extism_length<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance,
     out[0].unwrap_i64() as u64
 }
 
+fn extism_handle_length<T>(
+    mut store: &mut wasmtime::Store<T>,
+    instance: &mut Instance,
+    p: u64,
+) -> u64 {
+    let out = &mut [Val::I64(0)];
+    instance
+        .get_func(&mut store, "handle_length")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], out)
+        .unwrap();
+    out[0].unwrap_i64() as u64
+}
+
 fn extism_load_u8<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64) -> u8 {
     let out = &mut [Val::I32(0)];
     instance
@@ -198,10 +212,10 @@ fn test_kernel_allocations() {
     // 512 bytes, test block re-use + splitting
     let p = extism_alloc(&mut store, instance, 512);
     assert_eq!(extism_length(&mut store, instance, p), 512);
-    assert_eq!(extism_length(&mut store, instance, p + 1), 0);
-    assert_eq!(extism_length(&mut store, instance, p + 2), 0);
-    assert_eq!(extism_length(&mut store, instance, p + 3), 0);
-    assert_eq!(extism_length(&mut store, instance, p + 4), 0);
+    assert_eq!(extism_handle_length(&mut store, instance, p + 1), 0);
+    assert_eq!(extism_handle_length(&mut store, instance, p + 2), 0);
+    assert_eq!(extism_handle_length(&mut store, instance, p + 3), 0);
+    assert_eq!(extism_handle_length(&mut store, instance, p + 4), 0);
     extism_free(&mut store, instance, p);
 
     // 128 bytes, should be split off the 512 byte block
@@ -220,7 +234,7 @@ fn test_kernel_allocations() {
     // 100 pages
     let p = extism_alloc(&mut store, instance, 6553600);
     assert!(p > 0);
-    assert_eq!(extism_length(&mut store, instance, p), 6553600);
+    assert_eq!(extism_handle_length(&mut store, instance, p), 6553600);
     extism_free(&mut store, instance, p);
 
     // One more page
