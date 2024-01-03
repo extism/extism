@@ -246,6 +246,26 @@ impl CurrentPlugin {
         Ok(len)
     }
 
+    pub fn memory_length_unsafe(&mut self, offs: u64) -> Result<u64, Error> {
+        let (linker, mut store) = self.linker_and_store();
+        let output = &mut [Val::I64(0)];
+        if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "length_unsafe") {
+            f.into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(offs as i64)], output)?;
+        } else {
+            anyhow::bail!("unable to locate an extism kernel function: length_unsafe",)
+        }
+        let len = output[0].unwrap_i64() as u64;
+        trace!(
+            plugin = self.id.to_string(),
+            "memory_length_unsafe({}) = {}",
+            offs,
+            len
+        );
+        Ok(len)
+    }
+
     /// Access a plugin's variables
     pub fn vars(&self) -> &std::collections::BTreeMap<String, Vec<u8>> {
         &self.vars
