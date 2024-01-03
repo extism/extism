@@ -22,6 +22,20 @@ fn extism_length<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance,
     out[0].unwrap_i64() as u64
 }
 
+fn extism_length_unsafe<T>(
+    mut store: &mut wasmtime::Store<T>,
+    instance: &mut Instance,
+    p: u64,
+) -> u64 {
+    let out = &mut [Val::I64(0)];
+    instance
+        .get_func(&mut store, "length_unsafe")
+        .unwrap()
+        .call(&mut store, &[Val::I64(p as i64)], out)
+        .unwrap();
+    out[0].unwrap_i64() as u64
+}
+
 fn extism_load_u8<T>(mut store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64) -> u8 {
     let out = &mut [Val::I32(0)];
     instance
@@ -173,6 +187,7 @@ fn test_kernel_allocations() {
     let first_alloc = p;
     assert!(p > 0);
     assert_eq!(extism_length(&mut store, instance, p), 1);
+    assert_eq!(extism_length_unsafe(&mut store, instance, p), 1);
     extism_free(&mut store, instance, p);
 
     // 2 bytes
@@ -180,18 +195,21 @@ fn test_kernel_allocations() {
     assert!(x > 0);
     assert!(x != p);
     assert_eq!(extism_length(&mut store, instance, x), 2);
+    assert_eq!(extism_length_unsafe(&mut store, instance, x), 2);
     extism_free(&mut store, instance, x);
 
     for i in 0..64 {
         let p = extism_alloc(&mut store, instance, 64 - i);
         assert!(p > 0);
         assert_eq!(extism_length(&mut store, instance, p), 64 - i);
+        assert_eq!(extism_length_unsafe(&mut store, instance, p), 64 - i);
         extism_free(&mut store, instance, p);
 
         // should re-use the last allocation
         let q = extism_alloc(&mut store, instance, 64 - i);
         assert_eq!(p, q);
         assert_eq!(extism_length(&mut store, instance, q), 64 - i);
+        assert_eq!(extism_length_unsafe(&mut store, instance, q), 64 - i);
         extism_free(&mut store, instance, q);
     }
 
