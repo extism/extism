@@ -117,7 +117,9 @@ pub(crate) fn load(
     match input {
         WasmInput::Data(data) => {
             let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-            let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
+            let is_wat = std::str::from_utf8(&data).is_ok_and(|data| {
+                data.trim_start().starts_with("(module") || data.trim_start().starts_with(";;")
+            });
             if !has_magic && !is_wat {
                 trace!("Loading manifest");
                 if let Ok(s) = std::str::from_utf8(&data) {
