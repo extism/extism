@@ -117,10 +117,14 @@ pub(crate) fn load(
     match input {
         WasmInput::Data(data) => {
             let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
-            let is_wat = data.starts_with(b"(module") || data.starts_with(b";;");
+            let s = std::str::from_utf8(&data);
+            let is_wat = s.is_ok_and(|data| {
+                let data = data.trim_start();
+                data.starts_with("(module") || data.starts_with(";;")
+            });
             if !has_magic && !is_wat {
                 trace!("Loading manifest");
-                if let Ok(s) = std::str::from_utf8(&data) {
+                if let Ok(s) = s {
                     let t = if let Ok(t) = toml::from_str::<extism_manifest::Manifest>(s) {
                         trace!("Manifest is TOML");
                         modules(engine, &t, &mut mods)?;
