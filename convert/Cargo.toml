@@ -14,6 +14,7 @@ anyhow = "1.0.75"
 base64 = "~0.21"
 bytemuck = {version = "1.14.0", optional = true }
 prost = { version = "0.12.0", optional = true }
+protobuf = { version = "3.2.0", optional = true }
 rmp-serde = { version = "1.1.2", optional = true }
 serde = "1.0.186"
 serde_json = "1.0.105"
@@ -22,7 +23,6 @@ serde_json = "1.0.105"
 serde = { version = "1.0.186", features = ["derive"] }
 
 [features]
-default = ["msgpack", "protobuf", "raw"]
+default = ["msgpack", "prost", "raw"]
 msgpack = ["rmp-serde"]
-protobuf = ["prost"]
 raw = ["bytemuck"]

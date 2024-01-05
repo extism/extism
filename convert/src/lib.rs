@@ -18,6 +18,9 @@ pub use encoding::{Base64, Json};
 #[cfg(feature = "msgpack")]
 pub use encoding::Msgpack;
 
+#[cfg(feature = "prost")]
+pub use encoding::Prost;
+
 #[cfg(feature = "protobuf")]
 pub use encoding::Protobuf;
 

@@ -112,19 +112,19 @@ impl FromBytesOwned for Base64<String> {
 /// Protobuf encoding
 ///
 /// Allows for `prost` Protobuf messages to be used as arguments to Extism plugin calls
-#[cfg(feature = "protobuf")]
+#[cfg(feature = "prost")]
 #[derive(Debug)]
-pub struct Protobuf<T: prost::Message>(pub T);
+pub struct Prost<T: prost::Message>(pub T);
 
-#[cfg(feature = "protobuf")]
-impl<T: prost::Message> From<T> for Protobuf<T> {
+#[cfg(feature = "prost")]
+impl<T: prost::Message> From<T> for Prost<T> {
     fn from(data: T) -> Self {
         Self(data)
     }
 }
 
-#[cfg(feature = "protobuf")]
-impl<'a, T: prost::Message> ToBytes<'a> for Protobuf<T> {
+#[cfg(feature = "prost")]
+impl<'a, T: prost::Message> ToBytes<'a> for Prost<T> {
     type Bytes = Vec<u8>;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -132,10 +132,32 @@ impl<'a, T: prost::Message> ToBytes<'a> for Protobuf<T> {
     }
 }
 
-#[cfg(feature = "protobuf")]
-impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
+#[cfg(feature = "prost")]
+impl<T: Default + prost::Message> FromBytesOwned for Prost<T> {
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
-        Ok(Protobuf(T::decode(data)?))
+        Ok(Prost(T::decode(data)?))
+    }
+}
+
+/// Protobuf encoding
+///
+/// Allows for `rust-protobuf` Protobuf messages to be used as arguments to Extism plugin calls
+#[cfg(feature = "protobuf")]
+pub struct Protobuf<T: protobuf::Message>(pub T);
+
+#[cfg(feature = "protobuf")]
+impl<'a, T: protobuf::Message> ToBytes<'a> for Protobuf<T> {
+    type Bytes = Vec<u8>;
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok(self.0.write_to_bytes()?)
+    }
+}
+
+#[cfg(feature = "protobuf")]
+impl<T: Default + protobuf::Message> FromBytesOwned for Protobuf<T> {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        Ok(Protobuf(T::parse_from_bytes(data)?))
     }
 }
 
