@@ -21,6 +21,9 @@ pub use encoding::Msgpack;
 #[cfg(feature = "protobuf")]
 pub use encoding::Protobuf;
 
+#[cfg(feature = "rust-protobuf")]
+pub use encoding::RustProtobuf as Protobuf;
+
 #[cfg(all(feature = "raw", target_endian = "little"))]
 pub use encoding::Raw;
 

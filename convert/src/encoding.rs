@@ -143,10 +143,10 @@ impl<T: Default + prost::Message> FromBytesOwned for Protobuf<T> {
 ///
 /// Allows for `rust-protobuf` Protobuf messages to be used as arguments to Extism plugin calls
 #[cfg(feature = "rust-protobuf")]
-pub struct Protobuf<T: protobuf::Message>(pub T);
+pub struct RustProtobuf<T: protobuf::Message>(pub T);
 
 #[cfg(feature = "rust-protobuf")]
-impl<'a, T: protobuf::Message> ToBytes<'a> for Protobuf<T> {
+impl<'a, T: protobuf::Message> ToBytes<'a> for RustProtobuf<T> {
     type Bytes = Vec<u8>;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -155,9 +155,9 @@ impl<'a, T: protobuf::Message> ToBytes<'a> for Protobuf<T> {
 }
 
 #[cfg(feature = "rust-protobuf")]
-impl<'a, T: Default + protobuf::Message> FromBytesOwned for Protobuf<T> {
+impl<'a, T: Default + protobuf::Message> FromBytesOwned for RustProtobuf<T> {
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
-        Ok(Protobuf(T::parse_from_bytes(data)?))
+        Ok(RustProtobuf(T::parse_from_bytes(data)?))
     }
 }
 
