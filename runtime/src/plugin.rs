@@ -825,7 +825,11 @@ impl Plugin {
     }
 
     /// Similar to `Plugin::call`, but returns the Extism error code along with the
-    /// `Error`. It is assumed if `Ok(_)` is returned that the error code was `0`
+    /// `Error`. It is assumed if `Ok(_)` is returned that the error code was `0`.
+    ///
+    /// All Extism plugin calls return an error code, `Plugin::call` consumes the error code,
+    /// while `Plugin::call_get_error_code` preserves it - this function should only be used
+    /// when you need to inspect the actual return value of a plugin function when it fails.
     pub fn call_get_error_code<'a, 'b, T: ToBytes<'a>, U: FromBytes<'b>>(
         &'b mut self,
         name: impl AsRef<str>,
