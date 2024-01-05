@@ -39,7 +39,9 @@
 use core::sync::atomic::*;
 
 pub type Pointer = u64;
+pub type Handle = u64;
 pub type Length = u64;
+pub type Offset = u64;
 
 /// WebAssembly page size
 const PAGE_SIZE: usize = 65536;
@@ -81,7 +83,7 @@ pub struct MemoryRoot {
     /// Offset of error block
     pub error: AtomicU64,
     /// Input position in memory
-    pub input_offset: Pointer,
+    pub input_offset: Handle,
     /// Input length
     pub input_length: Length,
     /// Output position in memory
@@ -350,21 +352,21 @@ impl MemoryBlock {
 
 /// Allocate a block of memory and return the offset
 #[no_mangle]
-pub unsafe fn alloc(n: Length) -> Pointer {
+pub unsafe fn alloc(n: Length) -> Handle {
     if n == 0 {
         return 0;
     }
     let region = MemoryRoot::new();
     let block = region.alloc(n);
     match block {
-        Some(block) => block.data.as_mut_ptr() as Pointer,
+        Some(block) => block.data.as_mut_ptr() as Handle,
         None => 0,
     }
 }
 
 /// Free allocated memory
 #[no_mangle]
-pub unsafe fn free(p: Pointer) {
+pub unsafe fn free(p: Handle) {
     if p == 0 {
         return;
     }
@@ -386,7 +388,7 @@ pub unsafe fn free(p: Pointer) {
 /// Note: this should only be called on memory handles returned
 /// by a call to `alloc` - it will return garbage on invalid offsets
 #[no_mangle]
-pub unsafe fn length_unsafe(p: Pointer) -> Length {
+pub unsafe fn length_unsafe(p: Handle) -> Length {
     if p == 0 {
         return 0;
     }
@@ -445,24 +447,24 @@ pub unsafe fn load_u64(p: Pointer) -> u64 {
 
 /// Load a byte from the input data
 #[no_mangle]
-pub unsafe fn input_load_u8(p: Pointer) -> u8 {
+pub unsafe fn input_load_u8(o: Offset) -> u8 {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
-    if p >= root.input_length {
+    if o >= root.input_length {
         return 0;
     }
-    *((root.input_offset + p) as *mut u8)
+    *((root.input_offset + o) as *mut u8)
 }
 
 /// Load a u64 from the input data
 #[no_mangle]
-pub unsafe fn input_load_u64(p: Pointer) -> u64 {
+pub unsafe fn input_load_u64(o: Offset) -> u64 {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
-    if p + core::mem::size_of::<u64>() as Pointer > root.input_length {
+    if o + core::mem::size_of::<u64>() as Offset > root.input_length {
         return 0;
     }
-    *((root.input_offset + p) as *mut u64)
+    *((root.input_offset + o) as *mut u64)
 }
 
 /// Write a byte in Extism-managed memory
@@ -486,16 +488,18 @@ pub unsafe fn store_u64(p: Pointer, x: u64) {
 }
 
 /// Set the range of the input data in memory
+/// h must always be a handle so that length works on it
+/// len must match length(handle)
 #[no_mangle]
-pub unsafe fn input_set(p: Pointer, len: Length) {
+pub unsafe fn input_set(h: Handle, len: Length) {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
-        if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(p + len - 1) {
+        if !root.pointer_in_bounds(h) || !root.pointer_in_bounds(h + len - 1) {
             return;
         }
     }
-    root.input_offset = p;
+    root.input_offset = h;
     root.input_length = len;
 }
 
@@ -521,7 +525,7 @@ pub fn input_length() -> Length {
 
 /// Get the input offset in Exitsm-managed memory
 #[no_mangle]
-pub fn input_offset() -> Length {
+pub fn input_offset() -> Handle {
     unsafe { MemoryRoot::new().input_offset }
 }
 
@@ -533,7 +537,7 @@ pub fn output_length() -> Length {
 
 /// Get the output offset in Extism-managed memory
 #[no_mangle]
-pub unsafe fn output_offset() -> Length {
+pub unsafe fn output_offset() -> Pointer {
     MemoryRoot::new().output_offset
 }
 
@@ -545,25 +549,25 @@ pub unsafe fn reset() {
 
 /// Set the error message offset
 #[no_mangle]
-pub unsafe fn error_set(ptr: Pointer) {
+pub unsafe fn error_set(h: Handle) {
     let root = MemoryRoot::new();
 
     // Allow ERROR to be set to 0
-    if ptr == 0 {
-        root.error.store(ptr, Ordering::SeqCst);
+    if h == 0 {
+        root.error.store(h, Ordering::SeqCst);
         return;
     }
 
     #[cfg(feature = "bounds-checking")]
-    if !root.pointer_in_bounds(ptr) {
+    if !root.pointer_in_bounds(h) {
         return;
     }
-    root.error.store(ptr, Ordering::SeqCst);
+    root.error.store(h, Ordering::SeqCst);
 }
 
 /// Get the error message offset, if it's `0` then no error has been set
 #[no_mangle]
-pub unsafe fn error_get() -> Pointer {
+pub unsafe fn error_get() -> Handle {
     MemoryRoot::new().error.load(Ordering::SeqCst)
 }
 
