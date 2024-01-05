@@ -824,6 +824,24 @@ impl Plugin {
             .and_then(move |_| self.output())
     }
 
+    /// Similar to `Plugin::call`, but returns the Extism error code along with the
+    /// `Error`. It is assumed if `Ok(_)` is returned that the error code was `0`.
+    ///
+    /// All Extism plugin calls return an error code, `Plugin::call` consumes the error code,
+    /// while `Plugin::call_get_error_code` preserves it - this function should only be used
+    /// when you need to inspect the actual return value of a plugin function when it fails.
+    pub fn call_get_error_code<'a, 'b, T: ToBytes<'a>, U: FromBytes<'b>>(
+        &'b mut self,
+        name: impl AsRef<str>,
+        input: T,
+    ) -> Result<U, (Error, i32)> {
+        let lock = self.instance.clone();
+        let mut lock = lock.lock().unwrap();
+        let data = input.to_bytes().map_err(|e| (e, -1))?;
+        self.raw_call(&mut lock, name, data)
+            .and_then(move |_| self.output().map_err(|e| (e, -1)))
+    }
+
     /// Get a `CancelHandle`, which can be used from another thread to cancel a running plugin
     pub fn cancel_handle(&self) -> CancelHandle {
         self.cancel_handle.clone()
