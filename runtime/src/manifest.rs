@@ -118,9 +118,12 @@ pub(crate) fn load(
         WasmInput::Data(data) => {
             let has_magic = data.len() >= 4 && data[0..4] == WASM_MAGIC;
             let s = std::str::from_utf8(&data);
-            let is_wat = s.is_ok_and(|data| {
-                let data = data.trim_start();
-                data.starts_with("(module") || data.starts_with(";;")
+            let is_wat = s.is_ok_and(|s| {
+                let s = s.trim_start();
+                let starts_with_module = s.len() > 2
+                    && data[0] == b'('   // First character is `(`
+                    && s[1..].trim_start().starts_with("module"); // Then `module` (after any whitespace)
+                starts_with_module || s.starts_with(";;") || s.starts_with("(;")
             });
             if !has_magic && !is_wat {
                 trace!("Loading manifest");
