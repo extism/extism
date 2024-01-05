@@ -23,8 +23,6 @@ serde_json = "1.0.105"
 serde = { version = "1.0.186", features = ["derive"] }
 
 [features]
-default = ["msgpack", "protobuf", "raw"]
+default = ["msgpack", "prost", "raw"]
 msgpack = ["rmp-serde"]
-rust-protobuf = ["dep:protobuf"]
-protobuf = ["prost"]
 raw = ["bytemuck"]
