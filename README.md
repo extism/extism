@@ -1,15 +1,18 @@
-<a href="https://extism.org">
-<picture>
-    <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-horizontal-darkmode.png">
-    <img alt="Extism - the WebAssembly framework" width="75%" style="max-width: 600px" src=".github/assets/logo-horizontal.png">
-</picture>
-</a>
+<div align="center">
+    <a href="https://extism.org">
+    <picture>
+        <source media="(prefers-color-scheme: dark)" srcset=".github/assets/logo-horizontal-darkmode.png">
+        <img alt="Extism - the WebAssembly framework" width="75%" style="max-width: 600px" src=".github/assets/logo-horizontal.png">
+    </picture>
+    </a>
 
 [![Discord](https://img.shields.io/discord/1011124058408112148?color=%23404eed&label=Community%20Chat&logo=Discord&logoColor=%23404eed)](https://extism.org/discord)
 ![GitHub Org's stars](https://img.shields.io/github/stars/extism)
 ![GitHub all releases](https://img.shields.io/github/downloads/extism/extism/total)
 ![GitHub License](https://img.shields.io/github/license/extism/extism)
 ![GitHub release (with filter)](https://img.shields.io/github/v/release/extism/extism)
+
+</div>
 
 # Overview
 
