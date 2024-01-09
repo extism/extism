@@ -76,9 +76,9 @@ get started:
 | Go PDK             | <img alt="Go PDK" src="https://extism.org/img/sdk-languages/go.svg" width="50px"/>                         | https://github.com/extism/go-pdk                              | [Go mod](https://pkg.go.dev/github.com/extism/go-pdk)     |
 | Haskell PDK        | <img alt="Haskell PDK" src="https://extism.org/img/sdk-languages/haskell.svg" width="50px"/>               | https://github.com/extism/haskell-pdk                         | [Hackage](https://hackage.haskell.org/package/extism-pdk) |
 | AssemblyScript PDK | <img alt="AssemblyScript PDK" src="https://extism.org/img/sdk-languages/assemblyscript.svg" width="50px"/> | https://github.com/extism/assemblyscript-pdk                  | [NPM](https://www.npmjs.com/package/@extism/as-pdk)       |
+| .NET PDK           | <img alt=".NET PDK" src="https://extism.org/img/sdk-languages/dotnet.svg" width="50px"/>                   | https://github.com/extism/dotnet-pdk <br/>(supports C# & F#!) | https://www.nuget.org/packages/Extism.Pdk                 |
 | C PDK              | <img alt="C PDK" src="https://extism.org/img/sdk-languages/c.svg" width="50px"/>                           | https://github.com/extism/c-pdk                               | N/A                                                       |
 | Zig PDK            | <img alt="Zig PDK" src="https://extism.org/img/sdk-languages/zig.svg" width="50px"/>                       | https://github.com/extism/zig-pdk                             | N/A                                                       |
-| .NET PDK           | <img alt=".NET PDK" src="https://extism.org/img/sdk-languages/dotnet.svg" width="50px"/>                   | https://github.com/extism/dotnet-pdk <br/>(supports C# & F#!) | N/A                                                       |
 
 # Support
 
