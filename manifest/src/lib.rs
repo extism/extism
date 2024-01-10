@@ -111,8 +111,8 @@ pub enum Wasm {
 
     /// From memory
     Data {
-        #[serde(with = "base64")]
-        #[cfg_attr(feature = "json_schema", schemars(schema_with = "base64_schema"))]
+        #[serde(with = "wasmdata")]
+        #[cfg_attr(feature = "json_schema", schemars(schema_with = "wasmdata_schema"))]
         data: Vec<u8>,
         #[serde(flatten)]
         meta: WasmMetadata,
@@ -195,11 +195,25 @@ impl Wasm {
     }
 }
 
+#[derive(Default, Debug, Clone, PartialEq, serde::Serialize, serde::Deserialize)]
+#[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
+#[serde(deny_unknown_fields)]
+struct DataPtrLength {
+    ptr: u64,
+    len: u64,
+}
+
 #[cfg(feature = "json_schema")]
-fn base64_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+fn wasmdata_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
     use schemars::{schema::SchemaObject, JsonSchema};
     let mut schema: SchemaObject = <String>::json_schema(gen).into();
-    schema.format = Some("string".to_owned());
+    let objschema: SchemaObject = <DataPtrLength>::json_schema(gen).into();
+    let types = schemars::schema::SingleOrVec::<schemars::schema::InstanceType>::Vec(vec![
+        schemars::schema::InstanceType::String,
+        schemars::schema::InstanceType::Object,
+    ]);
+    schema.instance_type = Some(types);
+    schema.object = objschema.object;
     schema.into()
 }
 
@@ -335,10 +349,12 @@ impl Manifest {
     }
 }
 
-mod base64 {
+mod wasmdata {
+    use crate::DataPtrLength;
     use base64::{engine::general_purpose, Engine as _};
     use serde::{Deserialize, Serialize};
     use serde::{Deserializer, Serializer};
+    use std::slice;
 
     pub fn serialize<S: Serializer>(v: &Vec<u8>, s: S) -> Result<S::Ok, S::Error> {
         let base64 = general_purpose::STANDARD.encode(v.as_slice());
@@ -346,10 +362,28 @@ mod base64 {
     }
 
     pub fn deserialize<'de, D: Deserializer<'de>>(d: D) -> Result<Vec<u8>, D::Error> {
-        let base64 = String::deserialize(d)?;
-        general_purpose::STANDARD
-            .decode(base64.as_bytes())
-            .map_err(serde::de::Error::custom)
+        #[derive(Deserialize)]
+        #[serde(untagged)]
+        enum WasmDataTypes {
+            String(String),
+            DataPtrLength(DataPtrLength),
+        }
+        Ok(match WasmDataTypes::deserialize(d)? {
+            WasmDataTypes::String(v) => {
+                println!("Loading from String");
+                general_purpose::STANDARD
+                    .decode(v.as_bytes())
+                    .map_err(serde::de::Error::custom)?
+            }
+            WasmDataTypes::DataPtrLength(v) => {
+                let ptrlen = v;
+                println!("Loading from DataPtrLength: {} {}", ptrlen.ptr, ptrlen.len);
+                let slice =
+                    unsafe { slice::from_raw_parts(ptrlen.ptr as *const u8, ptrlen.len as usize) };
+                let avec = slice.to_vec();
+                avec
+            }
+        })
     }
 }
 

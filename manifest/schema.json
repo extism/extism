@@ -1,9 +1,11 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Manifest",
+  "description": "The `Manifest` type is used to configure the runtime and specify how to load modules.",
   "type": "object",
   "properties": {
     "allowed_hosts": {
+      "description": "Specifies which hosts may be accessed via HTTP, if this is empty then no hosts may be accessed. Wildcards may be used.",
       "default": null,
       "type": [
         "array",
@@ -14,6 +16,7 @@
       }
     },
     "allowed_paths": {
+      "description": "Specifies which paths should be made available on disk when using WASI. This is a mapping from the path on disk to the path it should be available inside the plugin. For example, `\".\": \"/tmp\"` would mount the current directory as `/tmp` inside the module",
       "default": null,
       "type": [
         "object",
@@ -24,6 +27,7 @@
       }
     },
     "config": {
+      "description": "Config values are made accessible using the PDK `extism_config_get` function",
       "default": {},
       "type": "object",
       "additionalProperties": {
@@ -31,6 +35,7 @@
       }
     },
     "memory": {
+      "description": "Memory options",
       "default": {
         "max_pages": null
       },
@@ -41,6 +46,8 @@
       ]
     },
     "timeout_ms": {
+      "description": "The plugin timeout, by default this is set to 30s",
+      "default": null,
       "type": [
         "integer",
         "null"
@@ -49,6 +56,7 @@
       "minimum": 0.0
     },
     "wasm": {
+      "description": "WebAssembly modules, the `main` module should be named `main` or listed last",
       "default": [],
       "type": "array",
       "items": {
@@ -56,11 +64,14 @@
       }
     }
   },
+  "additionalProperties": false,
   "definitions": {
     "MemoryOptions": {
+      "description": "Configure memory settings",
       "type": "object",
       "properties": {
         "max_pages": {
+          "description": "The max number of WebAssembly pages that should be allocated",
           "type": [
             "integer",
             "null"
@@ -68,23 +79,28 @@
           "format": "uint32",
           "minimum": 0.0
         }
-      }
+      },
+      "additionalProperties": false
     },
     "Wasm": {
+      "description": "The `Wasm` type specifies how to access a WebAssembly module",
       "anyOf": [
         {
+          "description": "From disk",
           "type": "object",
           "required": [
             "path"
           ],
           "properties": {
             "hash": {
+              "description": "Module hash, if the data loaded from disk or via HTTP doesn't match an error will be raised",
               "type": [
                 "string",
                 "null"
               ]
             },
             "name": {
+              "description": "Module name, this is used by Extism to determine which is the `main` module",
               "type": [
                 "string",
                 "null"
@@ -93,45 +109,72 @@
             "path": {
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         },
         {
+          "description": "From memory",
           "type": "object",
           "required": [
             "data"
           ],
           "properties": {
             "data": {
-              "type": "string",
-              "format": "string"
+              "type": [
+                "string",
+                "object"
+              ],
+              "required": [
+                "len",
+                "ptr"
+              ],
+              "properties": {
+                "len": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                },
+                "ptr": {
+                  "type": "integer",
+                  "format": "uint64",
+                  "minimum": 0.0
+                }
+              },
+              "additionalProperties": false
             },
             "hash": {
+              "description": "Module hash, if the data loaded from disk or via HTTP doesn't match an error will be raised",
               "type": [
                 "string",
                 "null"
               ]
             },
             "name": {
+              "description": "Module name, this is used by Extism to determine which is the `main` module",
               "type": [
                 "string",
                 "null"
               ]
             }
-          }
+          },
+          "additionalProperties": false
         },
         {
+          "description": "Via HTTP",
           "type": "object",
           "required": [
             "url"
           ],
           "properties": {
             "hash": {
+              "description": "Module hash, if the data loaded from disk or via HTTP doesn't match an error will be raised",
               "type": [
                 "string",
                 "null"
               ]
             },
             "headers": {
+              "description": "Request headers",
               "default": {},
               "type": "object",
               "additionalProperties": {
@@ -139,21 +182,25 @@
               }
             },
             "method": {
+              "description": "Request method",
               "type": [
                 "string",
                 "null"
               ]
             },
             "name": {
+              "description": "Module name, this is used by Extism to determine which is the `main` module",
               "type": [
                 "string",
                 "null"
               ]
             },
             "url": {
+              "description": "The request URL",
               "type": "string"
             }
-          }
+          },
+          "additionalProperties": false
         }
       ]
     }
