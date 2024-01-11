@@ -100,3 +100,14 @@ impl<'a, T: ToBytes<'a>> ToBytes<'a> for &'a T {
         <T as ToBytes>::to_bytes(self)
     }
 }
+
+impl<'a, T: ToBytes<'a>> ToBytes<'a> for Option<T> {
+    type Bytes = Vec<u8>;
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        match self {
+            Some(x) => x.to_bytes().map(|x| x.as_ref().to_vec()),
+            None => Ok(vec![]),
+        }
+    }
+}
