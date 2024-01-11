@@ -572,3 +572,21 @@ fn test_disable_cache() {
 
     assert!(t < t1);
 }
+
+#[test]
+fn test_manifest_ptr_len() {
+    let manifest = serde_json::json!({
+        "wasm" : [
+            {
+                "data" : {
+                    "ptr" : WASM_NO_FUNCTIONS.as_ptr() as u64,
+                    "len" : WASM_NO_FUNCTIONS.len()
+                }
+            }
+        ]
+    });
+    let mut plugin = Plugin::new(manifest.to_string().as_bytes(), [], true).unwrap();
+    let output = plugin.call("count_vowels", "abc123").unwrap();
+    let count: serde_json::Value = serde_json::from_slice(output).unwrap();
+    assert_eq!(count.get("count").unwrap().as_i64().unwrap(), 1);
+}

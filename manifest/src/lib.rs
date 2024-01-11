@@ -369,19 +369,13 @@ mod wasmdata {
             DataPtrLength(DataPtrLength),
         }
         Ok(match WasmDataTypes::deserialize(d)? {
-            WasmDataTypes::String(v) => {
-                println!("Loading from String");
-                general_purpose::STANDARD
-                    .decode(v.as_bytes())
-                    .map_err(serde::de::Error::custom)?
-            }
-            WasmDataTypes::DataPtrLength(v) => {
-                let ptrlen = v;
-                println!("Loading from DataPtrLength: {} {}", ptrlen.ptr, ptrlen.len);
+            WasmDataTypes::String(string) => general_purpose::STANDARD
+                .decode(string.as_bytes())
+                .map_err(serde::de::Error::custom)?,
+            WasmDataTypes::DataPtrLength(ptrlen) => {
                 let slice =
                     unsafe { slice::from_raw_parts(ptrlen.ptr as *const u8, ptrlen.len as usize) };
-                let avec = slice.to_vec();
-                avec
+                slice.to_vec()
             }
         })
     }
