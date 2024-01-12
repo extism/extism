@@ -98,3 +98,13 @@ impl<'a, T: FromBytes<'a>> FromBytes<'a> for std::io::Cursor<T> {
         Ok(std::io::Cursor::new(T::from_bytes(data)?))
     }
 }
+
+impl<'a, T: FromBytes<'a>> FromBytes<'a> for Option<T> {
+    fn from_bytes(data: &'a [u8]) -> Result<Self, Error> {
+        if data.is_empty() {
+            return Ok(None);
+        }
+
+        T::from_bytes(data).map(Some)
+    }
+}
