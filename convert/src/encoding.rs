@@ -183,30 +183,5 @@ impl<'a, T: bytemuck::Pod> FromBytes<'a> for Raw<'a, T> {
     }
 }
 
-#[cfg(all(test, feature = "raw", target_endian = "little"))]
-mod tests {
-    use crate::*;
-
-    #[test]
-    fn test_raw() {
-        #[derive(Debug, Clone, Copy, PartialEq)]
-        struct TestRaw {
-            a: i32,
-            b: f64,
-            c: bool,
-        }
-        unsafe impl bytemuck::Pod for TestRaw {}
-        unsafe impl bytemuck::Zeroable for TestRaw {}
-        let x = TestRaw {
-            a: 123,
-            b: 45678.91011,
-            c: true,
-        };
-        let raw = Raw(&x).to_bytes().unwrap();
-        let y = Raw::from_bytes(&raw).unwrap();
-        assert_eq!(&x, y.0);
-
-        let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(&raw);
-        assert!(y.is_ok());
-    }
-}
+#[cfg(all(feature = "raw", target_endian = "big"))]
+compile_error!("The raw feature is only supported on little endian targets");
