@@ -574,3 +574,47 @@ pub unsafe fn error_get() -> Handle {
 pub unsafe fn memory_bytes() -> u64 {
     MemoryRoot::new().length.load(Ordering::Acquire)
 }
+
+#[cfg(test)]
+mod test {
+    use wasm_bindgen_test::*;
+    use crate::*;
+
+    #[wasm_bindgen_test]
+    fn test() {
+        unsafe {
+            reset();
+            assert_eq!(alloc(1065), 77);
+            input_length();
+            assert_eq!(alloc(288), 1154);
+            assert_eq!(alloc(128), 1454);
+            assert_eq!(length(1154), 288);
+            assert_eq!(length(1454), 128);
+            free(1454);
+            assert_eq!(alloc(213), 1594);
+            length_unsafe(1594);
+            assert_eq!(alloc(511), 1819);
+            assert_eq!(alloc(4), 1454);
+            assert_eq!(length(1454), 4);
+            assert_eq!(length(1819), 511);
+            assert_eq!(alloc(13), 2342);
+            assert_eq!(length(2342), 13);
+            assert_eq!(alloc(336), 2367);
+            assert_eq!(alloc(1077), 2715);
+            assert_eq!(length(2367), 336);
+            assert_eq!(length(2715), 1077);
+            free(2715);
+            assert_eq!(alloc(1094), 3804);
+            length_unsafe(3804);
+            
+            // Allocate 4 bytes, expect to receive address 3800
+            assert_eq!(alloc(4), 3800); 
+
+            assert_eq!(alloc(4), 3796);
+            assert_eq!(length(3796), 4);
+
+            // Address 3800 has not been freed yet, so expect it to have 4 bytes allocated
+            assert_eq!(length(3800), 4); // Fails, returns 0 instead
+        }
+    }
+}
