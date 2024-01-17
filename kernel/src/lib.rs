@@ -580,12 +580,13 @@ mod test {
     use crate::*;
     use wasm_bindgen_test::*;
 
+    // See https://github.com/extism/extism/pull/659
     #[wasm_bindgen_test]
-    fn test() {
+    fn test_659() {
         unsafe {
+            // Warning: These offsets will need to change if we adjust the kernel memory layout at all
             reset();
             assert_eq!(alloc(1065), 77);
-            input_length();
             assert_eq!(alloc(288), 1154);
             assert_eq!(alloc(128), 1454);
             assert_eq!(length(1154), 288);
@@ -607,14 +608,14 @@ mod test {
             assert_eq!(alloc(1094), 3804);
             length_unsafe(3804);
 
-            // Allocate 4 bytes, expect to receive address 3800
+            // Allocate 4 bytes, expect to receive address 3788
             assert_eq!(alloc(4), 3788);
 
             assert_eq!(alloc(4), 3772);
             assert_eq!(length(3772), 4);
 
-            // Address 3800 has not been freed yet, so expect it to have 4 bytes allocated
-            assert_eq!(length(3788), 4); // Fails, returns 0 instead
+            // Address 3788 has not been freed yet, so expect it to have 4 bytes allocated
+            assert_eq!(length(3788), 4);
         }
     }
 }
