@@ -39,7 +39,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         if: ${{ env.GIT_EXIT_CODE }} != 0
         with:
-          author: "zshipko zshipko@users.noreply.github.com>"
+          author: "zshipko <zshipko@users.noreply.github.com>"
           title: "update(kernel): extism-runtime.wasm in ${{ github.event.pull_request.head.ref }}"
           body: "Automated PR to update `runtime/src/extism-runtime.wasm` in PR #${{ github.event.number }}"
           base: "${{ github.event.pull_request.head.ref }}"
