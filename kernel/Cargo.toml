@@ -5,6 +5,9 @@ edition = "2021"
 
 [dependencies]
 
+[dev-dependencies]
+wasm-bindgen-test = "0.3.39"
+
 [features]
 default = ["bounds-checking"]
 bounds-checking = []
