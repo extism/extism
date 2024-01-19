@@ -198,8 +198,8 @@ impl MemoryRoot {
     fn pointer_in_bounds_fast(p: Pointer) -> bool {
         // Similar to `pointer_in_bounds` but less accurate on the upper bound. This uses the total memory size,
         // instead of checking `MemoryRoot::length`
-        let end = core::arch::wasm32::memory_size(0) << 16;
-        p >= core::mem::size_of::<Self>() as Pointer && p <= end as Pointer
+        let end = (core::arch::wasm32::memory_size(0) as u64) << 16;
+        p >= core::mem::size_of::<Self>() as Pointer && p <= end as u64
     }
 
     // Find a block that is free to use, this can be a new block or an existing freed block. The `self_position` argument
@@ -618,5 +618,24 @@ mod test {
             // Address 3788 has not been freed yet, so expect it to have 4 bytes allocated
             assert_eq!(length(3788), 4);
         }
+    }
+
+    #[wasm_bindgen_test]
+    fn test_oom() {
+        let size = 1024 * 1024 * 5;
+
+        let mut last = 0;
+        for _ in 0..1024 {
+            unsafe {
+                let ptr = alloc(size);
+                last = ptr;
+                if ptr == 0 {
+                    break;
+                }
+                assert_eq!(length(ptr), size);
+            }
+        }
+
+        assert_eq!(last, 0);
     }
 }
