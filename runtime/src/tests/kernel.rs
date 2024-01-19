@@ -360,6 +360,32 @@ quickcheck! {
 }
 
 quickcheck! {
+    fn check_alloc_with_load_and_store(amounts: Vec<u16>) -> bool {
+        use rand::Rng;
+        let mut rng = rand::thread_rng();
+        let (mut store, mut instance) = init_kernel_test();
+        let instance = &mut instance;
+        for a in amounts {
+            let ptr = extism_alloc(&mut store, instance, a as u64);
+            if ptr == 0 || ptr == u64::MAX {
+                continue
+            }
+            if extism_length(&mut store, instance, ptr) != a as u64 {
+                return false
+            }
+
+            for _ in 0..16 {
+                let i = rng.gen_range(ptr..ptr+a as u64);
+                extism_store_u8(&mut store, instance, i, i as u8);
+                assert_eq!(extism_load_u8(&mut store, instance, i as u64), i as u8);
+            }
+        }
+
+        true
+    }
+}
+
+quickcheck! {
     fn check_alloc_with_frees(amounts: Vec<u16>) -> bool {
         let (mut store, mut instance) = init_kernel_test();
         let instance = &mut instance;
