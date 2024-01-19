@@ -37,6 +37,7 @@ cbindgen = { version = "0.26", default-features = false }
 
 [dev-dependencies]
 criterion = "0.5.1"
+quickcheck = "1"
 
 [[bench]]
 name = "bench"

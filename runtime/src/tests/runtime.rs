@@ -39,11 +39,12 @@ pub struct Count {
 
 #[test]
 fn it_works() {
-    tracing_subscriber::fmt()
+    let log = tracing_subscriber::fmt()
         .with_ansi(false)
         .with_env_filter("extism=debug")
         .with_writer(std::fs::File::create("test.log").unwrap())
-        .init();
+        .try_init()
+        .is_ok();
 
     let wasm_start = Instant::now();
 
@@ -143,8 +144,10 @@ fn it_works() {
     println!("wasm function call (avg, N = {}): {:?}", num_tests, avg);
 
     // Check that log file was written to
-    let meta = std::fs::metadata("test.log").unwrap();
-    assert!(meta.len() > 0);
+    if log {
+        let meta = std::fs::metadata("test.log").unwrap();
+        assert!(meta.len() > 0);
+    }
 }
 
 #[test]
