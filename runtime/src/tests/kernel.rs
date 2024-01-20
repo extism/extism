@@ -341,6 +341,22 @@ fn test_failed_quickcheck1() {
     }
 }
 
+#[test]
+fn test_failed_quickcheck2() {
+    let (mut store, mut instance) = init_kernel_test();
+    let allocs = [352054710, 1248853976, 2678441931, 14567928];
+
+    extism_reset(&mut store, &mut instance);
+    for a in allocs {
+        println!("Alloc: {a}");
+        let n = extism_alloc(&mut store, &mut instance, a);
+        if n == 0 {
+            continue;
+        }
+        assert_eq!(a, extism_length(&mut store, &mut instance, n));
+    }
+}
+
 quickcheck! {
     fn check_alloc(amounts: Vec<u16>) -> bool {
         let (mut store, mut instance) = init_kernel_test();
@@ -365,10 +381,11 @@ quickcheck! {
         let instance = &mut instance;
         for a in amounts {
             let ptr = extism_alloc(&mut store, instance, a as u64);
-            if ptr == 0 || ptr == u64::MAX {
+            if ptr == 0 {
                 continue
             }
-            if extism_length(&mut store, instance, ptr) != a as u64 {
+            let len = extism_length_unsafe(&mut store, instance, ptr);
+            if len != a as u64 {
                 return false
             }
         }
