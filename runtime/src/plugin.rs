@@ -403,7 +403,18 @@ impl Plugin {
     pub fn function_exists(&mut self, function: impl AsRef<str>) -> bool {
         self.modules[MAIN_KEY]
             .get_export(function.as_ref())
-            .map(|x| x.func().is_some())
+            .map(|x| {
+                if let Some(f) = x.func() {
+                    let (params, mut results) = (f.params(), f.results());
+                    match (params.len(), results.len()) {
+                        (0, 1) => results.next() == Some(wasmtime::ValType::I32),
+                        (0, 0) => true,
+                        _ => false,
+                    }
+                } else {
+                    false
+                }
+            })
             .unwrap_or(false)
     }
 
