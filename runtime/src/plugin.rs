@@ -307,9 +307,7 @@ impl Plugin {
 
         // If wasi is enabled then add it to the linker
         if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
-                &mut x.wasi.as_mut().unwrap().ctx
-            })?;
+            wasmtime_wasi::preview2::preview1::add_to_linker_sync(&mut linker)?;
         }
 
         for f in &mut imports {

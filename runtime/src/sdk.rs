@@ -389,20 +389,6 @@ pub unsafe extern "C" fn extism_plugin_config(
             }
         };
 
-    let wasi = &mut plugin.current_plugin_mut().wasi;
-    if let Some(Wasi { ctx, .. }) = wasi {
-        for (k, v) in json.iter() {
-            match v {
-                Some(v) => {
-                    let _ = ctx.push_env(k, v);
-                }
-                None => {
-                    let _ = ctx.push_env(k, "");
-                }
-            }
-        }
-    }
-
     let id = plugin.id;
     let config = &mut plugin.current_plugin_mut().manifest.config;
     for (k, v) in json.into_iter() {

@@ -1,3 +1,6 @@
+use wasmtime::component::ResourceTable;
+use wasmtime_wasi::preview2::{preview1::WasiPreview1Adapter, DirPerms, FilePerms};
+
 use crate::*;
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
@@ -18,6 +21,7 @@ pub struct CurrentPlugin {
 }
 
 unsafe impl Send for CurrentPlugin {}
+unsafe impl Sync for CurrentPlugin {}
 
 pub(crate) struct MemoryLimiter {
     bytes_left: usize,
@@ -289,16 +293,41 @@ impl CurrentPlugin {
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasmtime_wasi::ambient_authority();
-            let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-            for (k, v) in manifest.config.iter() {
-                ctx.env(k, v)?;
-            }
+            let mut ctx = wasmtime_wasi::preview2::WasiCtxBuilder::new();
+            ctx.allow_ip_name_lookup(true);
+            ctx.allow_tcp(true);
+            ctx.allow_udp(true);
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
-                    ctx.preopened_dir(d, v)?;
+                    if k.as_path().is_dir() {
+                        let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
+                        ctx.preopened_dir(
+                            d,
+                            DirPerms::READ | DirPerms::MUTATE,
+                            FilePerms::READ | FilePerms::WRITE,
+                            v.to_string_lossy(),
+                        );
+                    }
                 }
+            }
+
+            if let Some(h) = &manifest.allowed_hosts {
+                let h = h.clone();
+                ctx.socket_addr_check(move |addr, _kind| {
+                    for host in h.iter() {
+                        let addrs = std::net::ToSocketAddrs::to_socket_addrs(&host);
+                        if let Ok(addrs) = addrs {
+                            for a in addrs.into_iter() {
+                                if addr == &a {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+
+                    false
+                });
             }
 
             // Enable WASI output, typically used for debugging purposes
@@ -306,7 +335,11 @@ impl CurrentPlugin {
                 ctx.inherit_stdout().inherit_stderr();
             }
 
-            Some(Wasi { ctx: ctx.build() })
+            Some(Wasi {
+                ctx: ctx.build(),
+                preview2_table: ResourceTable::new(),
+                preview1_adapter: WasiPreview1Adapter::new(),
+            })
         } else {
             None
         };

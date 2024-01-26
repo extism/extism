@@ -3,7 +3,36 @@ use crate::*;
 /// WASI context
 pub struct Wasi {
     /// wasi
-    pub ctx: wasmtime_wasi::WasiCtx,
+    pub ctx: wasmtime_wasi::preview2::WasiCtx,
+    pub preview2_table: wasmtime::component::ResourceTable,
+    pub preview1_adapter: wasmtime_wasi::preview2::preview1::WasiPreview1Adapter,
+}
+
+impl wasmtime_wasi::preview2::WasiView for CurrentPlugin {
+    fn table_mut(&mut self) -> &mut wasmtime::component::ResourceTable {
+        &mut self.wasi.as_mut().unwrap().preview2_table
+    }
+
+    fn table(&self) -> &wasmtime::component::ResourceTable {
+        &self.wasi.as_ref().unwrap().preview2_table
+    }
+
+    fn ctx(&self) -> &wasmtime_wasi::preview2::WasiCtx {
+        &self.wasi.as_ref().unwrap().ctx
+    }
+    fn ctx_mut(&mut self) -> &mut wasmtime_wasi::preview2::WasiCtx {
+        &mut self.wasi.as_mut().unwrap().ctx
+    }
+}
+
+impl wasmtime_wasi::preview2::preview1::WasiPreview1View for CurrentPlugin {
+    fn adapter(&self) -> &wasmtime_wasi::preview2::preview1::WasiPreview1Adapter {
+        &self.wasi.as_ref().unwrap().preview1_adapter
+    }
+
+    fn adapter_mut(&mut self) -> &mut wasmtime_wasi::preview2::preview1::WasiPreview1Adapter {
+        &mut self.wasi.as_mut().unwrap().preview1_adapter
+    }
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values
