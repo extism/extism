@@ -1,5 +1,7 @@
 use crate::*;
 
+pub use extism_convert_macros::FromBytes;
+
 /// `FromBytes` is used to define how a type should be decoded when working with
 /// Extism memory. It is used for plugin output and host function input.
 pub trait FromBytes<'a>: Sized {

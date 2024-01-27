@@ -18,6 +18,7 @@ protobuf = { version = "3.2.0", optional = true }
 rmp-serde = { version = "1.1.2", optional = true }
 serde = "1.0.186"
 serde_json = "1.0.105"
+extism-convert-macros.workspace = true
 
 [dev-dependencies]
 serde = { version = "1.0.186", features = ["derive"] }
@@ -26,3 +27,5 @@ serde = { version = "1.0.186", features = ["derive"] }
 default = ["msgpack", "prost", "raw"]
 msgpack = ["rmp-serde"]
 raw = ["bytemuck"]
+extism-path = ["extism-convert-macros/extism-path"]
+extism-pdk-path = ["extism-convert-macros/extism-pdk-path"]

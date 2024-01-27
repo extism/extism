@@ -1,5 +1,7 @@
 use crate::*;
 
+pub use extism_convert_macros::ToBytes;
+
 /// `ToBytes` is used to define how a type should be encoded when working with
 /// Extism memory. It is used for plugin input and host function output.
 pub trait ToBytes<'a> {
