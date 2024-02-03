@@ -21,6 +21,8 @@ serde_json = "1.0.105"
 extism-convert-macros.workspace = true
 
 [dev-dependencies]
+# Only required for tests run from the workspace root, as that enables the `extism-path` feature.
+extism.workspace = true
 serde = { version = "1.0.186", features = ["derive"] }
 
 [features]
