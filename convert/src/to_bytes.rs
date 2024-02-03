@@ -56,7 +56,7 @@ pub use extism_convert_macros::ToBytes;
 /// struct Struct {
 ///     hello: String,
 /// }
-/// 
+///
 /// impl ToString for Struct {
 ///    fn to_string(&self) -> String {
 ///        self.hello.clone()     

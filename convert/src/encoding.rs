@@ -8,9 +8,18 @@ use base64::Engine;
 /// For example, the following line creates a new JSON encoding using serde_json:
 ///
 /// ```
-#[cfg_attr(feature = "extism-path", doc = "extism::convert::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);")]
-#[cfg_attr(feature = "extism-pdk-path", doc = "extism_pdk::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);")]
-#[cfg_attr(not(any(feature = "extism-path", feature = "extism-pdk-path")), doc = "extism_convert::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);")]
+#[cfg_attr(
+    feature = "extism-path",
+    doc = "extism::convert::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);"
+)]
+#[cfg_attr(
+    feature = "extism-pdk-path",
+    doc = "extism_pdk::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);"
+)]
+#[cfg_attr(
+    not(any(feature = "extism-path", feature = "extism-pdk-path")),
+    doc = "extism_convert::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);"
+)]
 /// ```
 ///
 /// This will create a struct `struct MyJson<T>(pub T)` and implement [`ToBytes`] using [`serde_json::to_vec`]

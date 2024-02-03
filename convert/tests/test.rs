@@ -1,4 +1,3 @@
-
 #[test]
 fn test() {
     use extism_convert::{Json, ToBytes};
