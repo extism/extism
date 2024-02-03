@@ -17,7 +17,6 @@ extism-path = []
 extism-pdk-path = []
 
 [dependencies]
-# manyhow = "0.10.4"
 manyhow.version = "0.11.0"
 proc-macro-crate = "3.1.0"
 proc-macro2 = "1.0.78"
