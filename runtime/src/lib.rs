@@ -1,8 +1,12 @@
+// Makes proc-macros able to resolve `::extism` correctly
+extern crate self as extism;
+
 pub(crate) use extism_convert::*;
 pub(crate) use std::collections::BTreeMap;
 use std::str::FromStr;
 pub(crate) use wasmtime::*;
 
+#[doc(inline)]
 pub use extism_convert as convert;
 
 pub use anyhow::Error;

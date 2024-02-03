@@ -1,30 +1,31 @@
 use std::iter;
 
-use manyhow::{ensure, manyhow, Result};
+use manyhow::{ensure, error_message, manyhow, Result};
 use proc_macro_crate::{crate_name, FoundCrate};
 use quote::{format_ident, quote, ToTokens};
 use syn::{parse_quote, Attribute, DeriveInput, Path};
 
 /// Tries to resolve the path to `extism_convert` dynamically, falling back to feature flags when unsuccessful.
 fn convert_path() -> Path {
-    match crate_name("extism") {
-        Ok(FoundCrate::Name(name)) => {
+    match (
+        crate_name("extism"),
+        crate_name("extism-convert"),
+        crate_name("extism-pdk"),
+    ) {
+        (Ok(FoundCrate::Name(name)), ..) => {
             let ident = format_ident!("{name}");
             parse_quote!(::#ident::convert)
         }
-        Ok(FoundCrate::Itself) => parse_quote!(crate),
-        Err(_) => match crate_name("extism-convert").or_else(|_| crate_name("extism_pdk")) {
-            Ok(FoundCrate::Name(name)) => {
-                let ident = format_ident!("{name}");
-                parse_quote!(::#ident)
-            }
-            Ok(FoundCrate::Itself) => parse_quote!(crate),
-            Err(_) => match () {
-                () if cfg!(feature = "extism-path") => parse_quote!(::extism::convert),
-                () if cfg!(feature = "extism-pdk-path") => parse_quote!(::extism_pdk),
-                _ => parse_quote!(::extism_convert),
-            },
-        },
+        (_, Ok(FoundCrate::Name(name)), ..) | (.., Ok(FoundCrate::Name(name))) => {
+            let ident = format_ident!("{name}");
+            parse_quote!(::#ident)
+        }
+        (Ok(FoundCrate::Itself), ..) => parse_quote!(::extism::convert),
+        (_, Ok(FoundCrate::Itself), ..) => parse_quote!(::extism_convert),
+        (.., Ok(FoundCrate::Itself)) => parse_quote!(::extism_pdk),
+        _ if cfg!(feature = "extism-path") => parse_quote!(::extism::convert),
+        _ if cfg!(feature = "extism-pdk-path") => parse_quote!(::extism_pdk),
+        _ => parse_quote!(::extism_convert),
     }
 }
 
@@ -36,7 +37,9 @@ fn extract_encoding(attrs: &[Attribute]) -> Result<Path> {
     ensure!(!encodings.is_empty(), "encoding needs to be specified"; try = "`#[encoding(ToJson)]`");
     ensure!(encodings.len() < 2, encodings[1], "only one encoding can be specified"; try = "remove `{}`", encodings[1].to_token_stream());
 
-    Ok(encodings[0].parse_args()?)
+    Ok(encodings[0].parse_args().map_err(
+        |e| error_message!(e.span(), "{e}"; note= "expects a path"; try = "`#[encoding(ToJson)]`"),
+    )?)
 }
 
 #[manyhow]

@@ -5,6 +5,9 @@
 //! similar to [axum extractors](https://docs.rs/axum/latest/axum/extract/index.html#intro) - they are
 //! implemented as a tuple struct with a single field that is meant to be extracted using pattern matching.
 
+// Makes proc-macros able to resolve `::extism_convert` correctly
+extern crate self as extism_convert;
+
 pub use anyhow::Error;
 
 mod encoding;

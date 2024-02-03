@@ -4,13 +4,87 @@ pub use extism_convert_macros::FromBytes;
 
 /// `FromBytes` is used to define how a type should be decoded when working with
 /// Extism memory. It is used for plugin output and host function input.
+///
+/// `FromBytes` can be derived by delegating encoding to generic type implementing
+/// `FromBytes`, e.g., [`Json`], [`Msgpack`].
+///
+/// ```
+#[cfg_attr(
+    feature = "extism-path",
+    doc = "use extism::convert::{Json, FromBytes};"
+)]
+#[cfg_attr(
+    feature = "extism-pdk-path",
+    doc = "use extism_pdk::{Json, FromBytes};"
+)]
+#[cfg_attr(
+    not(any(feature = "extism-path", feature = "extism-pdk-path")),
+    doc = "use extism_convert::{Json, FromBytes};"
+)]
+/// use serde::Deserialize;
+///
+/// #[derive(FromBytes, Deserialize, PartialEq, Debug)]
+/// #[encoding(Json)]
+/// struct Struct {
+///     hello: String,
+/// }
+///
+/// assert_eq!(Struct::from_bytes(br#"{"hello":"hi"}"#)?, Struct { hello: "hi".into() });
+/// # Ok::<(), extism_convert::Error>(())
+/// ```
+///
+/// Custom encodings can also be used, through new-types with a single generic
+/// argument, i.e., `Type<T>(T)`, that implement `FromBytesOwned` for the struct.
+///
+/// ```
+/// use std::str::{self, FromStr};
+/// use std::convert::Infallible;
+#[cfg_attr(
+    feature = "extism-path",
+    doc = "use extism::convert::{Error, FromBytes, FromBytesOwned};"
+)]
+#[cfg_attr(
+    feature = "extism-pdk-path",
+    doc = "use extism_pdk::{Error, FromBytes, FromBytesOwned};"
+)]
+#[cfg_attr(
+    not(any(feature = "extism-path", feature = "extism-pdk-path")),
+    doc = "use extism_convert::{Error, FromBytes, FromBytesOwned};"
+)]
+///
+/// // Custom serialization using `FromStr`
+/// struct StringEnc<T>(T);
+/// impl<T: FromStr> FromBytesOwned for StringEnc<T> where Error: From<<T as FromStr>::Err> {
+///     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+///         Ok(Self(str::from_utf8(data)?.parse()?))
+///     }
+/// }
+///
+/// #[derive(FromBytes, PartialEq, Debug)]
+/// #[encoding(StringEnc)]
+/// struct Struct {
+///     hello: String,
+/// }
+///
+/// impl FromStr for Struct {
+///     type Err = Infallible;
+///     fn from_str(s: &str) -> Result<Self, Infallible> {
+///         Ok(Self { hello: s.to_owned() })
+///     }
+/// }
+///
+/// assert_eq!(Struct::from_bytes(b"hi")?, Struct { hello: "hi".into() });
+/// # Ok::<(), extism_convert::Error>(())
+/// ```
 pub trait FromBytes<'a>: Sized {
     /// Decode a value from a slice of bytes
     fn from_bytes(data: &'a [u8]) -> Result<Self, Error>;
 }
 
-/// `FromBytesOwned` is similar to `FromBytes` but it doesn't borrow from the input slice.
-/// `FromBytes` is automatically implemented for all types that implement `FromBytesOwned`
+/// `FromBytesOwned` is similar to [`FromBytes`] but it doesn't borrow from the input slice.
+/// [`FromBytes`] is automatically implemented for all types that implement `FromBytesOwned`.
+///
+/// `FromBytesOwned` can be derived through [`#[derive(FromBytes)]`](FromBytes).
 pub trait FromBytesOwned: Sized {
     /// Decode a value from a slice of bytes, the resulting value should not borrow the input
     /// data.
