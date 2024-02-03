@@ -12,7 +12,7 @@ fn convert_path() -> Path {
             let ident = format_ident!("{name}");
             parse_quote!(::#ident::convert)
         }
-        Ok(FoundCrate::Itself) => parse_quote!(crate::core),
+        Ok(FoundCrate::Itself) => parse_quote!(crate),
         Err(_) => match crate_name("extism-convert").or_else(|_| crate_name("extism_pdk")) {
             Ok(FoundCrate::Name(name)) => {
                 let ident = format_ident!("{name}");
