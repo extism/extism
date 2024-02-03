@@ -10,7 +10,10 @@ pub use extism_convert_macros::ToBytes;
 ///
 /// ```
 #[cfg_attr(feature = "extism-path", doc = "use extism::convert::{Json, ToBytes};")]
-#[cfg_attr(feature = "extism-pdk-path", doc = "use extism_pdk::{Json, ToBytes};")]
+#[cfg_attr(
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
+    doc = "use extism_pdk::{Json, ToBytes};"
+)]
 #[cfg_attr(
     not(any(feature = "extism-path", feature = "extism-pdk-path")),
     doc = "use extism_convert::{Json, ToBytes};"
@@ -35,7 +38,10 @@ pub use extism_convert_macros::ToBytes;
     feature = "extism-path",
     doc = "use extism::convert::{Error, ToBytes};"
 )]
-#[cfg_attr(feature = "extism-pdk-path", doc = "use extism_pdk::{Error, ToBytes};")]
+#[cfg_attr(
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
+    doc = "use extism_pdk::{Error, ToBytes};"
+)]
 #[cfg_attr(
     not(any(feature = "extism-path", feature = "extism-pdk-path")),
     doc = "use extism_convert::{Error, ToBytes};"

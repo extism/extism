@@ -14,7 +14,7 @@ pub use extism_convert_macros::FromBytes;
     doc = "use extism::convert::{Json, FromBytes};"
 )]
 #[cfg_attr(
-    feature = "extism-pdk-path",
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
     doc = "use extism_pdk::{Json, FromBytes};"
 )]
 #[cfg_attr(
@@ -44,7 +44,7 @@ pub use extism_convert_macros::FromBytes;
     doc = "use extism::convert::{Error, FromBytes, FromBytesOwned};"
 )]
 #[cfg_attr(
-    feature = "extism-pdk-path",
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
     doc = "use extism_pdk::{Error, FromBytes, FromBytesOwned};"
 )]
 #[cfg_attr(

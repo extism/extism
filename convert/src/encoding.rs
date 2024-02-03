@@ -13,7 +13,7 @@ use base64::Engine;
     doc = "extism::convert::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);"
 )]
 #[cfg_attr(
-    feature = "extism-pdk-path",
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
     doc = "extism_pdk::encoding!(MyJson, serde_json::to_vec, serde_json::from_slice);"
 )]
 #[cfg_attr(
