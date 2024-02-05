@@ -1,0 +1,27 @@
+[package]
+name = "extism-convert-macros"
+readme = "./README.md"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+version.workspace = true
+description = "Macros to remove boilerplate with Extism"
+
+[lib]
+proc-macro = true
+
+[features]
+extism-path = []
+extism-pdk-path = []
+
+[dependencies]
+manyhow.version = "0.11.0"
+proc-macro-crate = "3.1.0"
+proc-macro2 = "1.0.78"
+quote = "1.0.35"
+syn = { version = "2.0.48", features = ["derive"] }
+
+[dev-dependencies]
+trybuild = "1.0.89"

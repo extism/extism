@@ -1,7 +1,77 @@
 use crate::*;
 
+pub use extism_convert_macros::ToBytes;
+
 /// `ToBytes` is used to define how a type should be encoded when working with
 /// Extism memory. It is used for plugin input and host function output.
+///
+/// `ToBytes` can be derived by delegating encoding to generic type implementing
+/// `ToBytes`, e.g., [`Json`], [`Msgpack`].
+///
+/// ```
+#[cfg_attr(feature = "extism-path", doc = "use extism::convert::{Json, ToBytes};")]
+#[cfg_attr(
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
+    doc = "use extism_pdk::{Json, ToBytes};"
+)]
+#[cfg_attr(
+    not(any(feature = "extism-path", feature = "extism-pdk-path")),
+    doc = "use extism_convert::{Json, ToBytes};"
+)]
+/// use serde::Serialize;
+///
+/// #[derive(ToBytes, Serialize)]
+/// #[encoding(Json)]
+/// struct Struct {
+///     hello: String,
+/// }
+///
+/// assert_eq!(Struct { hello: "hi".into() }.to_bytes()?, br#"{"hello":"hi"}"#);
+/// # Ok::<(), extism_convert::Error>(())
+/// ```
+///
+/// But custom types can also be used, as long as they are new-types with a single
+/// generic argument, i.e., `Type<T>(T)`, that implement `ToBytes` for the struct.
+///
+/// ```
+#[cfg_attr(
+    feature = "extism-path",
+    doc = "use extism::convert::{Error, ToBytes};"
+)]
+#[cfg_attr(
+    all(feature = "extism-pdk-path", not(feature = "extism-path")),
+    doc = "use extism_pdk::{Error, ToBytes};"
+)]
+#[cfg_attr(
+    not(any(feature = "extism-path", feature = "extism-pdk-path")),
+    doc = "use extism_convert::{Error, ToBytes};"
+)]
+///
+/// // Custom serialization using `ToString`
+/// struct StringEnc<T>(T);
+/// impl<T: ToString> ToBytes<'_> for StringEnc<&T> {
+///     type Bytes = String;
+///     
+///     fn to_bytes(&self) -> Result<String, Error> {
+///         Ok(self.0.to_string())
+///     }
+/// }
+///
+/// #[derive(ToBytes)]
+/// #[encoding(StringEnc)]
+/// struct Struct {
+///     hello: String,
+/// }
+///
+/// impl ToString for Struct {
+///    fn to_string(&self) -> String {
+///        self.hello.clone()     
+///    }
+/// }
+///
+/// assert_eq!(Struct { hello: "hi".into() }.to_bytes()?, b"hi");
+/// # Ok::<(), Error>(())
+/// ```
 pub trait ToBytes<'a> {
     /// A configurable byte slice representation, allows any type that implements `AsRef<[u8]>`
     type Bytes: AsRef<[u8]>;
@@ -109,5 +179,17 @@ impl<'a, T: ToBytes<'a>> ToBytes<'a> for Option<T> {
             Some(x) => x.to_bytes().map(|x| x.as_ref().to_vec()),
             None => Ok(vec![]),
         }
+    }
+}
+
+#[test]
+fn test() {
+    use extism_convert::{Json, ToBytes};
+    use serde::Serialize;
+
+    #[derive(ToBytes, Serialize)]
+    #[encoding(Json)]
+    struct Struct {
+        hello: String,
     }
 }

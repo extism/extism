@@ -22,7 +22,7 @@ url = "2"
 glob = "0.3"
 ureq = {version = "2.5", optional=true}
 extism-manifest = { workspace = true }
-extism-convert = { workspace = true }
+extism-convert = { workspace = true, features = ["extism-path"] }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
 
