@@ -12,6 +12,10 @@ pub struct MemoryOptions {
     /// The max number of WebAssembly pages that should be allocated
     #[serde(alias = "max")]
     pub max_pages: Option<u32>,
+
+    /// The maximum number of bytes allowed in an HTTP response
+    #[serde(default)]
+    pub max_http_response_bytes: Option<u64>,
 }
 
 /// Generic HTTP request structure
@@ -225,6 +229,7 @@ pub struct Manifest {
     /// WebAssembly modules, the `main` module should be named `main` or listed last
     #[serde(default)]
     pub wasm: Vec<Wasm>,
+
     /// Memory options
     #[serde(default)]
     pub memory: MemoryOptions,

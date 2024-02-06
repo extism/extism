@@ -237,9 +237,11 @@ pub(crate) fn http_request(
 
         if let Some(reader) = reader {
             let mut buf = Vec::new();
-            reader
-                .take(1024 * 1024 * 50) // TODO: make this limit configurable
-                .read_to_end(&mut buf)?;
+            if let Some(max) = &data.manifest.memory.max_http_response_bytes {
+                reader.take(*max).read_to_end(&mut buf)?;
+            } else {
+                reader.take(1024 * 1024 * 50).read_to_end(&mut buf)?;
+            }
 
             let mem = data.memory_new(&buf)?;
             output[0] = Val::I64(mem.offset() as i64);
