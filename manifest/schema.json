@@ -37,6 +37,7 @@
     "memory": {
       "description": "Memory options",
       "default": {
+        "max_http_response_bytes": null,
         "max_pages": null
       },
       "allOf": [
@@ -70,6 +71,16 @@
       "description": "Configure memory settings",
       "type": "object",
       "properties": {
+        "max_http_response_bytes": {
+          "description": "The maximum number of bytes allowed in an HTTP response",
+          "default": null,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
+          "minimum": 0.0
+        },
         "max_pages": {
           "description": "The max number of WebAssembly pages that should be allocated",
           "type": [
