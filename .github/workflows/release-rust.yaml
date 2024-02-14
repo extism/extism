@@ -36,6 +36,18 @@ jobs:
           override: true
           target: ${{ matrix.target }}
 
+      - name: Release Rust convert-macros Crate
+        env:
+          CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
+        run: |
+          version=$(cargo metadata --format-version=1 | jq -r '.packages[] | select(.name == "extism") | .version')
+
+          if ! &>/dev/null curl -sLIf https://crates.io/api/v1/crates/extism-convert-macros/${version}/download; then
+            cargo publish --manifest-path convert-macros/Cargo.toml --allow-dirty
+          else
+            echo "already published ${version}"
+          fi
+
       - name: Release Rust Convert Crate
         env:
           CARGO_REGISTRY_TOKEN: ${{ secrets.CARGO_API_TOKEN }}
