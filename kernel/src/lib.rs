@@ -638,4 +638,15 @@ mod test {
 
         assert_eq!(last, 0);
     }
+
+    #[wasm_bindgen_test]
+    fn test_sym() {
+        unsafe {
+            reset();
+            let a = alloc(47);
+            let b = alloc(20);
+            assert_eq!(length(a), 47);
+            assert_eq!(length(b), 20);
+        }
+    }
 }
