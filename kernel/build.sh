@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 
+set -e
+
 export CARGO_FLAGS=""
 
 while getopts d flag
