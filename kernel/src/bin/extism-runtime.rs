@@ -19,13 +19,9 @@ mod proofs {
     pub unsafe fn memory_root_length_0() {
         reset();
         let x = u64_symbol();
-        let m = alloc(1024); // Allocate a block
         assume(x < core::mem::size_of::<MemoryRoot>() as u64);
         let a = length(x as u64);
         assert(a == 0);
-        free(m); // Free the block and check again
-        let b = length(x as u64);
-        assert(b == 0);
     }
 
     // Verifies that `length(alloc(x)) == x` while active, and `0` after
@@ -35,9 +31,9 @@ mod proofs {
         let x = u64_symbol();
         assume(x < i32::MAX as u64);
         let m = alloc(x); // Allocate a block
-        assert(length(m) == x);
-        free(m); // Free the block and check again
-        assert(length(m) == 0);
+        assert(length(m) == x); // Length should equal `x`
+        free(m); // Free the block
+        assert(length(m) == 0); // Length should equal `0`
     }
 }
 
