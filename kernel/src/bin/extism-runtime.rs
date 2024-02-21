@@ -10,24 +10,15 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
 }
 
 #[cfg(feature = "proof")]
-#[link(wasm_import_module = "symbolic")]
-extern "C" {
-    pub fn i32_symbol() -> i32;
-    pub fn i64_symbol() -> u64;
-    pub fn f32_symbol() -> f32;
-    pub fn f64_symbol() -> f64;
-    pub fn assume(x: bool);
-    pub fn assert(x: bool);
-}
-
 mod proofs {
     use super::*;
+    use owi::*;
 
     // Ensures that calling `length(x)=0` when `x` is within the bounds of
     // the global `MemoryRoot` memory section
     pub unsafe fn memory_root_length_0() {
         reset();
-        let x = i64_symbol();
+        let x = u64_symbol();
         let m = alloc(1024); // Allocate a block
         assume(x < core::mem::size_of::<MemoryRoot>() as u64);
         let a = length(x as u64);
@@ -37,10 +28,11 @@ mod proofs {
         assert(b == 0);
     }
 
+    // Verifies that `length(alloc(x)) == x` while active, and `0` after
+    // being freed.
     pub unsafe fn length_0_after_free() {
         reset();
-        let x = i64_symbol();
-        assume(x > 0);
+        let x = u64_symbol();
         assume(x < i32::MAX as u64);
         let m = alloc(x); // Allocate a block
         assert(length(m) == x);
