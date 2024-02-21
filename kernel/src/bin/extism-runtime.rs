@@ -18,7 +18,7 @@ mod proofs {
     // the global `MemoryRoot` memory section
     pub unsafe fn memory_root_length_0() {
         reset();
-        let x = u64_symbol();
+        let x = u64();
         assume(x < core::mem::size_of::<MemoryRoot>() as u64);
         let a = length(x as u64);
         assert(a == 0);
@@ -28,7 +28,7 @@ mod proofs {
     // being freed.
     pub unsafe fn length_0_after_free() {
         reset();
-        let x = u64_symbol();
+        let x = u64();
         assume(x < i32::MAX as u64);
         let m = alloc(x); // Allocate a block
         assert(length(m) == x); // Length should equal `x`
