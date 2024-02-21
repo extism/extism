@@ -4,15 +4,14 @@ version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-owi = {git = "https://github.com/dylibso/owi-rs", optional = true}
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3.39"
+owi = {git = "https://github.com/dylibso/owi-rs"}
 
 [features]
 default = ["bounds-checking"]
 bounds-checking = []
-proof = ["owi"]
 
 [workspace]
 members = [
