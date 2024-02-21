@@ -11,6 +11,7 @@ wasm-bindgen-test = "0.3.39"
 [features]
 default = ["bounds-checking"]
 bounds-checking = []
+proof = []
 
 [workspace]
 members = [
