@@ -36,11 +36,6 @@
 #![no_std]
 #![allow(clippy::missing_safety_doc)]
 
-#[link(wasm_import_module = "waz")]
-extern "C" {
-    pub fn assert(x: i32);
-}
-
 use core::sync::atomic::*;
 
 pub type Pointer = u64;

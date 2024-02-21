@@ -9,13 +9,49 @@ fn panic(_info: &core::panic::PanicInfo) -> ! {
     core::arch::wasm32::unreachable()
 }
 
-#[no_mangle]
-pub unsafe fn _start() {
-    // Check that no length is valid when nothing has been allocated
-    reset();
-    let x = i64_symbol();
-    let a = length(x as u64);
-    if a != 0 {
-        core::arch::wasm32::unreachable()
+#[cfg(feature = "proof")]
+#[link(wasm_import_module = "symbolic")]
+extern "C" {
+    pub fn i32_symbol() -> i32;
+    pub fn i64_symbol() -> u64;
+    pub fn f32_symbol() -> f32;
+    pub fn f64_symbol() -> f64;
+    pub fn assume(x: bool);
+    pub fn assert(x: bool);
+}
+
+mod proofs {
+    use super::*;
+
+    // Ensures that calling `length(x)=0` when `x` is within the bounds of
+    // the global `MemoryRoot` memory section
+    pub unsafe fn memory_root_length_0() {
+        reset();
+        let x = i64_symbol();
+        let m = alloc(1024); // Allocate a block
+        assume(x < core::mem::size_of::<MemoryRoot>() as u64);
+        let a = length(x as u64);
+        assert(a == 0);
+        free(m); // Free the block and check again
+        let b = length(x as u64);
+        assert(b == 0);
     }
+
+    pub unsafe fn length_0_after_free() {
+        reset();
+        let x = i64_symbol();
+        assume(x > 0);
+        assume(x < i32::MAX as u64);
+        let m = alloc(x); // Allocate a block
+        assert(length(m) == x);
+        free(m); // Free the block and check again
+        assert(length(m) == 0);
+    }
+}
+
+#[no_mangle]
+#[cfg(feature = "proof")]
+pub unsafe fn _start() {
+    proofs::memory_root_length_0();
+    proofs::length_0_after_free();
 }
