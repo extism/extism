@@ -267,27 +267,43 @@ impl Plugin {
             log_error(I64);
         );
 
-        let main = &modules[MAIN_KEY];
-        linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
         // If wasi is enabled then add it to the linker
+        let mut linked = std::collections::BTreeSet::new();
+        linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
+        linked.insert(EXTISM_ENV_MODULE);
         if with_wasi {
             wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().ctx
             })?;
         }
+
+        if let Some(m) = modules.get(EXTISM_USER_MODULE) {
+            linker.module(&mut store, EXTISM_USER_MODULE, m)?;
+            linked.insert(EXTISM_USER_MODULE);
+        }
+
         for f in &mut imports {
             let name = f.name().to_string();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             unsafe {
                 linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
             }
-        }
-        for (name, module) in modules.iter() {
-            if name != MAIN_KEY && name != EXTISM_ENV_MODULE {
-                linker.module(&mut store, name, module)?;
-            }
+            linked.insert(EXTISM_USER_MODULE);
         }
 
+        for (name, module) in modules.iter() {
+            for import in module.imports() {
+                if !linked.contains(import.module()) {
+                    if let Some(m) = modules.get(import.module()) {
+                        linked.insert(import.module());
+                        linker.module(&mut store, name, m)?;
+                    }
+                }
+            }
+            linker.module(&mut store, name, module)?;
+        }
+
+        let main = &modules[MAIN_KEY];
         let instance_pre = linker.instantiate_pre(main)?;
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
