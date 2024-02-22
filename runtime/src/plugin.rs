@@ -301,10 +301,11 @@ impl Plugin {
             log_error(I64);
         );
 
-        // If wasi is enabled then add it to the linker
         let mut linked = BTreeSet::new();
         linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
         linked.insert(EXTISM_ENV_MODULE.to_string());
+
+        // If wasi is enabled then add it to the linker
         if with_wasi {
             wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().ctx
