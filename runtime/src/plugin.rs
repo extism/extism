@@ -242,13 +242,6 @@ impl Plugin {
         let mut linker = Linker::new(&engine);
         linker.allow_shadowing(true);
 
-        // If wasi is enabled then add it to the linker
-        if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
-                &mut x.wasi.as_mut().unwrap().ctx
-            })?;
-        }
-
         let mut imports: Vec<_> = imports.into_iter().collect();
         // Define PDK functions
         macro_rules! add_funcs {
@@ -274,6 +267,14 @@ impl Plugin {
             log_error(I64);
         );
 
+        let main = &modules[MAIN_KEY];
+        linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
+        // If wasi is enabled then add it to the linker
+        if with_wasi {
+            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
+                &mut x.wasi.as_mut().unwrap().ctx
+            })?;
+        }
         for f in &mut imports {
             let name = f.name().to_string();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
@@ -281,10 +282,8 @@ impl Plugin {
                 linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
             }
         }
-
-        let main = &modules[MAIN_KEY];
         for (name, module) in modules.iter() {
-            if name != MAIN_KEY {
+            if name != MAIN_KEY && name != EXTISM_ENV_MODULE {
                 linker.module(&mut store, name, module)?;
             }
         }
