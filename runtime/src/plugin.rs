@@ -240,8 +240,6 @@ impl Plugin {
         store.set_epoch_deadline(1);
 
         let mut linker = Linker::new(&engine);
-        linker.allow_shadowing(true);
-
         let mut imports: Vec<_> = imports.into_iter().collect();
         // Define PDK functions
         macro_rules! add_funcs {
@@ -277,21 +275,19 @@ impl Plugin {
             })?;
         }
 
-        if let Some(m) = modules.get(EXTISM_USER_MODULE) {
-            linker.module(&mut store, EXTISM_USER_MODULE, m)?;
-            linked.insert(EXTISM_USER_MODULE);
-        }
-
         for f in &mut imports {
             let name = f.name().to_string();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             unsafe {
                 linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
             }
-            linked.insert(EXTISM_USER_MODULE);
         }
 
         for (name, module) in modules.iter() {
+            if linked.contains(name.as_str()) {
+                continue;
+            }
+
             for import in module.imports() {
                 if !linked.contains(import.module()) {
                     if let Some(m) = modules.get(import.module()) {
@@ -300,6 +296,7 @@ impl Plugin {
                     }
                 }
             }
+
             linker.module(&mut store, name, module)?;
             linked.insert(name);
         }
