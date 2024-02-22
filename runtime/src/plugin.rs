@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+};
 
 use crate::*;
 
@@ -177,6 +180,39 @@ impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
     }
 }
 
+fn add_module<T: 'static>(
+    store: &mut Store<T>,
+    linker: &mut Linker<T>,
+    linked: &mut BTreeSet<String>,
+    modules: &BTreeMap<String, Module>,
+    name: String,
+    module: &Module,
+) -> Result<(), Error> {
+    if linked.contains(&name) {
+        return Ok(());
+    }
+
+    for import in module.imports() {
+        if !linked.contains(import.module()) {
+            if let Some(m) = modules.get(import.module()) {
+                add_module(
+                    store,
+                    linker,
+                    linked,
+                    modules,
+                    import.module().to_string(),
+                    m,
+                )?;
+            }
+        }
+    }
+
+    linker.module(store, name.as_str(), module)?;
+    linked.insert(name);
+
+    Ok(())
+}
+
 impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
@@ -266,9 +302,9 @@ impl Plugin {
         );
 
         // If wasi is enabled then add it to the linker
-        let mut linked = std::collections::BTreeSet::new();
+        let mut linked = BTreeSet::new();
         linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
-        linked.insert(EXTISM_ENV_MODULE);
+        linked.insert(EXTISM_ENV_MODULE.to_string());
         if with_wasi {
             wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().ctx
@@ -276,29 +312,22 @@ impl Plugin {
         }
 
         for f in &mut imports {
-            let name = f.name().to_string();
+            let name = f.name();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             unsafe {
-                linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+                linker.func_new(ns, name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
             }
         }
 
         for (name, module) in modules.iter() {
-            if linked.contains(name.as_str()) {
-                continue;
-            }
-
-            for import in module.imports() {
-                if !linked.contains(import.module()) {
-                    if let Some(m) = modules.get(import.module()) {
-                        linker.module(&mut store, name, m)?;
-                        linked.insert(import.module());
-                    }
-                }
-            }
-
-            linker.module(&mut store, name, module)?;
-            linked.insert(name);
+            add_module(
+                &mut store,
+                &mut linker,
+                &mut linked,
+                &modules,
+                name.clone(),
+                module,
+            )?;
         }
 
         let main = &modules[MAIN_KEY];
