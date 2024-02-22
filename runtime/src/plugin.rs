@@ -249,13 +249,6 @@ impl Plugin {
             })?;
         }
 
-        let main = &modules[MAIN_KEY];
-        for (name, module) in modules.iter() {
-            if name != MAIN_KEY {
-                linker.module(&mut store, name, module)?;
-            }
-        }
-
         let mut imports: Vec<_> = imports.into_iter().collect();
         // Define PDK functions
         macro_rules! add_funcs {
@@ -286,6 +279,13 @@ impl Plugin {
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             unsafe {
                 linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+            }
+        }
+
+        let main = &modules[MAIN_KEY];
+        for (name, module) in modules.iter() {
+            if name != MAIN_KEY {
+                linker.module(&mut store, name, module)?;
             }
         }
 
