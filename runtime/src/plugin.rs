@@ -1,4 +1,7 @@
-use std::{collections::BTreeMap, path::PathBuf};
+use std::{
+    collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
+};
 
 use crate::*;
 
@@ -177,6 +180,39 @@ impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
     }
 }
 
+fn add_module<T: 'static>(
+    store: &mut Store<T>,
+    linker: &mut Linker<T>,
+    linked: &mut BTreeSet<String>,
+    modules: &BTreeMap<String, Module>,
+    name: String,
+    module: &Module,
+) -> Result<(), Error> {
+    if linked.contains(&name) {
+        return Ok(());
+    }
+
+    for import in module.imports() {
+        if !linked.contains(import.module()) {
+            if let Some(m) = modules.get(import.module()) {
+                add_module(
+                    store,
+                    linker,
+                    linked,
+                    modules,
+                    import.module().to_string(),
+                    m,
+                )?;
+            }
+        }
+    }
+
+    linker.module(store, name.as_str(), module)?;
+    linked.insert(name);
+
+    Ok(())
+}
+
 impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
@@ -240,22 +276,6 @@ impl Plugin {
         store.set_epoch_deadline(1);
 
         let mut linker = Linker::new(&engine);
-        linker.allow_shadowing(true);
-
-        // If wasi is enabled then add it to the linker
-        if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
-                &mut x.wasi.as_mut().unwrap().ctx
-            })?;
-        }
-
-        let main = &modules[MAIN_KEY];
-        for (name, module) in modules.iter() {
-            if name != MAIN_KEY {
-                linker.module(&mut store, name, module)?;
-            }
-        }
-
         let mut imports: Vec<_> = imports.into_iter().collect();
         // Define PDK functions
         macro_rules! add_funcs {
@@ -281,14 +301,37 @@ impl Plugin {
             log_error(I64);
         );
 
+        let mut linked = BTreeSet::new();
+        linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
+        linked.insert(EXTISM_ENV_MODULE.to_string());
+
+        // If wasi is enabled then add it to the linker
+        if with_wasi {
+            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
+                &mut x.wasi.as_mut().unwrap().ctx
+            })?;
+        }
+
         for f in &mut imports {
-            let name = f.name().to_string();
+            let name = f.name();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             unsafe {
-                linker.func_new(ns, &name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+                linker.func_new(ns, name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
             }
         }
 
+        for (name, module) in modules.iter() {
+            add_module(
+                &mut store,
+                &mut linker,
+                &mut linked,
+                &modules,
+                name.clone(),
+                module,
+            )?;
+        }
+
+        let main = &modules[MAIN_KEY];
         let instance_pre = linker.instantiate_pre(main)?;
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
