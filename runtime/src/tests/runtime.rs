@@ -658,6 +658,6 @@ fn test_linking() {
         .unwrap();
 
     for _ in 0..5 {
-        assert!(plugin.call::<&str, i64>("run", "Hello, world!").is_ok());
+        assert_eq!(plugin.call::<&str, i64>("run", "Hello, world!").unwrap(), 1);
     }
 }
