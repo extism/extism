@@ -9,18 +9,11 @@ pub struct Wasi {
 }
 
 impl wasmtime_wasi::preview2::WasiView for CurrentPlugin {
-    fn table_mut(&mut self) -> &mut wasmtime::component::ResourceTable {
+    fn table(&mut self) -> &mut wasmtime::component::ResourceTable {
         &mut self.wasi.as_mut().unwrap().preview2_table
     }
 
-    fn table(&self) -> &wasmtime::component::ResourceTable {
-        &self.wasi.as_ref().unwrap().preview2_table
-    }
-
-    fn ctx(&self) -> &wasmtime_wasi::preview2::WasiCtx {
-        &self.wasi.as_ref().unwrap().ctx
-    }
-    fn ctx_mut(&mut self) -> &mut wasmtime_wasi::preview2::WasiCtx {
+    fn ctx(&mut self) -> &mut wasmtime_wasi::preview2::WasiCtx {
         &mut self.wasi.as_mut().unwrap().ctx
     }
 }
