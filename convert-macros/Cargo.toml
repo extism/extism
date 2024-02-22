@@ -1,6 +1,5 @@
 [package]
 name = "extism-convert-macros"
-readme = "./README.md"
 edition.workspace = true
 authors.workspace = true
 license.workspace = true
