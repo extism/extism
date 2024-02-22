@@ -295,12 +295,13 @@ impl Plugin {
             for import in module.imports() {
                 if !linked.contains(import.module()) {
                     if let Some(m) = modules.get(import.module()) {
-                        linked.insert(import.module());
                         linker.module(&mut store, name, m)?;
+                        linked.insert(import.module());
                     }
                 }
             }
             linker.module(&mut store, name, module)?;
+            linked.insert(name);
         }
 
         let main = &modules[MAIN_KEY];
