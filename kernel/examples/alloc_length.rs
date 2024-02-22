@@ -1,17 +1,9 @@
 #![no_main]
 #![no_std]
-
 use extism_runtime_kernel::*;
 use owi::*;
 
-#[cfg(all(target_arch = "wasm32", not(test)))]
-#[panic_handler]
-fn panic(_info: &core::panic::PanicInfo) -> ! {
-    core::arch::wasm32::unreachable()
-}
-
-#[no_mangle]
-pub unsafe fn _start() {
+main!({
     reset();
     let n = alloc(1024);
 
@@ -28,4 +20,4 @@ pub unsafe fn _start() {
     free(m); // Free the block
     assert(length(m) == 0);
     free(n);
-}
+});
