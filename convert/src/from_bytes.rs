@@ -9,18 +9,7 @@ pub use extism_convert_macros::FromBytes;
 /// `FromBytes`, e.g., [`Json`], [`Msgpack`].
 ///
 /// ```
-#[cfg_attr(
-    feature = "extism-path",
-    doc = "use extism::convert::{Json, FromBytes};"
-)]
-#[cfg_attr(
-    all(feature = "extism-pdk-path", not(feature = "extism-path")),
-    doc = "use extism_pdk::{Json, FromBytes};"
-)]
-#[cfg_attr(
-    not(any(feature = "extism-path", feature = "extism-pdk-path")),
-    doc = "use extism_convert::{Json, FromBytes};"
-)]
+/// use extism_convert::{Json, FromBytes};
 /// use serde::Deserialize;
 ///
 /// #[derive(FromBytes, Deserialize, PartialEq, Debug)]
@@ -39,18 +28,7 @@ pub use extism_convert_macros::FromBytes;
 /// ```
 /// use std::str::{self, FromStr};
 /// use std::convert::Infallible;
-#[cfg_attr(
-    feature = "extism-path",
-    doc = "use extism::convert::{Error, FromBytes, FromBytesOwned};"
-)]
-#[cfg_attr(
-    all(feature = "extism-pdk-path", not(feature = "extism-path")),
-    doc = "use extism_pdk::{Error, FromBytes, FromBytesOwned};"
-)]
-#[cfg_attr(
-    not(any(feature = "extism-path", feature = "extism-pdk-path")),
-    doc = "use extism_convert::{Error, FromBytes, FromBytesOwned};"
-)]
+/// use extism_convert::{Error, FromBytes, FromBytesOwned};
 ///
 /// // Custom serialization using `FromStr`
 /// struct StringEnc<T>(T);
