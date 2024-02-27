@@ -249,7 +249,13 @@ pub struct Manifest {
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
 
-    /// The plugin timeout, by default this is set to 30s
+    /// Specifies which paths should be made for reading only when using WASI. This is a mapping from
+    /// the path on disk to the path it should be available inside the plugin.
+    /// For example, `".": "/tmp"` would mount the current directory as `/tmp` inside the module
+    #[serde(default)]
+    pub allowed_paths_readonly: Option<BTreeMap<PathBuf, PathBuf>>,
+
+    /// The plugin timeout
     #[serde(default)]
     pub timeout_ms: Option<u64>,
 }

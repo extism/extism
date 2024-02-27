@@ -312,6 +312,15 @@ impl CurrentPlugin {
                 }
             }
 
+            if let Some(a) = &manifest.allowed_paths_readonly {
+                for (k, v) in a.iter() {
+                    if k.as_path().is_dir() {
+                        let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
+                        ctx.preopened_dir(d, DirPerms::READ, FilePerms::READ, v.to_string_lossy());
+                    }
+                }
+            }
+
             if let Some(h) = &manifest.allowed_hosts {
                 let h = h.clone();
                 ctx.socket_addr_check(move |addr, _kind| {
