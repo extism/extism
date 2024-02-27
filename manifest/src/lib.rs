@@ -249,7 +249,7 @@ pub struct Manifest {
     #[serde(default)]
     pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
 
-    /// The plugin timeout, by default this is set to 30s
+    /// The plugin timeout in milliseconds
     #[serde(default)]
     pub timeout_ms: Option<u64>,
 }
