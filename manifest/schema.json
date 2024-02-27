@@ -47,7 +47,7 @@
       ]
     },
     "timeout_ms": {
-      "description": "The plugin timeout, by default this is set to 30s",
+      "description": "The plugin timeout in milliseconds",
       "default": null,
       "type": [
         "integer",
