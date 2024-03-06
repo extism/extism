@@ -110,6 +110,7 @@ pub(crate) fn var_set(
         let key_ptr = key.as_ptr();
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
     };
+
     // Remove if the value offset is 0
     if voffset == 0 {
         data.vars.remove(key);
@@ -121,10 +122,15 @@ pub(crate) fn var_set(
         None => anyhow::bail!("invalid handle offset for var value: {voffset}"),
     };
 
-    let mut size = key.len() + handle.length as usize;
+    let mut size = std::mem::size_of::<String>()
+        + std::mem::size_of::<Vec<u8>>()
+        + key.len()
+        + handle.length as usize;
+
     for (k, v) in data.vars.iter() {
         size += k.len();
         size += v.len();
+        size += std::mem::size_of::<String>() + std::mem::size_of::<Vec<u8>>();
     }
 
     // If the store is larger than the configured size, or 1mb by default, then stop adding things
