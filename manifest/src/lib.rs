@@ -23,6 +23,31 @@ pub struct MemoryOptions {
     pub max_var_bytes: Option<u64>,
 }
 
+impl MemoryOptions {
+    /// Create an empty `MemoryOptions` value
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Set max pages
+    pub fn with_max_pages(mut self, pages: u32) -> Self {
+        self.max_pages = Some(pages);
+        self
+    }
+
+    /// Set max HTTP response size
+    pub fn with_max_http_response_bytes(mut self, bytes: u64) -> Self {
+        self.max_http_response_bytes = Some(bytes);
+        self
+    }
+
+    /// Set max size of Extism vars
+    pub fn with_max_var_bytes(mut self, bytes: u64) -> Self {
+        self.max_var_bytes = Some(bytes);
+        self
+    }
+}
+
 fn default_var_bytes() -> Option<u64> {
     Some(1024 * 1024)
 }
