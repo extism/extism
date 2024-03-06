@@ -16,6 +16,15 @@ pub struct MemoryOptions {
     /// The maximum number of bytes allowed in an HTTP response
     #[serde(default)]
     pub max_http_response_bytes: Option<u64>,
+
+    /// The maximum number of bytes allowed to be used by plugin vars. Setting this to 0
+    /// will disable Extism vars. The default value is 1mb.
+    #[serde(default = "default_var_bytes")]
+    pub max_var_bytes: Option<u64>,
+}
+
+fn default_var_bytes() -> Option<u64> {
+    Some(1024 * 1024)
 }
 
 /// Generic HTTP request structure

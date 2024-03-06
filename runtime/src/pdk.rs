@@ -104,8 +104,8 @@ pub(crate) fn var_set(
 
     let voffset = args!(input, 1, i64) as u64;
 
-    // If the store is larger than 100MB then stop adding things
-    if size > 1024 * 1024 * 100 && voffset != 0 {
+    // If the store is larger than the configured size, or 1mb by default, then stop adding things
+    if size > data.manifest.memory.max_var_bytes.unwrap_or(1024 * 1024) as usize && voffset != 0 {
         return Err(Error::msg("Variable store is full"));
     }
 
