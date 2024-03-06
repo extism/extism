@@ -97,6 +97,10 @@ pub(crate) fn var_set(
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
 
+    if data.manifest.memory.max_var_bytes.is_some_and(|x| x == 0) {
+        anyhow::bail!("Vars are disabled by this host")
+    }
+
     let voffset = args!(input, 1, i64) as u64;
     let key_offs = args!(input, 0, i64) as u64;
 
