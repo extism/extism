@@ -98,7 +98,8 @@ pub(crate) fn var_set(
     let data: &mut CurrentPlugin = caller.data_mut();
 
     let mut size = 0;
-    for v in data.vars.values() {
+    for (k, v) in data.vars.iter() {
+        size += k.len();
         size += v.len();
     }
 
