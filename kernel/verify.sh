@@ -13,6 +13,7 @@ mkdir -p proofs
 # Collect proofs in wat format
 get_proof alloc_length
 get_proof load_store
+get_proof reuse
 
 for proof in $(ls proofs); do
   echo "Checking $proof"
