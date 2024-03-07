@@ -1,3 +1,5 @@
+use extism_manifest::MemoryOptions;
+
 use crate::*;
 use std::{io::Write, time::Instant};
 
@@ -592,6 +594,29 @@ fn test_manifest_ptr_len() {
     let output = plugin.call("count_vowels", "abc123").unwrap();
     let count: serde_json::Value = serde_json::from_slice(output).unwrap();
     assert_eq!(count.get("count").unwrap().as_i64().unwrap(), 1);
+}
+
+#[test]
+fn test_no_vars() {
+    let data = br#"
+(module
+    (import "extism:host/env" "var_set" (func $var_set (param i64 i64)))
+    (import "extism:host/env" "input_offset" (func $input_offset (result i64)))
+    (func (export "test") (result i32)
+        (call $input_offset)
+        (call $input_offset)
+        (call $var_set)
+        (i32.const 0)
+    )
+)
+    "#;
+    let manifest = Manifest::new([Wasm::data(data)])
+        .with_memory_options(MemoryOptions::new().with_max_var_bytes(1));
+    let mut plugin = Plugin::new(manifest, [], true).unwrap();
+    let output: Result<(), Error> = plugin.call("test", b"A".repeat(1024));
+    assert!(output.is_err());
+    let output: Result<(), Error> = plugin.call("test", vec![]);
+    assert!(output.is_ok());
 }
 
 #[test]

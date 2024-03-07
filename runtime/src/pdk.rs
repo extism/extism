@@ -97,19 +97,13 @@ pub(crate) fn var_set(
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
 
-    let mut size = 0;
-    for v in data.vars.values() {
-        size += v.len();
+    if data.manifest.memory.max_var_bytes.is_some_and(|x| x == 0) {
+        anyhow::bail!("Vars are disabled by this host")
     }
 
     let voffset = args!(input, 1, i64) as u64;
-
-    // If the store is larger than 100MB then stop adding things
-    if size > 1024 * 1024 * 100 && voffset != 0 {
-        return Err(Error::msg("Variable store is full"));
-    }
-
     let key_offs = args!(input, 0, i64) as u64;
+
     let key = {
         let handle = match data.memory_handle(key_offs) {
             Some(h) => h,
@@ -131,6 +125,22 @@ pub(crate) fn var_set(
         Some(h) => h,
         None => anyhow::bail!("invalid handle offset for var value: {voffset}"),
     };
+
+    let mut size = std::mem::size_of::<String>()
+        + std::mem::size_of::<Vec<u8>>()
+        + key.len()
+        + handle.length as usize;
+
+    for (k, v) in data.vars.iter() {
+        size += k.len();
+        size += v.len();
+        size += std::mem::size_of::<String>() + std::mem::size_of::<Vec<u8>>();
+    }
+
+    // If the store is larger than the configured size, or 1mb by default, then stop adding things
+    if size > data.manifest.memory.max_var_bytes.unwrap_or(1024 * 1024) as usize && voffset != 0 {
+        return Err(Error::msg("Variable store is full"));
+    }
 
     let value = data.memory_bytes(handle)?.to_vec();
 

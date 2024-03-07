@@ -38,7 +38,8 @@
       "description": "Memory options",
       "default": {
         "max_http_response_bytes": null,
-        "max_pages": null
+        "max_pages": null,
+        "max_var_bytes": null
       },
       "allOf": [
         {
@@ -88,6 +89,16 @@
             "null"
           ],
           "format": "uint32",
+          "minimum": 0.0
+        },
+        "max_var_bytes": {
+          "description": "The maximum number of bytes allowed to be used by plugin vars. Setting this to 0 will disable Extism vars. The default value is 1mb.",
+          "default": 1048576,
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint64",
           "minimum": 0.0
         }
       },

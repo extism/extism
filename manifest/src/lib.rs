@@ -16,6 +16,40 @@ pub struct MemoryOptions {
     /// The maximum number of bytes allowed in an HTTP response
     #[serde(default)]
     pub max_http_response_bytes: Option<u64>,
+
+    /// The maximum number of bytes allowed to be used by plugin vars. Setting this to 0
+    /// will disable Extism vars. The default value is 1mb.
+    #[serde(default = "default_var_bytes")]
+    pub max_var_bytes: Option<u64>,
+}
+
+impl MemoryOptions {
+    /// Create an empty `MemoryOptions` value
+    pub fn new() -> Self {
+        Default::default()
+    }
+
+    /// Set max pages
+    pub fn with_max_pages(mut self, pages: u32) -> Self {
+        self.max_pages = Some(pages);
+        self
+    }
+
+    /// Set max HTTP response size
+    pub fn with_max_http_response_bytes(mut self, bytes: u64) -> Self {
+        self.max_http_response_bytes = Some(bytes);
+        self
+    }
+
+    /// Set max size of Extism vars
+    pub fn with_max_var_bytes(mut self, bytes: u64) -> Self {
+        self.max_var_bytes = Some(bytes);
+        self
+    }
+}
+
+fn default_var_bytes() -> Option<u64> {
+    Some(1024 * 1024)
 }
 
 /// Generic HTTP request structure
