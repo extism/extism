@@ -236,11 +236,12 @@ pub(crate) fn http_request(
                 Some(res.into_reader())
             }
             Err(e) => {
+                let msg = e.to_string();
                 if let Some(res) = e.into_response() {
                     data.http_status = res.status();
                     Some(res.into_reader())
                 } else {
-                    None
+                    return Err(Error::msg(msg));
                 }
             }
         };
