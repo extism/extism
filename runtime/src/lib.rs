@@ -19,6 +19,7 @@ pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
 mod timer;
+mod wasi_command;
 
 /// Extism C API
 pub mod sdk;
@@ -29,6 +30,7 @@ pub use extism_manifest::{Manifest, Wasm, WasmMetadata};
 pub use function::{Function, UserData, Val, ValType, PTR};
 pub use plugin::{CancelHandle, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_USER_MODULE};
 pub use plugin_builder::{DebugOptions, PluginBuilder};
+pub use wasi_command::WASICommand;
 
 pub(crate) use internal::{Internal, Wasi};
 pub(crate) use timer::{Timer, TimerAction};

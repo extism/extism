@@ -9,6 +9,7 @@ const WASM_LOOP: &[u8] = include_bytes!("../../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../../wasm/globals.wasm");
 const WASM_REFLECT: &[u8] = include_bytes!("../../../wasm/reflect.wasm");
 const WASM_HTTP: &[u8] = include_bytes!("../../../wasm/http.wasm");
+const WASM_COMMAND: &[u8] = include_bytes!("../../../wasm/command.wasm");
 
 host_fn!(pub hello_world (a: String) -> String { Ok(a) });
 
@@ -685,4 +686,18 @@ fn test_linking() {
     for _ in 0..5 {
         assert_eq!(plugin.call::<&str, i64>("run", "Hello, world!").unwrap(), 1);
     }
+}
+
+#[test]
+fn test_wasi_command() {
+    let cwasm = WASICommand::from_bytes(WASM_COMMAND);
+    let envs: Vec<(String, String)> = vec![
+        (String::from("var1"), String::from("value1")),
+        (String::from("var2"), String::from("value2")),
+    ];
+    let args: Vec<String> = vec![String::from("zero"), String::from("one")];
+    let (output, stderr): (String, Vec<u8>) = cwasm.run(&envs, &args, "test").unwrap();
+    println!("stdout: {}", output);
+    eprintln!("stderr as bytes: {:?}", stderr);
+    eprintln!("stderr as String: {}", String::from_utf8(stderr).unwrap());
 }
