@@ -700,4 +700,13 @@ fn test_wasi_command() {
     println!("stdout: {}", output);
     eprintln!("stderr as bytes: {:?}", stderr);
     eprintln!("stderr as String: {}", String::from_utf8(stderr).unwrap());
+
+    let (output, stderr): (String, Vec<u8>) = cwasm.run(&envs, &args, "test").unwrap();
+    println!("2| stdout: {}", output);
+    eprintln!("2| stderr as bytes: {:?}", stderr);
+    eprintln!(
+        "2| stderr as String: {}",
+        String::from_utf8(stderr).unwrap()
+    );
+    assert!(false);
 }
