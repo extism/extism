@@ -4,7 +4,6 @@ use extism_runtime_kernel::*;
 use owi::*;
 
 main!({
-    reset();
     let n = alloc(1024);
 
     let x = u64();

@@ -175,7 +175,7 @@ impl MemoryRoot {
         core::ptr::write_bytes(
             self.blocks.as_mut_ptr() as *mut u8,
             MemoryStatus::Unused as u8,
-            self_position as usize,
+            self_position as usize - core::mem::size_of::<MemoryRoot>(),
         );
 
         // Clear extism runtime metadata
