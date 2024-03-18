@@ -147,7 +147,7 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
         f: impl FnOnce(&mut Plugin) -> Result<T, Error>,
     ) -> Result<Option<T>, Error> {
         if let Some(plugin) = self.get(key, timeout)? {
-            return f(&mut *plugin.plugin()).map(Some);
+            return f(&mut plugin.plugin()).map(Some);
         }
         Ok(None)
     }
