@@ -29,6 +29,7 @@ pub(crate) mod manifest;
 pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
+mod pool;
 mod readonly_dir;
 mod timer;
 
@@ -43,6 +44,7 @@ pub use plugin::{
     CancelHandle, CompiledPlugin, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_USER_MODULE,
 };
 pub use plugin_builder::{DebugOptions, PluginBuilder};
+pub use pool::Pool;
 
 pub(crate) use internal::{Internal, Wasi};
 pub(crate) use timer::{Timer, TimerAction};
