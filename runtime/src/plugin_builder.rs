@@ -60,7 +60,7 @@ impl<'a> PluginBuilder<'a> {
     }
 
     /// Add a single host function
-    pub fn with_function<T: 'static, F>(
+    pub fn with_function<T: Sync + Clone + 'static, F>(
         mut self,
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
@@ -80,7 +80,7 @@ impl<'a> PluginBuilder<'a> {
     }
 
     /// Add a single host function in a specific namespace
-    pub fn with_function_in_namespace<T: 'static, F>(
+    pub fn with_function_in_namespace<T: Sync + Clone + 'static, F>(
         mut self,
         namespace: impl Into<String>,
         name: impl Into<String>,

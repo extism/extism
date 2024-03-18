@@ -453,7 +453,7 @@ fn hello_world_user_data(
     _plugin: &mut CurrentPlugin,
     inputs: &[Val],
     outputs: &mut [Val],
-    user_data: UserData<std::fs::File>,
+    user_data: UserData<std::sync::Arc<std::sync::Mutex<std::fs::File>>>,
 ) -> Result<(), Error> {
     let data = user_data.get()?;
     let mut data = data.lock().unwrap();
@@ -470,7 +470,8 @@ fn test_userdata() {
         if path.exists() {
             std::fs::remove_file(&path).unwrap();
         }
-        let file = std::fs::File::create(&path).unwrap();
+        let file =
+            std::sync::Arc::new(std::sync::Mutex::new(std::fs::File::create(&path).unwrap()));
         let f = Function::new(
             "hello_world",
             [PTR],

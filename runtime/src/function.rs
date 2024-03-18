@@ -81,18 +81,18 @@ pub(crate) enum UserDataHandle {
 /// using `UserData::get`. The `C` data is stored as a pointer and cleanup function and isn't usable from Rust. The cleanup function
 /// will be called when the inner `CPtr` is dropped.
 #[derive(Debug)]
-pub enum UserData<T: Sized> {
+pub enum UserData<T: Sync + Clone + Sized> {
     C(Arc<CPtr>),
-    Rust(Arc<std::sync::Mutex<T>>),
+    Rust(T),
 }
 
-impl<T: Default> Default for UserData<T> {
+impl<T: Default + Sync + Clone> Default for UserData<T> {
     fn default() -> Self {
         UserData::new(T::default())
     }
 }
 
-impl<T> Clone for UserData<T> {
+impl<T: Sync + Clone> Clone for UserData<T> {
     fn clone(&self) -> Self {
         match self {
             UserData::C(ptr) => UserData::C(ptr.clone()),
@@ -101,7 +101,7 @@ impl<T> Clone for UserData<T> {
     }
 }
 
-impl<T> UserData<T> {
+impl<T: Sync + Clone> UserData<T> {
     /// Create a new `UserData` from an existing pointer and free function, this is used
     /// by the C API to wrap C pointers into user data
     pub(crate) fn new_pointer(
@@ -126,12 +126,11 @@ impl<T> UserData<T> {
     ///
     /// This will wrap the provided value in a reference-counted mutex
     pub fn new(x: T) -> Self {
-        let data = Arc::new(std::sync::Mutex::new(x));
-        UserData::Rust(data)
+        UserData::Rust(x)
     }
 
     /// Get a copy of the inner value
-    pub fn get(&self) -> Result<Arc<std::sync::Mutex<T>>, Error> {
+    pub fn get(&self) -> Result<T, Error> {
         match self {
             UserData::C { .. } => anyhow::bail!("C UserData should not be used from Rust"),
             UserData::Rust(data) => Ok(data.clone()),
@@ -150,8 +149,8 @@ impl Drop for CPtr {
     }
 }
 
-unsafe impl<T> Send for UserData<T> {}
-unsafe impl<T> Sync for UserData<T> {}
+unsafe impl<T: Sync + Clone> Send for UserData<T> {}
+unsafe impl<T: Sync + Clone> Sync for UserData<T> {}
 unsafe impl Send for CPtr {}
 unsafe impl Sync for CPtr {}
 
@@ -180,7 +179,7 @@ pub struct Function {
 
 impl Function {
     /// Create a new host function
-    pub fn new<T: 'static, F>(
+    pub fn new<T: 'static + Sync + Clone, F>(
         name: impl Into<String>,
         args: impl IntoIterator<Item = ValType>,
         returns: impl IntoIterator<Item = ValType>,
@@ -211,7 +210,9 @@ impl Function {
             namespace: None,
             _user_data: match &user_data {
                 UserData::C(ptr) => UserDataHandle::C(ptr.clone()),
-                UserData::Rust(x) => UserDataHandle::Rust(x.clone()),
+                UserData::Rust(x) => {
+                    UserDataHandle::Rust(std::sync::Arc::new(std::sync::Mutex::new(x.clone())))
+                }
             },
         }
     }
