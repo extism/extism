@@ -104,7 +104,8 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
     }
 
     /// Get access to a plugin, this will create a new instance if needed (and allowed by the specified
-    /// max_instances)
+    /// max_instances). `Ok(None)` is returned if the timeout is reached before an available plugin could be
+    /// acquired
     pub fn get(
         &self,
         key: &Key,
@@ -134,5 +135,20 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
                 return Ok(None);
             }
         }
+    }
+
+    /// Access a plugin in a callback function. This calls `Pool::get` then the provided
+    /// callback. `Ok(None)` is returned if the timeout is reached before an available
+    /// plugin could be acquired
+    pub fn with_plugin<T>(
+        &self,
+        key: &Key,
+        timeout: std::time::Duration,
+        f: impl FnOnce(&mut Plugin) -> Result<T, Error>,
+    ) -> Result<Option<T>, Error> {
+        if let Some(plugin) = self.get(key, timeout)? {
+            return f(&mut *plugin.plugin()).map(Some);
+        }
+        Ok(None)
     }
 }
