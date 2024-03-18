@@ -14,6 +14,7 @@ mkdir -p proofs
 get_proof alloc_length
 get_proof load_store
 get_proof reuse
+get_proof error
 
 for proof in $(ls proofs); do
   echo "Checking $proof"

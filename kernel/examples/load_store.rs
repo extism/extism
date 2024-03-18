@@ -4,8 +4,6 @@ use extism_runtime_kernel::*;
 use owi::*;
 
 main!({
-    reset();
-
     let x = u64();
     assume(x < 1024);
     assume(x > 0);
