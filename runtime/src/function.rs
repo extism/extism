@@ -225,8 +225,7 @@ impl Function {
     }
 
     pub(crate) fn ty(&self, engine: &wasmtime::Engine) -> wasmtime::FuncType {
-        let ty = wasmtime::FuncType::new(engine, self.params.clone(), self.results.clone());
-        ty
+        wasmtime::FuncType::new(engine, self.params.clone(), self.results.clone())
     }
 
     /// Host function name
