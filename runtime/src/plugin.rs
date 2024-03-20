@@ -281,7 +281,7 @@ impl Plugin {
         macro_rules! add_funcs {
             ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
                 $(
-                    let t = FuncType::new([$($args),*], [$($($r),*)?]);
+                    let t = FuncType::new(&engine, [$($args),*], [$($($r),*)?]);
                     linker.func_new(EXTISM_ENV_MODULE, stringify!($name), t, pdk::$name)?;
                 )*
             };
@@ -307,7 +307,7 @@ impl Plugin {
 
         // If wasi is enabled then add it to the linker
         if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
+            wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |x: &mut CurrentPlugin| {
                 &mut x.wasi.as_mut().unwrap().ctx
             })?;
         }
@@ -316,7 +316,12 @@ impl Plugin {
             let name = f.name();
             let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
             unsafe {
-                linker.func_new(ns, name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+                linker.func_new(
+                    ns,
+                    name,
+                    f.ty(&engine).clone(),
+                    &*(f.f.as_ref() as *const _),
+                )?;
             }
         }
 
@@ -450,7 +455,7 @@ impl Plugin {
                 if let Some(f) = x.func() {
                     let (params, mut results) = (f.params(), f.results());
                     match (params.len(), results.len()) {
-                        (0, 1) => results.next() == Some(wasmtime::ValType::I32),
+                        (0, 1) => matches!(results.next(), Some(wasmtime::ValType::I32)),
                         (0, 0) => true,
                         _ => false,
                     }
@@ -588,7 +593,7 @@ impl Plugin {
                     if let Some(reactor_init) = reactor_init {
                         reactor_init.call(&mut store, &[], &mut [])?;
                     }
-                    let mut results = vec![Val::null(); init.ty(&store).results().len()];
+                    let mut results = vec![Val::I32(0); init.ty(&store).results().len()];
                     init.call(
                         &mut store,
                         &[Val::I32(0), Val::I32(0)],
@@ -719,7 +724,7 @@ impl Plugin {
         self.store.set_epoch_deadline(1);
 
         // Call the function
-        let mut results = vec![wasmtime::Val::null(); n_results];
+        let mut results = vec![wasmtime::Val::I32(0); n_results];
         let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Stop timer
@@ -804,13 +809,7 @@ impl Plugin {
                     }
                 }
 
-                let wasi_exit_code = e
-                    .downcast_ref::<wasmtime_wasi::I32Exit>()
-                    .map(|e| e.0)
-                    .or_else(|| {
-                        e.downcast_ref::<wasmtime_wasi::preview2::I32Exit>()
-                            .map(|e| e.0)
-                    });
+                let wasi_exit_code = e.downcast_ref::<wasmtime_wasi::I32Exit>().map(|e| e.0);
                 if let Some(exit_code) = wasi_exit_code {
                     debug!(
                         plugin = self.id.to_string(),
