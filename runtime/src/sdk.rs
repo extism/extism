@@ -41,9 +41,9 @@ pub type ExtismFunctionType = extern "C" fn(
 /// Log drain callback
 pub type ExtismLogDrainFunctionType = extern "C" fn(data: *const std::ffi::c_char, size: Size);
 
-impl From<&wasmtime::Val> for ExtismVal {
-    fn from(value: &wasmtime::Val) -> Self {
-        match value.ty() {
+impl ExtismVal {
+    fn from_val(value: &wasmtime::Val, ctx: impl AsContext) -> Self {
+        match value.ty(ctx) {
             wasmtime::ValType::I32 => ExtismVal {
                 t: ValType::I32,
                 v: ValUnion {
@@ -218,7 +218,10 @@ pub unsafe extern "C" fn extism_function_new(
         output_types.clone(),
         user_data,
         move |plugin, inputs, outputs, user_data| {
-            let inputs: Vec<_> = inputs.iter().map(ExtismVal::from).collect();
+            let inputs: Vec<_> = inputs
+                .iter()
+                .map(|x| ExtismVal::from_val(x, unsafe { &*plugin.store }))
+                .collect();
             let mut output_tmp: Vec<_> = output_types
                 .iter()
                 .map(|t| ExtismVal {
@@ -406,20 +409,6 @@ pub unsafe extern "C" fn extism_plugin_config(
                 return plugin.return_error(&mut lock, e, false);
             }
         };
-
-    let wasi = &mut plugin.current_plugin_mut().wasi;
-    if let Some(Wasi { ctx, .. }) = wasi {
-        for (k, v) in json.iter() {
-            match v {
-                Some(v) => {
-                    let _ = ctx.push_env(k, v);
-                }
-                None => {
-                    let _ = ctx.push_env(k, "");
-                }
-            }
-        }
-    }
 
     let id = plugin.id;
     let config = &mut plugin.current_plugin_mut().manifest.config;

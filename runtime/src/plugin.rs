@@ -343,7 +343,6 @@ impl Plugin {
 
         let imports: Vec<Function> = imports.into_iter().collect();
         let (instance_pre, linker) = relink(&engine, &mut store, &imports, &modules, with_wasi)?;
-
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
             modules,
@@ -465,7 +464,7 @@ impl Plugin {
                 if let Some(f) = x.func() {
                     let (params, mut results) = (f.params(), f.results());
                     match (params.len(), results.len()) {
-                        (0, 1) => results.next() == Some(wasmtime::ValType::I32),
+                        (0, 1) => matches!(results.next(), Some(wasmtime::ValType::I32)),
                         (0, 0) => true,
                         _ => false,
                     }
@@ -615,7 +614,7 @@ impl Plugin {
                     if let Some(reactor_init) = reactor_init {
                         reactor_init.call(&mut store, &[], &mut [])?;
                     }
-                    let mut results = vec![Val::null(); init.ty(&store).results().len()];
+                    let mut results = vec![Val::I32(0); init.ty(&store).results().len()];
                     init.call(
                         &mut store,
                         &[Val::I32(0), Val::I32(0)],
@@ -748,7 +747,7 @@ impl Plugin {
         self.current_plugin_mut().start_time = std::time::Instant::now();
 
         // Call the function
-        let mut results = vec![wasmtime::Val::null(); n_results];
+        let mut results = vec![wasmtime::Val::I32(0); n_results];
         let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Stop timer
@@ -833,13 +832,7 @@ impl Plugin {
                     }
                 }
 
-                let wasi_exit_code = e
-                    .downcast_ref::<wasmtime_wasi::I32Exit>()
-                    .map(|e| e.0)
-                    .or_else(|| {
-                        e.downcast_ref::<wasmtime_wasi::preview2::I32Exit>()
-                            .map(|e| e.0)
-                    });
+                let wasi_exit_code = e.downcast_ref::<wasmtime_wasi::I32Exit>().map(|e| e.0);
                 if let Some(exit_code) = wasi_exit_code {
                     debug!(
                         plugin = self.id.to_string(),

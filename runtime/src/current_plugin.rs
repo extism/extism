@@ -311,23 +311,48 @@ impl CurrentPlugin {
         id: uuid::Uuid,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
-            let auth = wasmtime_wasi::ambient_authority();
+            let auth = cap_std::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-            for (k, v) in manifest.config.iter() {
-                ctx.env(k, v)?;
-            }
+            ctx.allow_ip_name_lookup(true);
+            ctx.allow_tcp(true);
+            ctx.allow_udp(true);
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth).map_err(|err| {
-                        Error::msg(format!(
-                            "Unable to preopen directory \"{}\": {}",
-                            k.display(),
-                            err.kind()
-                        ))
-                    })?;
-                    ctx.preopened_dir(d, v)?;
+                    if k.as_path().is_dir() {
+                        let d = cap_std::fs::Dir::open_ambient_dir(k, auth).map_err(|err| {
+                            Error::msg(format!(
+                                "Unable to preopen directory \"{}\": {}",
+                                k.display(),
+                                err.kind()
+                            ))
+                        })?;
+                        ctx.preopened_dir(
+                            d,
+                            wasmtime_wasi::DirPerms::READ | wasmtime_wasi::DirPerms::MUTATE,
+                            wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
+                            v.to_string_lossy(),
+                        );
+                    }
                 }
+            }
+
+            if let Some(h) = &manifest.allowed_hosts {
+                let h = h.clone();
+                ctx.socket_addr_check(move |addr, _kind| {
+                    for host in h.iter() {
+                        let addrs = std::net::ToSocketAddrs::to_socket_addrs(&host);
+                        if let Ok(addrs) = addrs {
+                            for a in addrs.into_iter() {
+                                if addr == &a {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+
+                    false
+                });
             }
 
             // Enable WASI output, typically used for debugging purposes
@@ -335,11 +360,12 @@ impl CurrentPlugin {
                 ctx.inherit_stdout().inherit_stderr();
             }
 
-            Some(Wasi { ctx: ctx.build() })
+            Some(Wasi {
+                ctx: wasmtime_wasi::WasiP1Ctx::new(ctx.build()),
+            })
         } else {
             None
         };
-
         let memory_limiter = if let Some(pgs) = available_pages {
             let n = pgs as usize * 65536;
             Some(crate::current_plugin::MemoryLimiter {
