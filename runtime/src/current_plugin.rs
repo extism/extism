@@ -1,5 +1,3 @@
-use anyhow::Context;
-
 use crate::*;
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
@@ -298,8 +296,13 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)
-                        .with_context(|| format!("allowed_path: {} does not exist", k.display()))?;
+                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth).map_err(|err| {
+                        Error::msg(format!(
+                            "Unable to preopen directory \"{}\": {}",
+                            k.display(),
+                            err.kind()
+                        ))
+                    })?;
                     ctx.preopened_dir(d, v)?;
                 }
             }
