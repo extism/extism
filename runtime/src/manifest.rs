@@ -2,6 +2,7 @@ use std::collections::BTreeMap;
 use std::fmt::Write as FmtWrite;
 use std::io::Read;
 
+use anyhow::Context;
 use sha2::Digest;
 
 use crate::plugin::{WasmInput, MAIN_KEY};
@@ -47,9 +48,9 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             let name = meta.name.as_deref().unwrap_or(MAIN_KEY).to_string();
 
             // Load file
-            let mut buf = Vec::new();
-            let mut file = std::fs::File::open(path)?;
-            file.read_to_end(&mut buf)?;
+            let buf = std::fs::read(path)
+                .map_err(Error::from)
+                .context(path.to_string_lossy().to_string())?;
 
             check_hash(&meta.hash, &buf)?;
             Ok((name, Module::new(engine, buf)?))

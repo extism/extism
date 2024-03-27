@@ -671,7 +671,7 @@ unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
 /// Calls the provided callback function for each buffered log line.
 /// This is only needed when `extism_log_custom` is used.
 pub unsafe extern "C" fn extism_log_drain(handler: ExtismLogDrainFunctionType) {
-    if let Some(buf) = &mut LOG_BUFFER {
+    if let Some(buf) = LOG_BUFFER.as_mut() {
         if let Ok(mut buf) = buf.buffer.lock() {
             for (line, len) in buf.drain(..) {
                 handler(line.as_ptr(), len as u64);

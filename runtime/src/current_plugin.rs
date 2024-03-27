@@ -1,3 +1,5 @@
+use anyhow::Context;
+
 use crate::*;
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
@@ -296,7 +298,8 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
+                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)
+                        .context(k.to_string_lossy().to_string())?;
                     ctx.preopened_dir(d, v)?;
                 }
             }

@@ -71,7 +71,9 @@ pub struct CPtr {
 /// UserDataHandle is an untyped version of `UserData` that is stored inside `Function` to keep a live reference.
 #[derive(Clone)]
 pub(crate) enum UserDataHandle {
+    #[allow(dead_code)]
     C(Arc<CPtr>),
+    #[allow(dead_code)]
     Rust(Arc<std::sync::Mutex<dyn std::any::Any>>),
 }
 
