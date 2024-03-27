@@ -296,7 +296,13 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)?;
+                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth).map_err(|err| {
+                        Error::msg(format!(
+                            "Unable to preopen directory \"{}\": {}",
+                            k.display(),
+                            err.kind()
+                        ))
+                    })?;
                     ctx.preopened_dir(d, v)?;
                 }
             }
