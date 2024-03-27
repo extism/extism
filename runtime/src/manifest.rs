@@ -48,9 +48,12 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             let name = meta.name.as_deref().unwrap_or(MAIN_KEY).to_string();
 
             // Load file
-            let buf = std::fs::read(path)
-                .map_err(Error::from)
-                .context(path.to_string_lossy().to_string())?;
+            let buf = std::fs::read(path).map_err(Error::from).with_context(|| {
+                format!(
+                    "Unable to load Wasm file speficied in manifest: {}",
+                    path.display()
+                )
+            })?;
 
             check_hash(&meta.hash, &buf)?;
             Ok((name, Module::new(engine, buf)?))

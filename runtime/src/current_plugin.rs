@@ -299,7 +299,7 @@ impl CurrentPlugin {
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
                     let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth)
-                        .context(k.to_string_lossy().to_string())?;
+                        .with_context(|| format!("allowed_path: {} does not exist", k.display()))?;
                     ctx.preopened_dir(d, v)?;
                 }
             }
