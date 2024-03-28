@@ -319,21 +319,19 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    if k.as_path().is_dir() {
-                        let d = cap_std::fs::Dir::open_ambient_dir(k, auth).map_err(|err| {
-                            Error::msg(format!(
-                                "Unable to preopen directory \"{}\": {}",
-                                k.display(),
-                                err.kind()
-                            ))
-                        })?;
-                        ctx.preopened_dir(
-                            d,
-                            wasmtime_wasi::DirPerms::READ | wasmtime_wasi::DirPerms::MUTATE,
-                            wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
-                            v.to_string_lossy(),
-                        );
-                    }
+                    let d = cap_std::fs::Dir::open_ambient_dir(k, auth).map_err(|err| {
+                        Error::msg(format!(
+                            "Unable to preopen directory \"{}\": {}",
+                            k.display(),
+                            err.kind()
+                        ))
+                    })?;
+                    ctx.preopened_dir(
+                        d,
+                        wasmtime_wasi::DirPerms::READ | wasmtime_wasi::DirPerms::MUTATE,
+                        wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
+                        v.to_string_lossy(),
+                    );
                 }
             }
 
