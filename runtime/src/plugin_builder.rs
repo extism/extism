@@ -33,6 +33,7 @@ impl Default for DebugOptions {
 }
 
 /// PluginBuilder is used to configure and create `Plugin` instances
+#[derive(Clone)]
 pub struct PluginBuilder<'a> {
     source: WasmInput<'a>,
     wasi: bool,
