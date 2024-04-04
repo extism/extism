@@ -12,7 +12,7 @@ To use the `extism` crate, you can add it to your Cargo file:
 
 ```toml
 [dependencies]
-extism = "1.0.0"
+extism = "1.2.0"
 ```
 
 ## Environment variables
@@ -201,7 +201,7 @@ fn main() {
 }
 ```
 
-> *Note*: In order to write host functions you should get familiar with the methods on the [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.CurrentPlugin.html) and [Extism::CurrentPlugin](https://docs.rs/extism/latest/extism/struct.UserData.html) types.
+> *Note*: In order to write host functions you should get familiar with the methods on the [CurrentPlugin](https://docs.rs/extism/latest/extism/struct.CurrentPlugin.html) and [UserData](https://docs.rs/extism/latest/extism/enum.UserData.html) types.
 
 Now we can invoke the event:
 
