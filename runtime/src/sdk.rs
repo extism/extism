@@ -485,7 +485,7 @@ pub unsafe extern "C" fn extism_plugin_call(
         name
     );
     let input = std::slice::from_raw_parts(data, data_len as usize);
-    let res = plugin.raw_call(&mut lock, name, input);
+    let res = plugin.raw_call::<()>(&mut lock, name, input, None);
 
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),

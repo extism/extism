@@ -668,11 +668,12 @@ impl Plugin {
 
     // Implements the build of the `call` function, `raw_call` is also used in the SDK
     // code
-    pub(crate) fn raw_call(
+    pub(crate) fn raw_call<T: 'static + Sync + Send>(
         &mut self,
         lock: &mut std::sync::MutexGuard<Option<Instance>>,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
+        arg: Option<T>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
@@ -720,7 +721,14 @@ impl Plugin {
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];
-        let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
+        let args = if func.ty(self.store()).params().count() == 0 {
+            vec![]
+        } else {
+            let r = arg.map(wasmtime::ExternRef::new);
+            vec![wasmtime::Val::ExternRef(r)]
+        };
+
+        let mut res = func.call(self.store_mut(), args.as_slice(), results.as_mut_slice());
 
         // Stop timer
         self.store
@@ -873,7 +881,21 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data)
+        self.raw_call::<()>(&mut lock, name, data, None)
+            .map_err(|e| e.0)
+            .and_then(move |_| self.output())
+    }
+
+    pub fn call_with_arg<'a, 'b, T: ToBytes<'a>, U: FromBytes<'b>, V: 'static + Send + Sync>(
+        &'b mut self,
+        name: impl AsRef<str>,
+        input: T,
+        arg: V,
+    ) -> Result<U, Error> {
+        let lock = self.instance.clone();
+        let mut lock = lock.lock().unwrap();
+        let data = input.to_bytes()?;
+        self.raw_call(&mut lock, name, data, Some(arg))
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
     }
@@ -892,7 +914,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes().map_err(|e| (e, -1))?;
-        self.raw_call(&mut lock, name, data)
+        self.raw_call::<()>(&mut lock, name, data, None)
             .and_then(move |_| self.output().map_err(|e| (e, -1)))
     }
 
@@ -1001,7 +1023,7 @@ macro_rules! typed_plugin {
         impl $name {
             $(
                 pub fn $f<'a, $( $( $lt $( : $clt )? ),+ )? >(&'a mut self, input: $input) -> Result<$output, $crate::Error> {
-                    self.0.call(stringify!($f), input)
+                    self.0.call::<_, _>(stringify!($f), input)
                 }
             )*
         }
