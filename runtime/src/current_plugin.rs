@@ -62,6 +62,11 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
 }
 
 impl CurrentPlugin {
+    /// Gets `Plugin`'s ID
+    pub fn id(&self) -> uuid::Uuid {
+        self.id
+    }
+
     /// Get a `MemoryHandle` from a memory offset
     pub fn memory_handle(&mut self, offs: u64) -> Option<MemoryHandle> {
         if offs == 0 {
