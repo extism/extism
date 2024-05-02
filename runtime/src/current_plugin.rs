@@ -311,7 +311,6 @@ impl CurrentPlugin {
         id: uuid::Uuid,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
-            let auth = cap_std::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
             ctx.allow_ip_name_lookup(true);
             ctx.allow_tcp(true);
@@ -319,19 +318,12 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = cap_std::fs::Dir::open_ambient_dir(k, auth).map_err(|err| {
-                        Error::msg(format!(
-                            "Unable to preopen directory \"{}\": {}",
-                            k.display(),
-                            err.kind()
-                        ))
-                    })?;
                     ctx.preopened_dir(
-                        d,
+                        k,
+                        v.to_string_lossy(),
                         wasmtime_wasi::DirPerms::READ | wasmtime_wasi::DirPerms::MUTATE,
                         wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
-                        v.to_string_lossy(),
-                    );
+                    )?;
                 }
             }
 
@@ -359,7 +351,7 @@ impl CurrentPlugin {
             }
 
             Some(Wasi {
-                ctx: wasmtime_wasi::WasiP1Ctx::new(ctx.build()),
+                ctx: ctx.build_p1(),
             })
         } else {
             None
