@@ -308,6 +308,43 @@ fn test_toml_manifest() {
 }
 
 #[test]
+fn test_call_with_context() {
+    // assert!(set_log_file("stdout", Some(log::Level::Trace)));
+    #[derive(Clone)]
+    struct Foo {
+        message: String,
+    }
+
+    let f = Function::new(
+        "host_reflect",
+        [PTR],
+        [PTR],
+        UserData::default(),
+        |current_plugin, _val, ret, _user_data: UserData<()>| {
+            let foo = current_plugin.context::<Foo>()?;
+            let hnd = current_plugin.memory_new(foo.message)?;
+            ret[0] = current_plugin.memory_to_val(hnd);
+            Ok(())
+        },
+    );
+
+    let mut plugin = Plugin::new(WASM_REFLECT, [f], true).unwrap();
+
+    let message = "hello world";
+    let output: String = plugin
+        .call_with_context(
+            "reflect",
+            "anything, really",
+            Foo {
+                message: message.to_string(),
+            },
+        )
+        .unwrap();
+
+    assert_eq!(output, message);
+}
+
+#[test]
 fn test_fuzz_reflect_plugin() {
     // assert!(set_log_file("stdout", Some(log::Level::Trace)));
     let f = Function::new(

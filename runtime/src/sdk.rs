@@ -84,6 +84,24 @@ pub unsafe extern "C" fn extism_plugin_id(plugin: *mut Plugin) -> *const u8 {
     plugin.id.as_bytes().as_ptr()
 }
 
+/// Get the current plugin's associated context data. Returns null if call was made without
+/// context.
+#[no_mangle]
+pub unsafe extern "C" fn extism_current_plugin_context(
+    plugin: *mut CurrentPlugin,
+) -> *mut std::ffi::c_void {
+    if plugin.is_null() {
+        return std::ptr::null_mut();
+    }
+
+    let plugin = &mut *plugin;
+    if let Ok(CVoidContainer(ptr)) = plugin.context::<CVoidContainer>() {
+        ptr
+    } else {
+        std::ptr::null_mut()
+    }
+}
+
 /// Returns a pointer to the memory of the currently running plugin
 /// NOTE: this should only be called from host functions.
 #[no_mangle]
@@ -465,6 +483,31 @@ pub unsafe extern "C" fn extism_plugin_call(
     data: *const u8,
     data_len: Size,
 ) -> i32 {
+    extism_plugin_call_with_context(plugin, func_name, data, data_len, std::ptr::null_mut())
+}
+
+#[derive(Clone)]
+#[repr(transparent)]
+struct CVoidContainer(*mut std::ffi::c_void);
+
+// "You break it, you buy it."
+unsafe impl Send for CVoidContainer {}
+unsafe impl Sync for CVoidContainer {}
+
+/// Call a function with per-call context.
+///
+/// `func_name`: is the function to call
+/// `data`: is the input data
+/// `data_len`: is the length of `data`
+/// `context`: a pointer to context data that will be available in host functions
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_call_with_context(
+    plugin: *mut Plugin,
+    func_name: *const c_char,
+    data: *const u8,
+    data_len: Size,
+    context: *mut std::ffi::c_void,
+) -> i32 {
     if plugin.is_null() {
         return -1;
     }
@@ -485,7 +528,12 @@ pub unsafe extern "C" fn extism_plugin_call(
         name
     );
     let input = std::slice::from_raw_parts(data, data_len as usize);
-    let res = plugin.raw_call(&mut lock, name, input);
+    let res = plugin.raw_call(
+        &mut lock,
+        name,
+        input,
+        Some(ExternRef::new(CVoidContainer(context))),
+    );
 
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
