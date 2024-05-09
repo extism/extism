@@ -194,6 +194,12 @@ fn add_module<T: 'static>(
     }
 
     for import in module.imports() {
+        let module = import.module();
+
+        if module == EXTISM_ENV_MODULE && !matches!(import.ty(), ExternType::Func(_)) {
+            anyhow::bail!("linked modules cannot access non-function exports of extism kernel");
+        }
+
         if !linked.contains(import.module()) {
             if let Some(m) = modules.get(import.module()) {
                 add_module(
