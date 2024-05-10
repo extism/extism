@@ -20,4 +20,6 @@ cp target/wasm32-unknown-unknown/release/extism-runtime.wasm .
 
 wasm-tools parse extism-context.wat -o extism-context.wasm
 wasm-merge --enable-reference-types ./extism-runtime.wasm runtime extism-context.wasm context -o ../runtime/src/extism-runtime.wasm
+rm extism-context.wasm
+rm extism-runtime.wasm
 wasm-strip ../runtime/src/extism-runtime.wasm
