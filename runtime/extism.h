@@ -10,7 +10,7 @@
 #define EXTISM_SUCCESS 0
 
 /** An alias for I64 to signify an Extism pointer */
-#define PTR I64
+#define EXTISM_PTR ExtismValType_I64
 
 
 /**
@@ -20,31 +20,31 @@ typedef enum {
   /**
    * Signed 32 bit integer.
    */
-  I32,
+  ExtismValType_I32,
   /**
    * Signed 64 bit integer.
    */
-  I64,
+  ExtismValType_I64,
   /**
    * Floating point 32 bit integer.
    */
-  F32,
+  ExtismValType_F32,
   /**
    * Floating point 64 bit integer.
    */
-  F64,
+  ExtismValType_F64,
   /**
    * A 128 bit number.
    */
-  V128,
+  ExtismValType_V128,
   /**
    * A reference to a Wasm function.
    */
-  FuncRef,
+  ExtismValType_FuncRef,
   /**
    * A reference to opaque data in the Wasm instance.
    */
-  ExternRef,
+  ExtismValType_ExternRef,
 } ExtismValType;
 
 /**

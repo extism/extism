@@ -7,7 +7,7 @@ fn main() {
 #define EXTISM_SUCCESS 0
 
 /** An alias for I64 to signify an Extism pointer */
-#define PTR I64
+#define EXTISM_PTR ExtismValType_I64
 ";
     if let Ok(x) = cbindgen::Builder::new()
         .with_crate(".")

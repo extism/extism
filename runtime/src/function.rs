@@ -4,6 +4,7 @@ use wasmtime::Caller;
 use crate::{error, trace, CurrentPlugin, Error};
 
 /// An enumeration of all possible value types in WebAssembly.
+/// cbindgen:prefix-with-name
 #[derive(Debug, Clone, Hash, Eq, PartialEq)]
 #[repr(C)]
 pub enum ValType {
