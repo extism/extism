@@ -717,6 +717,7 @@ impl Plugin {
             .expect("Timer should start");
         self.store.epoch_deadline_trap();
         self.store.set_epoch_deadline(1);
+        self.current_plugin_mut().start_time = std::time::Instant::now();
 
         // Call the function
         let mut results = vec![wasmtime::Val::null(); n_results];

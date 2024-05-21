@@ -15,6 +15,7 @@ pub struct CurrentPlugin {
     pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
     pub(crate) id: uuid::Uuid,
+    pub(crate) start_time: std::time::Instant,
 }
 
 unsafe impl Send for CurrentPlugin {}
@@ -342,6 +343,7 @@ impl CurrentPlugin {
             available_pages,
             memory_limiter,
             id,
+            start_time: std::time::Instant::now(),
         })
     }
 

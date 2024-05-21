@@ -217,6 +217,13 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
+        let timeout_ms = &data.manifest.timeout_ms;
+        let elapsed = &data.start_time.elapsed().as_millis();
+        let ms_left = timeout_ms.map(|x| x - *elapsed as u64);
+        if let Some(ms_left) = ms_left {
+            r = r.timeout(std::time::Duration::from_millis(ms_left));
+        }
+
         let res = if body_offset > 0 {
             let handle = match data.memory_handle(body_offset) {
                 Some(h) => h,
