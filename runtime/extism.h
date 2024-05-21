@@ -114,6 +114,12 @@ extern "C" {
 const uint8_t *extism_plugin_id(ExtismPlugin *plugin);
 
 /**
+ * Get the current plugin's associated host context data. Returns null if call was made without
+ * host context.
+ */
+void *extism_current_plugin_host_context(ExtismCurrentPlugin *plugin);
+
+/**
  * Returns a pointer to the memory of the currently running plugin
  * NOTE: this should only be called from host functions.
  */
@@ -230,6 +236,20 @@ int32_t extism_plugin_call(ExtismPlugin *plugin,
                            const char *func_name,
                            const uint8_t *data,
                            ExtismSize data_len);
+
+/**
+ * Call a function with host context.
+ *
+ * `func_name`: is the function to call
+ * `data`: is the input data
+ * `data_len`: is the length of `data`
+ * `host_context`: a pointer to context data that will be available in host functions
+ */
+int32_t extism_plugin_call_with_host_context(ExtismPlugin *plugin,
+                                             const char *func_name,
+                                             const uint8_t *data,
+                                             ExtismSize data_len,
+                                             void *host_context);
 
 /**
  * Get the error associated with a `Plugin`

@@ -17,6 +17,9 @@ done
 
 cargo build --package extism-runtime-kernel --bin extism-runtime --release --target wasm32-unknown-unknown $CARGO_FLAGS
 cp target/wasm32-unknown-unknown/release/extism-runtime.wasm .
-wasm-strip extism-runtime.wasm
-mv extism-runtime.wasm ../runtime/src/extism-runtime.wasm
 
+wasm-tools parse extism-context.wat -o extism-context.wasm
+wasm-merge --enable-reference-types ./extism-runtime.wasm runtime extism-context.wasm context -o ../runtime/src/extism-runtime.wasm
+rm extism-context.wasm
+rm extism-runtime.wasm
+wasm-strip ../runtime/src/extism-runtime.wasm

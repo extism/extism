@@ -186,6 +186,23 @@ impl CurrentPlugin {
         anyhow::bail!("{} unable to locate extism memory", self.id)
     }
 
+    pub fn host_context<T: Clone + 'static>(&mut self) -> Result<T, Error> {
+        let (linker, mut store) = self.linker_and_store();
+        let Some(Extern::Global(xs)) = linker.get(&mut store, EXTISM_ENV_MODULE, "extism_context")
+        else {
+            anyhow::bail!("unable to locate an extism kernel global: extism_context",)
+        };
+
+        let Val::ExternRef(Some(xs)) = xs.get(store) else {
+            anyhow::bail!("expected extism_context to be an externref value",)
+        };
+
+        match xs.data().downcast_ref::<T>().cloned() {
+            Some(xs) => Ok(xs.clone()),
+            None => anyhow::bail!("could not downcast extism_context",),
+        }
+    }
+
     pub fn memory_alloc(&mut self, n: u64) -> Result<MemoryHandle, Error> {
         if n == 0 {
             return Ok(MemoryHandle {

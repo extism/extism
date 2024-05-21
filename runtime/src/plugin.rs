@@ -1,4 +1,5 @@
 use std::{
+    any::Any,
     collections::{BTreeMap, BTreeSet},
     path::PathBuf,
 };
@@ -193,6 +194,12 @@ fn add_module<T: 'static>(
     }
 
     for import in module.imports() {
+        let module = import.module();
+
+        if module == EXTISM_ENV_MODULE && !matches!(import.ty(), ExternType::Func(_)) {
+            anyhow::bail!("linked modules cannot access non-function exports of extism kernel");
+        }
+
         if !linked.contains(import.module()) {
             if let Some(m) = modules.get(import.module()) {
                 add_module(
@@ -462,7 +469,12 @@ impl Plugin {
     }
 
     // Store input in memory and re-initialize `Internal` pointer
-    pub(crate) fn set_input(&mut self, input: *const u8, mut len: usize) -> Result<(), Error> {
+    pub(crate) fn set_input(
+        &mut self,
+        input: *const u8,
+        mut len: usize,
+        host_context: Option<ExternRef>,
+    ) -> Result<(), Error> {
         self.output = Output::default();
         self.clear_error()?;
         let id = self.id.to_string();
@@ -494,6 +506,13 @@ impl Plugin {
                 &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
                 &mut [],
             )?;
+        }
+
+        if let Some(Extern::Global(ctxt)) =
+            self.linker
+                .get(&mut self.store, EXTISM_ENV_MODULE, "extism_context")
+        {
+            ctxt.set(&mut self.store, Val::ExternRef(host_context))?;
         }
 
         Ok(())
@@ -673,6 +692,7 @@ impl Plugin {
         lock: &mut std::sync::MutexGuard<Option<Instance>>,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
+        host_context: Option<ExternRef>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
@@ -686,7 +706,7 @@ impl Plugin {
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
-        self.set_input(input.as_ptr(), input.len())
+        self.set_input(input.as_ptr(), input.len(), host_context)
             .map_err(|x| (x, -1))?;
 
         let func = match self.get_func(lock, name) {
@@ -873,7 +893,26 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data)
+        self.raw_call(&mut lock, name, data, None)
+            .map_err(|e| e.0)
+            .and_then(move |_| self.output())
+    }
+
+    pub fn call_with_host_context<'a, 'b, T, U, C>(
+        &'b mut self,
+        name: impl AsRef<str>,
+        input: T,
+        host_context: C,
+    ) -> Result<U, Error>
+    where
+        T: ToBytes<'a>,
+        U: FromBytes<'b>,
+        C: Any + Send + Sync + 'static,
+    {
+        let lock = self.instance.clone();
+        let mut lock = lock.lock().unwrap();
+        let data = input.to_bytes()?;
+        self.raw_call(&mut lock, name, data, Some(ExternRef::new(host_context)))
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
     }
@@ -892,7 +931,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes().map_err(|e| (e, -1))?;
-        self.raw_call(&mut lock, name, data)
+        self.raw_call(&mut lock, name, data, None)
             .and_then(move |_| self.output().map_err(|e| (e, -1)))
     }
 

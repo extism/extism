@@ -21,6 +21,9 @@ jobs:
           target: wasm32-unknown-unknown
       - uses: Swatinem/rust-cache@v2
 
+      - name: install wasm-tools
+        uses: bytecodealliance/actions/wasm-tools/setup@v1
+
       - name: Install deps
         run: |
           sudo apt install wabt --yes
