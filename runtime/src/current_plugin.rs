@@ -186,7 +186,7 @@ impl CurrentPlugin {
         anyhow::bail!("{} unable to locate extism memory", self.id)
     }
 
-    pub fn context<T: Clone + 'static>(&mut self) -> Result<T, Error> {
+    pub fn host_context<T: Clone + 'static>(&mut self) -> Result<T, Error> {
         let (linker, mut store) = self.linker_and_store();
         let Some(Extern::Global(xs)) = linker.get(&mut store, EXTISM_ENV_MODULE, "extism_context")
         else {

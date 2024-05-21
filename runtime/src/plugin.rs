@@ -473,7 +473,7 @@ impl Plugin {
         &mut self,
         input: *const u8,
         mut len: usize,
-        call_context: Option<ExternRef>,
+        host_context: Option<ExternRef>,
     ) -> Result<(), Error> {
         self.output = Output::default();
         self.clear_error()?;
@@ -512,7 +512,7 @@ impl Plugin {
             self.linker
                 .get(&mut self.store, EXTISM_ENV_MODULE, "extism_context")
         {
-            ctxt.set(&mut self.store, Val::ExternRef(call_context))?;
+            ctxt.set(&mut self.store, Val::ExternRef(host_context))?;
         }
 
         Ok(())
@@ -692,7 +692,7 @@ impl Plugin {
         lock: &mut std::sync::MutexGuard<Option<Instance>>,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
-        call_context: Option<ExternRef>,
+        host_context: Option<ExternRef>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
@@ -706,7 +706,7 @@ impl Plugin {
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
-        self.set_input(input.as_ptr(), input.len(), call_context)
+        self.set_input(input.as_ptr(), input.len(), host_context)
             .map_err(|x| (x, -1))?;
 
         let func = match self.get_func(lock, name) {
@@ -898,11 +898,11 @@ impl Plugin {
             .and_then(move |_| self.output())
     }
 
-    pub fn call_with_context<'a, 'b, T, U, C>(
+    pub fn call_with_host_context<'a, 'b, T, U, C>(
         &'b mut self,
         name: impl AsRef<str>,
         input: T,
-        context: C,
+        host_context: C,
     ) -> Result<U, Error>
     where
         T: ToBytes<'a>,
@@ -912,7 +912,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data, Some(ExternRef::new(context)))
+        self.raw_call(&mut lock, name, data, Some(ExternRef::new(host_context)))
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
     }

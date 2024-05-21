@@ -84,10 +84,10 @@ pub unsafe extern "C" fn extism_plugin_id(plugin: *mut Plugin) -> *const u8 {
     plugin.id.as_bytes().as_ptr()
 }
 
-/// Get the current plugin's associated context data. Returns null if call was made without
-/// context.
+/// Get the current plugin's associated host context data. Returns null if call was made without
+/// host context.
 #[no_mangle]
-pub unsafe extern "C" fn extism_current_plugin_context(
+pub unsafe extern "C" fn extism_current_plugin_host_context(
     plugin: *mut CurrentPlugin,
 ) -> *mut std::ffi::c_void {
     if plugin.is_null() {
@@ -95,7 +95,7 @@ pub unsafe extern "C" fn extism_current_plugin_context(
     }
 
     let plugin = &mut *plugin;
-    if let Ok(CVoidContainer(ptr)) = plugin.context::<CVoidContainer>() {
+    if let Ok(CVoidContainer(ptr)) = plugin.host_context::<CVoidContainer>() {
         ptr
     } else {
         std::ptr::null_mut()
@@ -483,7 +483,7 @@ pub unsafe extern "C" fn extism_plugin_call(
     data: *const u8,
     data_len: Size,
 ) -> i32 {
-    extism_plugin_call_with_context(plugin, func_name, data, data_len, std::ptr::null_mut())
+    extism_plugin_call_with_host_context(plugin, func_name, data, data_len, std::ptr::null_mut())
 }
 
 #[derive(Clone)]
@@ -494,19 +494,19 @@ struct CVoidContainer(*mut std::ffi::c_void);
 unsafe impl Send for CVoidContainer {}
 unsafe impl Sync for CVoidContainer {}
 
-/// Call a function with per-call context.
+/// Call a function with host context.
 ///
 /// `func_name`: is the function to call
 /// `data`: is the input data
 /// `data_len`: is the length of `data`
-/// `context`: a pointer to context data that will be available in host functions
+/// `host_context`: a pointer to context data that will be available in host functions
 #[no_mangle]
-pub unsafe extern "C" fn extism_plugin_call_with_context(
+pub unsafe extern "C" fn extism_plugin_call_with_host_context(
     plugin: *mut Plugin,
     func_name: *const c_char,
     data: *const u8,
     data_len: Size,
-    context: *mut std::ffi::c_void,
+    host_context: *mut std::ffi::c_void,
 ) -> i32 {
     if plugin.is_null() {
         return -1;
@@ -532,7 +532,7 @@ pub unsafe extern "C" fn extism_plugin_call_with_context(
         &mut lock,
         name,
         input,
-        Some(ExternRef::new(CVoidContainer(context))),
+        Some(ExternRef::new(CVoidContainer(host_context))),
     );
 
     match res {

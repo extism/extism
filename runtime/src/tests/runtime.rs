@@ -308,8 +308,7 @@ fn test_toml_manifest() {
 }
 
 #[test]
-fn test_call_with_context() {
-    // assert!(set_log_file("stdout", Some(log::Level::Trace)));
+fn test_call_with_host_context() {
     #[derive(Clone)]
     struct Foo {
         message: String,
@@ -321,7 +320,7 @@ fn test_call_with_context() {
         [PTR],
         UserData::default(),
         |current_plugin, _val, ret, _user_data: UserData<()>| {
-            let foo = current_plugin.context::<Foo>()?;
+            let foo = current_plugin.host_context::<Foo>()?;
             let hnd = current_plugin.memory_new(foo.message)?;
             ret[0] = current_plugin.memory_to_val(hnd);
             Ok(())
@@ -332,7 +331,7 @@ fn test_call_with_context() {
 
     let message = "hello world";
     let output: String = plugin
-        .call_with_context(
+        .call_with_host_context(
             "reflect",
             "anything, really",
             Foo {
