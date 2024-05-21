@@ -917,11 +917,6 @@ impl Plugin {
             .and_then(move |_| self.output())
     }
 
-    pub fn invoke(&mut self, name: &str, args: &[wasmtime::Val]) {
-        let lock = self.instance.clone();
-        let mut lock = lock.lock().unwrap();
-    }
-
     /// Similar to `Plugin::call`, but returns the Extism error code along with the
     /// `Error`. It is assumed if `Ok(_)` is returned that the error code was `0`.
     ///
