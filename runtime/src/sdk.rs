@@ -517,12 +517,11 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
         name
     );
     let input = std::slice::from_raw_parts(data, data_len as usize);
-    let res = plugin.raw_call(
-        &mut lock,
-        name,
-        input,
-        Some(ExternRef::new(CVoidContainer(host_context))),
-    );
+    let r = match ExternRef::new(&mut plugin.store, CVoidContainer(host_context)) {
+        Err(e) => return plugin.return_error(&mut lock, e, -1),
+        Ok(x) => x,
+    };
+    let res = plugin.raw_call(&mut lock, name, input, Some(r));
 
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),

@@ -481,7 +481,7 @@ impl Plugin {
         &mut self,
         input: *const u8,
         mut len: usize,
-        host_context: Option<ExternRef>,
+        host_context: Option<Rooted<ExternRef>>,
     ) -> Result<(), Error> {
         self.output = Output::default();
         self.clear_error()?;
@@ -700,7 +700,7 @@ impl Plugin {
         lock: &mut std::sync::MutexGuard<Option<Instance>>,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
-        host_context: Option<ExternRef>,
+        host_context: Option<Rooted<ExternRef>>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
@@ -915,7 +915,8 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data, Some(ExternRef::new(host_context)))
+        let r = ExternRef::new(&mut self.store, host_context)?;
+        self.raw_call(&mut lock, name, data, Some(r))
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
     }

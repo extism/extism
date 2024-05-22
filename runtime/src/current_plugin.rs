@@ -194,11 +194,11 @@ impl CurrentPlugin {
             anyhow::bail!("unable to locate an extism kernel global: extism_context",)
         };
 
-        let Val::ExternRef(Some(xs)) = xs.get(store) else {
+        let Val::ExternRef(Some(xs)) = xs.get(&mut store) else {
             anyhow::bail!("expected extism_context to be an externref value",)
         };
 
-        match xs.data().downcast_ref::<T>().cloned() {
+        match xs.data(&mut store)?.downcast_ref::<T>().cloned() {
             Some(xs) => Ok(xs.clone()),
             None => anyhow::bail!("could not downcast extism_context",),
         }
