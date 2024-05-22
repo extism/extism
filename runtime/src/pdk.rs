@@ -217,10 +217,10 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
-        let timeout_ms = &data.manifest.timeout_ms;
-        let elapsed = &data.start_time.elapsed().as_millis();
-        let ms_left = timeout_ms.map(|x| x - *elapsed as u64);
-        if let Some(ms_left) = ms_left {
+        // Set HTTP timeout to respect the manifest timeout
+        if let Some(x) = &data.manifest.timeout_ms {
+            let elapsed = &data.start_time.elapsed().as_millis();
+            let ms_left = x - *elapsed as u64;
             r = r.timeout(std::time::Duration::from_millis(ms_left));
         }
 
