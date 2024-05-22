@@ -217,6 +217,11 @@ pub(crate) fn http_request(
             r = r.set(k, v);
         }
 
+        // Set HTTP timeout to respect the manifest timeout
+        if let Some(remaining) = data.time_remaining() {
+            r = r.timeout(remaining);
+        }
+
         let res = if body_offset > 0 {
             let handle = match data.memory_handle(body_offset) {
                 Some(h) => h,
@@ -236,6 +241,12 @@ pub(crate) fn http_request(
                 Some(res.into_reader())
             }
             Err(e) => {
+                // Catch timeout and return
+                if let Some(d) = data.time_remaining() {
+                    if e.kind() == ureq::ErrorKind::Io && d.as_nanos() == 0 {
+                        anyhow::bail!("timeout");
+                    }
+                }
                 let msg = e.to_string();
                 if let Some(res) = e.into_response() {
                     data.http_status = res.status();

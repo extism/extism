@@ -15,6 +15,7 @@ pub struct CurrentPlugin {
     pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
     pub(crate) id: uuid::Uuid,
+    pub(crate) start_time: std::time::Instant,
 }
 
 unsafe impl Send for CurrentPlugin {}
@@ -359,6 +360,7 @@ impl CurrentPlugin {
             available_pages,
             memory_limiter,
             id,
+            start_time: std::time::Instant::now(),
         })
     }
 
@@ -469,6 +471,18 @@ impl CurrentPlugin {
         let length = self.memory_length(offs).unwrap_or_default();
         (offs, length)
     }
+
+    /// Returns the remaining time before a plugin will timeout, or
+    /// `None` if no timeout is configured in the manifest
+    pub fn time_remaining(&self) -> Option<std::time::Duration> {
+        if let Some(x) = &self.manifest.timeout_ms {
+            let elapsed = &self.start_time.elapsed().as_millis();
+            let ms_left = x.saturating_sub(*elapsed as u64);
+            return Some(std::time::Duration::from_millis(ms_left));
+        }
+
+        None
+    }
 }
 
 impl Internal for CurrentPlugin {
@@ -478,14 +492,6 @@ impl Internal for CurrentPlugin {
 
     fn store_mut(&mut self) -> &mut Store<CurrentPlugin> {
         unsafe { &mut *self.store }
-    }
-
-    fn linker(&self) -> &Linker<CurrentPlugin> {
-        unsafe { &*self.linker }
-    }
-
-    fn linker_mut(&mut self) -> &mut Linker<CurrentPlugin> {
-        unsafe { &mut *self.linker }
     }
 
     fn linker_and_store(&mut self) -> (&mut Linker<CurrentPlugin>, &mut Store<CurrentPlugin>) {

@@ -240,6 +240,34 @@ fn test_timeout() {
     assert!(err == "timeout");
 }
 
+#[test]
+fn test_http_timeout() {
+    let f = Function::new(
+        "hello_world",
+        [PTR],
+        [PTR],
+        UserData::default(),
+        hello_world,
+    );
+
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_HTTP)])
+        .with_timeout(std::time::Duration::from_millis(1))
+        .with_allowed_host("www.extism.org");
+    let mut plugin = Plugin::new(manifest, [f], true).unwrap();
+
+    let start = std::time::Instant::now();
+    let output: Result<&[u8], Error> =
+        plugin.call("http_request", r#"{"url": "https://www.extism.org"}"#);
+    let end = std::time::Instant::now();
+    let time = end - start;
+    let err = output.unwrap_err().root_cause().to_string();
+    println!(
+        "Timed out plugin ran for {:?}, with error: {:?}",
+        time, &err
+    );
+    assert!(err == "timeout");
+}
+
 typed_plugin!(pub TestTypedPluginGenerics {
     count_vowels<T: FromBytes<'a>>(&str) -> T
 });
