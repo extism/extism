@@ -458,7 +458,7 @@ impl CurrentPlugin {
     pub fn time_remaining(&self) -> Option<std::time::Duration> {
         if let Some(x) = &self.manifest.timeout_ms {
             let elapsed = &self.start_time.elapsed().as_millis();
-            let ms_left = x - *elapsed as u64;
+            let ms_left = x.saturating_sub(*elapsed as u64);
             return Some(std::time::Duration::from_millis(ms_left));
         }
 
@@ -473,14 +473,6 @@ impl Internal for CurrentPlugin {
 
     fn store_mut(&mut self) -> &mut Store<CurrentPlugin> {
         unsafe { &mut *self.store }
-    }
-
-    fn linker(&self) -> &Linker<CurrentPlugin> {
-        unsafe { &*self.linker }
-    }
-
-    fn linker_mut(&mut self) -> &mut Linker<CurrentPlugin> {
-        unsafe { &mut *self.linker }
     }
 
     fn linker_and_store(&mut self) -> (&mut Linker<CurrentPlugin>, &mut Store<CurrentPlugin>) {

@@ -100,14 +100,6 @@ impl Internal for Plugin {
         &mut self.store
     }
 
-    fn linker(&self) -> &Linker<CurrentPlugin> {
-        &self.linker
-    }
-
-    fn linker_mut(&mut self) -> &mut Linker<CurrentPlugin> {
-        &mut self.linker
-    }
-
     fn linker_and_store(&mut self) -> (&mut Linker<CurrentPlugin>, &mut Store<CurrentPlugin>) {
         (&mut self.linker, &mut self.store)
     }
