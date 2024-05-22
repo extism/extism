@@ -218,10 +218,8 @@ pub(crate) fn http_request(
         }
 
         // Set HTTP timeout to respect the manifest timeout
-        if let Some(x) = &data.manifest.timeout_ms {
-            let elapsed = &data.start_time.elapsed().as_millis();
-            let ms_left = x - *elapsed as u64;
-            r = r.timeout(std::time::Duration::from_millis(ms_left));
+        if let Some(remaining) = data.time_remaining() {
+            r = r.timeout(remaining);
         }
 
         let res = if body_offset > 0 {

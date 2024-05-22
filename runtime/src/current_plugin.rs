@@ -454,6 +454,16 @@ impl CurrentPlugin {
         let length = self.memory_length(offs).unwrap_or_default();
         (offs, length)
     }
+
+    pub fn time_remaining(&self) -> Option<std::time::Duration> {
+        if let Some(x) = &self.manifest.timeout_ms {
+            let elapsed = &self.start_time.elapsed().as_millis();
+            let ms_left = x - *elapsed as u64;
+            return Some(std::time::Duration::from_millis(ms_left));
+        }
+
+        None
+    }
 }
 
 impl Internal for CurrentPlugin {
