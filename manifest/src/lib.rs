@@ -62,7 +62,6 @@ pub struct HttpRequest {
 
     /// Request headers
     #[serde(default)]
-    #[serde(alias = "header")]
     pub headers: std::collections::BTreeMap<String, String>,
 
     /// Request method
