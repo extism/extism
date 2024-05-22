@@ -455,6 +455,8 @@ impl CurrentPlugin {
         (offs, length)
     }
 
+    /// Returns the remaining time before a plugin will timeout, or
+    /// `None` if no timeout is configured in the manifest
     pub fn time_remaining(&self) -> Option<std::time::Duration> {
         if let Some(x) = &self.manifest.timeout_ms {
             let elapsed = &self.start_time.elapsed().as_millis();
