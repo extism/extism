@@ -10,7 +10,6 @@ pub type ManifestMemory = MemoryOptions;
 #[serde(deny_unknown_fields)]
 pub struct MemoryOptions {
     /// The max number of WebAssembly pages that should be allocated
-    #[serde(alias = "max")]
     pub max_pages: Option<u32>,
 
     /// The maximum number of bytes allowed in an HTTP response
@@ -62,7 +61,6 @@ pub struct HttpRequest {
 
     /// Request headers
     #[serde(default)]
-    #[serde(alias = "header")]
     pub headers: std::collections::BTreeMap<String, String>,
 
     /// Request method
