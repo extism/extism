@@ -312,9 +312,10 @@ impl CurrentPlugin {
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-            ctx.allow_ip_name_lookup(true);
-            ctx.allow_tcp(true);
-            ctx.allow_udp(true);
+            ctx.allow_ip_name_lookup(true)
+                .allow_tcp(true)
+                .allow_udp(true)
+                .allow_blocking_current_thread(true);
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
