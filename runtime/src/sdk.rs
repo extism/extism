@@ -521,7 +521,7 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
         Err(e) => return plugin.return_error(&mut lock, e, -1),
         Ok(x) => x,
     };
-    let res = plugin.raw_call(&mut lock, name, input, Some(r));
+    let res = plugin.raw_call(&mut lock, name, input, Some(r), None);
 
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),

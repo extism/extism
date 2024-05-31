@@ -1,4 +1,53 @@
+use wasmtime_wasi::pipe::{MemoryInputPipe, MemoryOutputPipe};
+
 use crate::*;
+
+#[derive(Default, Clone)]
+pub struct WasiConfig {
+    pub args: Vec<String>,
+    pub stdin: Option<wasmtime_wasi::pipe::MemoryInputPipe>,
+    pub stdout: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+    pub stderr: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+}
+
+impl WasiConfig {
+    pub fn new() -> WasiConfig {
+        WasiConfig::default()
+    }
+
+    pub fn with_arg(mut self, x: impl Into<String>) -> Self {
+        self.args.push(x.into());
+        self
+    }
+
+    pub fn with_args(mut self, x: impl IntoIterator<Item = impl Into<String>>) -> Self {
+        let x: Vec<String> = x.into_iter().map(|x| x.into()).collect();
+        self.args.extend(x);
+        self
+    }
+
+    pub fn with_stdin<'a, T: ToBytes<'a>>(mut self, x: T) -> Result<Self, Error> {
+        self.stdin = Some(MemoryInputPipe::new(x.to_vec()?));
+        Ok(self)
+    }
+
+    pub fn with_stdout(mut self, size: usize) -> Self {
+        self.stdout = Some(MemoryOutputPipe::new(size));
+        self
+    }
+
+    pub fn with_stderr(mut self, size: usize) -> Self {
+        self.stderr = Some(MemoryOutputPipe::new(size));
+        self
+    }
+}
+
+#[derive(Clone)]
+pub struct WasiOutput {
+    pub return_code: i32,
+    pub stdout: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+    pub stderr: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+}
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
 /// only be accessed from inside a host function
@@ -307,6 +356,7 @@ impl CurrentPlugin {
     pub(crate) fn new(
         manifest: extism_manifest::Manifest,
         wasi: bool,
+        wasi_args: Option<WasiConfig>,
         available_pages: Option<u32>,
         id: uuid::Uuid,
     ) -> Result<Self, Error> {
@@ -316,6 +366,22 @@ impl CurrentPlugin {
                 .allow_tcp(true)
                 .allow_udp(true)
                 .allow_blocking_current_thread(true);
+
+            if let Some(wasi_args) = wasi_args {
+                ctx.args(&wasi_args.args);
+
+                if let Some(stdin) = wasi_args.stdin {
+                    ctx.stdin(stdin);
+                }
+
+                if let Some(stdout) = wasi_args.stdout {
+                    ctx.stdout(stdout);
+                }
+
+                if let Some(stderr) = wasi_args.stderr {
+                    ctx.stderr(stderr);
+                }
+            }
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {

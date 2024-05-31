@@ -224,7 +224,7 @@ fn relink(
     macro_rules! add_funcs {
             ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
                 $(
-                    let t = FuncType::new([$($args),*], [$($($r),*)?]);
+                    let t = FuncType::new(&engine, [$($args),*], [$($($r),*)?]);
                     linker.func_new(EXTISM_ENV_MODULE, stringify!($name), t, pdk::$name)?;
                 )*
             };
@@ -250,16 +250,21 @@ fn relink(
 
     // If wasi is enabled then add it to the linker
     if with_wasi {
-        wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
+        wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |x: &mut CurrentPlugin| {
             &mut x.wasi.as_mut().unwrap().ctx
         })?;
     }
 
-    for f in imports {
+    for f in imports.iter() {
         let name = f.name();
         let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
         unsafe {
-            linker.func_new(ns, name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+            linker.func_new(
+                ns,
+                name,
+                f.ty(&engine).clone(),
+                &*(f.f.as_ref() as *const _),
+            )?;
         }
     }
 
@@ -338,7 +343,7 @@ impl Plugin {
         let id = uuid::Uuid::new_v4();
         let mut store = Store::new(
             &engine,
-            CurrentPlugin::new(manifest, with_wasi, available_pages, id)?,
+            CurrentPlugin::new(manifest, with_wasi, None, available_pages, id)?,
         );
         store.set_epoch_deadline(1);
 
@@ -377,21 +382,12 @@ impl Plugin {
     pub(crate) fn reset_store(
         &mut self,
         instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
+        wasi_args: Option<WasiConfig>,
     ) -> Result<(), Error> {
-        if self.store_needs_reset {
+        if self.store_needs_reset || wasi_args.is_some() {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
             let with_wasi = internal.wasi.is_some();
-            self.store = Store::new(
-                &engine,
-                CurrentPlugin::new(
-                    internal.manifest.clone(),
-                    internal.wasi.is_some(),
-                    internal.available_pages,
-                    self.id,
-                )?,
-            );
-            self.store.set_epoch_deadline(1);
 
             let (instance_pre, linker) = relink(
                 &engine,
@@ -701,11 +697,12 @@ impl Plugin {
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
         host_context: Option<Rooted<ExternRef>>,
+        wasi_args: Option<WasiConfig>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
 
-        if let Err(e) = self.reset_store(lock) {
+        if let Err(e) = self.reset_store(lock, wasi_args) {
             error!(
                 plugin = self.id.to_string(),
                 "call to Plugin::reset_store failed: {e:?}"
@@ -896,7 +893,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data, None)
+        self.raw_call(&mut lock, name, data, None, None)
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
     }
@@ -916,9 +913,27 @@ impl Plugin {
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
         let r = ExternRef::new(&mut self.store, host_context)?;
-        self.raw_call(&mut lock, name, data, Some(r))
+        self.raw_call(&mut lock, name, data, Some(r), None)
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
+    }
+
+    pub fn run_command(&mut self, wasi_args: WasiConfig) -> Result<WasiOutput, Error> {
+        let mut output = WasiOutput {
+            return_code: 0,
+            stdout: wasi_args.stdout.clone(),
+            stderr: wasi_args.stderr.clone(),
+        };
+        let lock = self.instance.clone();
+        let mut lock = lock.lock().unwrap();
+        let res = self.raw_call(&mut lock, "_start", b"", None, Some(wasi_args));
+
+        output.return_code = match res {
+            Ok(rc) => rc,
+            Err((_, rc)) => rc,
+        };
+
+        Ok(output)
     }
 
     /// Similar to `Plugin::call`, but returns the Extism error code along with the
@@ -935,7 +950,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes().map_err(|e| (e, -1))?;
-        self.raw_call(&mut lock, name, data, None)
+        self.raw_call(&mut lock, name, data, None, None)
             .and_then(move |_| self.output().map_err(|e| (e, -1)))
     }
 

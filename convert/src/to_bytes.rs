@@ -59,6 +59,10 @@ pub trait ToBytes<'a> {
 
     /// `to_bytes` converts a value into `Self::Bytes`
     fn to_bytes(&self) -> Result<Self::Bytes, Error>;
+
+    fn to_vec(&self) -> Result<Vec<u8>, Error> {
+        self.to_bytes().map(|x| x.as_ref().to_vec())
+    }
 }
 
 impl<'a> ToBytes<'a> for () {
@@ -73,12 +77,20 @@ impl<'a> ToBytes<'a> for Vec<u8> {
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self.clone())
     }
+
+    fn to_vec(&self) -> Result<Vec<u8>, Error> {
+        Ok(self.clone())
+    }
 }
 
 impl<'a> ToBytes<'a> for String {
     type Bytes = String;
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self.clone())
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>, Error> {
+        self.to_bytes().map(|x| x.into_bytes())
     }
 }
 
@@ -150,6 +162,10 @@ impl<'a, T: ToBytes<'a>> ToBytes<'a> for &'a T {
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         <T as ToBytes>::to_bytes(self)
     }
+
+    fn to_vec(&self) -> Result<Vec<u8>, Error> {
+        <T as ToBytes>::to_vec(self)
+    }
 }
 
 impl<'a, T: ToBytes<'a>> ToBytes<'a> for Option<T> {
@@ -158,6 +174,13 @@ impl<'a, T: ToBytes<'a>> ToBytes<'a> for Option<T> {
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         match self {
             Some(x) => x.to_bytes().map(|x| x.as_ref().to_vec()),
+            None => Ok(vec![]),
+        }
+    }
+
+    fn to_vec(&self) -> Result<Vec<u8>, Error> {
+        match self {
+            Some(x) => <T as ToBytes>::to_vec(x),
             None => Ok(vec![]),
         }
     }

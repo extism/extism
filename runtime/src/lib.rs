@@ -23,7 +23,7 @@ mod timer;
 /// Extism C API
 pub mod sdk;
 
-pub use current_plugin::CurrentPlugin;
+pub use current_plugin::{CurrentPlugin, WasiConfig, WasiOutput};
 pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
 pub use extism_manifest::{Manifest, Wasm, WasmMetadata};
 pub use function::{Function, UserData, Val, ValType, PTR};
