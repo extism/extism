@@ -44,9 +44,43 @@ impl WasiConfig {
 
 #[derive(Clone)]
 pub struct WasiOutput {
-    pub return_code: i32,
-    pub stdout: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
-    pub stderr: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+    return_code: i32,
+    stdout: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+    stderr: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+}
+
+impl WasiOutput {
+    pub fn return_code(&self) -> i32 {
+        self.return_code
+    }
+
+    pub fn stdout(&self) -> Vec<u8> {
+        match &self.stdout {
+            Some(x) => x.contents().to_vec(),
+            None => vec![],
+        }
+    }
+
+    pub fn stderr(&self) -> Vec<u8> {
+        match &self.stderr {
+            Some(x) => x.contents().to_vec(),
+            None => vec![],
+        }
+    }
+
+    pub fn convert_stdout<T: FromBytesOwned>(&self) -> Result<T, Error> {
+        match &self.stdout {
+            Some(x) => T::from_bytes(x.contents().as_ref()),
+            None => anyhow::bail!("stdout not enabled"),
+        }
+    }
+
+    pub fn convert_stderr<T: FromBytesOwned>(&self) -> Result<T, Error> {
+        match &self.stderr {
+            Some(x) => T::from_bytes(x.contents().as_ref()),
+            None => anyhow::bail!("stdout not enabled"),
+        }
+    }
 }
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
