@@ -930,7 +930,9 @@ impl Plugin {
             .and_then(move |_| self.output())
     }
 
-    pub fn run_command(&mut self, wasi_args: WasiConfig) -> Result<WasiOutput, Error> {
+    /// Execute the `_start` function of a WASI command module, providing input/output and command-line arguments
+    /// via `WasiConfig`
+    pub fn run_command<'a>(&mut self, wasi_args: WasiConfig) -> Result<WasiOutput, Error> {
         let mut output = WasiOutput {
             return_code: 0,
             stdout: wasi_args.stdout.clone(),
