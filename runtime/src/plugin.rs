@@ -219,7 +219,7 @@ fn relink(
     modules: &BTreeMap<String, Module>,
     with_wasi: bool,
 ) -> Result<(InstancePre<CurrentPlugin>, Linker<CurrentPlugin>), Error> {
-    let mut linker = Linker::new(&engine);
+    let mut linker = Linker::new(engine);
     // Define PDK functions
     macro_rules! add_funcs {
             ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
@@ -265,10 +265,10 @@ fn relink(
 
     for (name, module) in modules.iter() {
         add_module(
-            &mut store,
+            store,
             &mut linker,
             &mut linked,
-            &modules,
+            modules,
             name.clone(),
             module,
         )?;
