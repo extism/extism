@@ -388,7 +388,18 @@ impl Plugin {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
             let with_wasi = internal.wasi.is_some();
-
+            self.store = Store::new(
+                &engine,
+                CurrentPlugin::new(
+                    internal.manifest.clone(),
+                    internal.wasi.is_some(),
+                    wasi_args,
+                    internal.available_pages,
+                    self.id,
+                )?,
+            );
+            self.linker = Linker::new(&engine);
+            self.store.set_epoch_deadline(1);
             let (instance_pre, linker) = relink(
                 &engine,
                 &mut self.store,
@@ -398,6 +409,7 @@ impl Plugin {
             )?;
             self.linker = linker;
             self.instance_pre = instance_pre;
+
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
             let current_plugin = self.current_plugin_mut();
