@@ -715,6 +715,7 @@ impl Plugin {
                 "call to Plugin::reset_store failed: {e:?}"
             );
         }
+        self.store_needs_reset = name == "_start";
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
@@ -759,7 +760,6 @@ impl Plugin {
         self.store
             .epoch_deadline_callback(|_| Ok(UpdateDeadline::Continue(1)));
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
-        self.store_needs_reset = name == "_start";
 
         // Get extism error
         self.get_output_after_call().map_err(|x| (x, -1))?;
