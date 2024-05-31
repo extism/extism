@@ -44,9 +44,9 @@ impl WasiConfig {
 
 #[derive(Clone)]
 pub struct WasiOutput {
-    return_code: i32,
-    stdout: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
-    stderr: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+    pub(crate) return_code: i32,
+    pub(crate) stdout: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
+    pub(crate) stderr: Option<wasmtime_wasi::pipe::MemoryOutputPipe>,
 }
 
 impl WasiOutput {
