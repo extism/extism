@@ -382,7 +382,7 @@ impl Plugin {
         if self.store_needs_reset || wasi_args.is_some() {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
-            let with_wasi = internal.wasi.is_some();
+            let with_wasi = internal.wasi.is_some() || wasi_args.is_some();
             self.store = Store::new(
                 &engine,
                 CurrentPlugin::new(
@@ -927,7 +927,7 @@ impl Plugin {
 
     /// Execute the `_start` function of a WASI command module, providing input/output and command-line arguments
     /// via `WasiConfig`
-    pub fn run_command(&mut self, wasi_args: WasiConfig) -> Result<WasiOutput, Error> {
+    pub fn run_wasi_command(&mut self, wasi_args: WasiConfig) -> Result<WasiOutput, Error> {
         let mut output = WasiOutput {
             return_code: 0,
             stdout: wasi_args.stdout.clone(),
