@@ -212,6 +212,73 @@ fn add_module<T: 'static>(
     Ok(())
 }
 
+fn relink(
+    engine: &Engine,
+    mut store: &mut Store<CurrentPlugin>,
+    imports: &[Function],
+    modules: &BTreeMap<String, Module>,
+    with_wasi: bool,
+) -> Result<(InstancePre<CurrentPlugin>, Linker<CurrentPlugin>), Error> {
+    let mut linker = Linker::new(engine);
+    // Define PDK functions
+    macro_rules! add_funcs {
+            ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
+                $(
+                    let t = FuncType::new([$($args),*], [$($($r),*)?]);
+                    linker.func_new(EXTISM_ENV_MODULE, stringify!($name), t, pdk::$name)?;
+                )*
+            };
+        }
+
+    // Add builtins
+    use wasmtime::ValType::*;
+    add_funcs!(
+        config_get(I64) -> I64;
+        var_get(I64) -> I64;
+        var_set(I64, I64);
+        http_request(I64, I64) -> I64;
+        http_status_code() -> I32;
+        log_warn(I64);
+        log_info(I64);
+        log_debug(I64);
+        log_error(I64);
+    );
+
+    let mut linked = BTreeSet::new();
+    linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
+    linked.insert(EXTISM_ENV_MODULE.to_string());
+
+    // If wasi is enabled then add it to the linker
+    if with_wasi {
+        wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
+            &mut x.wasi.as_mut().unwrap().ctx
+        })?;
+    }
+
+    for f in imports {
+        let name = f.name();
+        let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
+        unsafe {
+            linker.func_new(ns, name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
+        }
+    }
+
+    for (name, module) in modules.iter() {
+        add_module(
+            store,
+            &mut linker,
+            &mut linked,
+            modules,
+            name.clone(),
+            module,
+        )?;
+    }
+
+    let main = &modules[MAIN_KEY];
+    let instance_pre = linker.instantiate_pre(main)?;
+    Ok((instance_pre, linker))
+}
+
 impl Plugin {
     /// Create a new plugin from a Manifest or WebAssembly module, and host functions. The `with_wasi`
     /// parameter determines whether or not the module should be executed with WASI enabled.
@@ -274,64 +341,9 @@ impl Plugin {
         );
         store.set_epoch_deadline(1);
 
-        let mut linker = Linker::new(&engine);
-        let mut imports: Vec<_> = imports.into_iter().collect();
-        // Define PDK functions
-        macro_rules! add_funcs {
-            ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
-                $(
-                    let t = FuncType::new([$($args),*], [$($($r),*)?]);
-                    linker.func_new(EXTISM_ENV_MODULE, stringify!($name), t, pdk::$name)?;
-                )*
-            };
-        }
+        let imports: Vec<Function> = imports.into_iter().collect();
+        let (instance_pre, linker) = relink(&engine, &mut store, &imports, &modules, with_wasi)?;
 
-        // Add builtins
-        use wasmtime::ValType::*;
-        add_funcs!(
-            config_get(I64) -> I64;
-            var_get(I64) -> I64;
-            var_set(I64, I64);
-            http_request(I64, I64) -> I64;
-            http_status_code() -> I32;
-            log_warn(I64);
-            log_info(I64);
-            log_debug(I64);
-            log_error(I64);
-        );
-
-        let mut linked = BTreeSet::new();
-        linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
-        linked.insert(EXTISM_ENV_MODULE.to_string());
-
-        // If wasi is enabled then add it to the linker
-        if with_wasi {
-            wasmtime_wasi::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
-                &mut x.wasi.as_mut().unwrap().ctx
-            })?;
-        }
-
-        for f in &mut imports {
-            let name = f.name();
-            let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
-            unsafe {
-                linker.func_new(ns, name, f.ty().clone(), &*(f.f.as_ref() as *const _))?;
-            }
-        }
-
-        for (name, module) in modules.iter() {
-            add_module(
-                &mut store,
-                &mut linker,
-                &mut linked,
-                &modules,
-                name.clone(),
-                module,
-            )?;
-        }
-
-        let main = &modules[MAIN_KEY];
-        let instance_pre = linker.instantiate_pre(main)?;
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
             modules,
@@ -369,6 +381,7 @@ impl Plugin {
         if self.store_needs_reset {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
+            let with_wasi = internal.wasi.is_some();
             self.store = Store::new(
                 &engine,
                 CurrentPlugin::new(
@@ -379,6 +392,16 @@ impl Plugin {
                 )?,
             );
             self.store.set_epoch_deadline(1);
+
+            let (instance_pre, linker) = relink(
+                &engine,
+                &mut self.store,
+                &self._functions,
+                &self.modules,
+                with_wasi,
+            )?;
+            self.linker = linker;
+            self.instance_pre = instance_pre;
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
             let current_plugin = self.current_plugin_mut();
@@ -389,14 +412,7 @@ impl Plugin {
                     .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
             }
 
-            let main = &self.modules[MAIN_KEY];
-            for (name, module) in self.modules.iter() {
-                if name != MAIN_KEY {
-                    self.linker.module(&mut self.store, name, module)?;
-                }
-            }
             self.instantiations = 0;
-            self.instance_pre = self.linker.instantiate_pre(main)?;
             **instance_lock = None;
             self.store_needs_reset = false;
         }
