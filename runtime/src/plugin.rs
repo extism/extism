@@ -310,7 +310,8 @@ impl Plugin {
             .coredump_on_trap(debug_options.coredump.is_some())
             .profiler(debug_options.profiling_strategy)
             .wasm_tail_call(true)
-            .wasm_function_references(true);
+            .wasm_function_references(true)
+            .wasm_gc(true);
 
         match cache_dir {
             Some(None) => (),
