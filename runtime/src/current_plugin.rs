@@ -194,11 +194,11 @@ impl CurrentPlugin {
             anyhow::bail!("unable to locate an extism kernel global: extism_context",)
         };
 
-        let Val::ExternRef(Some(xs)) = xs.get(store) else {
+        let Val::ExternRef(Some(xs)) = xs.get(&mut store) else {
             anyhow::bail!("expected extism_context to be an externref value",)
         };
 
-        match xs.data().downcast_ref::<T>().cloned() {
+        match xs.data(&mut store)?.downcast_ref::<T>().cloned() {
             Some(xs) => Ok(xs.clone()),
             None => anyhow::bail!("could not downcast extism_context",),
         }
@@ -311,22 +311,22 @@ impl CurrentPlugin {
         id: uuid::Uuid,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
-            let auth = wasmtime_wasi::ambient_authority();
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-            for (k, v) in manifest.config.iter() {
-                ctx.env(k, v)?;
-            }
+
+            // Disable sockets/DNS lookup
+            ctx.allow_ip_name_lookup(false)
+                .allow_tcp(false)
+                .allow_udp(false)
+                .allow_blocking_current_thread(true);
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let d = wasmtime_wasi::Dir::open_ambient_dir(k, auth).map_err(|err| {
-                        Error::msg(format!(
-                            "Unable to preopen directory \"{}\": {}",
-                            k.display(),
-                            err.kind()
-                        ))
-                    })?;
-                    ctx.preopened_dir(d, v)?;
+                    ctx.preopened_dir(
+                        k,
+                        v.to_string_lossy(),
+                        wasmtime_wasi::DirPerms::READ | wasmtime_wasi::DirPerms::MUTATE,
+                        wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
+                    )?;
                 }
             }
 
@@ -335,7 +335,9 @@ impl CurrentPlugin {
                 ctx.inherit_stdout().inherit_stderr();
             }
 
-            Some(Wasi { ctx: ctx.build() })
+            Some(Wasi {
+                ctx: ctx.build_p1(),
+            })
         } else {
             None
         };

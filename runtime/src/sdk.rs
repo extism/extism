@@ -41,9 +41,9 @@ pub type ExtismFunctionType = extern "C" fn(
 /// Log drain callback
 pub type ExtismLogDrainFunctionType = extern "C" fn(data: *const std::ffi::c_char, size: Size);
 
-impl From<&wasmtime::Val> for ExtismVal {
-    fn from(value: &wasmtime::Val) -> Self {
-        match value.ty() {
+impl ExtismVal {
+    fn from_val(value: &wasmtime::Val, ctx: impl AsContext) -> Self {
+        match value.ty(ctx) {
             wasmtime::ValType::I32 => ExtismVal {
                 t: ValType::I32,
                 v: ValUnion {
@@ -218,7 +218,11 @@ pub unsafe extern "C" fn extism_function_new(
         output_types.clone(),
         user_data,
         move |plugin, inputs, outputs, user_data| {
-            let inputs: Vec<_> = inputs.iter().map(ExtismVal::from).collect();
+            let store = &*plugin.store;
+            let inputs: Vec<_> = inputs
+                .iter()
+                .map(|x| ExtismVal::from_val(x, store))
+                .collect();
             let mut output_tmp: Vec<_> = output_types
                 .iter()
                 .map(|t| ExtismVal {
@@ -407,20 +411,6 @@ pub unsafe extern "C" fn extism_plugin_config(
             }
         };
 
-    let wasi = &mut plugin.current_plugin_mut().wasi;
-    if let Some(Wasi { ctx, .. }) = wasi {
-        for (k, v) in json.iter() {
-            match v {
-                Some(v) => {
-                    let _ = ctx.push_env(k, v);
-                }
-                None => {
-                    let _ = ctx.push_env(k, "");
-                }
-            }
-        }
-    }
-
     let id = plugin.id;
     let config = &mut plugin.current_plugin_mut().manifest.config;
     for (k, v) in json.into_iter() {
@@ -528,13 +518,11 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
         name
     );
     let input = std::slice::from_raw_parts(data, data_len as usize);
-    let res = plugin.raw_call(
-        &mut lock,
-        name,
-        input,
-        Some(ExternRef::new(CVoidContainer(host_context))),
-    );
-
+    let r = match ExternRef::new(&mut plugin.store, CVoidContainer(host_context)) {
+        Err(e) => return plugin.return_error(&mut lock, e, -1),
+        Ok(x) => x,
+    };
+    let res = plugin.raw_call(&mut lock, name, input, Some(r));
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
         Ok(x) => x,

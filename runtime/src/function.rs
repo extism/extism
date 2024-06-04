@@ -38,8 +38,13 @@ impl From<wasmtime::ValType> for ValType {
             F32 => ValType::F32,
             F64 => ValType::F64,
             V128 => ValType::V128,
-            FuncRef => ValType::FuncRef,
-            ExternRef => ValType::ExternRef,
+            Ref(t) => {
+                if t.heap_type().is_func() {
+                    ValType::FuncRef
+                } else {
+                    ValType::ExternRef
+                }
+            }
         }
     }
 }
@@ -53,8 +58,8 @@ impl From<ValType> for wasmtime::ValType {
             F32 => wasmtime::ValType::F32,
             F64 => wasmtime::ValType::F64,
             V128 => wasmtime::ValType::V128,
-            FuncRef => wasmtime::ValType::FuncRef,
-            ExternRef => wasmtime::ValType::ExternRef,
+            FuncRef => wasmtime::ValType::FUNCREF,
+            ExternRef => wasmtime::ValType::EXTERNREF,
         }
     }
 }
@@ -171,8 +176,8 @@ pub struct Function {
     /// Module name
     pub(crate) namespace: Option<String>,
 
-    /// Function type
-    pub(crate) ty: wasmtime::FuncType,
+    pub(crate) params: Vec<ValType>,
+    pub(crate) results: Vec<ValType>,
 
     /// Function handle
     pub(crate) f: Arc<FunctionInner>,
@@ -185,8 +190,8 @@ impl Function {
     /// Create a new host function
     pub fn new<T: 'static, F>(
         name: impl Into<String>,
-        args: impl IntoIterator<Item = ValType>,
-        returns: impl IntoIterator<Item = ValType>,
+        params: impl IntoIterator<Item = ValType>,
+        results: impl IntoIterator<Item = ValType>,
         user_data: UserData<T>,
         f: F,
     ) -> Function
@@ -198,13 +203,13 @@ impl Function {
     {
         let data = user_data.clone();
         let name = name.into();
-        let args = args.into_iter().map(wasmtime::ValType::from);
-        let returns = returns.into_iter().map(wasmtime::ValType::from);
-        let ty = wasmtime::FuncType::new(args, returns);
-        trace!("Creating function {name}: type={ty:?}");
+        let params = params.into_iter().collect();
+        let results = results.into_iter().collect();
+        trace!("Creating function {name}: params={params:?}, results={results:?}");
         Function {
             name,
-            ty,
+            params,
+            results,
             f: Arc::new(
                 move |mut caller: Caller<_>, inp: &[Val], outp: &mut [Val]| {
                     let x = data.clone();
@@ -217,6 +222,22 @@ impl Function {
                 UserData::Rust(x) => UserDataHandle::Rust(x.clone()),
             },
         }
+    }
+
+    pub(crate) fn ty(&self, engine: &wasmtime::Engine) -> wasmtime::FuncType {
+        wasmtime::FuncType::new(
+            engine,
+            self.params
+                .iter()
+                .cloned()
+                .map(wasmtime::ValType::from)
+                .collect::<Vec<_>>(),
+            self.results
+                .iter()
+                .cloned()
+                .map(wasmtime::ValType::from)
+                .collect::<Vec<_>>(),
+        )
     }
 
     /// Host function name
@@ -242,9 +263,14 @@ impl Function {
         self
     }
 
-    /// Get function type
-    pub fn ty(&self) -> &wasmtime::FuncType {
-        &self.ty
+    /// Get param types
+    pub fn params(&self) -> &[ValType] {
+        &self.params
+    }
+
+    /// Get result types
+    pub fn results(&self) -> &[ValType] {
+        &self.results
     }
 }
 
