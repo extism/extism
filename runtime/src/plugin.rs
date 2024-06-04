@@ -259,12 +259,7 @@ fn relink(
         let name = f.name();
         let ns = f.namespace().unwrap_or(EXTISM_USER_MODULE);
         unsafe {
-            linker.func_new(
-                ns,
-                name,
-                f.ty(&engine).clone(),
-                &*(f.f.as_ref() as *const _),
-            )?;
+            linker.func_new(ns, name, f.ty(engine).clone(), &*(f.f.as_ref() as *const _))?;
         }
     }
 
