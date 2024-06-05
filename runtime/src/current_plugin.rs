@@ -314,9 +314,9 @@ impl CurrentPlugin {
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
 
             // Disable sockets/DNS lookup
-            ctx.allow_ip_name_lookup(false)
-                .allow_tcp(false)
-                .allow_udp(false)
+            ctx.allow_ip_name_lookup(true)
+                .allow_tcp(true)
+                .allow_udp(true)
                 .allow_blocking_current_thread(true);
 
             if let Some(a) = &manifest.allowed_paths {
@@ -328,6 +328,24 @@ impl CurrentPlugin {
                         wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
                     )?;
                 }
+            }
+
+            if let Some(h) = &manifest.allowed_hosts {
+                let h = h.clone();
+                ctx.socket_addr_check(move |addr, _kind| {
+                    for host in h.iter() {
+                        let addrs = std::net::ToSocketAddrs::to_socket_addrs(&host);
+                        if let Ok(addrs) = addrs {
+                            for a in addrs.into_iter() {
+                                if addr == &a {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
+
+                    false
+                });
             }
 
             // Enable WASI output, typically used for debugging purposes
