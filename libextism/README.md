@@ -56,7 +56,6 @@ Since you may not have an Extism plug-in on hand to test, let's load a demo plug
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 void print_plugin_output(ExtismPlugin *plugin, int32_t rc){
   if (rc != EXTISM_SUCCESS) {
@@ -64,9 +63,9 @@ void print_plugin_output(ExtismPlugin *plugin, int32_t rc){
     return;
   }
 
-  size_t outlen = extism_plugin_output_length(plugin);
+  ExtismSize outlen = extism_plugin_output_length(plugin);
   const uint8_t *out = extism_plugin_output_data(plugin);
-  write(STDOUT_FILENO, out, outlen);
+  fwrite(out, 1, outlen, stdout);
 }
 
 int main(void) {
@@ -106,9 +105,9 @@ if (rc != EXTISM_SUCCESS) {
   exit(2);
 }
 
-size_t outlen = extism_plugin_output_length(plugin);
+ExtismSize outlen = extism_plugin_output_length(plugin);
 const uint8_t *out = extism_plugin_output_data(plugin);
-write(STDOUT_FILENO, out, outlen);
+fwrite(out, 1, outlen, stdout);
 ```
 
 Will print
@@ -171,7 +170,6 @@ We want to expose two functions to our plugin, `kv_write(key: String, value: Byt
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <unistd.h>
 
 // A stubbed out KV store
 typedef struct KVStore KVStore;
@@ -184,14 +182,14 @@ extern const uint32_t fake_kv_store_get(KVStore *kv, const char *key,
 
 // Our host functions to access the fake KV store
 void kv_get(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
-            size_t ninputs, ExtismVal *outputs, size_t noutputs,
+            ExtismSize ninputs, ExtismVal *outputs, ExtismSize noutputs,
             void *userdata) {
   // Cast the userdata pointer
   KVStore *kv = (KVStore *)userdata;
 
   // Get the offset to the key in the plugin memory
   uint64_t offs = inputs[0].v.i64;
-  size_t keylen = extism_current_plugin_memory_length(plugin, offs);
+  ExtismSize keylen = extism_current_plugin_memory_length(plugin, offs);
 
   // Allocate a new block to return
   uint64_t outoffs =
@@ -205,23 +203,23 @@ void kv_get(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
   *(uint64_t *)(extism_current_plugin_memory(plugin) + outoffs) = value;
 
   // Return the offset to our allocated block
-  outputs[0].t = PTR;
+  outputs[0].t = EXTISM_PTR;
   outputs[0].v.i64 = outoffs;
 }
 
 void kv_set(ExtismCurrentPlugin *plugin, const ExtismVal *inputs,
-            size_t ninputs, ExtismVal *outputs, size_t noutputs,
+            ExtismSize ninputs, ExtismVal *outputs, ExtismSize noutputs,
             void *userdata) {
   // Cast the userdata pointer
   KVStore *kv = (KVStore *)userdata;
 
   // Get the offset to the key in the plugin memory
   uint64_t keyoffs = inputs[0].v.i64;
-  size_t keylen = extism_current_plugin_memory_length(plugin, keyoffs);
+  ExtismSize keylen = extism_current_plugin_memory_length(plugin, keyoffs);
 
   // Get the offset to the value in the plugin memory
   uint64_t valueoffs = inputs[1].v.i64;
-  size_t valuelen = extism_current_plugin_memory_length(plugin, valueoffs);
+  ExtismSize valuelen = extism_current_plugin_memory_length(plugin, valueoffs);
 
   // Set key => value
   fake_kv_store_set(
@@ -234,13 +232,13 @@ int main(void) {
   const char *manifest = "{\"wasm\": [{\"url\": "
                          "\"https://github.com/extism/plugins/releases/latest/"
                          "download/count_vowels_kvstore.wasm\"}]}";
-  const ExtismValType kv_get_inputs[] = {PTR};
-  const ExtismValType kv_get_outputs[] = {PTR};
+  const ExtismValType kv_get_inputs[] = {EXTISM_PTR};
+  const ExtismValType kv_get_outputs[] = {EXTISM_PTR};
   ExtismFunction *kv_get_fn = extism_function_new(
       "kv_get", kv_get_inputs, 1, kv_get_outputs, 1, kv_get, kv, NULL);
 
-  const ExtismValType kv_set_inputs[] = {PTR};
-  const ExtismValType kv_set_outputs[] = {PTR};
+  const ExtismValType kv_set_inputs[] = {EXTISM_PTR};
+  const ExtismValType kv_set_outputs[] = {EXTISM_PTR};
   ExtismFunction *kv_set_fn = extism_function_new(
       "kv_set", kv_set_inputs, 1, kv_set_outputs, 1, kv_set, kv, NULL);
   const ExtismFunction *functions[] = {kv_get_fn};
@@ -288,5 +286,3 @@ print_plugin_output(plugin, extism_plugin_call(plugin, "count_vowels",
 # => Writing value=6 from key=count-vowels"
 # => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}
 ```
-
-
