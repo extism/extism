@@ -9,7 +9,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
-void log_handler(const char *line, uintptr_t length) {
+void log_handler(const char *line, ExtismSize length) {
   fwrite(line, length, 1, stderr);
 }
 
