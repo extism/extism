@@ -899,7 +899,13 @@ impl Plugin {
         let data = input.to_bytes()?;
         self.raw_call(&mut lock, name, data, None)
             .map_err(|e| e.0)
-            .and_then(move |_| self.output())
+            .and_then(move |rc| {
+                if rc != 0 {
+                    Err(Error::msg(format!("Returned non-zero exit code: {rc}")))
+                } else {
+                    self.output()
+                }
+            })
     }
 
     pub fn call_with_host_context<'a, 'b, T, U, C>(
