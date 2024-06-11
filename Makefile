@@ -4,10 +4,12 @@ AEXT=a
 FEATURES?=default
 DEFAULT_FEATURES?=yes
 RUST_TARGET?=
+PRIVATE_LIBS=
 
 UNAME := $(shell uname -s)
 ifeq ($(UNAME),Darwin)
 	SOEXT=dylib
+	PRIVATE_LIBS=-framework Security
 endif
 
 ifeq ($(DEFAULT_FEATURES),no)
@@ -30,6 +32,7 @@ build:
 	cargo build --release $(FEATURE_FLAGS) --manifest-path libextism/Cargo.toml $(TARGET_FLAGS)
 	sed -e "s%@CMAKE_INSTALL_PREFIX@%$(DEST)%" libextism/extism.pc.in > libextism/extism.pc
 	sed -e "s%@CMAKE_INSTALL_PREFIX@%$(DEST)%" libextism/extism-static.pc.in > libextism/extism-static.pc
+	sed -ie "s%@Libs.private: @%Libs.private: $(PRIVATE_LIBS)% " libextism/extism-static.pc
 
 bench:
 	@(cargo criterion $(TARGET_FLAGS) || echo 'For nicer output use cargo-criterion: `cargo install cargo-criterion` - using `cargo bench`') && cargo bench $(TARGET_FLAGS)
