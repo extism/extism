@@ -4,7 +4,7 @@ build:
 
 .PHONY: static
 static:
-	$(CC) -g -o example example.c -l:libextism.a -lm
+	$(CC) -g -o example example.c -l:libextism.a -lm -lpthread
 
 # if needed, set PKG_CONFIG_PATH= to the directory with extism*.pc installed
 LDFLAGS=`pkg-config --libs extism`
