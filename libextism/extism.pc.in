@@ -6,5 +6,5 @@ Version: 1.0.0
 Name: Extism
 Description: The framework for building with WebAssembly (wasm).
 Libs: -L${libdir} -lextism
-Libs.private: -lm
+Libs.private: -lm -lpthread
 Cflags: -I${includedir}

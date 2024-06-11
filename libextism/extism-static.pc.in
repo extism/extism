@@ -5,6 +5,6 @@ includedir=${prefix}/include
 Version: 1.0.0
 Name: Extism
 Description: The framework for building with WebAssembly (wasm).
-Libs: -L${libdir} -l:libextism.a
-Libs.private: -lm
+Libs: ${libdir}/libextism.a
+Libs.private: -lm -lpthread
 Cflags: -I${includedir}
