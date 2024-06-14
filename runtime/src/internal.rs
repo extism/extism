@@ -5,8 +5,8 @@ pub struct Wasi {
     /// wasi
     pub ctx: wasi_common::WasiCtx,
 
-    pub stdout: Option<std::sync::Arc<std::sync::RwLock<std::io::Cursor<Vec<u8>>>>>,
-    pub stderr: Option<std::sync::Arc<std::sync::RwLock<std::io::Cursor<Vec<u8>>>>>,
+    pub stdout: Option<std::sync::Arc<std::sync::RwLock<Vec<u8>>>>,
+    pub stderr: Option<std::sync::Arc<std::sync::RwLock<Vec<u8>>>>,
 }
 
 /// InternalExt provides a unified way of acessing `memory`, `store` and `internal` values

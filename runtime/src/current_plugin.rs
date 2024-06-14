@@ -1,5 +1,3 @@
-use wasi_common::pipe::WritePipe;
-
 use crate::*;
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should

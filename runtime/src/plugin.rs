@@ -1,7 +1,6 @@
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},
-    io::Read,
     path::PathBuf,
 };
 
@@ -513,23 +512,24 @@ impl Plugin {
         if wasi_input {
             if let Some(wasi) = &mut self.current_plugin_mut().wasi {
                 wasi.ctx.set_stdin(Box::new(ReadPipe::from(bytes)));
-                let stdout =
-                    std::sync::Arc::new(std::sync::RwLock::new(std::io::Cursor::new(vec![
-                        0;
-                        1024
-                    ])));
-                let x = WritePipe::from_shared(stdout.clone());
-                wasi.ctx.set_stdout(Box::new(x));
 
-                let stderr =
-                    std::sync::Arc::new(std::sync::RwLock::new(std::io::Cursor::new(vec![
-                        0;
-                        1024
-                    ])));
-                let x = WritePipe::from_shared(stderr.clone());
-                wasi.ctx.set_stderr(Box::new(x));
-                wasi.stdout = Some(stdout);
-                wasi.stderr = Some(stderr);
+                if let Some(stdout) = &mut wasi.stdout {
+                    stdout.write().unwrap().clear();
+                } else {
+                    let stdout = std::sync::Arc::new(std::sync::RwLock::new(vec![0; 1024]));
+                    let x = WritePipe::from_shared(stdout.clone());
+                    wasi.ctx.set_stdout(Box::new(x));
+                    wasi.stdout = Some(stdout);
+                }
+
+                if let Some(stderr) = &mut wasi.stderr {
+                    stderr.write().unwrap().clear();
+                } else {
+                    let stderr = std::sync::Arc::new(std::sync::RwLock::new(vec![0; 1024]));
+                    let x = WritePipe::from_shared(stderr.clone());
+                    wasi.ctx.set_stderr(Box::new(x));
+                    wasi.stderr = Some(stderr);
+                }
             }
         }
 
@@ -956,30 +956,43 @@ impl Plugin {
             .and_then(move |_| self.output())
     }
 
+    /// Call a WASI command module, this will use Extism input as stdin and WASI stdout as the Extism
+    /// output
     pub fn call_wasi_command<'a, T: ToBytes<'a>, U: FromBytesOwned>(
         &mut self,
-        name: impl AsRef<str>,
         input: T,
-    ) -> Result<U, Error> {
+    ) -> Result<U, (Error, Vec<u8>)> {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
-        let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data, None, true)
-            .map_err(|e| e.0)
+        let data = input.to_bytes().map_err(|x| (x, vec![]))?;
+        self.raw_call(&mut lock, "_start", data, None, true)
+            .map_err(|e| {
+                if let Some(wasi) = &self.current_plugin_mut().wasi {
+                    if let Some(stderr) = &wasi.stderr {
+                        return (e.0, stderr.read().unwrap().clone());
+                    }
+                }
+                (e.0, vec![])
+            })
             .and_then(move |rc| {
                 if rc != 0 {
-                    Err(Error::msg(format!("Returned non-zero exit code: {rc}")))
+                    let e = Error::msg(format!("Returned non-zero exit code: {rc}"));
+                    if let Some(wasi) = &self.current_plugin_mut().wasi {
+                        if let Some(stderr) = &wasi.stderr {
+                            return Err((e, stderr.read().unwrap().clone()));
+                        }
+                    }
+                    Err((e, vec![]))
                 } else {
                     if let Some(wasi) = &self.current_plugin_mut().wasi {
                         if let Some(stdout) = &wasi.stdout {
-                            let mut data = vec![];
-                            stdout.write().unwrap().read_to_end(&mut data)?;
-                            return U::from_bytes_owned(&data);
+                            return U::from_bytes_owned(&*stdout.write().unwrap())
+                                .map_err(|e| (e, vec![]));
                         } else {
-                            self.output()
+                            self.output().map_err(|e| (e, vec![]))
                         }
                     } else {
-                        self.output()
+                        self.output().map_err(|e| (e, vec![]))
                     }
                 }
             })
