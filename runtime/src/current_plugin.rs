@@ -1,3 +1,5 @@
+use wasi_common::pipe::WritePipe;
+
 use crate::*;
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
@@ -327,13 +329,18 @@ impl CurrentPlugin {
                 }
             }
 
-            // Enable WASI output, typically used for debugging purposes
             if std::env::var("EXTISM_ENABLE_WASI_OUTPUT").is_ok() {
+                // Enable WASI output, typically used for debugging purposes
                 ctx.set_stderr(Box::new(wasi_common::sync::stdio::stderr()));
                 ctx.set_stdout(Box::new(wasi_common::sync::stdio::stdout()));
             }
 
-            Some(Wasi { ctx })
+            Some(Wasi {
+                ctx,
+
+                stderr: None,
+                stdout: None,
+            })
         } else {
             None
         };

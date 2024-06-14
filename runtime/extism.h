@@ -252,6 +252,19 @@ int32_t extism_plugin_call_with_host_context(ExtismPlugin *plugin,
                                              void *host_context);
 
 /**
+ * Call a function with host context.
+ *
+ * `func_name`: is the function to call
+ * `data`: is the input data
+ * `data_len`: is the length of `data`
+ * `host_context`: a pointer to context data that will be available in host functions
+ */
+int32_t extism_plugin_call_wasi_command(ExtismPlugin *plugin,
+                                        const char *func_name,
+                                        const uint8_t *data,
+                                        ExtismSize data_len);
+
+/**
  * Get the error associated with a `Plugin`
  */
 const char *extism_error(ExtismPlugin *plugin);

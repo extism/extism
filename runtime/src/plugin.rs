@@ -1,8 +1,11 @@
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},
+    io::Read,
     path::PathBuf,
 };
+
+use wasi_common::pipe::{ReadPipe, WritePipe};
 
 use crate::*;
 
@@ -483,6 +486,7 @@ impl Plugin {
         input: *const u8,
         mut len: usize,
         host_context: Option<Rooted<ExternRef>>,
+        wasi_input: bool,
     ) -> Result<(), Error> {
         self.output = Output::default();
         self.clear_error()?;
@@ -505,6 +509,29 @@ impl Plugin {
 
         self.reset()?;
         let handle = self.current_plugin_mut().memory_new(bytes)?;
+
+        if wasi_input {
+            if let Some(wasi) = &mut self.current_plugin_mut().wasi {
+                wasi.ctx.set_stdin(Box::new(ReadPipe::from(bytes)));
+                let stdout =
+                    std::sync::Arc::new(std::sync::RwLock::new(std::io::Cursor::new(vec![
+                        0;
+                        1024
+                    ])));
+                let x = WritePipe::from_shared(stdout.clone());
+                wasi.ctx.set_stdout(Box::new(x));
+
+                let stderr =
+                    std::sync::Arc::new(std::sync::RwLock::new(std::io::Cursor::new(vec![
+                        0;
+                        1024
+                    ])));
+                let x = WritePipe::from_shared(stderr.clone());
+                wasi.ctx.set_stderr(Box::new(x));
+                wasi.stdout = Some(stdout);
+                wasi.stderr = Some(stderr);
+            }
+        }
 
         if let Some(f) = self
             .linker
@@ -702,6 +729,7 @@ impl Plugin {
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
         host_context: Option<Rooted<ExternRef>>,
+        wasi_input: bool,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
@@ -715,7 +743,7 @@ impl Plugin {
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
-        self.set_input(input.as_ptr(), input.len(), host_context)
+        self.set_input(input.as_ptr(), input.len(), host_context, wasi_input)
             .map_err(|x| (x, -1))?;
 
         let func = match self.get_func(lock, name) {
@@ -897,7 +925,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data, None)
+        self.raw_call(&mut lock, name, data, None, false)
             .map_err(|e| e.0)
             .and_then(move |rc| {
                 if rc != 0 {
@@ -923,9 +951,38 @@ impl Plugin {
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
         let ctx = ExternRef::new(&mut self.store, host_context)?;
-        self.raw_call(&mut lock, name, data, Some(ctx))
+        self.raw_call(&mut lock, name, data, Some(ctx), false)
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
+    }
+
+    pub fn call_wasi_command<'a, T: ToBytes<'a>, U: FromBytesOwned>(
+        &mut self,
+        name: impl AsRef<str>,
+        input: T,
+    ) -> Result<U, Error> {
+        let lock = self.instance.clone();
+        let mut lock = lock.lock().unwrap();
+        let data = input.to_bytes()?;
+        self.raw_call(&mut lock, name, data, None, true)
+            .map_err(|e| e.0)
+            .and_then(move |rc| {
+                if rc != 0 {
+                    Err(Error::msg(format!("Returned non-zero exit code: {rc}")))
+                } else {
+                    if let Some(wasi) = &self.current_plugin_mut().wasi {
+                        if let Some(stdout) = &wasi.stdout {
+                            let mut data = vec![];
+                            stdout.write().unwrap().read_to_end(&mut data)?;
+                            return U::from_bytes_owned(&data);
+                        } else {
+                            self.output()
+                        }
+                    } else {
+                        self.output()
+                    }
+                }
+            })
     }
 
     /// Similar to `Plugin::call`, but returns the Extism error code along with the
@@ -942,7 +999,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes().map_err(|e| (e, -1))?;
-        self.raw_call(&mut lock, name, data, None)
+        self.raw_call(&mut lock, name, data, None, false)
             .and_then(move |_| self.output().map_err(|e| (e, -1)))
     }
 

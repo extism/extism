@@ -522,7 +522,47 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
         Err(e) => return plugin.return_error(&mut lock, e, -1),
         Ok(x) => x,
     };
-    let res = plugin.raw_call(&mut lock, name, input, Some(r));
+    let res = plugin.raw_call(&mut lock, name, input, Some(r), false);
+    match res {
+        Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
+        Ok(x) => x,
+    }
+}
+
+/// Call a function with host context.
+///
+/// `func_name`: is the function to call
+/// `data`: is the input data
+/// `data_len`: is the length of `data`
+/// `host_context`: a pointer to context data that will be available in host functions
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_call_wasi_command(
+    plugin: *mut Plugin,
+    func_name: *const c_char,
+    data: *const u8,
+    data_len: Size,
+) -> i32 {
+    if plugin.is_null() {
+        return -1;
+    }
+    let plugin = &mut *plugin;
+    let lock = plugin.instance.clone();
+    let mut lock = lock.lock().unwrap();
+
+    // Get function name
+    let name = std::ffi::CStr::from_ptr(func_name);
+    let name = match name.to_str() {
+        Ok(name) => name,
+        Err(e) => return plugin.return_error(&mut lock, e, -1),
+    };
+
+    trace!(
+        plugin = plugin.id.to_string(),
+        "calling function {} using extism_plugin_call",
+        name
+    );
+    let input = std::slice::from_raw_parts(data, data_len as usize);
+    let res = plugin.raw_call(&mut lock, name, input, None, true);
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
         Ok(x) => x,
