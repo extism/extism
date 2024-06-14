@@ -311,33 +311,29 @@ impl CurrentPlugin {
         id: uuid::Uuid,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
-            let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
-
-            // Disable sockets/DNS lookup
-            ctx.allow_ip_name_lookup(false)
-                .allow_tcp(false)
-                .allow_udp(false)
-                .allow_blocking_current_thread(true);
+            let auth = wasi_common::sync::ambient_authority();
+            let random = wasi_common::sync::random_ctx();
+            let clocks = wasi_common::sync::clocks_ctx();
+            let sched = wasi_common::sync::sched_ctx();
+            let table = wasi_common::Table::new();
+            let ctx = wasi_common::WasiCtx::new(random, clocks, sched, table);
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    ctx.preopened_dir(
-                        k,
-                        v.to_string_lossy(),
-                        wasmtime_wasi::DirPerms::READ | wasmtime_wasi::DirPerms::MUTATE,
-                        wasmtime_wasi::FilePerms::READ | wasmtime_wasi::FilePerms::WRITE,
-                    )?;
+                    let file = Box::new(wasi_common::sync::dir::Dir::from_cap_std(
+                        wasi_common::sync::Dir::open_ambient_dir(k, auth)?,
+                    ));
+                    ctx.push_preopened_dir(file, v)?;
                 }
             }
 
             // Enable WASI output, typically used for debugging purposes
             if std::env::var("EXTISM_ENABLE_WASI_OUTPUT").is_ok() {
-                ctx.inherit_stdout().inherit_stderr();
+                ctx.set_stderr(Box::new(wasi_common::sync::stdio::stderr()));
+                ctx.set_stdout(Box::new(wasi_common::sync::stdio::stdout()));
             }
 
-            Some(Wasi {
-                ctx: ctx.build_p1(),
-            })
+            Some(Wasi { ctx })
         } else {
             None
         };

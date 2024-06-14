@@ -250,7 +250,7 @@ fn relink(
 
     // If wasi is enabled then add it to the linker
     if with_wasi {
-        wasmtime_wasi::preview1::add_to_linker_sync(&mut linker, |x: &mut CurrentPlugin| {
+        wasi_common::sync::add_to_linker(&mut linker, |x: &mut CurrentPlugin| {
             &mut x.wasi.as_mut().unwrap().ctx
         })?;
     }
@@ -834,7 +834,7 @@ impl Plugin {
                     }
                 }
 
-                let wasi_exit_code = e.downcast_ref::<wasmtime_wasi::I32Exit>().map(|e| e.0);
+                let wasi_exit_code = e.downcast_ref::<wasi_common::I32Exit>().map(|e| e.0);
                 if let Some(exit_code) = wasi_exit_code {
                     debug!(
                         plugin = self.id.to_string(),
