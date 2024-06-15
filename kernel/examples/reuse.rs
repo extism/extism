@@ -7,9 +7,12 @@ main!({
     let x = u64();
     assume(x > 0);
 
+    let y = u64();
+    assume(y > 0);
+
     let mut tmp = 0;
 
-    for _ in 0..10 {
+    for _ in 0..y {
         let m = alloc(x);
         if tmp == 0 {
             tmp = m;

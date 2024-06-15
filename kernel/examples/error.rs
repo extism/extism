@@ -18,6 +18,7 @@ main!({
 
     error_set(n);
     assert(error_get() == n);
+    alloc(m);
     error_set(0);
     assert(error_get() == 0);
 });
