@@ -7,7 +7,6 @@ main!({
     let n = alloc(1024);
 
     let x = u64();
-    assume(x < i32::MAX as u64);
     assume(x > 0);
 
     let m = alloc(x);

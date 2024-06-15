@@ -5,7 +5,6 @@ use owi::*;
 
 main!({
     let x = u64();
-    assume(x < i32::MAX as u64);
     assume(x > 0);
 
     let mut tmp = 0;
@@ -23,10 +22,10 @@ main!({
         free(m); // Free the block
     }
 
-    // let y = u64();
-    // assume(y == x + 1);
-    // let n = alloc(y);
-    // assert(n > tmp);
+    let y = u64();
+    assume(y == x + 1);
+    let n = alloc(y);
+    assert(n > tmp);
 
     let z = u64();
     assume(z <= x);

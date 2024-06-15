@@ -5,7 +5,6 @@ use owi::*;
 
 main!({
     let x = u64();
-    assume(x < 1024);
     assume(x > 0);
 
     let m = alloc(x);

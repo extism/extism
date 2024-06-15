@@ -5,11 +5,14 @@ use owi::*;
 
 main!({
     let x = u64();
-    assume(x < i32::MAX as u64 / 2);
+    let n = u64();
+    let m = u64();
     assume(x > 0);
+    assume(n > 0);
+    assume(m > 0);
 
-    alloc(1024);
-    alloc(123);
+    alloc(n);
+    alloc(m);
     let n = alloc(x);
     assert(error_get() == 0);
 
