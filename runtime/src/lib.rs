@@ -19,6 +19,7 @@ pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
 mod timer;
+mod readonly_dir;
 
 /// Extism C API
 pub mod sdk;
