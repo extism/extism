@@ -25,6 +25,9 @@ extism-manifest = { workspace = true }
 extism-convert = { workspace = true, features = ["extism-path"] }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
+cap-primitives = ">=2.0"
+cap-fs-ext = ">=2.0"
+wiggle = "22.0.0"
 
 [features]
 default = ["http", "register-http", "register-filesystem"]
