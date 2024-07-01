@@ -2,7 +2,7 @@ use extism::*;
 fn main() {
     let url = Wasm::file("D:/x/rust/fs/target/wasm32-wasi/debug/fs.wasm");
     let manifest = Manifest::new([url])
-        .with_allowed_path("d:/x/go/fs/data", "/data")
+        .with_allowed_path("ro:D:/x/rust/fs/data".to_string(), "/data")
         .with_config_key("path", "/data/data.txt");
 
     let mut plugin = PluginBuilder::new(manifest)
@@ -21,7 +21,7 @@ fn main() {
     println!("-----------------------------------------------------");
 
     println!("trying to write file: ");
-    let line = format!("Hello World at {:?}", std::time::SystemTime::now());
+    let line = format!("Hello World at {:?}\n", std::time::SystemTime::now().duration_since(std::time::SystemTime::UNIX_EPOCH).unwrap());
     let res2 = plugin
     .call::<&str, &str>("try_write", &line)
     .unwrap();

@@ -321,25 +321,26 @@ impl CurrentPlugin {
             if let Some(a) = &manifest.allowed_paths {
 
                 for (k, v) in a.iter() {
-                    // let file = cap_primitives::fs::open_ambient_dir(k, auth)?;
-                    // let options = cap_primitives::fs::OpenOptions::new()
-                    //     .read(true)
-                    //     .write(false)
-                    //     .create(false)
-                    //     .clone();
 
-                    // let x: std::fs::File = cap_primitives::fs::open(&file, k, &options)?;
-                    // let d = wasmtime_wasi::Dir::from_std_file(x);
+                    let readonly = k.starts_with("ro:");
 
+                    let dir_path = if readonly {
+                        &k[3..]
+                    } else {
+                        k
+                    };
 
                     let dir = wasi_common::sync::dir::Dir::from_cap_std(
-                        wasi_common::sync::Dir::open_ambient_dir(k, auth)?,
+                        wasi_common::sync::Dir::open_ambient_dir(dir_path, auth)?,
                     );
 
-                    let rdir = readonly_dir::ReadOnlyDir::new(dir);
-
-                    let file = Box::new(rdir);
-                    
+                    let file: Box<dyn wasi_common::dir::WasiDir>;
+                    if readonly {
+                        file = Box::new(readonly_dir::ReadOnlyDir::new(dir));
+                    } else {
+                        file = Box::new(dir);
+                    }
+                
                     ctx.push_preopened_dir(file, v)?;
                 }
             }
