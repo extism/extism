@@ -35,6 +35,21 @@ pub fn create_plugin(c: &mut Criterion) {
     });
 }
 
+pub fn create_plugin_no_cache(c: &mut Criterion) {
+    let mut g = c.benchmark_group("create");
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
+    g.bench_function("create_plugin_no_cache", |b| {
+        b.iter(|| {
+            let _plugin = PluginBuilder::new(COUNT_VOWELS)
+                .with_cache_disabled()
+                .with_wasi(true)
+                .build()
+                .unwrap();
+        })
+    });
+}
+
 #[derive(Debug, serde::Deserialize, PartialEq)]
 struct Count {
     count: u32,
@@ -251,6 +266,7 @@ criterion_group!(
     reflect_linked,
     basic,
     create_plugin,
+    create_plugin_no_cache,
     count_vowels
 );
 criterion_main!(benches);
