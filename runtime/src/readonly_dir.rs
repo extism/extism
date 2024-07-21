@@ -1,8 +1,6 @@
 use crate::*;
 
-use wasi_common::{
-    Error, ErrorExt,
-};
+use wasi_common::{Error, ErrorExt};
 
 pub struct ReadOnlyDir<D: wasi_common::WasiDir> {
     inner: std::sync::Arc<D>,
@@ -46,7 +44,10 @@ impl<D: wasi_common::WasiDir> wasi_common::WasiDir for ReadOnlyDir<D> {
     async fn readdir(
         &self,
         cursor: wasi_common::dir::ReaddirCursor,
-    ) -> Result<Box<dyn Iterator<Item = Result<wasi_common::dir::ReaddirEntity, Error>> + Send>, Error> {
+    ) -> Result<
+        Box<dyn Iterator<Item = Result<wasi_common::dir::ReaddirEntity, Error>> + Send>,
+        Error,
+    > {
         self.inner.readdir(cursor).await
     }
 

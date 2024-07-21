@@ -319,16 +319,10 @@ impl CurrentPlugin {
             let ctx = wasi_common::WasiCtx::new(random, clocks, sched, table);
 
             if let Some(a) = &manifest.allowed_paths {
-
                 for (k, v) in a.iter() {
-
                     let readonly = k.starts_with("ro:");
 
-                    let dir_path = if readonly {
-                        &k[3..]
-                    } else {
-                        k
-                    };
+                    let dir_path = if readonly { &k[3..] } else { k };
 
                     let dir = wasi_common::sync::dir::Dir::from_cap_std(
                         wasi_common::sync::Dir::open_ambient_dir(dir_path, auth)?,
@@ -340,7 +334,7 @@ impl CurrentPlugin {
                     } else {
                         file = Box::new(dir);
                     }
-                
+
                     ctx.push_preopened_dir(file, v)?;
                 }
             }
