@@ -2,7 +2,7 @@ use extism::*;
 fn main() {
     let url = Wasm::file("../wasm/read_write.wasm");
     let manifest = Manifest::new([url])
-        .with_allowed_path("ro:examples/data".to_string(), "/data")
+        .with_allowed_path("ro:src/tests/data".to_string(), "/data")
         .with_config_key("path", "/data/data.txt");
 
     let mut plugin = PluginBuilder::new(manifest)

@@ -328,7 +328,7 @@ impl CurrentPlugin {
                         wasi_common::sync::Dir::open_ambient_dir(dir_path, auth)?,
                     );
 
-                    let file: Box<dyn wasi_common::dir::WasiDir> =  if readonly {
+                    let file: Box<dyn wasi_common::dir::WasiDir> = if readonly {
                         Box::new(readonly_dir::ReadOnlyDir::new(dir))
                     } else {
                         Box::new(dir)
