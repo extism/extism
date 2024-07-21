@@ -1,8 +1,8 @@
 use extism::*;
 fn main() {
-    let url = Wasm::file("D:/x/rust/fs/target/wasm32-wasi/debug/fs.wasm");
+    let url = Wasm::file("../wasm/read_write.wasm");
     let manifest = Manifest::new([url])
-        .with_allowed_path("ro:D:/x/rust/fs/data".to_string(), "/data")
+        .with_allowed_path("ro:examples/data".to_string(), "/data")
         .with_config_key("path", "/data/data.txt");
 
     let mut plugin = PluginBuilder::new(manifest)
