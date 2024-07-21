@@ -279,7 +279,7 @@ impl Function {
 /// For example, the following defines a host function named `add_newline` that takes a
 /// string parameter and returns a string result:
 /// ```rust
-/// extism::host_fn!(add_newline(_user_data: (), a: String) -> String { Ok(a + "\n") });
+/// extism::host_fn!(add_newline(_user_data: (); a: String) -> String { Ok(a + "\n") });
 /// ```
 /// A few things worth noting:
 /// - The function always returns a `Result` that wraps the specified return type

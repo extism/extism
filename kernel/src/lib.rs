@@ -546,7 +546,8 @@ pub unsafe fn reset() {
     MemoryRoot::new().reset()
 }
 
-/// Set the error message offset
+/// Set the error message offset, the handle passed to this
+/// function should not be freed after this call
 #[no_mangle]
 pub unsafe fn error_set(h: Handle) {
     let root = MemoryRoot::new();
