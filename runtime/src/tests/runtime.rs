@@ -769,5 +769,8 @@ fn test_readonly_dirs() {
 
     let line = "hello world 2";
     let res2 = plugin.call::<&str, &str>("try_write", &line);
-    assert!(res2.is_err(), "Expected try_write to fail, but it succeeded.");
+    assert!(
+        res2.is_err(),
+        "Expected try_write to fail, but it succeeded."
+    );
 }
