@@ -81,6 +81,8 @@ pub struct Plugin {
     pub(crate) store_needs_reset: bool,
 
     pub(crate) debug_options: DebugOptions,
+
+    pub(crate) error_msg: Option<Vec<u8>>,
 }
 
 unsafe impl Send for Plugin {}
@@ -361,6 +363,7 @@ impl Plugin {
             store_needs_reset: false,
             debug_options,
             _functions: imports,
+            error_msg: None,
         };
 
         plugin.current_plugin_mut().store = &mut plugin.store;

@@ -505,6 +505,8 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
     let lock = plugin.instance.clone();
     let mut lock = lock.lock().unwrap();
 
+    plugin.error_msg = None;
+
     // Get function name
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
@@ -551,10 +553,19 @@ pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_ch
         return std::ptr::null();
     }
 
-    plugin
+    let offs = plugin.output.error_offset;
+
+    let ptr = plugin.current_plugin_mut().memory_ptr().add(offs as usize) as *const _;
+
+    let len = plugin
         .current_plugin_mut()
-        .memory_ptr()
-        .add(plugin.output.error_offset as usize) as *const _
+        .memory_length(offs)
+        .unwrap_or_default();
+
+    let mut data = std::slice::from_raw_parts(ptr, len as usize).to_vec();
+    data.push(0);
+    plugin.error_msg = Some(data);
+    plugin.error_msg.as_ref().unwrap().as_ptr() as *const _
 }
 
 /// Get the length of a plugin's output data
