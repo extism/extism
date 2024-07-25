@@ -9,6 +9,7 @@ const WASM_LOOP: &[u8] = include_bytes!("../../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../../wasm/globals.wasm");
 const WASM_REFLECT: &[u8] = include_bytes!("../../../wasm/reflect.wasm");
 const WASM_HTTP: &[u8] = include_bytes!("../../../wasm/http.wasm");
+const WASM_FS: &[u8] = include_bytes!("../../../wasm/read_write.wasm");
 
 host_fn!(pub hello_world (a: String) -> String { Ok(a) });
 
@@ -749,4 +750,27 @@ fn test_linking() {
     for _ in 0..5 {
         assert_eq!(plugin.call::<&str, i64>("run", "Hello, world!").unwrap(), 1);
     }
+}
+
+#[test]
+fn test_readonly_dirs() {
+    let wasm = Wasm::data(WASM_FS);
+    let manifest = Manifest::new([wasm])
+        .with_allowed_path("ro:src/tests/data".to_string(), "/data")
+        .with_config_key("path", "/data/data.txt");
+
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_wasi(true)
+        .build()
+        .unwrap();
+
+    let res = plugin.call::<&str, &str>("try_read", "").unwrap();
+    assert_eq!(res, "hello world!");
+
+    let line = "hello world 2";
+    let res2 = plugin.call::<&str, &str>("try_write", &line);
+    assert!(
+        res2.is_err(),
+        "Expected try_write to fail, but it succeeded."
+    );
 }

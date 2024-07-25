@@ -279,7 +279,7 @@ pub struct Manifest {
     /// the path on disk to the path it should be available inside the plugin.
     /// For example, `".": "/tmp"` would mount the current directory as `/tmp` inside the module
     #[serde(default)]
-    pub allowed_paths: Option<BTreeMap<PathBuf, PathBuf>>,
+    pub allowed_paths: Option<BTreeMap<String, PathBuf>>,
 
     /// The plugin timeout in milliseconds
     #[serde(default)]
@@ -337,8 +337,7 @@ impl Manifest {
     }
 
     /// Add a path to `allowed_paths`
-    pub fn with_allowed_path(mut self, src: impl AsRef<Path>, dest: impl AsRef<Path>) -> Self {
-        let src = src.as_ref().to_path_buf();
+    pub fn with_allowed_path(mut self, src: String, dest: impl AsRef<Path>) -> Self {
         let dest = dest.as_ref().to_path_buf();
         match &mut self.allowed_paths {
             Some(p) => {
@@ -355,7 +354,7 @@ impl Manifest {
     }
 
     /// Set `allowed_paths`
-    pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (PathBuf, PathBuf)>) -> Self {
+    pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (String, PathBuf)>) -> Self {
         self.allowed_paths = Some(paths.collect());
         self
     }

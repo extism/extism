@@ -18,6 +18,7 @@ pub(crate) mod manifest;
 pub(crate) mod pdk;
 mod plugin;
 mod plugin_builder;
+mod readonly_dir;
 mod timer;
 
 /// Extism C API

@@ -320,9 +320,20 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let file = Box::new(wasi_common::sync::dir::Dir::from_cap_std(
-                        wasi_common::sync::Dir::open_ambient_dir(k, auth)?,
-                    ));
+                    let readonly = k.starts_with("ro:");
+
+                    let dir_path = if readonly { &k[3..] } else { k };
+
+                    let dir = wasi_common::sync::dir::Dir::from_cap_std(
+                        wasi_common::sync::Dir::open_ambient_dir(dir_path, auth)?,
+                    );
+
+                    let file: Box<dyn wasi_common::dir::WasiDir> = if readonly {
+                        Box::new(readonly_dir::ReadOnlyDir::new(dir))
+                    } else {
+                        Box::new(dir)
+                    };
+
                     ctx.push_preopened_dir(file, v)?;
                 }
             }
