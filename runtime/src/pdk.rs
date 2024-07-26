@@ -377,3 +377,14 @@ pub(crate) fn log_error(
 ) -> Result<(), Error> {
     log(tracing::Level::ERROR, caller, input, _output)
 }
+
+/// Write to logs (trace)
+/// Params: i64 (offset)
+/// Returns: none
+pub(crate) fn log_trace(
+    caller: Caller<CurrentPlugin>,
+    input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Error> {
+    log(tracing::Level::TRACE, caller, input, _output)
+}

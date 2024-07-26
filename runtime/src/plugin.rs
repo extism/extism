@@ -244,6 +244,7 @@ fn relink(
         log_info(I64);
         log_debug(I64);
         log_error(I64);
+        log_trace(I64);
     );
 
     let mut linked = BTreeSet::new();
