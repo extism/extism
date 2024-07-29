@@ -81,10 +81,10 @@ mod tests {
             c: true,
         };
         let raw = Raw(&x).to_bytes().unwrap();
-        let y = Raw::from_bytes(&raw).unwrap();
+        let y = Raw::from_bytes(raw).unwrap();
         assert_eq!(&x, y.0);
 
-        let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(&raw);
+        let y: Result<Raw<[u8; std::mem::size_of::<TestRaw>()]>, Error> = Raw::from_bytes(raw);
         assert!(y.is_ok());
     }
 }
