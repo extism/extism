@@ -38,6 +38,7 @@ pub(crate) fn config_get(
     };
     let val = data.manifest.config.get(key);
     let ptr = val.map(|x| (x.len(), x.as_ptr()));
+    data.memory_free(handle)?;
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
@@ -73,6 +74,8 @@ pub(crate) fn var_get(
     };
     let val = data.vars.get(key);
     let ptr = val.map(|x| (x.len(), x.as_ptr()));
+    data.memory_free(handle)?;
+
     let mem = match ptr {
         Some((len, ptr)) => {
             let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
@@ -104,12 +107,12 @@ pub(crate) fn var_set(
     let voffset = args!(input, 1, i64) as u64;
     let key_offs = args!(input, 0, i64) as u64;
 
+    let key_handle = match data.memory_handle(key_offs) {
+        Some(h) => h,
+        None => anyhow::bail!("invalid handle offset for var key: {key_offs}"),
+    };
     let key = {
-        let handle = match data.memory_handle(key_offs) {
-            Some(h) => h,
-            None => anyhow::bail!("invalid handle offset for var key: {key_offs}"),
-        };
-        let key = data.memory_str(handle)?;
+        let key = data.memory_str(key_handle)?;
         let key_len = key.len();
         let key_ptr = key.as_ptr();
         unsafe { std::str::from_utf8_unchecked(std::slice::from_raw_parts(key_ptr, key_len)) }
@@ -118,6 +121,7 @@ pub(crate) fn var_set(
     // Remove if the value offset is 0
     if voffset == 0 {
         data.vars.remove(key);
+        data.memory_free(key_handle)?;
         return Ok(());
     }
 
@@ -144,6 +148,9 @@ pub(crate) fn var_set(
 
     let value = data.memory_bytes(handle)?.to_vec();
 
+    data.memory_free(handle)?;
+    data.memory_free(key_handle)?;
+
     // Insert the value from memory into the `vars` map
     data.vars.insert(key.to_string(), value);
 
@@ -166,6 +173,7 @@ pub(crate) fn http_request(
             Some(h) => h,
             None => anyhow::bail!("http_request input is invalid: {http_req_offset}"),
         };
+        data.free(handle)?;
         let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_bytes(handle)?)?;
         output[0] = Val::I64(0);
         anyhow::bail!(
@@ -182,6 +190,7 @@ pub(crate) fn http_request(
             None => anyhow::bail!("invalid handle offset for http request: {http_req_offset}"),
         };
         let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_bytes(handle)?)?;
+        data.memory_free(handle)?;
 
         let body_offset = args!(input, 1, i64) as u64;
 
@@ -234,6 +243,10 @@ pub(crate) fn http_request(
         } else {
             r.call()
         };
+
+        if let Some(handle) = data.memory_handle(body_offset) {
+            data.memory_free(handle)?;
+        }
 
         let reader = match res {
             Ok(res) => {
@@ -331,6 +344,8 @@ pub fn log(
         },
         Err(_) => tracing::error!(plugin = id, "unable to log message: {:?}", buf),
     }
+
+    data.memory_free(handle)?;
     Ok(())
 }
 
