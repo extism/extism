@@ -612,17 +612,17 @@ impl Plugin {
 
     // Initialize the guest runtime
     pub(crate) fn initialize_guest_runtime(&mut self) -> Result<(), Error> {
-        let mut store = &mut self.store;
+        let store = &mut self.store;
         if let Some(runtime) = &self.runtime {
             trace!(plugin = self.id.to_string(), "Plugin::initialize_runtime");
             match runtime {
                 GuestRuntime::Haskell { init, reactor_init } => {
                     if let Some(reactor_init) = reactor_init {
-                        reactor_init.call(&mut store, &[], &mut [])?;
+                        reactor_init.call(&mut *store, &[], &mut [])?;
                     }
-                    let mut results = vec![Val::I32(0); init.ty(&store).results().len()];
+                    let mut results = vec![Val::I32(0); init.ty(&*store).results().len()];
                     init.call(
-                        &mut store,
+                        &mut *store,
                         &[Val::I32(0), Val::I32(0)],
                         results.as_mut_slice(),
                     )?;
@@ -632,7 +632,7 @@ impl Plugin {
                     );
                 }
                 GuestRuntime::Wasi { init } => {
-                    init.call(&mut store, &[], &mut [])?;
+                    init.call(&mut *store, &[], &mut [])?;
                     debug!(plugin = self.id.to_string(), "initialied WASI runtime");
                 }
             }
@@ -645,20 +645,20 @@ impl Plugin {
     fn output_memory_position(&mut self) -> Result<(u64, u64), Error> {
         let out = &mut [Val::I64(0)];
         let out_len = &mut [Val::I64(0)];
-        let mut store = &mut self.store;
+        let store = &mut self.store;
         if let Some(f) = self
             .linker
-            .get(&mut store, EXTISM_ENV_MODULE, "output_offset")
+            .get(&mut *store, EXTISM_ENV_MODULE, "output_offset")
         {
-            f.into_func().unwrap().call(&mut store, &[], out)?;
+            f.into_func().unwrap().call(&mut *store, &[], out)?;
         } else {
             anyhow::bail!("unable to set output")
         }
         if let Some(f) = self
             .linker
-            .get(&mut store, EXTISM_ENV_MODULE, "output_length")
+            .get(&mut *store, EXTISM_ENV_MODULE, "output_length")
         {
-            f.into_func().unwrap().call(&mut store, &[], out_len)?;
+            f.into_func().unwrap().call(&mut *store, &[], out_len)?;
         } else {
             anyhow::bail!("unable to set output length")
         }
@@ -957,11 +957,11 @@ impl Plugin {
 
     pub(crate) fn clear_error(&mut self) -> Result<(), Error> {
         trace!(plugin = self.id.to_string(), "clearing error");
-        let (linker, mut store) = self.linker_and_store();
-        if let Some(f) = linker.get(&mut store, EXTISM_ENV_MODULE, "error_set") {
+        let (linker, store) = self.linker_and_store();
+        if let Some(f) = linker.get(&mut *store, EXTISM_ENV_MODULE, "error_set") {
             f.into_func()
                 .unwrap()
-                .call(&mut store, &[Val::I64(0)], &mut [])?;
+                .call(store, &[Val::I64(0)], &mut [])?;
             Ok(())
         } else {
             anyhow::bail!("Plugin::clear_error failed, extism:host/env::error_set not found")
