@@ -1,5 +1,3 @@
-#![allow(clippy::needless_borrows_for_generic_args)]
-
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},

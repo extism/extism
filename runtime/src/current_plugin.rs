@@ -1,5 +1,3 @@
-#![allow(clippy::needless_borrows_for_generic_args)]
-
 use crate::*;
 
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
