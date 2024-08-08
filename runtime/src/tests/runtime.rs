@@ -242,6 +242,7 @@ fn test_timeout() {
 }
 
 #[test]
+#[cfg(feature = "http")]
 fn test_http_timeout() {
     let f = Function::new(
         "hello_world",
