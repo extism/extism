@@ -222,6 +222,8 @@ fn relink(
     with_wasi: bool,
 ) -> Result<(InstancePre<CurrentPlugin>, Linker<CurrentPlugin>), Error> {
     let mut linker = Linker::new(engine);
+    linker.allow_shadowing(true);
+
     // Define PDK functions
     macro_rules! add_funcs {
             ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
