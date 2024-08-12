@@ -128,6 +128,22 @@ impl<'a> ToBytes<'a> for i32 {
     }
 }
 
+impl<'a> ToBytes<'a> for u8 {
+    type Bytes = [u8; 1];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok([*self])
+    }
+}
+
+impl<'a> ToBytes<'a> for bool {
+    type Bytes = [u8; 1];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok([if *self { 1 } else { 0 }])
+    }
+}
+
 impl<'a> ToBytes<'a> for u64 {
     type Bytes = [u8; 8];
 

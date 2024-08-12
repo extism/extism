@@ -105,6 +105,23 @@ impl FromBytesOwned for String {
     }
 }
 
+impl FromBytesOwned for u8 {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        if data.is_empty() {
+            anyhow::bail!("not enough bytes, expected 1, got 0");
+        }
+
+        Ok(data[0])
+    }
+}
+
+impl FromBytesOwned for bool {
+    fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
+        let x: u8 = u8::from_bytes_owned(data)?;
+        Ok(if x == 0 { false } else { true })
+    }
+}
+
 impl FromBytesOwned for f64 {
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
         Ok(Self::from_le_bytes(data.try_into()?))
