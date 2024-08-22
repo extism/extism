@@ -249,11 +249,12 @@ fn test_fuel() {
         .with_fuel_limit(1)
         .build()
         .unwrap();
-
-    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
-    let err = output.unwrap_err().root_cause().to_string();
-    println!("Fuel limited plugin exited with error: {:?}", &err);
-    assert!(err.contains("fuel"));
+    for _ in 0..10001 {
+        let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
+        let err = output.unwrap_err().root_cause().to_string();
+        println!("Fuel limited plugin exited with error: {:?}", &err);
+        assert!(err.contains("fuel"));
+    }
 }
 
 #[test]

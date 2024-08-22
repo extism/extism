@@ -195,6 +195,9 @@ ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 bool with_wasi,
                                 char **errmsg);
 
+/**
+ * Set the number of instructions a plugin is allowed to execute
+ */
 void extism_plugin_fuel_limit(ExtismPlugin *plugin, uint64_t n);
 
 /**
