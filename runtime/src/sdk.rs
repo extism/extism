@@ -334,6 +334,7 @@ pub unsafe extern "C" fn extism_plugin_new(
     }
 }
 
+/// Set the number of instructions a plugin is allowed to execute
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_fuel_limit(plugin: *mut Plugin, n: u64) {
     if plugin.is_null() {
