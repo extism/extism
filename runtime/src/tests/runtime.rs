@@ -242,6 +242,21 @@ fn test_timeout() {
 }
 
 #[test]
+fn test_fuel() {
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)]);
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_wasi(true)
+        .with_fuel_limit(1)
+        .build()
+        .unwrap();
+
+    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
+    let err = output.unwrap_err().root_cause().to_string();
+    println!("Fuel limited plugin exited with error: {:?}", &err);
+    assert!(err.contains("fuel"));
+}
+
+#[test]
 #[cfg(feature = "http")]
 fn test_http_timeout() {
     let f = Function::new(

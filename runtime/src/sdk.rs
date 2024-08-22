@@ -334,6 +334,15 @@ pub unsafe extern "C" fn extism_plugin_new(
     }
 }
 
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_fuel_limit(plugin: *mut Plugin, n: u64) {
+    if plugin.is_null() {
+        return;
+    }
+    let plugin = &mut *plugin;
+    plugin.fuel = Some(n);
+}
+
 /// Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_new_error_free(err: *mut std::ffi::c_char) {

@@ -195,6 +195,8 @@ ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 bool with_wasi,
                                 char **errmsg);
 
+void extism_plugin_fuel_limit(ExtismPlugin *plugin, uint64_t n);
+
 /**
  * Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
  */
