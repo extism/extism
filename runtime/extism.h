@@ -196,6 +196,17 @@ ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 char **errmsg);
 
 /**
+ * Create a new plugin and set the number of instructions a plugin is allowed to execute
+ */
+ExtismPlugin *extism_plugin_new_with_fuel_limit(const uint8_t *wasm,
+                                                ExtismSize wasm_size,
+                                                const ExtismFunction **functions,
+                                                ExtismSize n_functions,
+                                                bool with_wasi,
+                                                uint64_t fuel_limit,
+                                                char **errmsg);
+
+/**
  * Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
  */
 void extism_plugin_new_error_free(char *err);

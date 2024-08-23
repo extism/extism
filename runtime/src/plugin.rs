@@ -83,6 +83,8 @@ pub struct Plugin {
     pub(crate) debug_options: DebugOptions,
 
     pub(crate) error_msg: Option<Vec<u8>>,
+
+    pub(crate) fuel: Option<u64>,
 }
 
 unsafe impl Send for Plugin {}
@@ -292,7 +294,14 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        Self::build_new(wasm.into(), imports, with_wasi, Default::default(), None)
+        Self::build_new(
+            wasm.into(),
+            imports,
+            with_wasi,
+            Default::default(),
+            None,
+            None,
+        )
     }
 
     pub(crate) fn build_new(
@@ -301,6 +310,7 @@ impl Plugin {
         with_wasi: bool,
         debug_options: DebugOptions,
         cache_dir: Option<Option<PathBuf>>,
+        fuel: Option<u64>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let mut config = Config::new();
@@ -312,6 +322,10 @@ impl Plugin {
             .wasm_tail_call(true)
             .wasm_function_references(true)
             .wasm_gc(true);
+
+        if fuel.is_some() {
+            config.consume_fuel(true);
+        }
 
         match cache_dir {
             Some(None) => (),
@@ -346,6 +360,9 @@ impl Plugin {
             CurrentPlugin::new(manifest, with_wasi, available_pages, id)?,
         );
         store.set_epoch_deadline(1);
+        if let Some(fuel) = fuel {
+            store.set_fuel(fuel)?;
+        }
 
         let imports: Vec<Function> = imports.into_iter().collect();
         let (instance_pre, linker) = relink(&engine, &mut store, &imports, &modules, with_wasi)?;
@@ -367,6 +384,7 @@ impl Plugin {
             debug_options,
             _functions: imports,
             error_msg: None,
+            fuel,
         };
 
         plugin.current_plugin_mut().store = &mut plugin.store;
@@ -399,6 +417,10 @@ impl Plugin {
                 )?,
             );
             self.store.set_epoch_deadline(1);
+
+            if let Some(fuel) = self.fuel {
+                self.store.set_fuel(fuel)?;
+            }
 
             let (instance_pre, linker) = relink(
                 &engine,
@@ -752,6 +774,9 @@ impl Plugin {
             .expect("Timer should start");
         self.store.epoch_deadline_trap();
         self.store.set_epoch_deadline(1);
+        if let Some(fuel) = self.fuel {
+            self.store.set_fuel(fuel).map_err(|x| (x, -1))?;
+        }
         self.current_plugin_mut().start_time = std::time::Instant::now();
 
         // Call the function

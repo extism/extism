@@ -334,6 +334,66 @@ pub unsafe extern "C" fn extism_plugin_new(
     }
 }
 
+/// Create a new plugin and set the number of instructions a plugin is allowed to execute
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
+    wasm: *const u8,
+    wasm_size: Size,
+    functions: *mut *const ExtismFunction,
+    n_functions: Size,
+    with_wasi: bool,
+    fuel_limit: u64,
+    errmsg: *mut *mut std::ffi::c_char,
+) -> *mut Plugin {
+    trace!(
+        "Call to extism_plugin_new_with_fuel_limit with wasm pointer {:?}",
+        wasm
+    );
+    let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
+    let mut funcs = vec![];
+
+    if !functions.is_null() {
+        for i in 0..n_functions {
+            unsafe {
+                let f = *functions.add(i as usize);
+                if f.is_null() {
+                    continue;
+                }
+                if let Some(f) = (*f).0.take() {
+                    funcs.push(f);
+                } else {
+                    let e = std::ffi::CString::new(
+                        "Function cannot be registered with multiple different Plugins",
+                    )
+                    .unwrap();
+                    *errmsg = e.into_raw();
+                }
+            }
+        }
+    }
+
+    let plugin = Plugin::build_new(
+        data.into(),
+        funcs,
+        with_wasi,
+        Default::default(),
+        None,
+        Some(fuel_limit),
+    );
+
+    match plugin {
+        Err(e) => {
+            if !errmsg.is_null() {
+                let e = std::ffi::CString::new(format!("Unable to create Extism plugin: {}", e))
+                    .unwrap();
+                *errmsg = e.into_raw();
+            }
+            std::ptr::null_mut()
+        }
+        Ok(p) => Box::into_raw(Box::new(p)),
+    }
+}
+
 /// Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_new_error_free(err: *mut std::ffi::c_char) {

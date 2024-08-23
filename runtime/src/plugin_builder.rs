@@ -39,6 +39,7 @@ pub struct PluginBuilder<'a> {
     functions: Vec<Function>,
     debug_options: DebugOptions,
     cache_config: Option<Option<PathBuf>>,
+    fuel: Option<u64>,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -50,6 +51,7 @@ impl<'a> PluginBuilder<'a> {
             functions: vec![],
             debug_options: DebugOptions::default(),
             cache_config: None,
+            fuel: None,
         }
     }
 
@@ -148,6 +150,12 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
+    // Limit the number of instructions that can be executed
+    pub fn with_fuel_limit(mut self, fuel: u64) -> Self {
+        self.fuel = Some(fuel);
+        self
+    }
+
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
         Plugin::build_new(
@@ -156,6 +164,7 @@ impl<'a> PluginBuilder<'a> {
             self.wasi,
             self.debug_options,
             self.cache_config,
+            self.fuel,
         )
     }
 }
