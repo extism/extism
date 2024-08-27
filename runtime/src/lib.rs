@@ -2,6 +2,7 @@
 extern crate self as extism;
 
 pub(crate) use extism_convert::*;
+use pdk::{log_level_to_int, GLOBAL_LOG_LEVEL};
 pub(crate) use std::collections::BTreeMap;
 use std::str::FromStr;
 pub(crate) use wasmtime::*;
@@ -78,6 +79,13 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
     filter: impl AsRef<str>,
 ) -> Result<(), Error> {
     let filter = filter.as_ref();
+    let is_level = tracing::Level::from_str(filter);
+    if let Ok(level) = is_level {
+        GLOBAL_LOG_LEVEL.store(
+            log_level_to_int(level),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
         tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into())

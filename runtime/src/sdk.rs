@@ -2,6 +2,8 @@
 
 use std::os::raw::c_char;
 
+use pdk::{log_level_to_int, GLOBAL_LOG_LEVEL};
+
 use crate::*;
 
 pub type ExtismMemoryHandle = u64;
@@ -701,11 +703,17 @@ fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result
     let log_file = log_file.into();
     let s = log_file.to_str();
 
-    let is_level = tracing::Level::from_str(filter).is_ok();
+    let is_level = tracing::Level::from_str(filter);
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
         let x = tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into());
-        if is_level {
+        if let Ok(level) = is_level {
+            GLOBAL_LOG_LEVEL.store(
+                log_level_to_int(level),
+                std::sync::atomic::Ordering::Relaxed,
+            );
+        }
+        if is_level.is_ok() {
             x.parse_lossy(format!("extism={}", filter))
         } else {
             x.parse_lossy(filter)
@@ -751,15 +759,22 @@ pub unsafe extern "C" fn extism_log_custom(log_level: *const c_char) -> bool {
     } else {
         "error"
     };
+
     set_log_buffer(level).is_ok()
 }
 
 unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
-    let is_level = tracing::Level::from_str(filter).is_ok();
+    let is_level = tracing::Level::from_str(filter);
+    if let Ok(level) = is_level {
+        GLOBAL_LOG_LEVEL.store(
+            log_level_to_int(level),
+            std::sync::atomic::Ordering::Relaxed,
+        );
+    }
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
         let x = tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into());
-        if is_level {
+        if is_level.is_ok() {
             x.parse_lossy(format!("extism={}", filter))
         } else {
             x.parse_lossy(filter)

@@ -1,5 +1,9 @@
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
+use std::sync::atomic::{AtomicI32, Ordering};
+
+pub(crate) static GLOBAL_LOG_LEVEL: AtomicI32 =
+    AtomicI32::new(log_level_to_int(tracing::Level::INFO));
 
 /// This macro unwraps input arguments to prevent functions from panicking,
 /// it should be used instead of `Val::unwrap_*` functions
@@ -301,6 +305,13 @@ pub fn log(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
+
+    // Check if the current log level should be logged
+    let global_log_level = GLOBAL_LOG_LEVEL.load(Ordering::Relaxed);
+    if log_level_to_int(level) < global_log_level {
+        return Ok(());
+    }
+
     let offset = args!(input, 0, i64) as u64;
 
     let handle = match data.memory_handle(offset) {
@@ -387,4 +398,28 @@ pub(crate) fn log_trace(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     log(tracing::Level::TRACE, caller, input, _output)
+}
+
+/// Get the log level
+/// Params: none
+/// Returns: i32 (log level)
+pub(crate) fn get_log_level(
+    mut _caller: Caller<CurrentPlugin>,
+    _input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Error> {
+    let level = GLOBAL_LOG_LEVEL.load(Ordering::Relaxed);
+    output[0] = Val::I32(level);
+    Ok(())
+}
+
+/// Convert log level to integer
+pub(crate) const fn log_level_to_int(level: tracing::Level) -> i32 {
+    match level {
+        tracing::Level::TRACE => 0,
+        tracing::Level::DEBUG => 1,
+        tracing::Level::INFO => 2,
+        tracing::Level::WARN => 3,
+        tracing::Level::ERROR => 4,
+    }
 }
