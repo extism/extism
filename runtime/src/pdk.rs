@@ -1,9 +1,5 @@
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
-use std::sync::atomic::{AtomicI32, Ordering};
-
-pub(crate) static GLOBAL_LOG_LEVEL: AtomicI32 =
-    AtomicI32::new(log_level_to_int(tracing::Level::INFO));
 
 /// This macro unwraps input arguments to prevent functions from panicking,
 /// it should be used instead of `Val::unwrap_*` functions
@@ -307,8 +303,8 @@ pub fn log(
     let data: &mut CurrentPlugin = caller.data_mut();
 
     // Check if the current log level should be logged
-    let global_log_level = GLOBAL_LOG_LEVEL.load(Ordering::Relaxed);
-    if log_level_to_int(level) < global_log_level {
+    let global_log_level = tracing::level_filters::LevelFilter::current();
+    if global_log_level == tracing::level_filters::LevelFilter::OFF || level > global_log_level {
         return Ok(());
     }
 
@@ -408,8 +404,14 @@ pub(crate) fn get_log_level(
     _input: &[Val],
     output: &mut [Val],
 ) -> Result<(), Error> {
-    let level = GLOBAL_LOG_LEVEL.load(Ordering::Relaxed);
-    output[0] = Val::I32(level);
+    let level = tracing::level_filters::LevelFilter::current();
+    if level == tracing::level_filters::LevelFilter::OFF {
+        output[0] = Val::I32(i32::MAX)
+    } else {
+        output[0] = Val::I32(log_level_to_int(
+            level.into_level().unwrap_or(tracing::Level::ERROR),
+        ));
+    }
     Ok(())
 }
 
