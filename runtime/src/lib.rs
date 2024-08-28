@@ -78,11 +78,16 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
     filter: impl AsRef<str>,
 ) -> Result<(), Error> {
     let filter = filter.as_ref();
-    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter(
-        tracing_subscriber::EnvFilter::builder()
-            .with_default_directive(tracing::Level::ERROR.into())
-            .parse_lossy(filter),
-    );
+    let is_level = tracing::Level::from_str(filter).is_ok();
+    let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
+        let x = tracing_subscriber::EnvFilter::builder()
+            .with_default_directive(tracing::Level::ERROR.into());
+        if is_level {
+            x.parse_lossy(format!("extism={}", filter))
+        } else {
+            x.parse_lossy(filter)
+        }
+    });
     let w = LogFunction { func };
     cfg.with_ansi(false)
         .with_writer(move || w.clone())

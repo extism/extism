@@ -700,7 +700,6 @@ pub unsafe extern "C" fn extism_log_file(
 fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result<(), Error> {
     let log_file = log_file.into();
     let s = log_file.to_str();
-
     let is_level = tracing::Level::from_str(filter).is_ok();
     let cfg = tracing_subscriber::FmtSubscriber::builder().with_env_filter({
         let x = tracing_subscriber::EnvFilter::builder()
@@ -751,6 +750,7 @@ pub unsafe extern "C" fn extism_log_custom(log_level: *const c_char) -> bool {
     } else {
         "error"
     };
+
     set_log_buffer(level).is_ok()
 }
 

@@ -301,6 +301,13 @@ pub fn log(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
+
+    // Check if the current log level should be logged
+    let global_log_level = tracing::level_filters::LevelFilter::current();
+    if global_log_level == tracing::level_filters::LevelFilter::OFF || level > global_log_level {
+        return Ok(());
+    }
+
     let offset = args!(input, 0, i64) as u64;
 
     let handle = match data.memory_handle(offset) {
@@ -387,4 +394,34 @@ pub(crate) fn log_trace(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     log(tracing::Level::TRACE, caller, input, _output)
+}
+
+/// Get the log level
+/// Params: none
+/// Returns: i32 (log level)
+pub(crate) fn get_log_level(
+    mut _caller: Caller<CurrentPlugin>,
+    _input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Error> {
+    let level = tracing::level_filters::LevelFilter::current();
+    if level == tracing::level_filters::LevelFilter::OFF {
+        output[0] = Val::I32(i32::MAX)
+    } else {
+        output[0] = Val::I32(log_level_to_int(
+            level.into_level().unwrap_or(tracing::Level::ERROR),
+        ));
+    }
+    Ok(())
+}
+
+/// Convert log level to integer
+pub(crate) const fn log_level_to_int(level: tracing::Level) -> i32 {
+    match level {
+        tracing::Level::TRACE => 0,
+        tracing::Level::DEBUG => 1,
+        tracing::Level::INFO => 2,
+        tracing::Level::WARN => 3,
+        tracing::Level::ERROR => 4,
+    }
 }
