@@ -204,7 +204,7 @@ impl CurrentPlugin {
         {
             Some(xs) => match (&mut *xs).downcast_mut::<T>() {
                 Some(xs) => Ok(xs),
-                None => anyhow::bail!("could not downcast extism_context 1"),
+                None => anyhow::bail!("could not downcast extism_context inner value"),
             },
             None => anyhow::bail!("could not downcast extism_context"),
         }
