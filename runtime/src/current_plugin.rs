@@ -187,7 +187,7 @@ impl CurrentPlugin {
         anyhow::bail!("{} unable to locate extism memory", self.id)
     }
 
-    pub fn host_context<T: Clone + 'static>(&mut self) -> Result<T, Error> {
+    pub fn host_context<T: 'static>(&mut self) -> Result<&mut T, Error> {
         let (linker, store) = self.linker_and_store();
         let Some(Extern::Global(xs)) = linker.get(&mut *store, EXTISM_ENV_MODULE, "extism_context")
         else {
@@ -198,9 +198,15 @@ impl CurrentPlugin {
             anyhow::bail!("expected extism_context to be an externref value",)
         };
 
-        match xs.data(&mut *store)?.downcast_ref::<T>().cloned() {
-            Some(xs) => Ok(xs.clone()),
-            None => anyhow::bail!("could not downcast extism_context",),
+        match xs
+            .data_mut(&mut *store)?
+            .downcast_mut::<Box<dyn std::any::Any + Send + Sync>>()
+        {
+            Some(xs) => match (&mut *xs).downcast_mut::<T>() {
+                Some(xs) => Ok(xs),
+                None => anyhow::bail!("could not downcast extism_context 1"),
+            },
+            None => anyhow::bail!("could not downcast extism_context"),
         }
     }
 

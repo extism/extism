@@ -96,7 +96,7 @@ pub unsafe extern "C" fn extism_current_plugin_host_context(
 
     let plugin = &mut *plugin;
     if let Ok(CVoidContainer(ptr)) = plugin.host_context::<CVoidContainer>() {
-        ptr
+        *ptr
     } else {
         std::ptr::null_mut()
     }
@@ -565,6 +565,13 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
     let lock = plugin.instance.clone();
     let mut lock = lock.lock().unwrap();
 
+    if let Err(e) = plugin.reset_store(&mut lock) {
+        error!(
+            plugin = plugin.id.to_string(),
+            "call to Plugin::reset_store failed: {e:?}"
+        );
+    }
+
     plugin.error_msg = None;
 
     // Get function name
@@ -580,11 +587,12 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
         name
     );
     let input = std::slice::from_raw_parts(data, data_len as usize);
-    let r = match ExternRef::new(&mut plugin.store, CVoidContainer(host_context)) {
-        Err(e) => return plugin.return_error(&mut lock, e, -1),
-        Ok(x) => x,
+    let r = if host_context.is_null() {
+        None
+    } else {
+        Some(CVoidContainer(host_context))
     };
-    let res = plugin.raw_call(&mut lock, name, input, Some(r));
+    let res = plugin.raw_call(&mut lock, name, input, r);
     match res {
         Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
         Ok(x) => x,

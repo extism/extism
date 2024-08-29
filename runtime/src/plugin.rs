@@ -85,6 +85,8 @@ pub struct Plugin {
     pub(crate) error_msg: Option<Vec<u8>>,
 
     pub(crate) fuel: Option<u64>,
+
+    pub(crate) host_context: Rooted<ExternRef>,
 }
 
 unsafe impl Send for Plugin {}
@@ -222,7 +224,14 @@ fn relink(
     imports: &[Function],
     modules: &BTreeMap<String, Module>,
     with_wasi: bool,
-) -> Result<(InstancePre<CurrentPlugin>, Linker<CurrentPlugin>), Error> {
+) -> Result<
+    (
+        InstancePre<CurrentPlugin>,
+        Linker<CurrentPlugin>,
+        Rooted<ExternRef>,
+    ),
+    Error,
+> {
     let mut linker = Linker::new(engine);
     linker.allow_shadowing(true);
 
@@ -282,9 +291,12 @@ fn relink(
         )?;
     }
 
+    let inner: Box<dyn std::any::Any + Send + Sync> = Box::new(());
+    let host_context = ExternRef::new(&mut store, inner)?;
+
     let main = &modules[MAIN_KEY];
     let instance_pre = linker.instantiate_pre(main)?;
-    Ok((instance_pre, linker))
+    Ok((instance_pre, linker, host_context))
 }
 
 impl Plugin {
@@ -366,8 +378,8 @@ impl Plugin {
         }
 
         let imports: Vec<Function> = imports.into_iter().collect();
-        let (instance_pre, linker) = relink(&engine, &mut store, &imports, &modules, with_wasi)?;
-
+        let (instance_pre, linker, host_context) =
+            relink(&engine, &mut store, &imports, &modules, with_wasi)?;
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
             modules,
@@ -386,6 +398,7 @@ impl Plugin {
             _functions: imports,
             error_msg: None,
             fuel,
+            host_context,
         };
 
         plugin.current_plugin_mut().store = &mut plugin.store;
@@ -423,7 +436,7 @@ impl Plugin {
                 self.store.set_fuel(fuel)?;
             }
 
-            let (instance_pre, linker) = relink(
+            let (instance_pre, linker, host_context) = relink(
                 &engine,
                 &mut self.store,
                 &self._functions,
@@ -432,6 +445,7 @@ impl Plugin {
             )?;
             self.linker = linker;
             self.instance_pre = instance_pre;
+            self.host_context = host_context;
             let store = &mut self.store as *mut _;
             let linker = &mut self.linker as *mut _;
             let current_plugin = self.current_plugin_mut();
@@ -725,12 +739,12 @@ impl Plugin {
 
     // Implements the build of the `call` function, `raw_call` is also used in the SDK
     // code
-    pub(crate) fn raw_call(
+    pub(crate) fn raw_call<T: 'static + Send + Sync>(
         &mut self,
         lock: &mut std::sync::MutexGuard<Option<Instance>>,
         name: impl AsRef<str>,
         input: impl AsRef<[u8]>,
-        host_context: Option<Rooted<ExternRef>>,
+        host_context: Option<T>,
     ) -> Result<i32, (Error, i32)> {
         let name = name.as_ref();
         let input = input.as_ref();
@@ -744,7 +758,22 @@ impl Plugin {
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
-        self.set_input(input.as_ptr(), input.len(), host_context)
+        // Set host context
+        let r = if let Some(host_context) = host_context {
+            let inner = self
+                .host_context
+                .data_mut(&mut self.store)
+                .map_err(|x| (x, -1))?;
+            if let Some(inner) = inner.downcast_mut::<Box<dyn std::any::Any + Send + Sync>>() {
+                let x: Box<T> = Box::new(host_context);
+                *inner = x;
+            }
+            Some(self.host_context.clone())
+        } else {
+            None
+        };
+
+        self.set_input(input.as_ptr(), input.len(), r)
             .map_err(|x| (x, -1))?;
 
         let func = match self.get_func(lock, name) {
@@ -783,6 +812,14 @@ impl Plugin {
         // Call the function
         let mut results = vec![wasmtime::Val::I32(0); n_results];
         let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
+
+        // Reset host context
+        if let Ok(inner) = self.host_context.data_mut(&mut self.store) {
+            if let Some(inner) = inner.downcast_mut::<Box<dyn std::any::Any + Send + Sync>>() {
+                let x: Box<dyn Any + Send + Sync> = Box::new(());
+                *inner = x;
+            }
+        }
 
         // Stop timer
         self.store
@@ -929,7 +966,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        self.raw_call(&mut lock, name, data, None)
+        self.raw_call(&mut lock, name, data, None::<()>)
             .map_err(|e| e.0)
             .and_then(move |rc| {
                 if rc != 0 {
@@ -954,8 +991,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes()?;
-        let ctx = ExternRef::new(&mut self.store, host_context)?;
-        self.raw_call(&mut lock, name, data, Some(ctx))
+        self.raw_call(&mut lock, name, data, Some(host_context))
             .map_err(|e| e.0)
             .and_then(move |_| self.output())
     }
@@ -974,7 +1010,7 @@ impl Plugin {
         let lock = self.instance.clone();
         let mut lock = lock.lock().unwrap();
         let data = input.to_bytes().map_err(|e| (e, -1))?;
-        self.raw_call(&mut lock, name, data, None)
+        self.raw_call(&mut lock, name, data, None::<()>)
             .and_then(move |_| self.output().map_err(|e| (e, -1)))
     }
 
