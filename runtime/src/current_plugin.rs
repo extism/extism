@@ -202,7 +202,7 @@ impl CurrentPlugin {
             .data_mut(&mut *store)?
             .downcast_mut::<Box<dyn std::any::Any + Send + Sync>>()
         {
-            Some(xs) => match (&mut *xs).downcast_mut::<T>() {
+            Some(xs) => match xs.downcast_mut::<T>() {
                 Some(xs) => Ok(xs),
                 None => anyhow::bail!("could not downcast extism_context inner value"),
             },

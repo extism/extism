@@ -218,6 +218,7 @@ fn add_module<T: 'static>(
     Ok(())
 }
 
+#[allow(clippy::type_complexity)]
 fn relink(
     engine: &Engine,
     mut store: &mut Store<CurrentPlugin>,
@@ -292,7 +293,7 @@ fn relink(
     }
 
     let inner: Box<dyn std::any::Any + Send + Sync> = Box::new(());
-    let host_context = ExternRef::new(&mut store, inner)?;
+    let host_context = ExternRef::new(store, inner)?;
 
     let main = &modules[MAIN_KEY];
     let instance_pre = linker.instantiate_pre(main)?;
@@ -768,7 +769,7 @@ impl Plugin {
                 let x: Box<T> = Box::new(host_context);
                 *inner = x;
             }
-            Some(self.host_context.clone())
+            Some(self.host_context)
         } else {
             None
         };
