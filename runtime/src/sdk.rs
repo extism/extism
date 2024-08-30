@@ -1,6 +1,6 @@
 #![allow(clippy::missing_safety_doc)]
 
-use std::os::raw::c_char;
+use std::{os::raw::c_char, ptr::null_mut};
 
 use crate::*;
 
@@ -231,12 +231,28 @@ pub unsafe extern "C" fn extism_function_new(
                 })
                 .collect();
 
+            // We cannot simply "get" the Vec's storage pointer because
+            // the underlying storage might be invalid when the Vec is empty.
+            // In that case, we return (null, 0).
+
+            let (inputs_ptr, inputs_len) = if inputs.is_empty() {
+                (core::ptr::null(), 0 as Size)
+            } else {
+                (inputs.as_ptr(), inputs.len() as Size)
+            };
+
+            let (output_ptr, output_len) = if output_tmp.is_empty() {
+                (null_mut(), 0 as Size)
+            } else {
+                (output_tmp.as_mut_ptr(), output_tmp.len() as Size)
+            };
+
             func(
                 plugin,
-                inputs.as_ptr(),
-                inputs.len() as Size,
-                output_tmp.as_mut_ptr(),
-                output_tmp.len() as Size,
+                inputs_ptr,
+                inputs_len,
+                output_ptr,
+                output_len,
                 user_data.as_ptr(),
             );
 
