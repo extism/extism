@@ -334,8 +334,10 @@ fn test_multiple_instantiations() {
 #[test]
 fn test_globals() {
     let mut plugin = Plugin::new(WASM_GLOBALS, [], true).unwrap();
-    for i in 0..100000 {
-        let Json(count) = plugin.call::<_, Json<Count>>("globals", "").unwrap();
+    for i in 0..100001 {
+        let Json(count) = plugin
+            .call_with_host_context::<_, Json<Count>, _>("globals", "", ())
+            .unwrap();
         assert_eq!(count.count, i);
     }
 }
@@ -366,7 +368,7 @@ fn test_call_with_host_context() {
         [PTR],
         UserData::default(),
         |current_plugin, _val, ret, _user_data: UserData<()>| {
-            let foo = current_plugin.host_context::<Foo>()?;
+            let foo = current_plugin.host_context::<Foo>()?.clone();
             let hnd = current_plugin.memory_new(foo.message)?;
             ret[0] = current_plugin.memory_to_val(hnd);
             Ok(())
