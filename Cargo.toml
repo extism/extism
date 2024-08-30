@@ -16,3 +16,6 @@ extism = { path = "./runtime", version = "0.0.0+replaced-by-ci" }
 extism-convert = { path = "./convert", version = "0.0.0+replaced-by-ci" }
 extism-convert-macros = { path = "./convert-macros", version = "0.0.0+replaced-by-ci" }
 extism-manifest = { path = "./manifest", version = "0.0.0+replaced-by-ci" }
+
+[patch.crates-io]
+regalloc2 = { git = "https://github.com/bytecodealliance/regalloc2.git", rev = "8eae90153534af19cff7416365f06b42838a490e" }
