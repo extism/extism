@@ -897,7 +897,7 @@ impl Plugin {
                     Err(msg) => {
                         res = Err(Error::msg(format!(
                             "Call to Extism plugin function {name} encountered an error: {}",
-                            msg.to_string(),
+                            msg,
                         )));
                     }
                 }
@@ -1069,14 +1069,14 @@ impl Plugin {
         trace!(plugin = self.id.to_string(), "clearing error");
         self.error_msg = None;
         let (linker, mut store) = self.linker_and_store();
+        #[allow(clippy::needless_borrows_for_generic_args)]
         if let Some(f) = linker.get(&mut *store, EXTISM_ENV_MODULE, "error_set") {
-            catch_out_of_fuel!(
-                &store,
-                f.into_func()
-                    .unwrap()
-                    .call(&mut store, &[Val::I64(0)], &mut [])
-                    .context("unable to clear error message")
-            )?;
+            let x = f
+                .into_func()
+                .unwrap()
+                .call(&mut store, &[Val::I64(0)], &mut [])
+                .context("unable to clear error message");
+            catch_out_of_fuel!(&store, x)?;
             Ok(())
         } else {
             anyhow::bail!("Plugin::clear_error failed, extism:host/env::error_set not found")
