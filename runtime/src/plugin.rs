@@ -4,6 +4,8 @@ use std::{
     path::PathBuf,
 };
 
+use anyhow::Context;
+
 use crate::*;
 
 pub const EXTISM_ENV_MODULE: &str = "extism:host/env";
@@ -554,10 +556,16 @@ impl Plugin {
             .linker
             .get(&mut self.store, EXTISM_ENV_MODULE, "input_set")
         {
-            f.into_func().unwrap().call(
-                &mut self.store,
-                &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
-                &mut [],
+            catch_out_of_fuel!(
+                &self.store,
+                f.into_func()
+                    .unwrap()
+                    .call(
+                        &mut self.store,
+                        &[Val::I64(handle.offset() as i64), Val::I64(len as i64)],
+                        &mut [],
+                    )
+                    .context("unable to set extism input")
             )?;
         }
 
@@ -565,7 +573,8 @@ impl Plugin {
             self.linker
                 .get(&mut self.store, EXTISM_ENV_MODULE, "extism_context")
         {
-            ctxt.set(&mut self.store, Val::ExternRef(host_context))?;
+            ctxt.set(&mut self.store, Val::ExternRef(host_context))
+                .context("unable to set extism host context")?;
         }
 
         Ok(())
@@ -576,7 +585,13 @@ impl Plugin {
         let id = self.id.to_string();
 
         if let Some(f) = self.linker.get(&mut self.store, EXTISM_ENV_MODULE, "reset") {
-            f.into_func().unwrap().call(&mut self.store, &[], &mut [])?;
+            catch_out_of_fuel!(
+                &self.store,
+                f.into_func()
+                    .unwrap()
+                    .call(&mut self.store, &[], &mut [])
+                    .context("extism reset failed")
+            )?;
         } else {
             error!(plugin = &id, "call to extism:host/env::reset failed");
         }
@@ -658,13 +673,22 @@ impl Plugin {
             match runtime {
                 GuestRuntime::Haskell { init, reactor_init } => {
                     if let Some(reactor_init) = reactor_init {
-                        reactor_init.call(&mut *store, &[], &mut [])?;
+                        catch_out_of_fuel!(
+                            &store,
+                            reactor_init
+                                .call(&mut *store, &[], &mut [])
+                                .context("failed to initialize Haskell reactor runtime")
+                        )?;
                     }
                     let mut results = vec![Val::I32(0); init.ty(&*store).results().len()];
-                    init.call(
-                        &mut *store,
-                        &[Val::I32(0), Val::I32(0)],
-                        results.as_mut_slice(),
+                    catch_out_of_fuel!(
+                        &store,
+                        init.call(
+                            &mut *store,
+                            &[Val::I32(0), Val::I32(0)],
+                            results.as_mut_slice(),
+                        )
+                        .context("failed to initialize Haskell using hs_init")
                     )?;
                     debug!(
                         plugin = self.id.to_string(),
@@ -672,7 +696,11 @@ impl Plugin {
                     );
                 }
                 GuestRuntime::Wasi { init } => {
-                    init.call(&mut *store, &[], &mut [])?;
+                    catch_out_of_fuel!(
+                        &store,
+                        init.call(&mut *store, &[], &mut [])
+                            .context("failed to initialize wasi runtime")
+                    )?;
                     debug!(plugin = self.id.to_string(), "initialied WASI runtime");
                 }
             }
@@ -690,7 +718,13 @@ impl Plugin {
             .linker
             .get(&mut *store, EXTISM_ENV_MODULE, "output_offset")
         {
-            f.into_func().unwrap().call(&mut *store, &[], out)?;
+            catch_out_of_fuel!(
+                &store,
+                f.into_func()
+                    .unwrap()
+                    .call(&mut *store, &[], out)
+                    .context("call to set extism output offset failed")
+            )?;
         } else {
             anyhow::bail!("unable to set output")
         }
@@ -698,7 +732,13 @@ impl Plugin {
             .linker
             .get(&mut *store, EXTISM_ENV_MODULE, "output_length")
         {
-            f.into_func().unwrap().call(&mut *store, &[], out_len)?;
+            catch_out_of_fuel!(
+                &store,
+                f.into_func()
+                    .unwrap()
+                    .call(&mut *store, &[], out_len)
+                    .context("call to set extism output length failed")
+            )?;
         } else {
             anyhow::bail!("unable to set output length")
         }
@@ -712,10 +752,10 @@ impl Plugin {
     fn output<'a, T: FromBytes<'a>>(&'a mut self) -> Result<T, Error> {
         let offs = self.output.offset;
         let len = self.output.length;
-        T::from_bytes(
-            self.current_plugin_mut()
-                .memory_bytes(unsafe { MemoryHandle::new(offs, len) })?,
-        )
+        let x = self
+            .current_plugin_mut()
+            .memory_bytes(unsafe { MemoryHandle::new(offs, len) })?;
+        T::from_bytes(x)
     }
 
     // Cache output memory and error information after call is complete
@@ -750,12 +790,11 @@ impl Plugin {
         let name = name.as_ref();
         let input = input.as_ref();
 
-        if let Err(e) = self.reset_store(lock) {
-            error!(
-                plugin = self.id.to_string(),
-                "call to Plugin::reset_store failed: {e:?}"
-            );
+        if let Some(fuel) = self.fuel {
+            self.store.set_fuel(fuel).map_err(|x| (x, -1))?;
         }
+
+        catch_out_of_fuel!(&self.store, self.reset_store(lock)).map_err(|x| (x, -1))?;
 
         self.instantiate(lock).map_err(|e| (e, -1))?;
 
@@ -805,9 +844,6 @@ impl Plugin {
             .expect("Timer should start");
         self.store.epoch_deadline_trap();
         self.store.set_epoch_deadline(1);
-        if let Some(fuel) = self.fuel {
-            self.store.set_fuel(fuel).map_err(|x| (x, -1))?;
-        }
         self.current_plugin_mut().start_time = std::time::Instant::now();
 
         // Call the function
@@ -828,34 +864,43 @@ impl Plugin {
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
         self.store_needs_reset = name == "_start";
 
-        // Get extism error
-        self.get_output_after_call().map_err(|x| (x, -1))?;
         let mut rc = 0;
-        if !results.is_empty() {
-            rc = results[0].i32().unwrap_or(-1);
-            debug!(plugin = self.id.to_string(), "got return code: {}", rc);
-        }
+        if self.store.get_fuel().is_ok_and(|x| x == 0) {
+            res = Err(Error::msg("plugin ran out of fuel"));
+            rc = -1;
+        } else {
+            // Get extism error
+            self.get_output_after_call().map_err(|x| (x, -1))?;
+            if !results.is_empty() {
+                rc = results[0].i32().unwrap_or(-1);
+                debug!(plugin = self.id.to_string(), "got return code: {}", rc);
+            }
 
-        if self.output.error_offset != 0 && self.output.error_length != 0 {
-            let handle = MemoryHandle {
-                offset: self.output.error_offset,
-                length: self.output.error_length,
-            };
-            if let Ok(e) = self.current_plugin_mut().memory_str(handle) {
-                let x = e.to_string();
-                error!(
-                    plugin = self.id.to_string(),
-                    "call to {name} returned with error message: {}", x
-                );
-                if let Err(e) = res {
-                    res = Err(Error::msg(x).context(e));
-                } else {
-                    res = Err(Error::msg(x))
+            if self.output.error_offset != 0 && self.output.error_length != 0 {
+                let handle = MemoryHandle {
+                    offset: self.output.error_offset,
+                    length: self.output.error_length,
+                };
+                match self.current_plugin_mut().memory_str(handle) {
+                    Ok(e) => {
+                        let x = e.to_string();
+                        error!(
+                            plugin = self.id.to_string(),
+                            "call to {name} returned with error message: {}", x
+                        );
+                        if let Err(e) = res {
+                            res = Err(Error::msg(x).context(e));
+                        } else {
+                            res = Err(Error::msg(x))
+                        }
+                    }
+                    Err(msg) => {
+                        res = Err(Error::msg(format!(
+                            "Call to Extism plugin function {name} encountered an error: {}",
+                            msg,
+                        )));
+                    }
                 }
-            } else {
-                res = Err(Error::msg(format!(
-                    "Call to Extism plugin function {name} encountered an error"
-                )));
             }
         }
 
@@ -1022,41 +1067,20 @@ impl Plugin {
 
     pub(crate) fn clear_error(&mut self) -> Result<(), Error> {
         trace!(plugin = self.id.to_string(), "clearing error");
-        let (linker, store) = self.linker_and_store();
+        self.error_msg = None;
+        let (linker, mut store) = self.linker_and_store();
+        #[allow(clippy::needless_borrows_for_generic_args)]
         if let Some(f) = linker.get(&mut *store, EXTISM_ENV_MODULE, "error_set") {
-            f.into_func()
+            let x = f
+                .into_func()
                 .unwrap()
-                .call(store, &[Val::I64(0)], &mut [])?;
+                .call(&mut store, &[Val::I64(0)], &mut [])
+                .context("unable to clear error message");
+            catch_out_of_fuel!(&store, x)?;
             Ok(())
         } else {
             anyhow::bail!("Plugin::clear_error failed, extism:host/env::error_set not found")
         }
-    }
-
-    // A convenience method to set the plugin error and return a value
-    pub(crate) fn return_error<E>(
-        &mut self,
-        instance_lock: &mut std::sync::MutexGuard<Option<Instance>>,
-        e: impl std::fmt::Display,
-        x: E,
-    ) -> E {
-        if instance_lock.is_none() {
-            error!(
-                plugin = self.id.to_string(),
-                "no instance, unable to set error: {}", e
-            );
-            return x;
-        }
-        match self.current_plugin_mut().set_error(e.to_string()) {
-            Ok((a, b)) => {
-                self.output.error_offset = a;
-                self.output.error_length = b;
-            }
-            Err(e) => {
-                error!(plugin = self.id.to_string(), "unable to set error: {e:?}")
-            }
-        }
-        x
     }
 }
 

@@ -11,6 +11,12 @@ pub struct ExtismFunction(std::cell::Cell<Option<Function>>);
 /// The return code used to specify a successful plugin call
 pub static EXTISM_SUCCESS: i32 = 0;
 
+fn make_error_msg(s: String) -> Vec<u8> {
+    let mut s = s.into_bytes();
+    s.push(0);
+    s
+}
+
 /// A union type for host function argument/return values
 #[repr(C)]
 pub union ValUnion {
@@ -470,8 +476,6 @@ pub unsafe extern "C" fn extism_plugin_config(
         return false;
     }
     let plugin = &mut *plugin;
-    let _lock = plugin.instance.clone();
-    let mut lock = _lock.lock().unwrap();
 
     trace!(
         plugin = plugin.id.to_string(),
@@ -482,8 +486,8 @@ pub unsafe extern "C" fn extism_plugin_config(
     let json: std::collections::BTreeMap<String, Option<String>> =
         match serde_json::from_slice(data) {
             Ok(x) => x,
-            Err(e) => {
-                return plugin.return_error(&mut lock, e, false);
+            Err(_) => {
+                return false;
             }
         };
 
@@ -516,9 +520,6 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
         return false;
     }
     let plugin = &mut *plugin;
-    let _lock = plugin.instance.clone();
-    let mut lock = _lock.lock().unwrap();
-
     let name = std::ffi::CStr::from_ptr(func_name);
     trace!(
         plugin = plugin.id.to_string(),
@@ -528,8 +529,8 @@ pub unsafe extern "C" fn extism_plugin_function_exists(
 
     let name = match name.to_str() {
         Ok(x) => x,
-        Err(e) => {
-            return plugin.return_error(&mut lock, e, false);
+        Err(_) => {
+            return false;
         }
     };
 
@@ -581,20 +582,14 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
     let lock = plugin.instance.clone();
     let mut lock = lock.lock().unwrap();
 
-    if let Err(e) = plugin.reset_store(&mut lock) {
-        error!(
-            plugin = plugin.id.to_string(),
-            "call to Plugin::reset_store failed: {e:?}"
-        );
-    }
-
-    plugin.error_msg = None;
-
     // Get function name
     let name = std::ffi::CStr::from_ptr(func_name);
     let name = match name.to_str() {
         Ok(name) => name,
-        Err(e) => return plugin.return_error(&mut lock, e, -1),
+        Err(e) => {
+            plugin.error_msg = Some(make_error_msg(e.to_string()));
+            return -1;
+        }
     };
 
     trace!(
@@ -610,7 +605,10 @@ pub unsafe extern "C" fn extism_plugin_call_with_host_context(
     };
     let res = plugin.raw_call(&mut lock, name, input, r);
     match res {
-        Err((e, rc)) => plugin.return_error(&mut lock, e, rc),
+        Err((e, rc)) => {
+            plugin.error_msg = Some(make_error_msg(e.to_string()));
+            rc
+        }
         Ok(x) => x,
     }
 }
@@ -633,6 +631,9 @@ pub unsafe extern "C" fn extism_plugin_error(plugin: *mut Plugin) -> *const c_ch
     let _lock = _lock.lock().unwrap();
 
     if plugin.output.error_offset == 0 {
+        if let Some(err) = &plugin.error_msg {
+            return err.as_ptr() as *const _;
+        }
         trace!(plugin = plugin.id.to_string(), "error is NULL");
         return std::ptr::null();
     }
