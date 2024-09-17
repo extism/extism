@@ -439,6 +439,17 @@ fn test_memory_max() {
     assert!(output.is_ok());
 }
 
+#[test]
+fn test_static_memory() {
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_static_memory_size(1024)
+        .build()
+        .unwrap();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
+    assert!(output.is_ok());
+}
+
 fn hello_world_set_error(
     plugin: &mut CurrentPlugin,
     inputs: &[Val],
