@@ -30,6 +30,7 @@ fn main() {
     );
     let manifest = Manifest::new([url]);
     let mut plugin = PluginBuilder::new(manifest)
+        .with_static_memory_size(1024 * 1024 * 50)
         .with_wasi(true)
         .with_function(
             "kv_read",

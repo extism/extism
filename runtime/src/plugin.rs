@@ -317,6 +317,7 @@ impl Plugin {
             Default::default(),
             None,
             None,
+            None,
         )
     }
 
@@ -327,6 +328,7 @@ impl Plugin {
         debug_options: DebugOptions,
         cache_dir: Option<Option<PathBuf>>,
         fuel: Option<u64>,
+        static_memory_size: Option<u64>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
         let mut config = Config::new();
@@ -338,6 +340,10 @@ impl Plugin {
             .wasm_tail_call(true)
             .wasm_function_references(true)
             .wasm_gc(true);
+
+        if let Some(x) = static_memory_size {
+            config.static_memory_maximum_size(x);
+        }
 
         if fuel.is_some() {
             config.consume_fuel(true);

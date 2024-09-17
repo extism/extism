@@ -40,6 +40,7 @@ pub struct PluginBuilder<'a> {
     debug_options: DebugOptions,
     cache_config: Option<Option<PathBuf>>,
     fuel: Option<u64>,
+    static_memory_size: Option<u64>,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -52,6 +53,7 @@ impl<'a> PluginBuilder<'a> {
             debug_options: DebugOptions::default(),
             cache_config: None,
             fuel: None,
+            static_memory_size: None,
         }
     }
 
@@ -150,9 +152,16 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
-    // Limit the number of instructions that can be executed
+    /// Limit the number of instructions that can be executed
     pub fn with_fuel_limit(mut self, fuel: u64) -> Self {
         self.fuel = Some(fuel);
+        self
+    }
+
+    /// Limit the size of the memory allocated up-front when
+    /// instantiating a module
+    pub fn with_static_memory_size(mut self, size: u64) -> Self {
+        self.static_memory_size = Some(size);
         self
     }
 
@@ -165,6 +174,7 @@ impl<'a> PluginBuilder<'a> {
             self.debug_options,
             self.cache_config,
             self.fuel,
+            self.static_memory_size,
         )
     }
 }
