@@ -266,7 +266,10 @@ impl MemoryRoot {
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
         if length_with_block >= mem_left {
-            if length_with_block < self_position {
+            // If the current position is large enough to hold the length of the block being
+            // allocated then check for existing free blocks that can be re-used before
+            // growing memory
+            if length_with_block <= self_position {
                 let b = self.find_free_block(length, self_position);
 
                 // If there's a free block then re-use it
