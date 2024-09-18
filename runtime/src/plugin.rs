@@ -331,7 +331,7 @@ impl Plugin {
         config: Option<Config>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
-        let mut config = config.unwrap_or_else(Config::new);
+        let mut config = config.unwrap_or_default();
         config
             .async_support(false)
             .epoch_interruption(true)
