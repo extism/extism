@@ -159,7 +159,9 @@ impl<'a> PluginBuilder<'a> {
     }
 
     /// Limit the size of the memory allocated up-front when
-    /// instantiating a module
+    /// instantiating a module. Allocating beyond the static memory
+    /// size may reduce performance, see [the Wasmtime docs](https://docs.rs/wasmtime/latest/wasmtime/struct.Config.html#method.static_memory_maximum_size)
+    /// for more details
     pub fn with_static_memory_size(mut self, size: u64) -> Self {
         self.static_memory_size = Some(size);
         self
