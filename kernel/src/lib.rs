@@ -255,15 +255,6 @@ impl MemoryRoot {
     pub unsafe fn alloc(&mut self, length: u64) -> Option<&'static mut MemoryBlock> {
         let self_position = self.position.load(Ordering::Acquire);
         let self_length = self.length.load(Ordering::Acquire);
-        let b = self.find_free_block(length, self_position);
-
-        // If there's a free block then re-use it
-        if let Some(b) = b {
-            b.used = length as usize;
-            b.status
-                .store(MemoryStatus::Active as u8, Ordering::Release);
-            return Some(b);
-        }
 
         // Get the current index for a new block
         let curr = self.blocks.as_ptr() as u64 + self_position;
@@ -275,6 +266,18 @@ impl MemoryRoot {
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
         if length_with_block >= mem_left {
+            if length_with_block < self_position {
+                let b = self.find_free_block(length, self_position);
+
+                // If there's a free block then re-use it
+                if let Some(b) = b {
+                    b.used = length as usize;
+                    b.status
+                        .store(MemoryStatus::Active as u8, Ordering::Release);
+                    return Some(b);
+                }
+            }
+
             // Calculate the number of pages needed to cover the remaining bytes
             let npages = num_pages(length_with_block - mem_left);
             let x = core::arch::wasm32::memory_grow(0, npages);
