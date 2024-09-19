@@ -61,7 +61,7 @@ started:
 
 # Compile WebAssembly to run in Extism Hosts
 
-Extism Hosts (running the SDK) must execute WebAssembly code that has a PDK
+Extism Hosts (running the SDK) must execute WebAssembly code that has a [PDK, or Plug-in Development Kit](https://extism.org/docs/concepts/pdk), 
 library compiled in to the `.wasm` binary. PDKs make it easy for plug-in /
 extension code authors to read input from the host and return data back, read
 provided configuration, set/get variables, make outbound HTTP calls if allowed,
