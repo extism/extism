@@ -17,8 +17,7 @@ impl LocalPath {
 
 impl From<&str> for LocalPath {
     fn from(value: &str) -> Self {
-        if value.starts_with("ro:") {
-            let s = &value[3..];
+        if let Some(s) = value.strip_prefix("ro:") {
             LocalPath::ReadOnly(PathBuf::from(s))
         } else {
             LocalPath::ReadWrite(PathBuf::from(value))
