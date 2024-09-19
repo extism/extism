@@ -401,6 +401,7 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
         Default::default(),
         None,
         Some(fuel_limit),
+        None,
     );
 
     match plugin {

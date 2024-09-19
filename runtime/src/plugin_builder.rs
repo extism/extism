@@ -40,6 +40,7 @@ pub struct PluginBuilder<'a> {
     debug_options: DebugOptions,
     cache_config: Option<Option<PathBuf>>,
     fuel: Option<u64>,
+    config: Option<wasmtime::Config>,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -52,6 +53,7 @@ impl<'a> PluginBuilder<'a> {
             debug_options: DebugOptions::default(),
             cache_config: None,
             fuel: None,
+            config: None,
         }
     }
 
@@ -150,9 +152,15 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
-    // Limit the number of instructions that can be executed
+    /// Limit the number of instructions that can be executed
     pub fn with_fuel_limit(mut self, fuel: u64) -> Self {
         self.fuel = Some(fuel);
+        self
+    }
+
+    /// Configure an initial wasmtime config to be passed to the plugin
+    pub fn with_wasmtime_config(mut self, config: wasmtime::Config) -> Self {
+        self.config = Some(config);
         self
     }
 
@@ -165,6 +173,7 @@ impl<'a> PluginBuilder<'a> {
             self.debug_options,
             self.cache_config,
             self.fuel,
+            self.config,
         )
     }
 }

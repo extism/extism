@@ -317,6 +317,7 @@ impl Plugin {
             Default::default(),
             None,
             None,
+            None,
         )
     }
 
@@ -327,10 +328,12 @@ impl Plugin {
         debug_options: DebugOptions,
         cache_dir: Option<Option<PathBuf>>,
         fuel: Option<u64>,
+        config: Option<Config>,
     ) -> Result<Plugin, Error> {
         // Setup wasmtime types
-        let mut config = Config::new();
+        let mut config = config.unwrap_or_default();
         config
+            .async_support(false)
             .epoch_interruption(true)
             .debug_info(debug_options.debug_info)
             .coredump_on_trap(debug_options.coredump.is_some())
