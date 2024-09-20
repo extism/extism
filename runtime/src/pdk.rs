@@ -315,19 +315,21 @@ pub fn log(
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
 
+    let offset = args!(input, 0, i64) as u64;
+
     // Check if the current log level should be logged
     let global_log_level = tracing::level_filters::LevelFilter::current();
     if global_log_level == tracing::level_filters::LevelFilter::OFF || level > global_log_level {
+        if let Some(handle) = data.memory_handle(offset) {
+            data.memory_free(handle)?;
+        }
         return Ok(());
     }
-
-    let offset = args!(input, 0, i64) as u64;
 
     let handle = match data.memory_handle(offset) {
         Some(h) => h,
         None => anyhow::bail!("invalid handle offset for log message: {offset}"),
     };
-
     let id = data.id.to_string();
     let buf = data.memory_str(handle);
 
