@@ -61,10 +61,7 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
     }
 
     /// Add a plugin using a callback function
-    pub fn add<F: Fn() -> Result<Plugin, Error>>(&self, key: Key, source: F)
-    where
-        F: 'static,
-    {
+    pub fn add<F: 'static + Fn() -> Result<Plugin, Error>>(&self, key: Key, source: F) {
         let mut pool = self.inner.lock().unwrap();
         if !pool.instances.contains_key(&key) {
             pool.instances.insert(key.clone(), vec![]);
