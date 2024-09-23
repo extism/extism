@@ -495,6 +495,8 @@ pub unsafe fn store_u64(p: Pointer, x: u64) {
 /// Set the range of the input data in memory
 /// h must always be a handle so that length works on it
 /// len must match length(handle)
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 #[no_mangle]
 pub unsafe fn input_set(h: Handle, len: u64) {
     let root = MemoryRoot::new();
@@ -509,6 +511,8 @@ pub unsafe fn input_set(h: Handle, len: u64) {
 }
 
 /// Set the range of the output data in memory
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 #[no_mangle]
 pub unsafe fn output_set(p: Pointer, len: u64) {
     let root = MemoryRoot::new();
@@ -554,6 +558,8 @@ pub unsafe fn reset() {
 
 /// Set the error message offset, the handle passed to this
 /// function should not be freed after this call
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 #[no_mangle]
 pub unsafe fn error_set(h: Handle) {
     let root = MemoryRoot::new();

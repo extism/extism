@@ -20,6 +20,8 @@ macro_rules! args {
 /// Get a configuration value
 /// Params: i64 (offset)
 /// Returns: i64 (offset)
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 pub(crate) fn config_get(
     mut caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -56,6 +58,9 @@ pub(crate) fn config_get(
 /// Get a variable
 /// Params: i64 (offset)
 /// Returns: i64 (offset)
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value, but the return value
+/// will need to be freed
 pub(crate) fn var_get(
     mut caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -93,6 +98,8 @@ pub(crate) fn var_get(
 /// Set a variable, if the value offset is 0 then the provided key will be removed
 /// Params: i64 (key offset), i64 (value offset)
 /// Returns: none
+/// **Note**: this function takes ownership of the handles passed in
+/// the caller should not `free` these values
 pub(crate) fn var_set(
     mut caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -160,6 +167,9 @@ pub(crate) fn var_set(
 /// Make an HTTP request
 /// Params: i64 (offset to JSON encoded HttpRequest), i64 (offset to body or 0)
 /// Returns: i64 (offset)
+/// **Note**: this function takes ownership of the handles passed in
+/// the caller should not `free` these values, the result will need to
+/// be freed.
 pub(crate) fn http_request(
     #[allow(unused_mut)] mut caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -361,6 +371,8 @@ pub fn log(
 /// Write to logs (warning)
 /// Params: i64 (offset)
 /// Returns: none
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 pub(crate) fn log_warn(
     caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -372,6 +384,8 @@ pub(crate) fn log_warn(
 /// Write to logs (info)
 /// Params: i64 (offset)
 /// Returns: none
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 pub(crate) fn log_info(
     caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -383,6 +397,8 @@ pub(crate) fn log_info(
 /// Write to logs (debug)
 /// Params: i64 (offset)
 /// Returns: none
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 pub(crate) fn log_debug(
     caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -394,6 +410,8 @@ pub(crate) fn log_debug(
 /// Write to logs (error)
 /// Params: i64 (offset)
 /// Returns: none
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 pub(crate) fn log_error(
     caller: Caller<CurrentPlugin>,
     input: &[Val],
@@ -405,6 +423,8 @@ pub(crate) fn log_error(
 /// Write to logs (trace)
 /// Params: i64 (offset)
 /// Returns: none
+/// **Note**: this function takes ownership of the handle passed in
+/// the caller should not `free` this value
 pub(crate) fn log_trace(
     caller: Caller<CurrentPlugin>,
     input: &[Val],
