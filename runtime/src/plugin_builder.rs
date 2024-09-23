@@ -159,7 +159,7 @@ impl<'a> PluginBuilder<'a> {
     }
 
     /// Configure an initial wasmtime config to be passed to the plugin
-    /// 
+    ///
     /// **Warning**: some values might be overwritten by the Extism runtime. In particular:
     /// - async_support
     /// - epoch_interruption
@@ -169,7 +169,7 @@ impl<'a> PluginBuilder<'a> {
     /// - wasm_tail_call
     /// - wasm_function_references
     /// - wasm_gc
-    /// 
+    ///
     /// See the implementation details of [PluginBuilder::build] and [Plugin::build_new] to verify which values are overwritten.
     pub fn with_wasmtime_config(mut self, config: wasmtime::Config) -> Self {
         self.config = Some(config);
