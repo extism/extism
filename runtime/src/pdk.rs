@@ -183,7 +183,7 @@ pub(crate) fn http_request(
             Some(h) => h,
             None => anyhow::bail!("http_request input is invalid: {http_req_offset}"),
         };
-        data.free(handle)?;
+        data.memory_free(handle)?;
         let req: extism_manifest::HttpRequest = serde_json::from_slice(data.memory_bytes(handle)?)?;
         output[0] = Val::I64(0);
         anyhow::bail!(
