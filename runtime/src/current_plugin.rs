@@ -344,9 +344,9 @@ impl CurrentPlugin {
 
             if let Some(a) = &manifest.allowed_paths {
                 for (k, v) in a.iter() {
-                    let readonly = k.starts_with("ro:");
+                    let readonly = matches!(k, extism_manifest::LocalPath::ReadOnly(_));
 
-                    let dir_path = if readonly { &k[3..] } else { k };
+                    let dir_path = k.as_path();
 
                     let dir = wasi_common::sync::dir::Dir::from_cap_std(
                         wasi_common::sync::Dir::open_ambient_dir(dir_path, auth)?,
