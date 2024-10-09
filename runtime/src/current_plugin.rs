@@ -55,7 +55,12 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
         Ok(true)
     }
 
-    fn table_growing(&mut self, _current: u32, desired: u32, maximum: Option<u32>) -> Result<bool> {
+    fn table_growing(
+        &mut self,
+        _current: usize,
+        desired: usize,
+        maximum: Option<usize>,
+    ) -> Result<bool> {
         if let Some(max) = maximum {
             return Ok(desired <= max);
         }
