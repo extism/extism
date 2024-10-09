@@ -333,8 +333,8 @@ impl CurrentPlugin {
         manifest: extism_manifest::Manifest,
         wasi: bool,
         available_pages: Option<u32>,
-        id: uuid::Uuid,
         allow_http_response_headers: bool,
+        id: uuid::Uuid,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasi_common::sync::ambient_authority();

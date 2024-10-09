@@ -364,7 +364,13 @@ impl Plugin {
         let id = uuid::Uuid::new_v4();
         let mut store = Store::new(
             &engine,
-            CurrentPlugin::new(manifest, builder.wasi, available_pages, id)?,
+            CurrentPlugin::new(
+                manifest,
+                builder.wasi,
+                available_pages,
+                builder.http_response_headers,
+                id,
+            )?,
         );
         store.set_epoch_deadline(1);
         if let Some(fuel) = builder.fuel {
@@ -421,6 +427,7 @@ impl Plugin {
                     internal.manifest.clone(),
                     internal.wasi.is_some(),
                     internal.available_pages,
+                    internal.http_headers.is_some(),
                     self.id,
                 )?,
             );
