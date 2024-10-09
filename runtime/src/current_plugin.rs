@@ -14,7 +14,7 @@ pub struct CurrentPlugin {
     pub(crate) linker: *mut wasmtime::Linker<CurrentPlugin>,
     pub(crate) wasi: Option<Wasi>,
     pub(crate) http_status: u16,
-    pub(crate) http_headers: std::collections::BTreeMap<String, String>,
+    pub(crate) http_headers: Option<std::collections::BTreeMap<String, String>>,
     pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
     pub(crate) id: uuid::Uuid,
@@ -334,6 +334,7 @@ impl CurrentPlugin {
         wasi: bool,
         available_pages: Option<u32>,
         id: uuid::Uuid,
+        allow_http_response_headers: bool,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasi_common::sync::ambient_authority();
@@ -395,7 +396,11 @@ impl CurrentPlugin {
             memory_limiter,
             id,
             start_time: std::time::Instant::now(),
-            http_headers: BTreeMap::new(),
+            http_headers: if allow_http_response_headers {
+                Some(BTreeMap::new())
+            } else {
+                None
+            },
         })
     }
 

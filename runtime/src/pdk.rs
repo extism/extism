@@ -194,7 +194,7 @@ pub(crate) fn http_request(
 
     #[cfg(feature = "http")]
     {
-        data.http_headers.clear();
+        data.http_headers.iter_mut().for_each(|x| x.clear());
         data.http_status = 0;
 
         use std::io::Read;
@@ -263,9 +263,11 @@ pub(crate) fn http_request(
 
         let reader = match res {
             Ok(res) => {
-                for name in res.headers_names() {
-                    if let Some(h) = res.header(&name) {
-                        data.http_headers.insert(name, h.to_string());
+                if let Some(headers) = &mut data.http_headers {
+                    for name in res.headers_names() {
+                        if let Some(h) = res.header(&name) {
+                            headers.insert(name, h.to_string());
+                        }
                     }
                 }
                 data.http_status = res.status();

@@ -207,6 +207,11 @@ ExtismPlugin *extism_plugin_new_with_fuel_limit(const uint8_t *wasm,
                                                 char **errmsg);
 
 /**
+ * Enable HTTP response headers in plugins using `extism:host/env::http_request`
+ */
+void extism_plugin_allow_http_response_headers(ExtismPlugin *plugin);
+
+/**
  * Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed
  */
 void extism_plugin_new_error_free(char *err);
