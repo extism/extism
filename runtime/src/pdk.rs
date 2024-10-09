@@ -333,8 +333,12 @@ pub(crate) fn http_headers(
     output: &mut [Val],
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
-    let headers = serde_json::to_string(&data.http_headers)?;
-    data.memory_set_val(&mut output[0], headers)?;
+    if let Some(h) = &data.http_headers {
+        let headers = serde_json::to_string(h)?;
+        data.memory_set_val(&mut output[0], headers)?;
+    } else {
+        output[0] = Val::I64(0);
+    }
     Ok(())
 }
 
