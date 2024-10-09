@@ -256,6 +256,7 @@ fn relink(
         var_set(I64, I64);
         http_request(I64, I64) -> I64;
         http_status_code() -> I32;
+        http_headers() -> I64;
         log_warn(I64);
         log_info(I64);
         log_debug(I64);

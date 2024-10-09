@@ -14,6 +14,7 @@ pub struct CurrentPlugin {
     pub(crate) linker: *mut wasmtime::Linker<CurrentPlugin>,
     pub(crate) wasi: Option<Wasi>,
     pub(crate) http_status: u16,
+    pub(crate) http_headers: std::collections::BTreeMap<String, String>,
     pub(crate) available_pages: Option<u32>,
     pub(crate) memory_limiter: Option<MemoryLimiter>,
     pub(crate) id: uuid::Uuid,
@@ -394,6 +395,7 @@ impl CurrentPlugin {
             memory_limiter,
             id,
             start_time: std::time::Instant::now(),
+            http_headers: BTreeMap::new(),
         })
     }
 

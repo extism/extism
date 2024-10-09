@@ -194,6 +194,9 @@ pub(crate) fn http_request(
 
     #[cfg(feature = "http")]
     {
+        data.http_headers.clear();
+        data.http_status = 0;
+
         use std::io::Read;
         let handle = match data.memory_handle(http_req_offset) {
             Some(h) => h,
@@ -260,6 +263,11 @@ pub(crate) fn http_request(
 
         let reader = match res {
             Ok(res) => {
+                for name in res.headers_names() {
+                    if let Some(h) = res.header(&name) {
+                        data.http_headers.insert(name, h.to_string());
+                    }
+                }
                 data.http_status = res.status();
                 Some(res.into_reader())
             }
@@ -314,6 +322,17 @@ pub(crate) fn http_status_code(
 ) -> Result<(), Error> {
     let data: &mut CurrentPlugin = caller.data_mut();
     output[0] = Val::I32(data.http_status as i32);
+    Ok(())
+}
+
+pub(crate) fn http_headers(
+    mut caller: Caller<CurrentPlugin>,
+    _input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Error> {
+    let data: &mut CurrentPlugin = caller.data_mut();
+    let headers = serde_json::to_string(&data.http_headers)?;
+    data.memory_set_val(&mut output[0], headers)?;
     Ok(())
 }
 
