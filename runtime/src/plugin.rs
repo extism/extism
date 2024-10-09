@@ -904,6 +904,10 @@ impl Plugin {
                         )));
                     }
                 }
+            } else if let Err(e) = &res {
+                if e.is::<wasmtime::Trap>() {
+                    rc = 134; // EXIT_SIGNALED_SIGABRT
+                }
             }
         }
 
