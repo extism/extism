@@ -1,7 +1,7 @@
-use extism_manifest::MemoryOptions;
+use extism_manifest::{HttpRequest, MemoryOptions};
 
 use crate::*;
-use std::{io::Write, time::Instant};
+use std::{collections::HashMap, io::Write, time::Instant};
 
 const WASM: &[u8] = include_bytes!("../../../wasm/code-functions.wasm");
 const WASM_NO_FUNCTIONS: &[u8] = include_bytes!("../../../wasm/code.wasm");
@@ -9,6 +9,7 @@ const WASM_LOOP: &[u8] = include_bytes!("../../../wasm/loop.wasm");
 const WASM_GLOBALS: &[u8] = include_bytes!("../../../wasm/globals.wasm");
 const WASM_REFLECT: &[u8] = include_bytes!("../../../wasm/reflect.wasm");
 const WASM_HTTP: &[u8] = include_bytes!("../../../wasm/http.wasm");
+const WASM_HTTP_HEADERS: &[u8] = include_bytes!("../../../wasm/http_headers.wasm");
 const WASM_FS: &[u8] = include_bytes!("../../../wasm/read_write.wasm");
 
 host_fn!(pub hello_world (a: String) -> String { Ok(a) });
@@ -792,4 +793,34 @@ fn test_readonly_dirs() {
         res2.is_err(),
         "Expected try_write to fail, but it succeeded."
     );
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_response_headers() {
+    let mut plugin = PluginBuilder::new(
+        Manifest::new([Wasm::data(WASM_HTTP_HEADERS)]).with_allowed_host("extism.org"),
+    )
+    .with_http_response_headers(true)
+    .build()
+    .unwrap();
+    let req = HttpRequest::new("https://extism.org");
+    let Json(res): Json<HashMap<String, String>> = plugin.call("http_get", Json(req)).unwrap();
+    println!("{:?}", res);
+    assert_eq!(res["content-type"], "text/html; charset=utf-8");
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_response_headers_disabled() {
+    let mut plugin = PluginBuilder::new(
+        Manifest::new([Wasm::data(WASM_HTTP_HEADERS)]).with_allowed_host("extism.org"),
+    )
+    .with_http_response_headers(false)
+    .build()
+    .unwrap();
+    let req = HttpRequest::new("https://extism.org");
+    let Json(res): Json<HashMap<String, String>> = plugin.call("http_get", Json(req)).unwrap();
+    println!("{:?}", res);
+    assert!(res.is_empty());
 }

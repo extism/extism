@@ -395,13 +395,10 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
     }
 
     let plugin = Plugin::build_new(
-        data.into(),
-        funcs,
-        with_wasi,
-        Default::default(),
-        None,
-        Some(fuel_limit),
-        None,
+        PluginBuilder::new(data)
+            .with_functions(funcs)
+            .with_wasi(with_wasi)
+            .with_fuel_limit(fuel_limit),
     );
 
     match plugin {
@@ -415,6 +412,13 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
         }
         Ok(p) => Box::into_raw(Box::new(p)),
     }
+}
+
+/// Enable HTTP response headers in plugins using `extism:host/env::http_request`
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_allow_http_response_headers(plugin: *mut Plugin) {
+    let plugin = &mut *plugin;
+    plugin.store.data_mut().http_headers = Some(BTreeMap::new());
 }
 
 /// Free the error returned by `extism_plugin_new`, errors returned from `extism_plugin_error` don't need to be freed

@@ -34,13 +34,14 @@ impl Default for DebugOptions {
 
 /// PluginBuilder is used to configure and create `Plugin` instances
 pub struct PluginBuilder<'a> {
-    source: WasmInput<'a>,
-    wasi: bool,
-    functions: Vec<Function>,
-    debug_options: DebugOptions,
-    cache_config: Option<Option<PathBuf>>,
-    fuel: Option<u64>,
-    config: Option<wasmtime::Config>,
+    pub(crate) source: WasmInput<'a>,
+    pub(crate) wasi: bool,
+    pub(crate) functions: Vec<Function>,
+    pub(crate) debug_options: DebugOptions,
+    pub(crate) cache_config: Option<Option<PathBuf>>,
+    pub(crate) fuel: Option<u64>,
+    pub(crate) config: Option<wasmtime::Config>,
+    pub(crate) http_response_headers: bool,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -54,6 +55,7 @@ impl<'a> PluginBuilder<'a> {
             cache_config: None,
             fuel: None,
             config: None,
+            http_response_headers: false,
         }
     }
 
@@ -176,16 +178,14 @@ impl<'a> PluginBuilder<'a> {
         self
     }
 
+    /// Enables `http_response_headers`, which allows for plugins to access response headers when using `extism:host/env::http_request`
+    pub fn with_http_response_headers(mut self, allow: bool) -> Self {
+        self.http_response_headers = allow;
+        self
+    }
+
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
-        Plugin::build_new(
-            self.source,
-            self.functions,
-            self.wasi,
-            self.debug_options,
-            self.cache_config,
-            self.fuel,
-            self.config,
-        )
+        Plugin::build_new(self)
     }
 }
