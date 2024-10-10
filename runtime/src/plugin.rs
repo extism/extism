@@ -867,19 +867,25 @@ impl Plugin {
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
         self.store_needs_reset = name == "_start";
 
-        let mut rc = 0;
+        let mut rc = -1;
         if self.store.get_fuel().is_ok_and(|x| x == 0) {
             res = Err(Error::msg("plugin ran out of fuel"));
-            rc = -1;
         } else {
             // Get extism error
-            self.get_output_after_call().map_err(|x| (x, -1))?;
-            if !results.is_empty() {
-                rc = results[0].i32().unwrap_or(-1);
-                debug!(plugin = self.id.to_string(), "got return code: {}", rc);
+            let output_res = self.get_output_after_call().map_err(|x| (x, -1));
+
+            // Get the return code
+            if output_res.is_ok() && res.is_ok() {
+                rc = 0;
+                if !results.is_empty() {
+                    rc = results[0].i32().unwrap_or(-1);
+                    debug!(plugin = self.id.to_string(), "got return code: {}", rc);
+                }
             }
 
-            if self.output.error_offset != 0 && self.output.error_length != 0 {
+            // on extism error
+            if output_res.is_ok() && self.output.error_offset != 0 && self.output.error_length != 0
+            {
                 let handle = MemoryHandle {
                     offset: self.output.error_offset,
                     length: self.output.error_length,
@@ -904,6 +910,14 @@ impl Plugin {
                         )));
                     }
                 }
+            // on wasmtime error
+            } else if let Err(e) = &res {
+                if e.is::<wasmtime::Trap>() {
+                    rc = 134; // EXIT_SIGNALED_SIGABRT
+                }
+            // if there was an error retrieving the output
+            } else {
+                output_res?;
             }
         }
 
