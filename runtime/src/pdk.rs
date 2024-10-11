@@ -327,6 +327,9 @@ pub(crate) fn http_status_code(
     Ok(())
 }
 
+/// Get the HTTP response headers from the last HTTP request
+/// Params: none
+/// Returns: i64 (offset)
 pub(crate) fn http_headers(
     mut caller: Caller<CurrentPlugin>,
     _input: &[Val],
