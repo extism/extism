@@ -1,7 +1,6 @@
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},
-    path::PathBuf,
 };
 
 use anyhow::Context;
@@ -256,6 +255,7 @@ fn relink(
         var_set(I64, I64);
         http_request(I64, I64) -> I64;
         http_status_code() -> I32;
+        http_headers() -> I64;
         log_warn(I64);
         log_info(I64);
         log_debug(I64);
@@ -311,42 +311,30 @@ impl Plugin {
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
         Self::build_new(
-            wasm.into(),
-            imports,
-            with_wasi,
-            Default::default(),
-            None,
-            None,
-            None,
+            PluginBuilder::new(wasm)
+                .with_functions(imports)
+                .with_wasi(with_wasi),
         )
     }
 
-    pub(crate) fn build_new(
-        wasm: WasmInput<'_>,
-        imports: impl IntoIterator<Item = Function>,
-        with_wasi: bool,
-        debug_options: DebugOptions,
-        cache_dir: Option<Option<PathBuf>>,
-        fuel: Option<u64>,
-        config: Option<Config>,
-    ) -> Result<Plugin, Error> {
+    pub(crate) fn build_new(builder: PluginBuilder) -> Result<Plugin, Error> {
         // Setup wasmtime types
-        let mut config = config.unwrap_or_default();
+        let mut config = builder.config.unwrap_or_default();
         config
             .async_support(false)
             .epoch_interruption(true)
-            .debug_info(debug_options.debug_info)
-            .coredump_on_trap(debug_options.coredump.is_some())
-            .profiler(debug_options.profiling_strategy)
+            .debug_info(builder.debug_options.debug_info)
+            .coredump_on_trap(builder.debug_options.coredump.is_some())
+            .profiler(builder.debug_options.profiling_strategy)
             .wasm_tail_call(true)
             .wasm_function_references(true)
             .wasm_gc(true);
 
-        if fuel.is_some() {
+        if builder.fuel.is_some() {
             config.consume_fuel(true);
         }
 
-        match cache_dir {
+        match builder.cache_config {
             Some(None) => (),
             Some(Some(path)) => {
                 config.cache_config_load(path)?;
@@ -363,7 +351,7 @@ impl Plugin {
         }
 
         let engine = Engine::new(&config)?;
-        let (manifest, modules) = manifest::load(&engine, wasm)?;
+        let (manifest, modules) = manifest::load(&engine, builder.source)?;
         if modules.len() <= 1 {
             anyhow::bail!("No wasm modules provided");
         } else if !modules.contains_key(MAIN_KEY) {
@@ -376,16 +364,22 @@ impl Plugin {
         let id = uuid::Uuid::new_v4();
         let mut store = Store::new(
             &engine,
-            CurrentPlugin::new(manifest, with_wasi, available_pages, id)?,
+            CurrentPlugin::new(
+                manifest,
+                builder.wasi,
+                available_pages,
+                builder.http_response_headers,
+                id,
+            )?,
         );
         store.set_epoch_deadline(1);
-        if let Some(fuel) = fuel {
+        if let Some(fuel) = builder.fuel {
             store.set_fuel(fuel)?;
         }
 
-        let imports: Vec<Function> = imports.into_iter().collect();
+        let imports: Vec<Function> = builder.functions.into_iter().collect();
         let (instance_pre, linker, host_context) =
-            relink(&engine, &mut store, &imports, &modules, with_wasi)?;
+            relink(&engine, &mut store, &imports, &modules, builder.wasi)?;
         let timer_tx = Timer::tx();
         let mut plugin = Plugin {
             modules,
@@ -400,10 +394,10 @@ impl Plugin {
             instantiations: 0,
             output: Output::default(),
             store_needs_reset: false,
-            debug_options,
+            debug_options: builder.debug_options,
             _functions: imports,
             error_msg: None,
-            fuel,
+            fuel: builder.fuel,
             host_context,
         };
 
@@ -433,6 +427,7 @@ impl Plugin {
                     internal.manifest.clone(),
                     internal.wasi.is_some(),
                     internal.available_pages,
+                    internal.http_headers.is_some(),
                     self.id,
                 )?,
             );
