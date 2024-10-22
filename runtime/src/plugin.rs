@@ -129,6 +129,7 @@ pub(crate) fn profiling_strategy() -> ProfilingStrategy {
 /// Defines an input type for Wasm data.
 ///
 /// Types that implement `Into<WasmInput>` can be passed directly into `Plugin::new`
+#[derive(Clone)]
 pub enum WasmInput<'a> {
     /// Raw Wasm module
     Data(std::borrow::Cow<'a, [u8]>),
