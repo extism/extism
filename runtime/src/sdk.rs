@@ -266,8 +266,8 @@ pub unsafe extern "C" fn extism_function_new(
                 match tmp.t {
                     ValType::I32 => *out = Val::I32(tmp.v.i32),
                     ValType::I64 => *out = Val::I64(tmp.v.i64),
-                    ValType::F32 => *out = Val::F32(tmp.v.f32 as u32),
-                    ValType::F64 => *out = Val::F64(tmp.v.f64 as u64),
+                    ValType::F32 => *out = Val::F32(tmp.v.f32.to_bits()),
+                    ValType::F64 => *out = Val::F64(tmp.v.f64.to_bits()),
                     _ => todo!(),
                 }
             }
