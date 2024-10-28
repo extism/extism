@@ -10,7 +10,7 @@ version.workspace = true
 
 [dependencies]
 wasmtime = ">= 20.0.0, < 24.0.0"
-wasi-common = ">= 20.0.0, < 24.0.0"
+wasi-common = ">= 20.0.0, < 27.0.0"
 wiggle = ">= 20.0.0, < 24.0.0"
 anyhow = "1"
 serde = {version = "1", features = ["derive"]}
