@@ -9,9 +9,9 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-wasmtime = {git = "https://github.com/bytecodealliance/wasmtime", features = ["pulley"]} # version = ">= 25.0.0, < 27.0.0"
-wasi-common = {git = "https://github.com/bytecodealliance/wasmtime"}
-wiggle = {git = "https://github.com/bytecodealliance/wasmtime"}
+wasmtime = {version = ">= 26.0.0, < 27.0.0"}
+wasi-common = {version = ">= 26.0.0, < 27.0.0"}
+wiggle = {version = ">= 26.0.0, < 27.0.0"}
 anyhow = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
