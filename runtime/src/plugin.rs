@@ -37,6 +37,14 @@ impl CancelHandle {
     }
 }
 
+pub struct CompiledPlugin {
+    pub(crate) instance_pre: InstancePre<CurrentPlugin>,
+}
+
+impl CompiledPlugin {
+    pub fn new(builder: PluginBuilder) -> Result<CompiledPlugin, Error> {}
+}
+
 /// Plugin contains everything needed to execute a WASM function
 pub struct Plugin {
     /// A unique ID for each plugin
@@ -57,7 +65,7 @@ pub struct Plugin {
     /// Instance provides the ability to call functions in a module, a `Plugin` is initialized with
     /// an `instance_pre` but no `instance`. The `instance` will be created during `Plugin::raw_call`
     pub(crate) instance: std::sync::Arc<std::sync::Mutex<Option<Instance>>>,
-    pub(crate) instance_pre: InstancePre<CurrentPlugin>,
+    pub(crate) compiled: CompiledPlugin,
 
     /// Keep track of the number of times we're instantiated, this exists
     /// to avoid issues with memory piling up since `Instance`s are only
