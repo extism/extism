@@ -397,7 +397,7 @@ impl Plugin {
             store.set_fuel(fuel)?;
         }
 
-        let imports: Vec<Function> = compiled.options.functions.iter().cloned().collect();
+        let imports: Vec<Function> = compiled.options.functions.to_vec();
         let (instance_pre, linker, host_context) = relink(
             &compiled.engine,
             &mut store,
