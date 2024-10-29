@@ -118,5 +118,7 @@ jobs:
       - run: cargo install cargo-criterion
       - run:
           cargo criterion
-      - run:
-          git checkout main && cargo criterion
+      - run: |
+          git fetch
+          git checkout main
+          cargo criterion
