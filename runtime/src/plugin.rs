@@ -370,14 +370,14 @@ impl Plugin {
         imports: impl IntoIterator<Item = Function>,
         with_wasi: bool,
     ) -> Result<Plugin, Error> {
-        Self::build_new(&CompiledPlugin::new(
+        Self::from_compiled(&CompiledPlugin::new(
             PluginBuilder::new(wasm)
                 .with_functions(imports)
                 .with_wasi(with_wasi),
         )?)
     }
 
-    pub(crate) fn build_new(compiled: &CompiledPlugin) -> Result<Plugin, Error> {
+    pub fn from_compiled(compiled: &CompiledPlugin) -> Result<Plugin, Error> {
         let available_pages = compiled.manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");
 
