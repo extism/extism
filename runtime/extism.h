@@ -52,6 +52,8 @@ typedef enum {
  */
 typedef struct ExtismCancelHandle ExtismCancelHandle;
 
+typedef struct ExtismCompiledPlugin ExtismCompiledPlugin;
+
 /**
  * CurrentPlugin stores data that is available to the caller in PDK functions, this should
  * only be accessed from inside a host function
@@ -180,6 +182,21 @@ void extism_function_free(ExtismFunction *f);
 void extism_function_set_namespace(ExtismFunction *ptr, const char *namespace_);
 
 /**
+ * Pre-compile an Extism plugin
+ */
+ExtismCompiledPlugin *extism_compiled_plugin_new(const uint8_t *wasm,
+                                                 ExtismSize wasm_size,
+                                                 const ExtismFunction **functions,
+                                                 ExtismSize n_functions,
+                                                 bool with_wasi,
+                                                 char **errmsg);
+
+/**
+ * Free `ExtismCompiledPlugin`
+ */
+void extism_compiled_plugin_free(ExtismCompiledPlugin *plugin);
+
+/**
  * Create a new plugin with host functions, the functions passed to this function no longer need to be manually freed using
  *
  * `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
@@ -194,6 +211,11 @@ ExtismPlugin *extism_plugin_new(const uint8_t *wasm,
                                 ExtismSize n_functions,
                                 bool with_wasi,
                                 char **errmsg);
+
+/**
+ * Create a new plugin from an `ExtismCompiledPlugin`
+ */
+ExtismPlugin *extism_plugin_new_from_compiled(const ExtismCompiledPlugin *compiled, char **errmsg);
 
 /**
  * Create a new plugin and set the number of instructions a plugin is allowed to execute
@@ -217,7 +239,7 @@ void extism_plugin_allow_http_response_headers(ExtismPlugin *plugin);
 void extism_plugin_new_error_free(char *err);
 
 /**
- * Remove a plugin from the registry and free associated memory
+ * Free `ExtismPlugin`
  */
 void extism_plugin_free(ExtismPlugin *plugin);
 
