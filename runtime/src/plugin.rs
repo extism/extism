@@ -47,6 +47,7 @@ pub struct CompiledPlugin {
 }
 
 impl CompiledPlugin {
+    /// Create a new pre-compiled plugin
     pub fn new(builder: PluginBuilder) -> Result<CompiledPlugin, Error> {
         let mut config = builder.config.unwrap_or_default();
         config
@@ -377,6 +378,7 @@ impl Plugin {
         )?)
     }
 
+    /// Create a new plugin from a pre-compiled plugin
     pub fn new_from_compiled(compiled: &CompiledPlugin) -> Result<Plugin, Error> {
         let available_pages = compiled.manifest.memory.max_pages;
         debug!("Available pages: {available_pages:?}");

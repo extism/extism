@@ -40,7 +40,7 @@ pub fn create_compiled(c: &mut Criterion) {
     let mut g = c.benchmark_group("create");
     g.noise_threshold(1.0);
     g.significance_level(0.2);
-    g.bench_function("create_plugin_compiled", |b| {
+    g.bench_function("create_compiled", |b| {
         b.iter(|| {
             let plugin = PluginBuilder::new(COUNT_VOWELS).with_wasi(true);
             let _compiled = CompiledPlugin::new(plugin).unwrap();
@@ -56,7 +56,7 @@ pub fn create_plugin_compiled(c: &mut Criterion) {
     let compiled = CompiledPlugin::new(plugin).unwrap();
     g.bench_function("create_plugin_compiled", |b| {
         b.iter(|| {
-            let _plugin = Plugin::from_compiled(&compiled).unwrap();
+            let _plugin = Plugin::new_from_compiled(&compiled).unwrap();
         })
     });
 }
