@@ -412,7 +412,7 @@ pub unsafe extern "C" fn extism_plugin_new_from_compiled(
     compiled: *const CompiledPlugin,
     errmsg: *mut *mut std::ffi::c_char,
 ) -> *mut Plugin {
-    let plugin = Plugin::from_compiled(&*compiled);
+    let plugin = Plugin::new_from_compiled(&*compiled);
     match plugin {
         Err(e) => {
             if !errmsg.is_null() {
@@ -484,7 +484,7 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
         }
     };
 
-    let plugin = Plugin::from_compiled(&compiled);
+    let plugin = Plugin::new_from_compiled(&compiled);
 
     match plugin {
         Err(e) => {

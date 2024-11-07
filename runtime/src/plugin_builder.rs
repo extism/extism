@@ -195,6 +195,11 @@ impl<'a> PluginBuilder<'a> {
 
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
-        Plugin::from_compiled(&CompiledPlugin::new(self)?)
+        Plugin::new_from_compiled(&CompiledPlugin::new(self)?)
+    }
+
+    /// Build new `CompiledPlugin`
+    pub fn compile(self) -> Result<CompiledPlugin, Error> {
+        CompiledPlugin::new(self)
     }
 }
