@@ -48,32 +48,32 @@ pub type ExtismFunctionType = extern "C" fn(
 pub type ExtismLogDrainFunctionType = extern "C" fn(data: *const std::ffi::c_char, size: Size);
 
 impl ExtismVal {
-    fn from_val(value: &wasmtime::Val, ctx: impl AsContext) -> Self {
-        match value.ty(ctx) {
-            wasmtime::ValType::I32 => ExtismVal {
+    fn from_val(value: &wasmtime::Val, ctx: impl AsContext) -> Result<Self, Error> {
+        match value.ty(ctx)? {
+            wasmtime::ValType::I32 => Ok(ExtismVal {
                 t: ValType::I32,
                 v: ValUnion {
                     i32: value.unwrap_i32(),
                 },
-            },
-            wasmtime::ValType::I64 => ExtismVal {
+            }),
+            wasmtime::ValType::I64 => Ok(ExtismVal {
                 t: ValType::I64,
                 v: ValUnion {
                     i64: value.unwrap_i64(),
                 },
-            },
-            wasmtime::ValType::F32 => ExtismVal {
+            }),
+            wasmtime::ValType::F32 => Ok(ExtismVal {
                 t: ValType::F32,
                 v: ValUnion {
                     f32: value.unwrap_f32(),
                 },
-            },
-            wasmtime::ValType::F64 => ExtismVal {
+            }),
+            wasmtime::ValType::F64 => Ok(ExtismVal {
                 t: ValType::F64,
                 v: ValUnion {
                     f64: value.unwrap_f64(),
                 },
-            },
+            }),
             t => todo!("{}", t),
         }
     }
@@ -227,7 +227,7 @@ pub unsafe extern "C" fn extism_function_new(
             let store = &*plugin.store;
             let inputs: Vec<_> = inputs
                 .iter()
-                .map(|x| ExtismVal::from_val(x, store))
+                .map(|x| ExtismVal::from_val(x, store).unwrap())
                 .collect();
             let mut output_tmp: Vec<_> = output_types
                 .iter()
