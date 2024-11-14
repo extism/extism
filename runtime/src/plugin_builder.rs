@@ -35,12 +35,17 @@ impl Default for DebugOptions {
 /// PluginBuilder is used to configure and create `Plugin` instances
 pub struct PluginBuilder<'a> {
     pub(crate) source: WasmInput<'a>,
+    pub(crate) config: Option<wasmtime::Config>,
+    pub(crate) options: PluginBuilderOptions,
+}
+
+#[derive(Clone)]
+pub(crate) struct PluginBuilderOptions {
     pub(crate) wasi: bool,
     pub(crate) functions: Vec<Function>,
     pub(crate) debug_options: DebugOptions,
     pub(crate) cache_config: Option<Option<PathBuf>>,
     pub(crate) fuel: Option<u64>,
-    pub(crate) config: Option<wasmtime::Config>,
     pub(crate) http_response_headers: bool,
 }
 
@@ -49,19 +54,21 @@ impl<'a> PluginBuilder<'a> {
     pub fn new(plugin: impl Into<WasmInput<'a>>) -> Self {
         PluginBuilder {
             source: plugin.into(),
-            wasi: false,
-            functions: vec![],
-            debug_options: DebugOptions::default(),
-            cache_config: None,
-            fuel: None,
             config: None,
-            http_response_headers: false,
+            options: PluginBuilderOptions {
+                wasi: false,
+                functions: vec![],
+                debug_options: DebugOptions::default(),
+                cache_config: None,
+                fuel: None,
+                http_response_headers: false,
+            },
         }
     }
 
     /// Enables WASI if the argument is set to `true`
     pub fn with_wasi(mut self, wasi: bool) -> Self {
-        self.wasi = wasi;
+        self.options.wasi = wasi;
         self
     }
 
@@ -80,7 +87,8 @@ impl<'a> PluginBuilder<'a> {
             + Sync
             + Send,
     {
-        self.functions
+        self.options
+            .functions
             .push(Function::new(name, args, returns, user_data, f));
         self
     }
@@ -101,62 +109,63 @@ impl<'a> PluginBuilder<'a> {
             + Sync
             + Send,
     {
-        self.functions
+        self.options
+            .functions
             .push(Function::new(name, args, returns, user_data, f).with_namespace(namespace));
         self
     }
 
     /// Add multiple host functions
     pub fn with_functions(mut self, f: impl IntoIterator<Item = Function>) -> Self {
-        self.functions.extend(f);
+        self.options.functions.extend(f);
         self
     }
 
     /// Set profiling strategy
     pub fn with_profiling_strategy(mut self, p: wasmtime::ProfilingStrategy) -> Self {
-        self.debug_options.profiling_strategy = p;
+        self.options.debug_options.profiling_strategy = p;
         self
     }
 
     /// Enable Wasmtime coredump on trap
     pub fn with_coredump(mut self, path: impl Into<std::path::PathBuf>) -> Self {
-        self.debug_options.coredump = Some(path.into());
+        self.options.debug_options.coredump = Some(path.into());
         self
     }
 
     /// Enable Extism memory dump when plugin calls return an error
     pub fn with_memdump(mut self, path: impl Into<std::path::PathBuf>) -> Self {
-        self.debug_options.memdump = Some(path.into());
+        self.options.debug_options.memdump = Some(path.into());
         self
     }
 
     /// Compile with debug info
     pub fn with_debug_info(mut self) -> Self {
-        self.debug_options.debug_info = true;
+        self.options.debug_options.debug_info = true;
         self
     }
 
     /// Configure debug options
     pub fn with_debug_options(mut self, options: DebugOptions) -> Self {
-        self.debug_options = options;
+        self.options.debug_options = options;
         self
     }
 
     /// Set wasmtime compilation cache config path
     pub fn with_cache_config(mut self, dir: impl Into<PathBuf>) -> Self {
-        self.cache_config = Some(Some(dir.into()));
+        self.options.cache_config = Some(Some(dir.into()));
         self
     }
 
     /// Turn wasmtime compilation caching off
     pub fn with_cache_disabled(mut self) -> Self {
-        self.cache_config = Some(None);
+        self.options.cache_config = Some(None);
         self
     }
 
     /// Limit the number of instructions that can be executed
     pub fn with_fuel_limit(mut self, fuel: u64) -> Self {
-        self.fuel = Some(fuel);
+        self.options.fuel = Some(fuel);
         self
     }
 
@@ -180,12 +189,17 @@ impl<'a> PluginBuilder<'a> {
 
     /// Enables `http_response_headers`, which allows for plugins to access response headers when using `extism:host/env::http_request`
     pub fn with_http_response_headers(mut self, allow: bool) -> Self {
-        self.http_response_headers = allow;
+        self.options.http_response_headers = allow;
         self
     }
 
     /// Generate a new plugin with the configured settings
     pub fn build(self) -> Result<Plugin, Error> {
-        Plugin::build_new(self)
+        Plugin::new_from_compiled(&CompiledPlugin::new(self)?)
+    }
+
+    /// Build new `CompiledPlugin`
+    pub fn compile(self) -> Result<CompiledPlugin, Error> {
+        CompiledPlugin::new(self)
     }
 }

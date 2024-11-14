@@ -302,6 +302,56 @@ pub unsafe extern "C" fn extism_function_set_namespace(
     }
 }
 
+/// Pre-compile an Extism plugin
+#[no_mangle]
+pub unsafe extern "C" fn extism_compiled_plugin_new(
+    wasm: *const u8,
+    wasm_size: Size,
+    functions: *mut *const ExtismFunction,
+    n_functions: Size,
+    with_wasi: bool,
+    errmsg: *mut *mut std::ffi::c_char,
+) -> *mut CompiledPlugin {
+    trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
+    let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
+    let mut builder = PluginBuilder::new(data).with_wasi(with_wasi);
+
+    if !functions.is_null() {
+        for i in 0..n_functions {
+            unsafe {
+                let f = *functions.add(i as usize);
+                if f.is_null() {
+                    continue;
+                }
+                if let Some(f) = (*f).0.take() {
+                    builder.options.functions.push(f);
+                } else {
+                    let e = std::ffi::CString::new(
+                        "Function cannot be registered with multiple different Plugins",
+                    )
+                    .unwrap();
+                    *errmsg = e.into_raw();
+                    return std::ptr::null_mut();
+                }
+            }
+        }
+    }
+
+    Box::into_raw(Box::new(CompiledPlugin::new(builder).unwrap()))
+}
+
+/// Free `ExtismCompiledPlugin`
+#[no_mangle]
+pub unsafe extern "C" fn extism_compiled_plugin_free(plugin: *mut CompiledPlugin) {
+    if plugin.is_null() {
+        return;
+    }
+
+    let plugin = Box::from_raw(plugin);
+    trace!("called extism_compiled_plugin_free");
+    drop(plugin)
+}
+
 /// Create a new plugin with host functions, the functions passed to this function no longer need to be manually freed using
 ///
 /// `wasm`: is a WASM module (wat or wasm) or a JSON encoded manifest
@@ -318,7 +368,6 @@ pub unsafe extern "C" fn extism_plugin_new(
     with_wasi: bool,
     errmsg: *mut *mut std::ffi::c_char,
 ) -> *mut Plugin {
-    trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
     let mut funcs = vec![];
 
@@ -337,12 +386,33 @@ pub unsafe extern "C" fn extism_plugin_new(
                     )
                     .unwrap();
                     *errmsg = e.into_raw();
+                    return std::ptr::null_mut();
                 }
             }
         }
     }
 
     let plugin = Plugin::new(data, funcs, with_wasi);
+    match plugin {
+        Err(e) => {
+            if !errmsg.is_null() {
+                let e = std::ffi::CString::new(format!("Unable to create Extism plugin: {}", e))
+                    .unwrap();
+                *errmsg = e.into_raw();
+            }
+            std::ptr::null_mut()
+        }
+        Ok(p) => Box::into_raw(Box::new(p)),
+    }
+}
+
+/// Create a new plugin from an `ExtismCompiledPlugin`
+#[no_mangle]
+pub unsafe extern "C" fn extism_plugin_new_from_compiled(
+    compiled: *const CompiledPlugin,
+    errmsg: *mut *mut std::ffi::c_char,
+) -> *mut Plugin {
+    let plugin = Plugin::new_from_compiled(&*compiled);
     match plugin {
         Err(e) => {
             if !errmsg.is_null() {
@@ -384,22 +454,37 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
                 if let Some(f) = (*f).0.take() {
                     funcs.push(f);
                 } else {
-                    let e = std::ffi::CString::new(
-                        "Function cannot be registered with multiple different Plugins",
-                    )
-                    .unwrap();
-                    *errmsg = e.into_raw();
+                    if !errmsg.is_null() {
+                        let e = std::ffi::CString::new(
+                            "Function cannot be registered with multiple different Plugins",
+                        )
+                        .unwrap();
+                        *errmsg = e.into_raw();
+                    }
+                    return std::ptr::null_mut();
                 }
             }
         }
     }
 
-    let plugin = Plugin::build_new(
+    let compiled = match CompiledPlugin::new(
         PluginBuilder::new(data)
             .with_functions(funcs)
             .with_wasi(with_wasi)
             .with_fuel_limit(fuel_limit),
-    );
+    ) {
+        Ok(x) => x,
+        Err(e) => {
+            if !errmsg.is_null() {
+                let e = std::ffi::CString::new(format!("Unable to compile Extism plugin: {}", e))
+                    .unwrap();
+                *errmsg = e.into_raw();
+            }
+            return std::ptr::null_mut();
+        }
+    };
+
+    let plugin = Plugin::new_from_compiled(&compiled);
 
     match plugin {
         Err(e) => {
@@ -430,7 +515,7 @@ pub unsafe extern "C" fn extism_plugin_new_error_free(err: *mut std::ffi::c_char
     drop(std::ffi::CString::from_raw(err))
 }
 
-/// Remove a plugin from the registry and free associated memory
+/// Free `ExtismPlugin`
 #[no_mangle]
 pub unsafe extern "C" fn extism_plugin_free(plugin: *mut Plugin) {
     if plugin.is_null() {

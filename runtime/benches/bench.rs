@@ -36,6 +36,31 @@ pub fn create_plugin(c: &mut Criterion) {
     });
 }
 
+pub fn create_compiled(c: &mut Criterion) {
+    let mut g = c.benchmark_group("create");
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
+    g.bench_function("create_compiled", |b| {
+        b.iter(|| {
+            let plugin = PluginBuilder::new(COUNT_VOWELS).with_wasi(true);
+            let _compiled = CompiledPlugin::new(plugin).unwrap();
+        })
+    });
+}
+
+pub fn create_plugin_compiled(c: &mut Criterion) {
+    let mut g = c.benchmark_group("create");
+    g.noise_threshold(1.0);
+    g.significance_level(0.2);
+    let plugin = PluginBuilder::new(COUNT_VOWELS).with_wasi(true);
+    let compiled = CompiledPlugin::new(plugin).unwrap();
+    g.bench_function("create_plugin_compiled", |b| {
+        b.iter(|| {
+            let _plugin = Plugin::new_from_compiled(&compiled).unwrap();
+        })
+    });
+}
+
 pub fn create_plugin_no_cache(c: &mut Criterion) {
     let mut g = c.benchmark_group("create");
     g.noise_threshold(1.0);
@@ -279,7 +304,9 @@ criterion_group!(
     reflect_linked,
     basic,
     create_plugin,
+    create_plugin_compiled,
     create_plugin_no_cache,
+    create_compiled,
     count_vowels
 );
 criterion_main!(benches);

@@ -1,4 +1,4 @@
-on: 
+on:
   pull_request:
     paths:
       - .github/actions/extism/**
@@ -116,4 +116,9 @@ jobs:
           path: target/**
           key: ${{ runner.os }}-target-${{ github.sha }}
       - run: cargo install cargo-criterion
-      - run: cargo criterion
+      - run:
+          cargo criterion
+      - run: |
+          git fetch
+          git checkout main
+          cargo criterion
