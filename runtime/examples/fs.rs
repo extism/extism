@@ -20,6 +20,7 @@ fn main() {
 
     println!("-----------------------------------------------------");
 
+    // If the allowed path is readonly then writing back to the file should fail
     println!("trying to write file: ");
     let line = format!(
         "Hello World at {:?}\n",
