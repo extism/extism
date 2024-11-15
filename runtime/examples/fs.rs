@@ -2,6 +2,8 @@ use extism::*;
 fn main() {
     let url = Wasm::file("../wasm/read_write.wasm");
     let manifest = Manifest::new([url])
+        // This will fail because we're using a readonly path (specified with the `ro:` prefix)
+        // to overwrite the data file, remove `ro:` from the path on the following line
         .with_allowed_path("ro:src/tests/data".to_string(), "/data")
         .with_config_key("path", "/data/data.txt");
 
