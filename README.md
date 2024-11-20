@@ -61,11 +61,11 @@ started:
 
 # Compile WebAssembly to run in Extism Hosts
 
-Extism Hosts (running the SDK) must execute WebAssembly code that has a [PDK, or Plug-in Development Kit](https://extism.org/docs/concepts/pdk), 
-library compiled in to the `.wasm` binary. PDKs make it easy for plug-in /
-extension code authors to read input from the host and return data back, read
-provided configuration, set/get variables, make outbound HTTP calls if allowed,
-and more.
+Extism Hosts (running the SDK) must execute WebAssembly code that has a
+[PDK, or Plug-in Development Kit](https://extism.org/docs/concepts/pdk), library
+compiled in to the `.wasm` binary. PDKs make it easy for plug-in / extension
+code authors to read input from the host and return data back, read provided
+configuration, set/get variables, make outbound HTTP calls if allowed, and more.
 
 Pick a PDK to import into your Wasm program, and refer to the documentation to
 get started:
@@ -80,6 +80,64 @@ get started:
 | .NET PDK           | <img alt=".NET PDK" src="https://extism.org/img/sdk-languages/dotnet.svg" width="50px"/>                   | https://github.com/extism/dotnet-pdk <br/>(supports C# & F#!) | https://www.nuget.org/packages/Extism.Pdk                 |
 | C PDK              | <img alt="C PDK" src="https://extism.org/img/sdk-languages/c.svg" width="50px"/>                           | https://github.com/extism/c-pdk                               | N/A                                                       |
 | Zig PDK            | <img alt="Zig PDK" src="https://extism.org/img/sdk-languages/zig.svg" width="50px"/>                       | https://github.com/extism/zig-pdk                             | N/A                                                       |
+
+# Generating Bindings
+
+It's often very useful to define a schema to describe the function signatures
+and types you want to use between Extism SDK and PDK languages.
+
+[XTP Bindgen](https://github.com/dylibso/xtp-bindgen) is an open source
+framework to generate PDK bindings for Extism plug-ins. It's used by the
+[XTP Platform](https://www.getxtp.com/), but can be used outside of the platform
+to define any Extism compatible plug-in system.
+
+## 1. Install the `xtp` CLI.
+
+See installation instructions
+[here](https://docs.xtp.dylibso.com/docs/cli#installation).
+
+## 2. Create a schema using our OpenAPI-inspired IDL:
+
+```yaml
+version: v1-draft
+exports: 
+  CountVowels:
+      input: 
+          type: string
+          contentType: text/plain; charset=utf-8
+      output:
+          $ref: "#/components/schemas/VowelReport"
+          contentType: application/json
+# components.schemas defined in example-schema.yaml...
+```
+
+> See an example in [example-schema.yaml](./example-schema.yaml), or a full
+> "kitchen sink" example on
+> [the docs page](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema/).
+
+## 3. Generate bindings to use from your plugins:
+
+```
+xtp plugin init --schema-file ./example-schema.yaml
+  > 1. TypeScript                      
+    2. Go                              
+    3. Rust                            
+    4. Python                          
+    5. C#                              
+    6. Zig                             
+    7. C++                             
+    8. GitHub Template                 
+    9. Local Template
+```
+
+This will create an entire boilerplate plugin project for you to get started
+with. Implement the empty function(s), and run `xtp plugin build` to compile
+your plugin.
+
+> For more information about XTP Bindgen, see the
+> [dylibso/xtp-bindgen](https://github.com/dylibso/xtp-bindgen) repository and
+> the official
+> [XTP Schema documentation](https://docs.xtp.dylibso.com/docs/concepts/xtp-schema).
 
 # Support
 
