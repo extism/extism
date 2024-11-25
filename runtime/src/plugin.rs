@@ -906,8 +906,7 @@ impl Plugin {
             }
 
             // on extism error
-            if output_res.is_ok() && self.output.error_offset != 0 && self.output.error_length != 0
-            {
+            if output_res.is_ok() && self.extism_error_is_set() {
                 let handle = MemoryHandle {
                     offset: self.output.error_offset,
                     length: self.output.error_length,
@@ -927,7 +926,7 @@ impl Plugin {
                     }
                     Err(msg) => {
                         res = Err(Error::msg(format!(
-                            "Call to Extism plugin function {name} encountered an error: {}",
+                            "unable to load error message from memory: {}",
                             msg,
                         )));
                     }
@@ -994,11 +993,12 @@ impl Plugin {
                         plugin = self.id.to_string(),
                         "WASI exit code: {}", exit_code
                     );
-                    if exit_code == 0 {
+
+                    if exit_code == 0 && !self.extism_error_is_set() {
                         return Ok(0);
                     }
 
-                    return Err((e.context("WASI exit code"), exit_code));
+                    return Err((e, exit_code));
                 }
 
                 // Handle timeout interrupts
@@ -1024,6 +1024,10 @@ impl Plugin {
                 Err((e, rc))
             }
         }
+    }
+
+    fn extism_error_is_set(&self) -> bool {
+        self.output.error_offset != 0 && self.output.error_length != 0
     }
 
     /// Call a function by name with the given input, the return value is
