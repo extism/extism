@@ -314,30 +314,50 @@ pub unsafe extern "C" fn extism_compiled_plugin_new(
 ) -> *mut CompiledPlugin {
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
+
     let mut builder = PluginBuilder::new(data).with_wasi(with_wasi);
 
     if !functions.is_null() {
-        for i in 0..n_functions {
-            unsafe {
-                let f = *functions.add(i as usize);
-                if f.is_null() {
-                    continue;
+        let funcs = (0..n_functions)
+            .map(|i| unsafe { *functions.add(i as usize) })
+            .map(|ptr| {
+                if ptr.is_null() {
+                    return Err("Cannot pass null pointer");
                 }
-                if let Some(f) = (*f).0.take() {
-                    builder.options.functions.push(f);
-                } else {
-                    let e = std::ffi::CString::new(
-                        "Function cannot be registered with multiple different Plugins",
-                    )
-                    .unwrap();
+
+                let ExtismFunction(func) = &*ptr;
+                let Some(func) = func.take() else {
+                    return Err("Function cannot be registered with multiple different Plugins");
+                };
+
+                Ok(func)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap_or_else(|e| {
+                if !errmsg.is_null() {
+                    let e = std::ffi::CString::new(e.to_string()).unwrap();
                     *errmsg = e.into_raw();
-                    return std::ptr::null_mut();
                 }
-            }
+                Vec::new()
+            });
+
+        if funcs.len() != n_functions as usize {
+            return std::ptr::null_mut();
         }
+
+        builder = builder.with_functions(funcs);
     }
 
-    Box::into_raw(Box::new(CompiledPlugin::new(builder).unwrap()))
+    CompiledPlugin::new(builder)
+        .map(|v| Box::into_raw(Box::new(v)))
+        .unwrap_or_else(|e| {
+            if !errmsg.is_null() {
+                let e = std::ffi::CString::new(format!("Unable to compile Extism plugin: {}", e))
+                    .unwrap();
+                *errmsg = e.into_raw();
+            }
+            std::ptr::null_mut()
+        })
 }
 
 /// Free `ExtismCompiledPlugin`
@@ -369,41 +389,49 @@ pub unsafe extern "C" fn extism_plugin_new(
     errmsg: *mut *mut std::ffi::c_char,
 ) -> *mut Plugin {
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
-    let mut funcs = vec![];
-
-    if !functions.is_null() {
-        for i in 0..n_functions {
-            unsafe {
-                let f = *functions.add(i as usize);
-                if f.is_null() {
-                    continue;
+    let funcs = if functions.is_null() {
+        vec![]
+    } else {
+        let funcs = (0..n_functions)
+            .map(|i| unsafe { *functions.add(i as usize) })
+            .map(|ptr| {
+                if ptr.is_null() {
+                    return Err("Cannot pass null pointer");
                 }
-                if let Some(f) = (*f).0.take() {
-                    funcs.push(f);
-                } else {
-                    let e = std::ffi::CString::new(
-                        "Function cannot be registered with multiple different Plugins",
-                    )
-                    .unwrap();
+
+                let ExtismFunction(func) = &*ptr;
+                let Some(func) = func.take() else {
+                    return Err("Function cannot be registered with multiple different Plugins");
+                };
+
+                Ok(func)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap_or_else(|e| {
+                if !errmsg.is_null() {
+                    let e = std::ffi::CString::new(e.to_string()).unwrap();
                     *errmsg = e.into_raw();
-                    return std::ptr::null_mut();
                 }
-            }
-        }
-    }
+                Vec::new()
+            });
 
-    let plugin = Plugin::new(data, funcs, with_wasi);
-    match plugin {
-        Err(e) => {
+        if funcs.len() != n_functions as usize {
+            return std::ptr::null_mut();
+        }
+
+        funcs
+    };
+
+    Plugin::new(data, funcs, with_wasi)
+        .map(|v| Box::into_raw(Box::new(v)))
+        .unwrap_or_else(|e| {
             if !errmsg.is_null() {
-                let e = std::ffi::CString::new(format!("Unable to create Extism plugin: {}", e))
+                let e = std::ffi::CString::new(format!("Unable to compile Extism plugin: {}", e))
                     .unwrap();
                 *errmsg = e.into_raw();
             }
             std::ptr::null_mut()
-        }
-        Ok(p) => Box::into_raw(Box::new(p)),
-    }
+        })
 }
 
 /// Create a new plugin from an `ExtismCompiledPlugin`
@@ -442,30 +470,38 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
         wasm
     );
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
-    let mut funcs = vec![];
+    let funcs = if functions.is_null() {
+        vec![]
+    } else {
+        let funcs = (0..n_functions)
+            .map(|i| unsafe { *functions.add(i as usize) })
+            .map(|ptr| {
+                if ptr.is_null() {
+                    return Err("Cannot pass null pointer");
+                }
 
-    if !functions.is_null() {
-        for i in 0..n_functions {
-            unsafe {
-                let f = *functions.add(i as usize);
-                if f.is_null() {
-                    continue;
+                let ExtismFunction(func) = &*ptr;
+                let Some(func) = func.take() else {
+                    return Err("Function cannot be registered with multiple different Plugins");
+                };
+
+                Ok(func)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap_or_else(|e| {
+                if !errmsg.is_null() {
+                    let e = std::ffi::CString::new(e.to_string()).unwrap();
+                    *errmsg = e.into_raw();
                 }
-                if let Some(f) = (*f).0.take() {
-                    funcs.push(f);
-                } else {
-                    if !errmsg.is_null() {
-                        let e = std::ffi::CString::new(
-                            "Function cannot be registered with multiple different Plugins",
-                        )
-                        .unwrap();
-                        *errmsg = e.into_raw();
-                    }
-                    return std::ptr::null_mut();
-                }
-            }
+                Vec::new()
+            });
+
+        if funcs.len() != n_functions as usize {
+            return std::ptr::null_mut();
         }
-    }
+
+        funcs
+    };
 
     let compiled = match CompiledPlugin::new(
         PluginBuilder::new(data)
