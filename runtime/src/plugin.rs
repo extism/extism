@@ -530,7 +530,7 @@ impl Plugin {
     }
 
     /// Returns `true` if the given function exists, otherwise `false`
-    pub fn function_exists(&mut self, function: impl AsRef<str>) -> bool {
+    pub fn function_exists(&self, function: impl AsRef<str>) -> bool {
         self.modules[MAIN_KEY]
             .get_export(function.as_ref())
             .map(|x| {
