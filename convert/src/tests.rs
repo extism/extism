@@ -62,7 +62,7 @@ fn rountrip_option() {
 }
 
 #[cfg(all(feature = "raw", target_endian = "little"))]
-mod tests {
+mod raw_tests {
     use crate::*;
 
     #[test]
