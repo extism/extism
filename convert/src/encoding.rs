@@ -146,7 +146,7 @@ impl<T: Default + prost::Message> FromBytesOwned for Prost<T> {
 pub struct Protobuf<T: protobuf::Message>(pub T);
 
 #[cfg(feature = "protobuf")]
-impl<'a, T: protobuf::Message> ToBytes<'a> for Protobuf<T> {
+impl<T: protobuf::Message> ToBytes<'_> for Protobuf<T> {
     type Bytes = Vec<u8>;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
