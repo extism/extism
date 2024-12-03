@@ -277,14 +277,14 @@ fn add_module<T: 'static>(
                         (ExternType::Func(a), ExternType::Func(b)) => {
                             if !a.matches(b) {
                                 anyhow::bail!(
-                                    "import type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
+                                    "function type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
                                 )
                             }
                         }
                         (ExternType::Global(a), ExternType::Global(b)) => {
-                            if !a.content().matches(&b.content()) {
+                            if !a.content().matches(b.content()) {
                                 anyhow::bail!(
-                                    "import type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
+                                    "global type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
                                 )
                             }
                         }
