@@ -199,7 +199,7 @@ pub enum WasmInput<'a> {
     ManifestRef(&'a Manifest),
 }
 
-impl<'a> From<Manifest> for WasmInput<'a> {
+impl From<Manifest> for WasmInput<'_> {
     fn from(value: Manifest) -> Self {
         WasmInput::Manifest(value)
     }
@@ -229,7 +229,7 @@ impl<'a> From<&'a str> for WasmInput<'a> {
     }
 }
 
-impl<'a> From<Vec<u8>> for WasmInput<'a> {
+impl From<Vec<u8>> for WasmInput<'_> {
     fn from(value: Vec<u8>) -> Self {
         WasmInput::Data(value.into())
     }
@@ -1168,7 +1168,7 @@ macro_rules! typed_plugin {
 
         impl TryFrom<$crate::Plugin> for $name {
             type Error = $crate::Error;
-            fn try_from(mut x: $crate::Plugin) -> Result<Self, Self::Error> {
+            fn try_from(x: $crate::Plugin) -> Result<Self, Self::Error> {
                 $(
                     if !x.function_exists(stringify!($f)) {
                         return Err($crate::Error::msg(format!("Invalid function: {}", stringify!($f))));

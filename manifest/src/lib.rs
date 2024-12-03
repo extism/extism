@@ -269,8 +269,8 @@ pub struct Manifest {
     /// Config values are made accessible using the PDK `extism_config_get` function
     #[serde(default)]
     pub config: BTreeMap<String, String>,
-    #[serde(default)]
 
+    #[serde(default)]
     /// Specifies which hosts may be accessed via HTTP, if this is empty then
     /// no hosts may be accessed. Wildcards may be used.
     pub allowed_hosts: Option<Vec<String>>,
@@ -417,14 +417,14 @@ mod wasmdata {
     }
 }
 
-impl<'a> From<Manifest> for std::borrow::Cow<'a, [u8]> {
+impl From<Manifest> for std::borrow::Cow<'_, [u8]> {
     fn from(m: Manifest) -> Self {
         let s = serde_json::to_vec(&m).unwrap();
         std::borrow::Cow::Owned(s)
     }
 }
 
-impl<'a> From<&Manifest> for std::borrow::Cow<'a, [u8]> {
+impl From<&Manifest> for std::borrow::Cow<'_, [u8]> {
     fn from(m: &Manifest) -> Self {
         let s = serde_json::to_vec(&m).unwrap();
         std::borrow::Cow::Owned(s)

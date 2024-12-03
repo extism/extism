@@ -447,7 +447,7 @@ fn hello_world_set_error(
     _user_data: UserData<()>,
 ) -> Result<(), Error> {
     plugin.set_error("TEST")?;
-    outputs[0] = inputs[0].clone();
+    outputs[0] = inputs[0];
     Ok(())
 }
 
@@ -544,7 +544,7 @@ fn hello_world_user_data(
     let mut data = data.lock().unwrap();
     let s = _plugin.memory_get_val(&inputs[0])?;
     data.write_all(s)?;
-    outputs[0] = inputs[0].clone();
+    outputs[0] = inputs[0];
     Ok(())
 }
 

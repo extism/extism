@@ -61,21 +61,21 @@ pub trait ToBytes<'a> {
     fn to_bytes(&self) -> Result<Self::Bytes, Error>;
 }
 
-impl<'a> ToBytes<'a> for () {
+impl ToBytes<'_> for () {
     type Bytes = [u8; 0];
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok([])
     }
 }
 
-impl<'a> ToBytes<'a> for Vec<u8> {
+impl ToBytes<'_> for Vec<u8> {
     type Bytes = Vec<u8>;
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self.clone())
     }
 }
 
-impl<'a> ToBytes<'a> for String {
+impl ToBytes<'_> for String {
     type Bytes = String;
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
         Ok(self.clone())
@@ -96,7 +96,7 @@ impl<'a> ToBytes<'a> for &'a str {
     }
 }
 
-impl<'a> ToBytes<'a> for f64 {
+impl ToBytes<'_> for f64 {
     type Bytes = [u8; 8];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -104,7 +104,7 @@ impl<'a> ToBytes<'a> for f64 {
     }
 }
 
-impl<'a> ToBytes<'a> for f32 {
+impl ToBytes<'_> for f32 {
     type Bytes = [u8; 4];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -112,7 +112,7 @@ impl<'a> ToBytes<'a> for f32 {
     }
 }
 
-impl<'a> ToBytes<'a> for i64 {
+impl ToBytes<'_> for i64 {
     type Bytes = [u8; 8];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -120,7 +120,7 @@ impl<'a> ToBytes<'a> for i64 {
     }
 }
 
-impl<'a> ToBytes<'a> for i32 {
+impl ToBytes<'_> for i32 {
     type Bytes = [u8; 4];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -128,7 +128,7 @@ impl<'a> ToBytes<'a> for i32 {
     }
 }
 
-impl<'a> ToBytes<'a> for u64 {
+impl ToBytes<'_> for u64 {
     type Bytes = [u8; 8];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -136,7 +136,7 @@ impl<'a> ToBytes<'a> for u64 {
     }
 }
 
-impl<'a> ToBytes<'a> for u32 {
+impl ToBytes<'_> for u32 {
     type Bytes = [u8; 4];
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {

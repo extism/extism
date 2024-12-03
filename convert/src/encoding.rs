@@ -55,7 +55,7 @@ encoding!(pub Json, serde_json::to_vec, serde_json::from_slice);
 #[cfg(feature = "msgpack")]
 encoding!(pub Msgpack, rmp_serde::to_vec, rmp_serde::from_slice);
 
-impl<'a> ToBytes<'a> for serde_json::Value {
+impl ToBytes<'_> for serde_json::Value {
     type Bytes = Vec<u8>;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -85,7 +85,7 @@ impl<T: AsRef<[u8]>> From<T> for Base64<T> {
     }
 }
 
-impl<'a, T: AsRef<[u8]>> ToBytes<'a> for Base64<T> {
+impl<T: AsRef<[u8]>> ToBytes<'_> for Base64<T> {
     type Bytes = String;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -124,7 +124,7 @@ impl<T: prost::Message> From<T> for Prost<T> {
 }
 
 #[cfg(feature = "prost")]
-impl<'a, T: prost::Message> ToBytes<'a> for Prost<T> {
+impl<T: prost::Message> ToBytes<'_> for Prost<T> {
     type Bytes = Vec<u8>;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {
@@ -146,7 +146,7 @@ impl<T: Default + prost::Message> FromBytesOwned for Prost<T> {
 pub struct Protobuf<T: protobuf::Message>(pub T);
 
 #[cfg(feature = "protobuf")]
-impl<'a, T: protobuf::Message> ToBytes<'a> for Protobuf<T> {
+impl<T: protobuf::Message> ToBytes<'_> for Protobuf<T> {
     type Bytes = Vec<u8>;
 
     fn to_bytes(&self) -> Result<Self::Bytes, Error> {

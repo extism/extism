@@ -884,7 +884,7 @@ fn set_log_file(log_file: impl Into<std::path::PathBuf>, filter: &str) -> Result
     Ok(())
 }
 
-static mut LOG_BUFFER: Option<LogBuffer> = None;
+static LOG_BUFFER: std::sync::Mutex<Option<LogBuffer>> = std::sync::Mutex::new(None);
 
 /// Enable a custom log handler, this will buffer logs until `extism_log_drain` is called
 /// Log level should be one of: info, error, trace, debug, warn
@@ -916,8 +916,8 @@ unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
             x.parse_lossy(filter)
         }
     });
-    LOG_BUFFER = Some(LogBuffer::default());
-    let buf = LOG_BUFFER.clone().unwrap();
+    *LOG_BUFFER.lock().unwrap() = Some(LogBuffer::default());
+    let buf = LOG_BUFFER.lock().unwrap().clone().unwrap();
     cfg.with_ansi(false)
         .with_writer(move || buf.clone())
         .try_init()
@@ -929,7 +929,7 @@ unsafe fn set_log_buffer(filter: &str) -> Result<(), Error> {
 /// Calls the provided callback function for each buffered log line.
 /// This is only needed when `extism_log_custom` is used.
 pub unsafe extern "C" fn extism_log_drain(handler: ExtismLogDrainFunctionType) {
-    if let Some(buf) = LOG_BUFFER.as_mut() {
+    if let Some(buf) = LOG_BUFFER.lock().unwrap().as_mut() {
         if let Ok(mut buf) = buf.buffer.lock() {
             for (line, len) in buf.drain(..) {
                 handler(line.as_ptr(), len as u64);

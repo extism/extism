@@ -22,18 +22,18 @@ pub(crate) struct Timer {
 
 #[cfg(not(target_family = "windows"))]
 extern "C" fn cleanup_timer() {
-    let mut timer = match unsafe { TIMER.lock() } {
+    let mut timer = match TIMER.lock() {
         Ok(x) => x,
         Err(e) => e.into_inner(),
     };
     drop(timer.take());
 }
 
-static mut TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
+static TIMER: std::sync::Mutex<Option<Timer>> = std::sync::Mutex::new(None);
 
 impl Timer {
     pub(crate) fn tx() -> std::sync::mpsc::Sender<TimerAction> {
-        let mut timer = match unsafe { TIMER.lock() } {
+        let mut timer = match TIMER.lock() {
             Ok(x) => x,
             Err(e) => e.into_inner(),
         };
