@@ -242,7 +242,7 @@ impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
 }
 
 fn add_module<T: 'static>(
-    store: &mut Store<T>,
+    mut store: &mut Store<T>,
     linker: &mut Linker<T>,
     linked: &mut BTreeSet<String>,
     modules: &BTreeMap<String, Module>,
@@ -271,7 +271,10 @@ fn add_module<T: 'static>(
     for (m, v) in imports.into_iter() {
         if let Some(src) = modules.get(m) {
             for (name, ty) in v {
-                match src.get_export(name) {
+                match src
+                    .get_export(name)
+                    .or_else(|| linker.get(&mut store, m, name).map(|x| x.ty(&store)))
+                {
                     None => anyhow::bail!("missing import: {m}::{name}"),
                     Some(ex) => match (&ex, &ty) {
                         (ExternType::Func(a), ExternType::Func(b)) => {
