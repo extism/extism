@@ -291,7 +291,15 @@ fn add_module<T: 'static>(
                                 )
                             }
                         }
-                        _ => (), // todo: table/memory types,
+                        (ExternType::Memory(_), ExternType::Memory(_)) => (),
+                        (ExternType::Table(a), ExternType::Table(b)) => {
+                            if !a.element().matches(b.element()) {
+                                anyhow::bail!(
+                                    "table type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
+                                )
+                            }
+                        }
+                        (a, b) => anyhow::bail!("import type mismatch: {a:?} != {b:?}"),
                     },
                 }
             }
