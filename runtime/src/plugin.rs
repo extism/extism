@@ -1,6 +1,6 @@
 use std::{
     any::Any,
-    collections::{BTreeMap, BTreeSet},
+    collections::{BTreeMap, BTreeSet, HashMap},
 };
 
 use anyhow::Context;
@@ -242,7 +242,7 @@ impl<'a> From<&'a Vec<u8>> for WasmInput<'a> {
 }
 
 fn add_module<T: 'static>(
-    store: &mut Store<T>,
+    mut store: &mut Store<T>,
     linker: &mut Linker<T>,
     linked: &mut BTreeSet<String>,
     modules: &BTreeMap<String, Module>,
@@ -251,6 +251,59 @@ fn add_module<T: 'static>(
 ) -> Result<(), Error> {
     if linked.contains(&name) {
         return Ok(());
+    }
+
+    let mut imports: HashMap<&str, Vec<(&str, ExternType)>> = HashMap::new();
+    for module_import in module.imports() {
+        let import_module = module_import.module();
+        let import_name = module_import.name();
+        let import_type = module_import.ty();
+        if imports.contains_key(import_module) {
+            imports
+                .get_mut(import_module)
+                .unwrap()
+                .push((import_name, import_type));
+        } else {
+            imports.insert(import_module, vec![(import_name, import_type)]);
+        }
+    }
+
+    for (m, v) in imports.into_iter() {
+        if let Some(src) = modules.get(m) {
+            for (name, ty) in v {
+                match src
+                    .get_export(name)
+                    .or_else(|| linker.get(&mut store, m, name).map(|x| x.ty(&store)))
+                {
+                    None => anyhow::bail!("missing import: {m}::{name}"),
+                    Some(ex) => match (&ex, &ty) {
+                        (ExternType::Func(a), ExternType::Func(b)) => {
+                            if !a.matches(b) {
+                                anyhow::bail!(
+                                    "function type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
+                                )
+                            }
+                        }
+                        (ExternType::Global(a), ExternType::Global(b)) => {
+                            if !a.content().matches(b.content()) {
+                                anyhow::bail!(
+                                    "global type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
+                                )
+                            }
+                        }
+                        (ExternType::Memory(_), ExternType::Memory(_)) => (),
+                        (ExternType::Table(a), ExternType::Table(b)) => {
+                            if !a.element().matches(b.element()) {
+                                anyhow::bail!(
+                                    "table type mismatch {m}::{name}, got {ty:?} expected {ex:?}"
+                                )
+                            }
+                        }
+                        (a, b) => anyhow::bail!("import type mismatch: {a:?} != {b:?}"),
+                    },
+                }
+            }
+        }
     }
 
     for import in module.imports() {
