@@ -1,4 +1,6 @@
 on:
+  release:
+    types: [published, edited]
   workflow_dispatch:
 
 name: Release .NET Native NuGet Packages
