@@ -325,6 +325,36 @@ fn relink(
         get_log_level() -> I32;
     );
 
+    for (name, module) in modules.iter() {
+        if name == EXTISM_ENV_MODULE {
+            continue;
+        }
+
+        for import in module.imports() {
+            if import.module() == EXTISM_ENV_MODULE
+                && modules[EXTISM_ENV_MODULE]
+                    .get_export(import.name())
+                    .is_none()
+                && linker
+                    .get(&mut store, EXTISM_ENV_MODULE, import.name())
+                    .is_none()
+            {
+                let (kind, ty) = match import.ty() {
+                    ExternType::Func(t) => ("function", t.to_string()),
+                    ExternType::Global(t) => ("global", t.content().to_string()),
+                    ExternType::Table(t) => ("table", t.element().to_string()),
+                    ExternType::Memory(_) => ("memory", String::new()),
+                };
+                anyhow::bail!(
+                    "Invalid {kind} import from extism:host/env: {} {ty}\n\n\
+                    Note: This may indicate that the PDK that was used to build this plugin has additional features that aren't \
+                    available in this version of the SDK, try updating the SDK to the latest version.",
+                    import.name(),
+                )
+            }
+        }
+    }
+
     let mut linked = BTreeSet::new();
     linker.module(&mut store, EXTISM_ENV_MODULE, &modules[EXTISM_ENV_MODULE])?;
     linked.insert(EXTISM_ENV_MODULE.to_string());

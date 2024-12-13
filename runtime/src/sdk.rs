@@ -352,8 +352,11 @@ pub unsafe extern "C" fn extism_compiled_plugin_new(
         .map(|v| Box::into_raw(Box::new(v)))
         .unwrap_or_else(|e| {
             if !errmsg.is_null() {
-                let e = std::ffi::CString::new(format!("Unable to compile Extism plugin: {}", e))
-                    .unwrap();
+                let e = std::ffi::CString::new(format!(
+                    "Unable to compile Extism plugin: {}",
+                    e.root_cause(),
+                ))
+                .unwrap();
                 *errmsg = e.into_raw();
             }
             std::ptr::null_mut()
@@ -426,8 +429,11 @@ pub unsafe extern "C" fn extism_plugin_new(
         .map(|v| Box::into_raw(Box::new(v)))
         .unwrap_or_else(|e| {
             if !errmsg.is_null() {
-                let e = std::ffi::CString::new(format!("Unable to compile Extism plugin: {}", e))
-                    .unwrap();
+                let e = std::ffi::CString::new(format!(
+                    "Unable to compile Extism plugin: {}",
+                    e.root_cause(),
+                ))
+                .unwrap();
                 *errmsg = e.into_raw();
             }
             std::ptr::null_mut()
@@ -444,8 +450,11 @@ pub unsafe extern "C" fn extism_plugin_new_from_compiled(
     match plugin {
         Err(e) => {
             if !errmsg.is_null() {
-                let e = std::ffi::CString::new(format!("Unable to create Extism plugin: {}", e))
-                    .unwrap();
+                let e = std::ffi::CString::new(format!(
+                    "Unable to create Extism plugin: {}",
+                    e.root_cause(),
+                ))
+                .unwrap();
                 *errmsg = e.into_raw();
             }
             std::ptr::null_mut()
@@ -512,8 +521,11 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
         Ok(x) => x,
         Err(e) => {
             if !errmsg.is_null() {
-                let e = std::ffi::CString::new(format!("Unable to compile Extism plugin: {}", e))
-                    .unwrap();
+                let e = std::ffi::CString::new(format!(
+                    "Unable to compile Extism plugin: {}",
+                    e.root_cause(),
+                ))
+                .unwrap();
                 *errmsg = e.into_raw();
             }
             return std::ptr::null_mut();
@@ -525,8 +537,11 @@ pub unsafe extern "C" fn extism_plugin_new_with_fuel_limit(
     match plugin {
         Err(e) => {
             if !errmsg.is_null() {
-                let e = std::ffi::CString::new(format!("Unable to create Extism plugin: {}", e))
-                    .unwrap();
+                let e = std::ffi::CString::new(format!(
+                    "Unable to create Extism plugin: {}",
+                    e.root_cause(),
+                ))
+                .unwrap();
                 *errmsg = e.into_raw();
             }
             std::ptr::null_mut()
