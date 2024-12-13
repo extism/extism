@@ -298,6 +298,33 @@ fn relink(
     let mut linker = Linker::new(engine);
     linker.allow_shadowing(true);
 
+    for (name, module) in modules.iter() {
+        if name == EXTISM_ENV_MODULE {
+            continue;
+        }
+
+        for import in module.imports() {
+            if import.module() == EXTISM_ENV_MODULE
+                && !modules[EXTISM_ENV_MODULE]
+                    .get_export(import.name())
+                    .is_some()
+            {
+                let (kind, ty) = match import.ty() {
+                    ExternType::Func(t) => ("function", t.to_string()),
+                    ExternType::Global(t) => ("global", t.content().to_string()),
+                    ExternType::Table(t) => ("table", t.element().to_string()),
+                    ExternType::Memory(_) => ("memory", String::new()),
+                };
+                anyhow::bail!(
+                    "Invalid {kind} import from extism:host/env: {} {ty}\n\n\
+                    Note: This may indicate that the PDK that was used to build this plugin has additional features that aren't \
+                    available in this version of the SDK, try updating the SDK to the latest version.",
+                    import.name(),
+                )
+            }
+        }
+    }
+
     // Define PDK functions
     macro_rules! add_funcs {
             ($($name:ident($($args:expr),*) $(-> $($r:expr),*)?);* $(;)?) => {
