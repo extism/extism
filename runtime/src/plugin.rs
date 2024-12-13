@@ -305,9 +305,9 @@ fn relink(
 
         for import in module.imports() {
             if import.module() == EXTISM_ENV_MODULE
-                && !modules[EXTISM_ENV_MODULE]
+                && modules[EXTISM_ENV_MODULE]
                     .get_export(import.name())
-                    .is_some()
+                    .is_none()
             {
                 let (kind, ty) = match import.ty() {
                     ExternType::Func(t) => ("function", t.to_string()),
