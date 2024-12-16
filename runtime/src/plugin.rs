@@ -455,7 +455,6 @@ impl Plugin {
             _functions: imports,
             error_msg: None,
             fuel: compiled.options.fuel,
-            remaining_fuel: None,
             host_context,
         };
 
