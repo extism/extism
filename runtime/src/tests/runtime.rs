@@ -841,4 +841,3 @@ fn test_http_response_headers_disabled() {
     println!("{:?}", res);
     assert!(res.is_empty());
 }
-
