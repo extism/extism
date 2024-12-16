@@ -147,6 +147,7 @@ pub struct Plugin {
     pub(crate) error_msg: Option<Vec<u8>>,
 
     pub(crate) fuel: Option<u64>,
+    pub(crate) remaining_fuel: Option<u64>,
 
     pub(crate) host_context: Rooted<ExternRef>,
 }
@@ -455,6 +456,7 @@ impl Plugin {
             _functions: imports,
             error_msg: None,
             fuel: compiled.options.fuel,
+            remaining_fuel: None,
             host_context,
         };
 
@@ -919,6 +921,11 @@ impl Plugin {
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
         self.store_needs_reset = name == "_start";
 
+        // Get remaining fuel
+        if let Some(fuel) = self.store.get_fuel().ok() {
+            self.remaining_fuel = Some(fuel);
+        }
+
         let mut rc = -1;
         if self.store.get_fuel().is_ok_and(|x| x == 0) {
             res = Err(Error::msg("plugin ran out of fuel"));
@@ -1153,6 +1160,23 @@ impl Plugin {
             Ok(())
         } else {
             anyhow::bail!("Plugin::clear_error failed, extism:host/env::error_set not found")
+        }
+    }
+
+    /// Returns the amount of fuel consumed by the plugin.
+    ///
+    /// This function calculates the difference between the initial fuel and the remaining fuel.
+    /// If either the initial fuel or the remaining fuel is not set, it returns `None`.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(u64)` - The amount of fuel consumed.
+    /// * `None` - If the initial fuel or remaining fuel is not set.
+    pub fn fuel_consumed(&self) -> Option<u64> {
+        if let (Some(initial), Some(remaining)) = (self.fuel, self.remaining_fuel) {
+            Some(initial.saturating_sub(remaining))
+        } else {
+            None
         }
     }
 }
