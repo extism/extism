@@ -147,7 +147,6 @@ pub struct Plugin {
     pub(crate) error_msg: Option<Vec<u8>>,
 
     pub(crate) fuel: Option<u64>,
-    pub(crate) remaining_fuel: Option<u64>,
 
     pub(crate) host_context: Rooted<ExternRef>,
 }
@@ -921,11 +920,6 @@ impl Plugin {
         let _ = self.timer_tx.send(TimerAction::Stop { id: self.id });
         self.store_needs_reset = name == "_start";
 
-        // Get remaining fuel
-        if let Ok(fuel) = self.store.get_fuel() {
-            self.remaining_fuel = Some(fuel);
-        }
-
         let mut rc = -1;
         if self.store.get_fuel().is_ok_and(|x| x == 0) {
             res = Err(Error::msg("plugin ran out of fuel"));
@@ -1173,11 +1167,13 @@ impl Plugin {
     /// * `Some(u64)` - The amount of fuel consumed.
     /// * `None` - If the initial fuel or remaining fuel is not set.
     pub fn fuel_consumed(&self) -> Option<u64> {
-        if let (Some(initial), Some(remaining)) = (self.fuel, self.remaining_fuel) {
-            Some(initial.saturating_sub(remaining))
-        } else {
-            None
-        }
+        self.fuel.map(|x| {
+            x.saturating_sub(
+                self.store
+                    .get_fuel()
+                    .expect("fuel support should be enabled to use fuel"),
+            )
+        })
     }
 }
 
