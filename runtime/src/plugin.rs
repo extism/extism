@@ -922,7 +922,7 @@ impl Plugin {
         self.store_needs_reset = name == "_start";
 
         // Get remaining fuel
-        if let Some(fuel) = self.store.get_fuel().ok() {
+        if let Ok(fuel) = self.store.get_fuel() {
             self.remaining_fuel = Some(fuel);
         }
 
