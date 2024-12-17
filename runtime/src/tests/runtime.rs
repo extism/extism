@@ -259,6 +259,23 @@ fn test_fuel() {
 }
 
 #[test]
+fn test_fuel_consumption() {
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_LOOP)]);
+    let mut plugin = PluginBuilder::new(manifest)
+        .with_wasi(true)
+        .with_fuel_limit(10000)
+        .build()
+        .unwrap();
+
+    let output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
+    assert!(output.is_err());
+
+    let fuel_consumed = plugin.fuel_consumed().unwrap();
+    println!("Fuel consumed: {}", fuel_consumed);
+    assert!(fuel_consumed > 0);
+}
+
+#[test]
 #[cfg(feature = "http")]
 fn test_http_timeout() {
     let f = Function::new(

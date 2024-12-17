@@ -1155,6 +1155,25 @@ impl Plugin {
             anyhow::bail!("Plugin::clear_error failed, extism:host/env::error_set not found")
         }
     }
+
+    /// Returns the amount of fuel consumed by the plugin.
+    ///
+    /// This function calculates the difference between the initial fuel and the remaining fuel.
+    /// If either the initial fuel or the remaining fuel is not set, it returns `None`.
+    ///
+    /// # Returns
+    ///
+    /// * `Some(u64)` - The amount of fuel consumed.
+    /// * `None` - If the initial fuel or remaining fuel is not set.
+    pub fn fuel_consumed(&self) -> Option<u64> {
+        self.fuel.map(|x| {
+            x.saturating_sub(
+                self.store
+                    .get_fuel()
+                    .expect("fuel support should be enabled to use fuel"),
+            )
+        })
+    }
 }
 
 // Enumerates the PDK languages that need some additional initialization
