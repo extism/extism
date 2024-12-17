@@ -68,7 +68,7 @@ impl serde::Serialize for LocalPath {
 
 struct LocalPathVisitor;
 
-impl<'de> serde::de::Visitor<'de> for LocalPathVisitor {
+impl serde::de::Visitor<'_> for LocalPathVisitor {
     type Value = LocalPath;
 
     fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
