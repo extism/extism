@@ -92,9 +92,11 @@ impl Timer {
             loop {
                 if plugins.is_empty() {
                     if let Ok(x) = rx.recv() {
-                        handle!(x)
+                        handle!(x);
                     }
                 }
+
+                let mut timeout: Option<std::time::Duration> = None;
 
                 plugins = plugins
                     .into_iter()
@@ -104,14 +106,31 @@ impl Timer {
                             if end <= &now {
                                 engine.increment_epoch();
                                 return false;
+                            } else {
+                                let time_left = (*end - now)
+                                    .saturating_sub(std::time::Duration::from_millis(1));
+                                if let Some(t) = &timeout {
+                                    if time_left < *t {
+                                        timeout = Some(time_left);
+                                    }
+                                } else {
+                                    timeout = Some(time_left);
+                                }
                             }
                         }
+
                         true
                     })
                     .collect();
 
-                for x in rx.try_iter() {
-                    handle!(x)
+                if let Some(timeout) = timeout {
+                    if let Ok(x) = rx.recv_timeout(timeout) {
+                        handle!(x)
+                    }
+                } else {
+                    if let Ok(x) = rx.recv() {
+                        handle!(x)
+                    }
                 }
             }
         });
