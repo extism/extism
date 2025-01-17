@@ -124,10 +124,8 @@ impl Timer {
                     if let Ok(x) = rx.recv_timeout(timeout) {
                         handle!(x)
                     }
-                } else {
-                    if let Ok(x) = rx.recv() {
-                        handle!(x)
-                    }
+                } else if let Ok(x) = rx.recv() {
+                    handle!(x)
                 }
             }
         });
