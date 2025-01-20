@@ -159,6 +159,14 @@ jobs:
           sccache: 'true'
           manylinux: 2_28
 
+      - name: Install libunwind
+        if: ${{ matrix.target == 'x86_64-linux-android' }}
+        run: sudo apt install android-libunwind-dev
+
+      - name: Install libunwind
+        if: ${{ matrix.target == 'aarch64-linux-android' }}
+        run: sudo apt install android-libunwind-dev
+
       - name: Add pkg-config files except on MSVC
         if: ${{ matrix.target != 'x86_64-pc-windows-msvc' }}
         shell: bash
