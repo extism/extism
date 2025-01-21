@@ -128,11 +128,11 @@ jobs:
 
       - name: Install libunwind
         if: ${{ matrix.target == 'x86_64-linux-android' }}
-        run: sudo apt install android-libunwind-dev
+        run: sudo apt install libunwind-dev
 
       - name: Install libunwind
         if: ${{ matrix.target == 'aarch64-linux-android' }}
-        run: sudo apt install android-libunwind-dev
+        run: sudo apt install libunwind-dev
 
       - name: Build Target (${{ matrix.os }} ${{ matrix.target }})
         uses: actions-rs/cargo@v1
