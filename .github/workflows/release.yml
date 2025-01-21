@@ -112,13 +112,11 @@ jobs:
           pyproject="$(cat extism-maturin/pyproject.toml)"
           <<<"$pyproject" >extism-maturin/pyproject.toml sed -e 's/^version = "0.0.0.replaced-by-ci"/version = "'"$version"'"/g'
 
-      - name: Install Rust
-        uses: actions-rs/toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          toolchain: stable
-          profile: minimal
-          override: true
           target: ${{ matrix.target }}
+          override: true
+          toolchain: stable
 
       - uses: Swatinem/rust-cache@v2
         with:
@@ -126,20 +124,16 @@ jobs:
           save-if: ${{ github.ref == 'refs/heads/main' }}
           cache-on-failure: "true"
 
-      - name: Install libunwind
-        if: ${{ matrix.target == 'x86_64-linux-android' }}
-        run: sudo apt install libunwind-dev
-
-      - name: Install libunwind
-        if: ${{ matrix.target == 'aarch64-linux-android' }}
-        run: sudo apt install libunwind-dev
+      - name: Build Target (${{ matrix.os }} ${{ matrix.target }})
+        if: ${{ matrix.os != 'windows' }}
+        run: |
+          cargo install cross
+          cross build --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
       - name: Build Target (${{ matrix.os }} ${{ matrix.target }})
-        uses: actions-rs/cargo@v1
-        with:
-          use-cross: ${{ matrix.os != 'windows' }}
-          command: build
-          args: --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
+        if: ${{ matrix.os == 'windows' }}
+        run: |
+          cargo build --release --target ${{ matrix.target }} -p ${{ env.RUNTIME_CRATE }}
 
       - uses: actions/setup-python@v4
         with:
