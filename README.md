@@ -36,6 +36,22 @@ function linking, and more. Extism users build:
 - web applications
 - & much more...
 
+# Supported Targets
+
+We currently provide releases for the following targets:
+
+- aarch64-apple-darwin
+- aarch64-unknown-linux-gnu
+- aarch64-unknown-linux-musl
+- x86_64-apple-darwin
+- x86_64-pc-windows-gnu
+- x86_64-pc-windows-msvc
+- x86_64-unknown-linux-gnu
+- x86_64-unknown-linux-musl
+
+For Android we suggest taking a look at the [Chicory SDK](https://github.com/extism/chicory-sdk) for a pure Java
+Extism runtime.
+
 # Run WebAssembly In Your App
 
 Pick a SDK to import into your program, and refer to the documentation to get
