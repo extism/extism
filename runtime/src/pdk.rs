@@ -233,7 +233,10 @@ pub(crate) fn http_request(
             )));
         }
 
-        let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
+        // default to GET and uppercase
+        let http_method = req.method.unwrap_or("GET".into()).to_uppercase();
+
+        let mut r = ureq::request(http_method.as_ref(), &req.url);
 
         for (k, v) in req.headers.iter() {
             r = r.set(k, v);
