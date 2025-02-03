@@ -21,7 +21,7 @@ tracing = "0.1"
 tracing-subscriber = {version = "0.3.18", features = ["std", "env-filter", "fmt"]}
 url = "2"
 glob = "0.3"
-ureq = {version = "2.5", optional=true}
+ureq = {version = "3.0", optional=true}
 extism-manifest = { workspace = true }
 extism-convert = { workspace = true, features = ["extism-path"] }
 uuid = { version = "1", features = ["v4"] }
