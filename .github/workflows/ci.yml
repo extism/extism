@@ -52,7 +52,7 @@ jobs:
         shell: bash
         run: cargo build --release -p ${{ env.LIBEXTISM_CRATE }}
       - name: Upload artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: libextism-${{ matrix.os }}
           path: |
