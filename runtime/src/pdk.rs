@@ -233,17 +233,22 @@ pub(crate) fn http_request(
             )));
         }
 
-        let mut r = ureq::request(req.method.as_deref().unwrap_or("GET"), &req.url);
+        let mut r = ureq::http::request::Builder::new()
+            .method(
+                req.method
+                    .as_deref()
+                    .unwrap_or("GET")
+                    .to_uppercase()
+                    .as_str(),
+            )
+            .uri(&req.url);
 
         for (k, v) in req.headers.iter() {
-            r = r.set(k, v);
+            r = r.header(k, v);
         }
 
         // Set HTTP timeout to respect the manifest timeout
-        if let Some(remaining) = data.time_remaining() {
-            r = r.timeout(remaining);
-        }
-
+        let timeout = data.time_remaining();
         let res = if body_offset > 0 {
             let handle = match data.memory_handle(body_offset) {
                 Some(h) => h,
@@ -252,9 +257,15 @@ pub(crate) fn http_request(
                 }
             };
             let buf: &[u8] = data.memory_bytes(handle)?;
-            r.send_bytes(buf)
+            let agent = ureq::agent();
+            let config = agent.configure_request(r.body(buf)?);
+            let req = config.timeout_global(timeout).build();
+            ureq::run(req)
         } else {
-            r.call()
+            let agent = ureq::agent();
+            let config = agent.configure_request(r.body(())?);
+            let req = config.timeout_global(timeout).build();
+            ureq::run(req)
         };
 
         if let Some(handle) = data.memory_handle(body_offset) {
@@ -264,26 +275,26 @@ pub(crate) fn http_request(
         let reader = match res {
             Ok(res) => {
                 if let Some(headers) = &mut data.http_headers {
-                    for name in res.headers_names() {
-                        if let Some(h) = res.header(&name) {
-                            headers.insert(name, h.to_string());
+                    for (name, h) in res.headers() {
+                        if let Ok(h) = h.to_str() {
+                            headers.insert(name.as_str().to_string(), h.to_string());
                         }
                     }
                 }
-                data.http_status = res.status();
-                Some(res.into_reader())
+                data.http_status = res.status().as_u16();
+                Some(res.into_body().into_reader())
             }
             Err(e) => {
                 // Catch timeout and return
                 if let Some(d) = data.time_remaining() {
-                    if e.kind() == ureq::ErrorKind::Io && d.as_nanos() == 0 {
+                    if matches!(e, ureq::Error::Timeout(_)) && d.as_nanos() == 0 {
                         anyhow::bail!("timeout");
                     }
                 }
                 let msg = e.to_string();
-                if let Some(res) = e.into_response() {
-                    data.http_status = res.status();
-                    Some(res.into_reader())
+                if let ureq::Error::StatusCode(res) = e {
+                    data.http_status = res;
+                    None
                 } else {
                     return Err(Error::msg(msg));
                 }

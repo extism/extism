@@ -86,14 +86,16 @@ fn to_module(engine: &Engine, wasm: &extism_manifest::Wasm) -> Result<(String, M
             #[cfg(feature = "register-http")]
             {
                 // Setup request
-                let mut req = ureq::request(method.as_deref().unwrap_or("GET"), url);
+                let mut req = ureq::http::request::Builder::new()
+                    .method(method.as_deref().unwrap_or("GET").to_uppercase().as_str())
+                    .uri(url);
 
                 for (k, v) in headers.iter() {
-                    req = req.set(k, v);
+                    req = req.header(k, v);
                 }
 
                 // Fetch WASM code
-                let mut r = req.call()?.into_reader();
+                let mut r = ureq::run(req.body(())?)?.into_body().into_reader();
                 let mut data = Vec::new();
                 r.read_to_end(&mut data)?;
 
