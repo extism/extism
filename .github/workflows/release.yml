@@ -7,11 +7,6 @@ on:
 
 name: Release
 
-env:
-  RUNTIME_MANIFEST: runtime/Cargo.toml
-  RUNTIME_CRATE: libextism
-  RUSTFLAGS: -C target-feature=-crt-static
-  ARTIFACT_DIR: release-artifacts-${{ matrix.os }}-${{ matrix.target }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -21,6 +16,11 @@ jobs:
   release:
     name: ${{ matrix.os }} ${{ matrix.target }}
     runs-on: ${{ matrix.os }}-latest
+    env:
+      RUNTIME_MANIFEST: runtime/Cargo.toml
+      RUNTIME_CRATE: libextism
+      RUSTFLAGS: -C target-feature=-crt-static
+      ARTIFACT_DIR: release-artifacts-${{ matrix.os }}-${{ matrix.target }}
     strategy:
       matrix:
         include:
@@ -213,7 +213,9 @@ jobs:
     steps:
       - uses: actions/download-artifact@v4
         with:
-          name: ${{ env.ARTIFACT_DIR }}
+          path: release-artifacts
+          pattern: release-artifacts-*
+          merge-multiple: true
 
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
