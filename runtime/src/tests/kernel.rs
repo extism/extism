@@ -411,6 +411,7 @@ quickcheck! {
 
 quickcheck! {
     fn check_alloc_with_load_and_store(amounts: Vec<u16>) -> bool {
+        use rand::Rng;
         let mut rng = rand::rng();
         let (mut store, mut instance) = init_kernel_test();
         let instance = &mut instance;
