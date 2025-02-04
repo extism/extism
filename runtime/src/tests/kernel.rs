@@ -412,7 +412,7 @@ quickcheck! {
 quickcheck! {
     fn check_alloc_with_load_and_store(amounts: Vec<u16>) -> bool {
         use rand::Rng;
-        let mut rng = rand::thread_rng();
+        let mut rng = rand::rng();
         let (mut store, mut instance) = init_kernel_test();
         let instance = &mut instance;
         for a in amounts {
@@ -425,7 +425,7 @@ quickcheck! {
             }
 
             for _ in 0..16 {
-                let i = rng.gen_range(ptr..ptr+a as u64);
+                let i = rng.random_range(ptr..ptr+a as u64);
                 extism_store_u8(&mut store, instance, i, i as u8);
                 if extism_load_u8(&mut store, instance, i as u64) != i as u8 {
                     return false

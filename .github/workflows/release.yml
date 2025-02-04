@@ -11,7 +11,7 @@ env:
   RUNTIME_MANIFEST: runtime/Cargo.toml
   RUNTIME_CRATE: libextism
   RUSTFLAGS: -C target-feature=-crt-static
-  ARTIFACT_DIR: release-artifacts
+  ARTIFACT_DIR: release-artifacts-${{ matrix.os }}-${{ matrix.target }}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
