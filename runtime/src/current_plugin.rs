@@ -206,15 +206,16 @@ impl CurrentPlugin {
             anyhow::bail!("expected extism_context to be an externref value",)
         };
 
-        match xs
-            .data_mut(&mut *store)?
-            .downcast_mut::<Box<dyn std::any::Any + Send + Sync>>()
-        {
-            Some(xs) => match xs.downcast_mut::<T>() {
-                Some(xs) => Ok(xs),
-                None => anyhow::bail!("could not downcast extism_context inner value"),
-            },
-            None => anyhow::bail!("could not downcast extism_context"),
+        if let Some(d) = xs.data_mut(&mut *store)? {
+            match d.downcast_mut::<Box<dyn std::any::Any + Send + Sync>>() {
+                Some(xs) => match xs.downcast_mut::<T>() {
+                    Some(xs) => Ok(xs),
+                    None => anyhow::bail!("could not downcast extism_context inner value"),
+                },
+                None => anyhow::bail!("could not downcast extism_context"),
+            }
+        } else {
+            anyhow::bail!("extism_context not found")
         }
     }
 
