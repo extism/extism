@@ -855,15 +855,20 @@ impl Plugin {
 
         // Set host context
         let r = if let Some(host_context) = host_context {
-            let inner = self
+            if let Some(inner) = self
                 .host_context
                 .data_mut(&mut self.store)
-                .map_err(|x| (x, -1))?;
-            if let Some(inner) = inner.downcast_mut::<Box<dyn std::any::Any + Send + Sync>>() {
-                let x: Box<T> = Box::new(host_context);
-                *inner = x;
+                .map_err(|x| (x, -1))?
+            {
+                if let Some(inner) = inner.downcast_mut::<Box<dyn std::any::Any + Send + Sync>>() {
+                    let x: Box<T> = Box::new(host_context);
+                    *inner = x;
+                }
+
+                Some(self.host_context)
+            } else {
+                None
             }
-            Some(self.host_context)
         } else {
             None
         };
@@ -906,7 +911,7 @@ impl Plugin {
         let mut res = func.call(self.store_mut(), &[], results.as_mut_slice());
 
         // Reset host context
-        if let Ok(inner) = self.host_context.data_mut(&mut self.store) {
+        if let Ok(Some(inner)) = self.host_context.data_mut(&mut self.store) {
             if let Some(inner) = inner.downcast_mut::<Box<dyn std::any::Any + Send + Sync>>() {
                 let x: Box<dyn Any + Send + Sync> = Box::new(());
                 *inner = x;
