@@ -18,8 +18,3 @@ updates:
           - "wasi-common"
           - "wiggle"
 
-  - package-ecosystem: "pip"
-    directory: "python"
-    schedule:
-      interval: "weekly"
-
