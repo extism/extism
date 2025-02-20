@@ -9,33 +9,17 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    groups:
+      # This is the name of your group, it will be used in PR titles and branch names
+      wasmtime-deps:
+        # A pattern can be...
+        patterns:
+          - "wasmtime"
+          - "wasi-common"
+          - "wiggle"
 
   - package-ecosystem: "pip"
     directory: "python"
     schedule:
       interval: "weekly"
 
-  - package-ecosystem: "mix"
-    directory: "elixir"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "npm"
-    directory: "node"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "composer"
-    directory: "/"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "bundler"
-    directory: "ruby"
-    schedule:
-      interval: "weekly"
-
-  - package-ecosystem: "gomod"
-    directory: "/"
-    schedule:
-      interval: "weekly"
