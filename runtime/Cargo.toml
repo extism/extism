@@ -9,9 +9,9 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-wasmtime = {version = ">= 27.0.0, < 30.0.0"}
-wasi-common = {version = ">= 27.0.0, < 30.0.0"}
-wiggle = {version = ">= 27.0.0, < 30.0.0"}
+wasmtime = {version = ">= 27.0.0, < 31.0.0"}
+wasi-common = {version = ">= 27.0.0, < 31.0.0"}
+wiggle = {version = ">= 27.0.0, < 31.0.0"}
 anyhow = "1"
 serde = {version = "1", features = ["derive"]}
 serde_json = "1"
