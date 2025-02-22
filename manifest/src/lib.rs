@@ -1,6 +1,10 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+mod local_path;
+
+pub use local_path::LocalPath;
+
 #[deprecated]
 pub type ManifestMemory = MemoryOptions;
 
@@ -279,7 +283,7 @@ pub struct Manifest {
     /// the path on disk to the path it should be available inside the plugin.
     /// For example, `".": "/tmp"` would mount the current directory as `/tmp` inside the module
     #[serde(default)]
-    pub allowed_paths: Option<BTreeMap<String, PathBuf>>,
+    pub allowed_paths: Option<BTreeMap<LocalPath, PathBuf>>,
 
     /// The plugin timeout in milliseconds
     #[serde(default)]
@@ -337,15 +341,15 @@ impl Manifest {
     }
 
     /// Add a path to `allowed_paths`
-    pub fn with_allowed_path(mut self, src: String, dest: impl AsRef<Path>) -> Self {
+    pub fn with_allowed_path(mut self, src: impl Into<LocalPath>, dest: impl AsRef<Path>) -> Self {
         let dest = dest.as_ref().to_path_buf();
         match &mut self.allowed_paths {
             Some(p) => {
-                p.insert(src, dest);
+                p.insert(src.into(), dest);
             }
             None => {
                 let mut p = BTreeMap::new();
-                p.insert(src, dest);
+                p.insert(src.into(), dest);
                 self.allowed_paths = Some(p);
             }
         }
@@ -354,7 +358,7 @@ impl Manifest {
     }
 
     /// Set `allowed_paths`
-    pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (String, PathBuf)>) -> Self {
+    pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (LocalPath, PathBuf)>) -> Self {
         self.allowed_paths = Some(paths.collect());
         self
     }
