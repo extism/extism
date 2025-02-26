@@ -1,6 +1,7 @@
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},
+    sync::TryLockError,
 };
 
 use anyhow::Context;
@@ -1088,7 +1089,12 @@ impl Plugin {
         input: T,
     ) -> Result<U, Error> {
         let lock = self.instance.clone();
-        let mut lock = lock.lock().unwrap();
+        let mut lock = lock.try_lock().map_err(|e| match e {
+            TryLockError::Poisoned(_) => anyhow::anyhow!(
+                "instance lock was poisoned; previous thread panicked while calling into wasm"
+            ),
+            TryLockError::WouldBlock => anyhow::anyhow!("cannot make reentrant calls into plugin"),
+        })?;
         let data = input.to_bytes()?;
         self.raw_call(&mut lock, name, data, None::<()>)
             .map_err(|e| e.0)
@@ -1113,7 +1119,12 @@ impl Plugin {
         C: Any + Send + Sync + 'static,
     {
         let lock = self.instance.clone();
-        let mut lock = lock.lock().unwrap();
+        let mut lock = lock.try_lock().map_err(|e| match e {
+            TryLockError::Poisoned(_) => anyhow::anyhow!(
+                "instance lock was poisoned; previous thread panicked while calling into wasm"
+            ),
+            TryLockError::WouldBlock => anyhow::anyhow!("cannot make reentrant calls into plugin"),
+        })?;
         let data = input.to_bytes()?;
         self.raw_call(&mut lock, name, data, Some(host_context))
             .map_err(|e| e.0)
@@ -1132,7 +1143,18 @@ impl Plugin {
         input: T,
     ) -> Result<U, (Error, i32)> {
         let lock = self.instance.clone();
-        let mut lock = lock.lock().unwrap();
+        let mut lock = lock.try_lock().map_err(|e| match e {
+            TryLockError::Poisoned(_) => (
+                anyhow::anyhow!(
+                    "instance lock was poisoned; previous thread panicked while calling into wasm"
+                ),
+                -1,
+            ),
+            TryLockError::WouldBlock => (
+                anyhow::anyhow!("cannot make reentrant calls into plugin"),
+                -1,
+            ),
+        })?;
         let data = input.to_bytes().map_err(|e| (e, -1))?;
         self.raw_call(&mut lock, name, data, None::<()>)
             .and_then(move |_| self.output().map_err(|e| (e, -1)))
