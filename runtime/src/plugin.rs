@@ -579,6 +579,27 @@ impl Plugin {
             .unwrap_or(false)
     }
 
+    /// List all functions names inside of the plugin.
+    pub fn list_functions(&self) -> Vec<String> {
+        self.modules[MAIN_KEY]
+            .exports()
+            .filter_map(|export| {
+                if let wasmtime::ExternType::Func(f) = export.ty() {
+                    let (params, mut results) = (f.params(), f.results());
+                    match (params.len(), results.len()) {
+                        (0, 1) if matches!(results.next(), Some(wasmtime::ValType::I32)) => {
+                            Some(export.name().to_string())
+                        }
+                        (0, 0) => Some(export.name().to_string()),
+                        _ => None,
+                    }
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
     // Store input in memory and re-initialize `Internal` pointer
     pub(crate) fn set_input(
         &mut self,
