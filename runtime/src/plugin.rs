@@ -281,6 +281,13 @@ fn add_module<T: 'static>(
     Ok(())
 }
 
+#[derive(Clone)]
+pub struct FunctionDefinition {
+    pub name: String,
+    pub params: Vec<ValType>,
+    pub returns: Vec<ValType>,
+}
+
 #[allow(clippy::type_complexity)]
 fn relink(
     engine: &Engine,
@@ -580,19 +587,16 @@ impl Plugin {
     }
 
     /// List all functions names inside of the plugin.
-    pub fn list_functions(&self) -> Vec<String> {
+    pub fn list_functions(&self) -> Vec<FunctionDefinition> {
         self.modules[MAIN_KEY]
             .exports()
             .filter_map(|export| {
                 if let wasmtime::ExternType::Func(f) = export.ty() {
-                    let (params, mut results) = (f.params(), f.results());
-                    match (params.len(), results.len()) {
-                        (0, 1) if matches!(results.next(), Some(wasmtime::ValType::I32)) => {
-                            Some(export.name().to_string())
-                        }
-                        (0, 0) => Some(export.name().to_string()),
-                        _ => None,
-                    }
+                    Some(FunctionDefinition {
+                        name: export.name().to_string(),
+                        params: f.params().map(Into::into).collect(),
+                        returns: f.results().map(Into::into).collect(),
+                    })
                 } else {
                     None
                 }
