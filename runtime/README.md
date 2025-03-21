@@ -88,7 +88,7 @@ println!("{:?}", res);
 
 ### Plug-in State
 
-Plug-ins may be stateful or stateless. Plug-ins can maintain state b/w calls by the use of variables. Our count vowels plug-in remembers the total number of vowels it's ever counted in the "total" key in the result. You can see this by making subsequent calls to the export:
+Plug-ins may be stateful or stateless. Plug-ins can maintain state between calls by the use of variables. Our count vowels plug-in remembers the total number of vowels it's ever counted in the "total" key in the result. You can see this by making subsequent calls to the export:
 
 ```rust
 let res = plugin.call::<&str, &str>("count_vowels", "Hello, world!").unwrap();
@@ -219,5 +219,13 @@ println!("{}", res);
 # => {"count": 3, "total": 6, "vowels": "aeiouAEIOU"}
 ```
 
+### Logging
 
+Plug-ins can't directly print anything to the console. They can however use Extism's built-in logging functionality, for example the [`log!` macro in the rust-pdk](https://docs.rs/extism-pdk/1.4.0/extism_pdk/macro.log.html) or the [`logInfo` function in the haskell-pdk](https://hackage.haskell.org/package/extism-pdk-1.2.0.0/docs/Extism-PDK.html#v:logInfo).
+
+Inside your host application, the rust-sdk emits these as [tracing](https://github.com/tokio-rs/tracing) events. The simplest way to make the logged messages visible is by adding the `tracing_subscriber` dependency to your crate and then initializing a tracing subscriber at the top of your main function:
+
+```rust
+tracing_subscriber::fmt::init();
+```
 
