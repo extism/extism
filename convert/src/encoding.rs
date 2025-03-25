@@ -15,7 +15,7 @@ use base64::Engine;
 /// and [`FromBytesOwned`] using [`serde_json::from_slice`]
 #[macro_export]
 macro_rules! encoding {
-    ($pub:vis $name:ident, $to_vec:expr, $from_slice:expr) => {
+    ($pub:vis $name:ident, $to_vec:expr_2021, $from_slice:expr_2021) => {
         #[doc = concat!(stringify!($name), " encoding")]
         #[derive(Debug)]
         $pub struct $name<T>(pub T);

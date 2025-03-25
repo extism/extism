@@ -4,7 +4,7 @@ members = ["extism-maturin", "manifest", "runtime", "libextism", "convert", "con
 exclude = ["kernel"]
 
 [workspace.package]
-edition = "2021"
+edition = "2024"
 authors = ["The Extism Authors", "oss@extism.org"]
 license = "BSD-3-Clause"
 homepage = "https://extism.org"

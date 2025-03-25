@@ -240,10 +240,10 @@ struct DataPtrLength {
 }
 
 #[cfg(feature = "json_schema")]
-fn wasmdata_schema(gen: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+fn wasmdata_schema(g: &mut schemars::r#gen::SchemaGenerator) -> schemars::schema::Schema {
     use schemars::{schema::SchemaObject, JsonSchema};
-    let mut schema: SchemaObject = <String>::json_schema(gen).into();
-    let objschema: SchemaObject = <DataPtrLength>::json_schema(gen).into();
+    let mut schema: SchemaObject = <String>::json_schema(g).into();
+    let objschema: SchemaObject = <DataPtrLength>::json_schema(g).into();
     let types = schemars::schema::SingleOrVec::<schemars::schema::InstanceType>::Vec(vec![
         schemars::schema::InstanceType::String,
         schemars::schema::InstanceType::Object,
