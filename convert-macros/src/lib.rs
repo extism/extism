@@ -34,11 +34,11 @@ fn extract_encoding(attrs: &[Attribute]) -> Result<Path> {
         .iter()
         .filter(|attr| attr.path().is_ident("encoding"))
         .collect();
-    ensure!(!encodings.is_empty(), "encoding needs to be specified"; try = "`#[encoding(ToJson)]`");
+    ensure!(!encodings.is_empty(), "encoding needs to be specified"; try = "`#[encoding(Json)]`");
     ensure!(encodings.len() < 2, encodings[1], "only one encoding can be specified"; try = "remove `{}`", encodings[1].to_token_stream());
 
     Ok(encodings[0].parse_args().map_err(
-        |e| error_message!(e.span(), "{e}"; note= "expects a path"; try = "`#[encoding(ToJson)]`"),
+        |e| error_message!(e.span(), "{e}"; note= "expects a path"; try = "`#[encoding(Json)]`"),
     )?)
 }
 
