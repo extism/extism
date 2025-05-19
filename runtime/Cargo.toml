@@ -37,7 +37,7 @@ http = ["ureq"]          # enables extism_http_request
 cbindgen = { version = "0.28", default-features = false }
 
 [dev-dependencies]
-criterion = "0.5.1"
+criterion = "0.6.0"
 quickcheck = "1"
 rand = "0.9.0"
 
