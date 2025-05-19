@@ -156,7 +156,7 @@ void extism_current_plugin_memory_free(ExtismCurrentPlugin *plugin, ExtismMemory
  * - `n_outputs`: number of return types
  * - `func`: the function to call
  * - `user_data`: a pointer that will be passed to the function when it's called
- *    this value should live as long as the function exists
+ *   this value should live as long as the function exists
  * - `free_user_data`: a callback to release the `user_data` value when the resulting
  *   `ExtismFunction` is freed.
  *
