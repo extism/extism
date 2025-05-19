@@ -284,8 +284,8 @@ impl Function {
 /// A few things worth noting:
 /// - The function always returns a `Result` that wraps the specified return type
 /// - If a first parameter and type are passed (`_user_data` above) followed by a semicolon it will be
-///    the name of the `UserData` parameter and can be used from inside the function
-//     definition.
+///   the name of the `UserData` parameter and can be used from inside the function
+//    definition.
 #[macro_export]
 macro_rules! host_fn {
     ($pub:vis $name: ident  ($($arg:ident : $argty:ty),*) $(-> $ret:ty)? $b:block) => {

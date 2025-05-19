@@ -477,10 +477,7 @@ impl CurrentPlugin {
             offset: offs,
             length,
         });
-        match s {
-            Ok(s) => Some(s),
-            Err(_) => None,
-        }
+        s.ok()
     }
 
     #[doc(hidden)]
