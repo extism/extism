@@ -144,6 +144,14 @@ impl ToBytes<'_> for u32 {
     }
 }
 
+impl ToBytes<'_> for bool {
+    type Bytes = [u8; 1];
+
+    fn to_bytes(&self) -> Result<Self::Bytes, Error> {
+        Ok([*self as u8])
+    }
+}
+
 impl<'a, T: ToBytes<'a>> ToBytes<'a> for &'a T {
     type Bytes = T::Bytes;
 

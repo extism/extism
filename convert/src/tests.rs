@@ -61,6 +61,17 @@ fn rountrip_option() {
     assert_eq!(y.unwrap().0, z.unwrap().0);
 }
 
+#[test]
+fn check_bool() {
+    // `None` case
+    let a = true.to_bytes().unwrap();
+    let b = false.to_bytes().unwrap();
+    assert_ne!(a, b);
+
+    assert_eq!(a, [1]);
+    assert_eq!(b, [0]);
+}
+
 #[cfg(all(feature = "raw", target_endian = "little"))]
 mod raw_tests {
     use crate::*;
