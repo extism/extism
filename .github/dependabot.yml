@@ -9,12 +9,8 @@ updates:
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
-    groups:
-      # This is the name of your group, it will be used in PR titles and branch names
-      wasmtime-deps:
-        # A pattern can be...
-        patterns:
-          - "wasmtime"
-          - "wasi-common"
-          - "wiggle"
+    ignore:
+      - dependency-name: "wasmtime"
+      - dependency-name: "wasi-common"
+      - dependency-name: "wiggle"
 
