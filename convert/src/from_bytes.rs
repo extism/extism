@@ -143,8 +143,8 @@ impl FromBytesOwned for u32 {
 
 impl FromBytesOwned for bool {
     fn from_bytes_owned(data: &[u8]) -> Result<Self, Error> {
-        if let Some(x) = data.get(0) {
-            Ok(if *x == 0 { false } else { true })
+        if let Some(x) = data.first() {
+            Ok(*x != 0)
         } else {
             Err(Error::msg("Expected one byte to read boolean value"))
         }
