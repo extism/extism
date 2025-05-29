@@ -20,10 +20,13 @@ jobs:
         uses: actions/setup-dotnet@v3.0.3
         with:
            dotnet-version: 7.x
-      - uses: dawidd6/action-download-artifact@v6
-        with:
-          workflow: release.yml
-          name: release-artifacts
+      - name: download release
+        run: |
+          tag='${{ github.ref }}'
+          tag="${tag/refs\/tags\//}"
+          gh release download "$tag" -p 'libextism-*.tar.gz'
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Extract Archive
         run: |      
           extract_archive() {
