@@ -19,7 +19,7 @@ impl PoolBuilder {
     /// Set the max number of parallel instances
     pub fn with_max_instances(mut self, n: usize) -> Self {
         self.max_instances = n;
-        return self;
+        self
     }
 
     /// Create a new `Pool` with the given configuration
@@ -77,23 +77,29 @@ struct PoolInner<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq = String> {
 /// `Pool` manages threadsafe access to a limited number of instances of multiple plugins
 #[derive(Clone)]
 pub struct Pool<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq = String> {
-    max_instances: usize,
+    config: PoolBuilder,
     inner: std::sync::Arc<std::sync::Mutex<PoolInner<Key>>>,
 }
 
 unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Send for Pool<T> {}
 unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Sync for Pool<T> {}
 
+impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Default for Pool<T> {
+    fn default() -> Self {
+        Self::new_from_builder(PoolBuilder::default())
+    }
+}
+
 impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
     /// Create a new pool with the defailt configuration
     pub fn new() -> Self {
-        Self::new_from_builder(PoolBuilder::default())
+        Self::default()
     }
 
     /// Create a new pool configured using a `PoolBuilder`
     pub fn new_from_builder(builder: PoolBuilder) -> Self {
         Pool {
-            max_instances: builder.max_instances,
+            config: builder,
             inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
                 plugins: Default::default(),
                 instances: Default::default(),
@@ -154,7 +160,7 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
         timeout: std::time::Duration,
     ) -> Result<Option<PoolPlugin>, Error> {
         let start = std::time::Instant::now();
-        let max = self.max_instances;
+        let max = self.config.max_instances;
         if let Some(avail) = self.find_available(key)? {
             return Ok(Some(avail));
         }
