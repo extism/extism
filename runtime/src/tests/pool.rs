@@ -17,7 +17,7 @@ fn run_thread(p: Pool<String>, i: u64) -> std::thread::JoinHandle<()> {
 fn test_threads() {
     for i in 1..=3 {
         let data = include_bytes!("../../../wasm/code.wasm");
-        let pool: Pool<String> = Pool::new(i);
+        let pool: Pool<String> = PoolBuilder::new().with_max_instances(i).build();
 
         let test = "test".to_string();
         pool.add_builder(

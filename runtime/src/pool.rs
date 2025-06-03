@@ -2,6 +2,42 @@ use std::collections::HashMap;
 
 use crate::{Error, FromBytesOwned, Plugin, PluginBuilder, ToBytes};
 
+// `PoolBuilder` is used to configure and create `Pool`s
+#[derive(Debug, Clone)]
+pub struct PoolBuilder {
+    /// Max number of concurrent instances for a plugin - by default this is set to
+    /// the output of `std::thread::available_parallelism`
+    pub max_instances: usize,
+}
+
+impl PoolBuilder {
+    /// Create a `PoolBuilder` with default values
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set the max number of parallel instances
+    pub fn with_max_instances(mut self, n: usize) -> Self {
+        self.max_instances = n;
+        return self;
+    }
+
+    /// Create a new `Pool` with the given configuration
+    pub fn build(self) -> Pool {
+        Pool::new_from_builder(self)
+    }
+}
+
+impl Default for PoolBuilder {
+    fn default() -> Self {
+        PoolBuilder {
+            max_instances: std::thread::available_parallelism()
+                .expect("available parallelism")
+                .into(),
+        }
+    }
+}
+
 /// `PoolPlugin` is used by the pool to track the number of live instances of a particular plugin
 #[derive(Clone, Debug)]
 pub struct PoolPlugin(std::rc::Rc<std::cell::RefCell<Plugin>>);
@@ -49,14 +85,15 @@ unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Send for Pool<T> 
 unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Sync for Pool<T> {}
 
 impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
-    /// Create a new pool
-    pub fn new(max_instances: Option<usize>) -> Self {
+    /// Create a new pool with the defailt configuration
+    pub fn new() -> Self {
+        Self::new_from_builder(PoolBuilder::default())
+    }
+
+    /// Create a new pool configured using a `PoolBuilder`
+    pub fn new_from_builder(builder: PoolBuilder) -> Self {
         Pool {
-            max_instances: max_instances.unwrap_or_else(|| {
-                std::thread::available_parallelism()
-                    .expect("available parallelism")
-                    .into()
-            }),
+            max_instances: builder.max_instances,
             inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
                 plugins: Default::default(),
                 instances: Default::default(),

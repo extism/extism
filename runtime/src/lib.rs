@@ -44,7 +44,7 @@ pub use plugin::{
     CancelHandle, CompiledPlugin, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_USER_MODULE,
 };
 pub use plugin_builder::{DebugOptions, PluginBuilder};
-pub use pool::{Pool, PoolPlugin};
+pub use pool::{Pool, PoolBuilder, PoolPlugin};
 
 pub(crate) use internal::{Internal, Wasi};
 pub(crate) use timer::{Timer, TimerAction};
