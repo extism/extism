@@ -50,9 +50,13 @@ unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Sync for Pool<T> 
 
 impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
     /// Create a new pool
-    pub fn new(max_instances: usize) -> Self {
+    pub fn new(max_instances: Option<usize>) -> Self {
         Pool {
-            max_instances,
+            max_instances: max_instances.unwrap_or_else(|| {
+                std::thread::available_parallelism()
+                    .expect("available parallelism")
+                    .into()
+            }),
             inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
                 plugins: Default::default(),
                 instances: Default::default(),
@@ -138,6 +142,8 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
             if std::time::Instant::now() - start > timeout {
                 return Ok(None);
             }
+
+            std::thread::sleep(std::time::Duration::from_millis(100));
         }
     }
 
