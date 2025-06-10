@@ -12,6 +12,7 @@ version.workspace = true
 wasmtime = { version = ">= 27.0.0, < 31.0.0", default-features = false, features = [
   'cache',
   'gc',
+  'gc-drc',
   'cranelift',
   'coredump',
 ] }
