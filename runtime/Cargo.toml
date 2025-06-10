@@ -12,20 +12,8 @@ version.workspace = true
 wasmtime = { version = ">= 27.0.0, < 31.0.0", default-features = false, features = [
   'cache',
   'gc',
-  'gc-drc',
-  'gc-null',
-  'wat',
-  'profiling',
-  'parallel-compilation',
   'cranelift',
-  'pooling-allocator',
-  'demangle',
-  'addr2line',
   'coredump',
-  'debug-builtins',
-  'runtime',
-  'threads',
-  'std',
 ] }
 wasi-common = { version = ">= 27.0.0, < 31.0.0" }
 wiggle = { version = ">= 27.0.0, < 31.0.0" }
