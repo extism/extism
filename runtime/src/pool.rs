@@ -1,6 +1,4 @@
-use std::collections::HashMap;
-
-use crate::{Error, FromBytesOwned, Plugin, PluginBuilder, ToBytes};
+use crate::{Error, FromBytesOwned, Plugin, ToBytes};
 
 // `PoolBuilder` is used to configure and create `Pool`s
 #[derive(Debug, Clone)]
@@ -23,8 +21,8 @@ impl PoolBuilder {
     }
 
     /// Create a new `Pool` with the given configuration
-    pub fn build(self) -> Pool {
-        Pool::new_from_builder(self)
+    pub fn build<F: 'static + Fn() -> Result<Plugin, Error>>(self, source: F) -> Pool {
+        Pool::new_from_builder(source, self)
     }
 }
 
@@ -69,117 +67,84 @@ impl PoolPlugin {
 
 type PluginSource = dyn Fn() -> Result<Plugin, Error>;
 
-struct PoolInner<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq = String> {
-    plugins: HashMap<Key, Box<PluginSource>>,
-    instances: HashMap<Key, Vec<PoolPlugin>>,
+struct PoolInner {
+    plugin_source: Box<PluginSource>,
+    instances: Vec<PoolPlugin>,
 }
 
 /// `Pool` manages threadsafe access to a limited number of instances of multiple plugins
 #[derive(Clone)]
-pub struct Pool<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq = String> {
+pub struct Pool {
     config: PoolBuilder,
-    inner: std::sync::Arc<std::sync::Mutex<PoolInner<Key>>>,
+    inner: std::sync::Arc<std::sync::Mutex<PoolInner>>,
 }
 
-unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Send for Pool<T> {}
-unsafe impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Sync for Pool<T> {}
+unsafe impl Send for Pool {}
+unsafe impl Sync for Pool {}
 
-impl<T: std::fmt::Debug + Clone + std::hash::Hash + Eq> Default for Pool<T> {
-    fn default() -> Self {
-        Self::new_from_builder(PoolBuilder::default())
-    }
-}
-
-impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
-    /// Create a new pool with the defailt configuration
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Create a new pool configured using a `PoolBuilder`
-    pub fn new_from_builder(builder: PoolBuilder) -> Self {
+impl Pool {
+    /// Create a new pool with the default configuration
+    pub fn new<F: 'static + Fn() -> Result<Plugin, Error>>(source: F) -> Self {
         Pool {
-            config: builder,
+            config: Default::default(),
             inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
-                plugins: Default::default(),
+                plugin_source: Box::new(source),
                 instances: Default::default(),
             })),
         }
     }
 
-    /// Add a plugin using a callback function
-    pub fn add<F: 'static + Fn() -> Result<Plugin, Error>>(&self, key: Key, source: F) {
-        let mut pool = self.inner.lock().unwrap();
-        if !pool.instances.contains_key(&key) {
-            pool.instances.insert(key.clone(), vec![]);
+    /// Create a new pool configured using a `PoolBuilder`
+    pub fn new_from_builder<F: 'static + Fn() -> Result<Plugin, Error>>(
+        source: F,
+        builder: PoolBuilder,
+    ) -> Self {
+        Pool {
+            config: builder,
+            inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
+                plugin_source: Box::new(source),
+                instances: Default::default(),
+            })),
         }
-
-        pool.plugins.insert(key, Box::new(source));
     }
 
-    /// Add a plugin using a `PluginBuilder`
-    pub fn add_builder(&self, key: Key, source: PluginBuilder<'static>) {
-        let mut pool = self.inner.lock().unwrap();
-        if !pool.instances.contains_key(&key) {
-            pool.instances.insert(key.clone(), vec![]);
-        }
-
-        pool.plugins
-            .insert(key, Box::new(move || source.clone().build()));
-    }
-
-    fn find_available(&self, key: &Key) -> Result<Option<PoolPlugin>, Error> {
-        let mut pool = self.inner.lock().unwrap();
-        if let Some(entry) = pool.instances.get_mut(key) {
-            for instance in entry.iter() {
-                if std::rc::Rc::strong_count(&instance.0) == 1 {
-                    return Ok(Some(instance.clone()));
-                }
+    fn find_available(&self) -> Result<Option<PoolPlugin>, Error> {
+        let pool = self.inner.lock().unwrap();
+        for instance in pool.instances.iter() {
+            if std::rc::Rc::strong_count(&instance.0) == 1 {
+                return Ok(Some(instance.clone()));
             }
         }
         Ok(None)
     }
 
     /// Get the number of live instances for a plugin
-    pub fn count(&self, key: &Key) -> usize {
-        self.inner
-            .lock()
-            .unwrap()
-            .instances
-            .get(key)
-            .map(|x| x.len())
-            .unwrap_or_default()
+    pub fn count(&self) -> usize {
+        self.inner.lock().unwrap().instances.len()
     }
 
     /// Get access to a plugin, this will create a new instance if needed (and allowed by the specified
     /// max_instances). `Ok(None)` is returned if the timeout is reached before an available plugin could be
     /// acquired
-    pub fn get(
-        &self,
-        key: &Key,
-        timeout: std::time::Duration,
-    ) -> Result<Option<PoolPlugin>, Error> {
+    pub fn get(&self, timeout: std::time::Duration) -> Result<Option<PoolPlugin>, Error> {
         let start = std::time::Instant::now();
         let max = self.config.max_instances;
-        if let Some(avail) = self.find_available(key)? {
+        if let Some(avail) = self.find_available()? {
             return Ok(Some(avail));
         }
 
         {
             let mut pool = self.inner.lock().unwrap();
-            if pool.instances.get(key).map(|x| x.len()).unwrap_or_default() < max {
-                if let Some(source) = pool.plugins.get(key) {
-                    let plugin = source()?;
-                    let instance = PoolPlugin::new(plugin);
-                    let v = pool.instances.get_mut(key).unwrap();
-                    v.push(instance);
-                    return Ok(Some(v.last().unwrap().clone()));
-                }
+            if pool.instances.len() < max {
+                let plugin = (*pool.plugin_source)()?;
+                let instance = PoolPlugin::new(plugin);
+                pool.instances.push(instance);
+                return Ok(Some(pool.instances.last().unwrap().clone()));
             }
         }
 
         loop {
-            if let Ok(Some(x)) = self.find_available(key) {
+            if let Ok(Some(x)) = self.find_available() {
                 return Ok(Some(x));
             }
             if std::time::Instant::now() - start > timeout {
@@ -195,11 +160,10 @@ impl<Key: std::fmt::Debug + Clone + std::hash::Hash + Eq> Pool<Key> {
     /// plugin could be acquired
     pub fn with_plugin<T>(
         &self,
-        key: &Key,
         timeout: std::time::Duration,
         f: impl FnOnce(&mut Plugin) -> Result<T, Error>,
     ) -> Result<Option<T>, Error> {
-        if let Some(plugin) = self.get(key, timeout)? {
+        if let Some(plugin) = self.get(timeout)? {
             return f(&mut plugin.plugin()).map(Some);
         }
         Ok(None)
