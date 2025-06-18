@@ -16,6 +16,12 @@ wasmtime = { version = ">= 27.0.0, < 31.0.0", default-features = false, features
   'cranelift',
   'coredump',
   'wat',
+  'pooling-allocator',
+  'demangle',
+  'addr2line',
+  'coredump',
+  'parallel-compilation',
+  'profiling'
 ] }
 wasi-common = { version = ">= 27.0.0, < 31.0.0" }
 wiggle = { version = ">= 27.0.0, < 31.0.0" }
