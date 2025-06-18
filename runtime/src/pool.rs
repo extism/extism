@@ -72,6 +72,9 @@ struct PoolInner {
     instances: Vec<PoolPlugin>,
 }
 
+unsafe impl Send for PoolInner {}
+unsafe impl Sync for PoolInner {}
+
 /// `Pool` manages threadsafe access to a limited number of instances of multiple plugins
 #[derive(Clone)]
 pub struct Pool {

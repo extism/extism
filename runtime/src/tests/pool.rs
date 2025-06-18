@@ -24,23 +24,25 @@ fn test_threads() {
             .with_max_instances(i)
             .build(move || plugin_builder.clone().build());
 
-        let mut threads = vec![];
-        threads.push(run_thread(pool.clone(), 1000));
-        threads.push(run_thread(pool.clone(), 1000));
-        threads.push(run_thread(pool.clone(), 1000));
-        threads.push(run_thread(pool.clone(), 1000));
-        threads.push(run_thread(pool.clone(), 1000));
-        threads.push(run_thread(pool.clone(), 1000));
-        threads.push(run_thread(pool.clone(), 500));
-        threads.push(run_thread(pool.clone(), 500));
-        threads.push(run_thread(pool.clone(), 500));
-        threads.push(run_thread(pool.clone(), 500));
-        threads.push(run_thread(pool.clone(), 500));
-        threads.push(run_thread(pool.clone(), 0));
+        let threads = vec![
+            run_thread(pool.clone(), 1000),
+            run_thread(pool.clone(), 1000),
+            run_thread(pool.clone(), 1000),
+            run_thread(pool.clone(), 1000),
+            run_thread(pool.clone(), 1000),
+            run_thread(pool.clone(), 1000),
+            run_thread(pool.clone(), 500),
+            run_thread(pool.clone(), 500),
+            run_thread(pool.clone(), 500),
+            run_thread(pool.clone(), 500),
+            run_thread(pool.clone(), 500),
+            run_thread(pool.clone(), 0),
+        ];
 
         for t in threads {
             t.join().unwrap();
         }
+
         assert!(pool.count() <= i);
     }
 }
