@@ -24,7 +24,7 @@ There are a few environment variables that can be used for debugging purposes:
 - `EXTISM_COREDUMP=extism.core`: write [coredump](https://github.com/WebAssembly/tool-conventions/blob/main/Coredump.md) to a file when a WebAssembly function traps
 - `EXTISM_DEBUG=1`: generate debug information
 - `EXTISM_PROFILE=perf|jitdump|vtune`: enable Wasmtime profiling
-- `EXTISM_CACHE_CONFIG=path/to/config.toml`: enable Wasmtime cache, see [the docs](https://docs.wasmtime.dev/cli-cache.html) for details about configuration. Setting this to an empty string will disable caching.
+- `EXTISM_CACHE_CONFIG=path/to/config.toml`: enable Wasmtime cache, details [here](#wasmtime-caching)
 
 > *Note*: The debug and coredump info will only be written if the plug-in has an error.
 
@@ -229,3 +229,42 @@ Inside your host application, the rust-sdk emits these as [tracing](https://gith
 tracing_subscriber::fmt::init();
 ```
 
+### Wasmtime Caching
+
+To enable or disable caching for plugin compilation, you need to provide a configuration file that will be used by the [wasmtime crate](https://github.com/bytecodealliance/wasmtime).
+
+For more information and values that can be used for configuring caching, take a look at [the docs](https://docs.wasmtime.dev/cli-cache.html).
+
+> *Note*: As of now extism uses wasmtime [`version = ">= 27.0.0, < 31.0.0"`](https://github.com/extism/extism/blob/v1.11.1/runtime/Cargo.toml#L12), but the `enabled` key requirement [was removed](https://github.com/bytecodealliance/wasmtime/pull/10859) from `wasmtime` and its documentation, this could explain the `failed to parse config file` error you might encounter without it.
+
+An example configuration for caching would be:
+
+```toml
+[cache]
+enabled = true # This value is required
+directory = "/some/path"
+```
+
+You can :
+- [Create a global `wasmtime` configuration file](#using-a-configuration-file) in `$HOME/.config/wasmtime/config.toml`.
+- [Set the `EXTISM_CACHE_CONFIG` environment variable](#using-an-environment-variable)
+- [Set the configuration file path using `PluginBuilder`](#using-pluginbuilder)
+
+#### Using a configuration file
+
+The [wasmtime](https://github.com/bytecodealliance/wasmtime) crate, by default, will look for a configuration file in your systems' default configuration directory (for example on UNIX systems: `$HOME/.config/wasmtime/config.toml`),
+for more [information on this behaviour](`https://docs.rs/wasmtime/31.0.0/wasmtime/struct.Config.html#method.cache_config_load_default`).
+
+#### Using an environment variable
+
+You can set the `EXTISM_CACHE_CONFIG=path/to/config.toml` environment variable to set the path of the configuration file used by [wasmtime](https://github.com/bytecodealliance/wasmtime).
+Setting the variable to an empty string will disable caching (it won't load any configuration file).
+
+> *Note*: If the environment variable is not set, `wasmtime` will still try to read from a configuration file that may exist in your system's default configuration folder (e.g. `$HOME/.config/wasmtime/config.toml`).
+
+The environment variable does not override the path you might have set using `PluginBuilder`. will only be checked for if you did not specify a cache configuration path in `PluginBuilder`.
+
+#### Using PluginBuilder
+
+If you use a [PluginBuilder](https://docs.rs/extism/latest/extism/struct.PluginBuilder.html), you can set the `wasmtime` configuration path using the [with_cache_config](https://docs.rs/extism/latest/extism/struct.PluginBuilder.html#method.with_cache_config) method.
+This will override the `EXTISM_CACHE_CONFIG` environment variable if it's set, so you could have a "global" and per plugin configuration if needed.
