@@ -283,7 +283,7 @@ pub struct Manifest {
     /// the path on disk to the path it should be available inside the plugin.
     /// For example, `".": "/tmp"` would mount the current directory as `/tmp` inside the module
     #[serde(default)]
-    pub allowed_paths: Option<BTreeMap<LocalPath, PathBuf>>,
+    pub allowed_paths: Option<BTreeMap<PathBuf, LocalPath>>,
 
     /// The plugin timeout in milliseconds
     #[serde(default)]
@@ -345,11 +345,11 @@ impl Manifest {
         let dest = dest.as_ref().to_path_buf();
         match &mut self.allowed_paths {
             Some(p) => {
-                p.insert(src.into(), dest);
+                p.insert(dest, src.into());
             }
             None => {
                 let mut p = BTreeMap::new();
-                p.insert(src.into(), dest);
+                p.insert(dest, src.into());
                 self.allowed_paths = Some(p);
             }
         }
@@ -359,7 +359,7 @@ impl Manifest {
 
     /// Set `allowed_paths`
     pub fn with_allowed_paths(mut self, paths: impl Iterator<Item = (LocalPath, PathBuf)>) -> Self {
-        self.allowed_paths = Some(paths.collect());
+        self.allowed_paths = Some(paths.map(|(local, wasm)| (wasm, local)).collect());
         self
     }
 
