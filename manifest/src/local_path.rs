@@ -1,6 +1,7 @@
 use std::path::{Path, PathBuf};
 
 #[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord)]
+#[cfg_attr(feature = "json_schema", derive(schemars::JsonSchema))]
 pub enum LocalPath {
     ReadOnly(PathBuf),
     ReadWrite(PathBuf),
