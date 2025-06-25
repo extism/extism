@@ -263,24 +263,24 @@ impl MemoryRoot {
         let mem_left = self_length - self_position - core::mem::size_of::<MemoryRoot>() as u64;
         let length_with_block = length + core::mem::size_of::<MemoryBlock>() as u64;
 
+        // If the current position is large enough to hold the length of the block being
+        // allocated then check for existing free blocks that can be re-used before
+        // growing memory
+        if length_with_block <= self_position {
+            let b = self.find_free_block(length, self_position);
+
+            // If there's a free block then re-use it
+            if let Some(b) = b {
+                b.used = length as usize;
+                b.status
+                    .store(MemoryStatus::Active as u8, Ordering::Release);
+                return Some(b);
+            }
+        }
+
         // When the allocation is larger than the number of bytes available
         // we will need to try to grow the memory
         if length_with_block >= mem_left {
-            // If the current position is large enough to hold the length of the block being
-            // allocated then check for existing free blocks that can be re-used before
-            // growing memory
-            if length_with_block <= self_position {
-                let b = self.find_free_block(length, self_position);
-
-                // If there's a free block then re-use it
-                if let Some(b) = b {
-                    b.used = length as usize;
-                    b.status
-                        .store(MemoryStatus::Active as u8, Ordering::Release);
-                    return Some(b);
-                }
-            }
-
             // Calculate the number of pages needed to cover the remaining bytes
             let npages = num_pages(length_with_block - mem_left);
             let x = core::arch::wasm32::memory_grow(0, npages);

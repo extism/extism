@@ -226,6 +226,26 @@ fn test_kernel_allocations() {
 }
 
 #[test]
+fn test_kernel_page_allocations() {
+    let (mut store, mut instance) = init_kernel_test();
+    let instance = &mut instance;
+
+    let a = extism_alloc(&mut store, instance, 65500 * 4);
+    let a_size = extism_length(&mut store, instance, a);
+    let b = extism_alloc(&mut store, instance, 65539);
+
+    extism_free(&mut store, instance, a);
+    let c = extism_alloc(&mut store, instance, 65500 * 2);
+    let c_size = extism_length(&mut store, instance, c);
+
+    let d = extism_alloc(&mut store, instance, 65500);
+
+    assert_eq!(a + (a_size - c_size), c);
+    assert!(c < b);
+    assert!(d < b);
+}
+
+#[test]
 fn test_kernel_error() {
     let (mut store, mut instance) = init_kernel_test();
     let instance = &mut instance;
