@@ -456,3 +456,31 @@ quickcheck! {
         true
     }
 }
+
+quickcheck! {
+    fn check_block_reuse(allocs: Vec<u16>) -> bool {
+        let (mut store, mut instance) = init_kernel_test();
+        let instance = &mut instance;
+        let init = extism_alloc(&mut store, instance, allocs.iter().map(|x| *x as u64).sum::<u64>() + allocs.len() as u64 * 64);
+        let bounds = init + extism_length(&mut store, instance, init);
+        extism_free(&mut store, instance, init);
+        for a in allocs {
+            let ptr = extism_alloc(&mut store, instance, a as u64);
+            if ptr == 0 {
+                continue
+            }
+            if extism_length(&mut store, instance, ptr) != a as u64  {
+                return false
+            }
+
+            extism_free(&mut store, instance , ptr);
+
+            if ptr > bounds {
+                println!("ptr={ptr}, bounds={bounds}");
+                return false
+            }
+        }
+
+        true
+    }
+}
