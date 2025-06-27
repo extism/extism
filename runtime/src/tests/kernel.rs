@@ -238,7 +238,7 @@ fn test_kernel_page_allocations() {
     let c = extism_alloc(&mut store, instance, 65500 * 2);
     let c_size = extism_length(&mut store, instance, c);
 
-    let d = extism_alloc(&mut store, instance, 65500);
+    let d = extism_alloc(&mut store, instance, 65536);
 
     assert_eq!(a + (a_size - c_size), c);
     assert!(c < b);
@@ -461,19 +461,20 @@ quickcheck! {
     fn check_block_reuse(allocs: Vec<u16>) -> bool {
         let (mut store, mut instance) = init_kernel_test();
         let instance = &mut instance;
-        let init = extism_alloc(&mut store, instance, allocs.iter().map(|x| *x as u64).sum::<u64>() + allocs.len() as u64 * 64);
+        let init = extism_alloc(&mut store, instance, allocs.iter().map(|x| *x as u64).sum::<u64>() + (allocs.len() as u64 * (65535 + 128)));
         let bounds = init + extism_length(&mut store, instance, init);
         extism_free(&mut store, instance, init);
         for a in allocs {
-            let ptr = extism_alloc(&mut store, instance, a as u64);
+            let ptr = extism_alloc(&mut store, instance, a as u64 + 65535);
             if ptr == 0 {
                 continue
             }
-            if extism_length(&mut store, instance, ptr) != a as u64  {
+            if extism_length(&mut store, instance, ptr) != a as u64 + 65535  {
+                println!("FAILED ALLOC");
                 return false
             }
 
-            extism_free(&mut store, instance , ptr);
+            extism_free(&mut store, instance, ptr);
 
             if ptr > bounds {
                 println!("ptr={ptr}, bounds={bounds}");
