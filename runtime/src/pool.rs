@@ -1,4 +1,7 @@
 use crate::{Error, FromBytesOwned, Plugin, ToBytes};
+use std::collections::HashMap;
+use std::sync::Arc;
+use std::sync::RwLock;
 
 // `PoolBuilder` is used to configure and create `Pool`s
 #[derive(Debug, Clone)]
@@ -79,7 +82,8 @@ unsafe impl Sync for PoolInner {}
 #[derive(Clone)]
 pub struct Pool {
     config: PoolBuilder,
-    inner: std::sync::Arc<std::sync::Mutex<PoolInner>>,
+    inner: Arc<std::sync::Mutex<PoolInner>>,
+    existing_functions: Arc<RwLock<HashMap<String, bool>>>,
 }
 
 unsafe impl Send for Pool {}
@@ -88,13 +92,7 @@ unsafe impl Sync for Pool {}
 impl Pool {
     /// Create a new pool with the default configuration
     pub fn new<F: 'static + Fn() -> Result<Plugin, Error>>(source: F) -> Self {
-        Pool {
-            config: Default::default(),
-            inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
-                plugin_source: Box::new(source),
-                instances: Default::default(),
-            })),
-        }
+        Self::new_from_builder(Box::new(source), PoolBuilder::default())
     }
 
     /// Create a new pool configured using a `PoolBuilder`
@@ -104,10 +102,11 @@ impl Pool {
     ) -> Self {
         Pool {
             config: builder,
-            inner: std::sync::Arc::new(std::sync::Mutex::new(PoolInner {
+            inner: Arc::new(std::sync::Mutex::new(PoolInner {
                 plugin_source: Box::new(source),
                 instances: Default::default(),
             })),
+            existing_functions: RwLock::new(HashMap::default()).into(),
         }
     }
 
@@ -170,5 +169,27 @@ impl Pool {
             return f(&mut plugin.plugin()).map(Some);
         }
         Ok(None)
+    }
+
+    /// Returns `true` if the given function exists, otherwise `false`. Results are cached
+    /// after the first call.
+    pub fn function_exists(&self, name: &str, timeout: std::time::Duration) -> Result<bool, Error> {
+        // read current value if any
+        let read = self.existing_functions.read().unwrap();
+        let exists_opt = read.get(name).cloned();
+        drop(read);
+        if let Some(exists) = exists_opt {
+            Ok(exists)
+        } else {
+            // load plugin and call function_exists
+            let plugin = self.get(timeout)?;
+            let exists = plugin.unwrap().0.borrow().function_exists(name);
+
+            // write result to hashmap
+            let mut write = self.existing_functions.write().unwrap();
+            write.insert(name.to_string(), exists);
+
+            Ok(exists)
+        }
     }
 }
