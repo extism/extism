@@ -16,7 +16,7 @@ fn main() {
 
     let res = plugin.call::<&str, &str>("try_read", "").unwrap();
 
-    println!("{:?}", res);
+    println!("{res:?}");
 
     println!("-----------------------------------------------------");
 
@@ -30,7 +30,7 @@ fn main() {
     );
     let res2 = plugin.call::<&str, &str>("try_write", &line).unwrap();
 
-    println!("{:?}", res2);
+    println!("{res2:?}");
 
     println!("done!");
 }
