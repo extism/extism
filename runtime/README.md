@@ -112,7 +112,8 @@ let mut plugin = Plugin::new(&manifest, [], true);
 let res = plugin.call::<&str, &str>("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 3, "total": 3, "vowels": "aeiouAEIOU"}
-let mut plugin = Plugin::new(&manifest, [], true).with_config_key("vowels", "aeiouyAEIOUY");
+let manifest = Manifest::new([url]).with_config_key("vowels", "aeiouyAEIOUY");
+let mut plugin = Plugin::new(&manifest, [], true).unwrap();
 let res = plugin.call::<&str, &str>("count_vowels", "Yellow, world!").unwrap();
 println!("{}", res);
 # => {"count": 4, "total": 4, "vowels": "aeiouyAEIOUY"}
