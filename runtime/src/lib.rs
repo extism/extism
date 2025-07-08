@@ -98,7 +98,7 @@ pub fn set_log_callback<F: 'static + Clone + Fn(&str)>(
         let x = tracing_subscriber::EnvFilter::builder()
             .with_default_directive(tracing::Level::ERROR.into());
         if is_level {
-            x.parse_lossy(format!("extism={}", filter))
+            x.parse_lossy(format!("extism={filter}"))
         } else {
             x.parse_lossy(filter)
         }

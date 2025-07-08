@@ -52,6 +52,6 @@ fn main() {
         let res = plugin
             .call::<&str, &str>("count_vowels", "Hello, world!")
             .unwrap();
-        println!("{}", res);
+        println!("{res}");
     }
 }

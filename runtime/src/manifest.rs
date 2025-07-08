@@ -10,7 +10,7 @@ use crate::*;
 fn hex(data: &[u8]) -> String {
     let mut s = String::new();
     for &byte in data {
-        write!(&mut s, "{:02x}", byte).unwrap();
+        write!(&mut s, "{byte:02x}").unwrap();
     }
     s
 }

@@ -963,8 +963,7 @@ impl Plugin {
                     }
                     Err(msg) => {
                         res = Err(Error::msg(format!(
-                            "unable to load error message from memory: {}",
-                            msg,
+                            "unable to load error message from memory: {msg}",
                         )));
                     }
                 }

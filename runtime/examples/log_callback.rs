@@ -25,6 +25,6 @@ fn main() {
     println!("Dumping logs");
 
     for line in LOGS.lock().unwrap().iter() {
-        print!("{}", line);
+        print!("{line}");
     }
 }

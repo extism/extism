@@ -133,10 +133,7 @@ fn it_works() {
         .unwrap();
     let native_avg: std::time::Duration = native_sum / native_num_tests as u32;
 
-    println!(
-        "native function call (avg, N = {}): {:?}",
-        native_num_tests, native_avg
-    );
+    println!("native function call (avg, N = {native_num_tests}): {native_avg:?}");
 
     let num_tests = test_times.len();
     let sum: std::time::Duration = test_times
@@ -145,7 +142,7 @@ fn it_works() {
         .unwrap();
     let avg: std::time::Duration = sum / num_tests as u32;
 
-    println!("wasm function call (avg, N = {}): {:?}", num_tests, avg);
+    println!("wasm function call (avg, N = {num_tests}): {avg:?}");
 
     // Check that log file was written to
     if log {
@@ -212,7 +209,7 @@ fn test_cancel() {
         let _output: Result<&[u8], Error> = plugin.call("loop_forever", "abc123");
         let end = std::time::Instant::now();
         let time = end - start;
-        println!("Cancelled plugin ran for {:?}", time);
+        println!("Cancelled plugin ran for {time:?}");
     }
 }
 
@@ -271,7 +268,7 @@ fn test_fuel_consumption() {
     assert!(output.is_err());
 
     let fuel_consumed = plugin.fuel_consumed().unwrap();
-    println!("Fuel consumed: {}", fuel_consumed);
+    println!("Fuel consumed: {fuel_consumed}");
     assert!(fuel_consumed > 0);
 }
 
@@ -440,7 +437,7 @@ fn test_memory_max() {
     assert!(output.is_err());
 
     let err = output.unwrap_err().root_cause().to_string();
-    println!("{:?}", err);
+    println!("{err:?}");
     assert_eq!(err, "oom");
 
     // Should pass with memory.max set to a large enough number
@@ -503,7 +500,7 @@ fn test_extism_error() {
     let mut plugin = Plugin::new(&manifest, [f], true).unwrap();
     let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(1024));
     assert!(output.is_err());
-    println!("{:?}", output);
+    println!("{output:?}");
     assert_eq!(output.unwrap_err().root_cause().to_string(), "TEST");
 }
 
@@ -823,7 +820,7 @@ fn test_http_response_headers() {
     .unwrap();
     let req = HttpRequest::new("https://extism.org");
     let Json(res): Json<HashMap<String, String>> = plugin.call("http_get", Json(req)).unwrap();
-    println!("{:?}", res);
+    println!("{res:?}");
     assert_eq!(res["content-type"], "text/html; charset=utf-8");
 }
 
@@ -838,6 +835,6 @@ fn test_http_response_headers_disabled() {
     .unwrap();
     let req = HttpRequest::new("https://extism.org");
     let Json(res): Json<HashMap<String, String>> = plugin.call("http_get", Json(req)).unwrap();
-    println!("{:?}", res);
+    println!("{res:?}");
     assert!(res.is_empty());
 }

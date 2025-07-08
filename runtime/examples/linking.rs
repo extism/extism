@@ -30,6 +30,6 @@ fn main() {
         let res = plugin
             .call::<&str, &str>("reflect", "Hello, world!")
             .unwrap();
-        println!("{}", res);
+        println!("{res}");
     }
 }
