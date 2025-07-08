@@ -133,9 +133,7 @@ fn it_works() {
         .unwrap();
     let native_avg: std::time::Duration = native_sum / native_num_tests as u32;
 
-    println!(
-        "native function call (avg, N = {native_num_tests}): {native_avg:?}"
-    );
+    println!("native function call (avg, N = {native_num_tests}): {native_avg:?}");
 
     let num_tests = test_times.len();
     let sum: std::time::Duration = test_times
