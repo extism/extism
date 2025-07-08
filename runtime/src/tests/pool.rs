@@ -9,7 +9,7 @@ fn run_thread(p: Pool, i: u64) -> std::thread::JoinHandle<()> {
             .unwrap()
             .call("count_vowels", "abc")
             .unwrap();
-        println!("{}", s);
+        println!("{s}");
     })
 }
 

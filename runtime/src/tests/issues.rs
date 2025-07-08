@@ -16,7 +16,7 @@ fn test_issue_620() {
     // Call test method, this does not work
     let p = plugin.call::<(), String>("test", ()).unwrap();
 
-    println!("{}", p);
+    println!("{p}");
 }
 
 // https://github.com/extism/extism/issues/619
@@ -53,5 +53,5 @@ fn test_issue_775() {
         Ok(code) => Err(code),
     }
     .unwrap();
-    println!("{}", p);
+    println!("{p}");
 }
