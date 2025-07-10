@@ -16,12 +16,6 @@ wasmtime = { version = ">= 27.0.0, < 31.0.0", default-features = false, features
   'cranelift',
   'coredump',
   'wat',
-  'pooling-allocator',
-  'demangle',
-  'addr2line',
-  'coredump',
-  'parallel-compilation',
-  'profiling'
 ] }
 wasi-common = { version = ">= 27.0.0, < 31.0.0" }
 wiggle = { version = ">= 27.0.0, < 31.0.0" }
@@ -45,10 +39,25 @@ uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
 
 [features]
-default = ["http", "register-http", "register-filesystem"]
+default = ["http", "register-http", "register-filesystem", "wasmtime-default-features"]
 register-http = ["ureq"]                                   # enables wasm to be downloaded using http
 register-filesystem = []                                   # enables wasm to be loaded from disk
 http = ["ureq"]                                            # enables extism_http_request
+wasmtime-default-features = [
+  "wasmtime/async",
+  "wasmtime/pooling-allocator",
+  'wasmtime/gc-null',
+  'wasmtime/profiling',
+  'wasmtime/parallel-compilation',
+  'wasmtime/pooling-allocator',
+  'wasmtime/demangle',
+  'wasmtime/addr2line',
+  'wasmtime/debug-builtins',
+  'wasmtime/runtime',
+  'wasmtime/component-model',
+  'wasmtime/threads',
+  'wasmtime/std',
+]
 
 [build-dependencies]
 cbindgen = { version = "0.29", default-features = false }
