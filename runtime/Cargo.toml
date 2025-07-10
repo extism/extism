@@ -16,6 +16,9 @@ wasmtime = { version = ">= 27.0.0, < 31.0.0", default-features = false, features
   'cranelift',
   'coredump',
   'wat',
+  'parallel-compilation',
+  'pooling-allocator',
+  'demangle',
 ] }
 wasi-common = { version = ">= 27.0.0, < 31.0.0" }
 wiggle = { version = ">= 27.0.0, < 31.0.0" }
@@ -44,19 +47,7 @@ register-http = ["ureq"]                                   # enables wasm to be 
 register-filesystem = []                                   # enables wasm to be loaded from disk
 http = ["ureq"]                                            # enables extism_http_request
 wasmtime-default-features = [
-  "wasmtime/async",
-  "wasmtime/pooling-allocator",
-  'wasmtime/gc-null',
-  'wasmtime/profiling',
-  'wasmtime/parallel-compilation',
-  'wasmtime/pooling-allocator',
-  'wasmtime/demangle',
-  'wasmtime/addr2line',
-  'wasmtime/debug-builtins',
-  'wasmtime/runtime',
-  'wasmtime/component-model',
-  'wasmtime/threads',
-  'wasmtime/std',
+  'wasmtime/default',
 ]
 
 [build-dependencies]
