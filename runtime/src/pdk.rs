@@ -258,12 +258,16 @@ pub(crate) fn http_request(
             };
             let buf: &[u8] = data.memory_bytes(handle)?;
             let agent = ureq::agent();
-            let config = agent.configure_request(r.body(buf)?);
+            let config = agent
+                .configure_request(r.body(buf)?)
+                .http_status_as_error(false);
             let req = config.timeout_global(timeout).build();
             ureq::run(req)
         } else {
             let agent = ureq::agent();
-            let config = agent.configure_request(r.body(())?);
+            let config = agent
+                .configure_request(r.body(())?)
+                .http_status_as_error(false);
             let req = config.timeout_global(timeout).build();
             ureq::run(req)
         };
