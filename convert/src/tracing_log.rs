@@ -12,7 +12,7 @@ pub struct TracingLog {
     /// The log message.
     pub message: String,
 
-    /// The target/model the log comes from.
+    /// The target/module the log comes from.
     /// https://docs.rs/tracing/latest/tracing/#configuring-attributes
     #[serde(skip_serializing_if = "Option::is_none")]
     pub target: Option<String>,

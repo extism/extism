@@ -417,12 +417,12 @@ pub fn log(
 
             let mut event = event_factory.create();
             event.with("plugin", &id);
-            event.with("message", &log.message);
 
             for (key, value) in &log.fields {
                 event.with(key, value);
             }
 
+            event.with("message", &log.message);
             event.build();
         }
         Err(error) => tracing::error!(plugin = id, "unable to log message: {error:?}"),
