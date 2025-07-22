@@ -1,6 +1,6 @@
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
-use extism_convert::TracingLog;
+use extism_convert::TracingEvent;
 
 /// This macro unwraps input arguments to prevent functions from panicking,
 /// it should be used instead of `Val::unwrap_*` functions
@@ -394,7 +394,7 @@ pub fn log(
             let log = if buf.starts_with('{') {
                 serde_json::from_str(buf)?
             } else {
-                TracingLog {
+                TracingEvent {
                     message: buf.to_owned(),
                     ..Default::default()
                 }

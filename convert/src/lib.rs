@@ -14,7 +14,7 @@ mod encoding;
 mod from_bytes;
 mod memory_handle;
 mod to_bytes;
-mod tracing_log;
+mod tracing_event;
 
 pub use encoding::{Base64, Json};
 
@@ -33,7 +33,7 @@ pub use encoding::Raw;
 pub use from_bytes::{FromBytes, FromBytesOwned};
 pub use memory_handle::MemoryHandle;
 pub use to_bytes::ToBytes;
-pub use tracing_log::TracingLog;
+pub use tracing_event::TracingEvent;
 
 #[cfg(test)]
 mod tests;

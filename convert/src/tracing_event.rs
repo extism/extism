@@ -3,7 +3,7 @@ use std::collections::HashMap;
 
 #[derive(Default, Deserialize, Serialize)]
 #[serde(default)]
-pub struct TracingLog {
+pub struct TracingEvent {
     /// Additional data to be rendered as fields.
     /// https://docs.rs/tracing/latest/tracing/#recording-fields
     #[serde(skip_serializing_if = "HashMap::is_empty")]
