@@ -1,5 +1,6 @@
 /// All the functions in the file are exposed from inside WASM plugins
 use crate::*;
+use extism_convert::TracingLog;
 
 /// This macro unwraps input arguments to prevent functions from panicking,
 /// it should be used instead of `Val::unwrap_*` functions
@@ -387,24 +388,45 @@ pub fn log(
     let buf = data.memory_str(handle);
 
     match buf {
-        Ok(buf) => match level {
-            tracing::Level::ERROR => {
-                tracing::error!(plugin = id, "{}", buf)
+        Ok(buf) => {
+            use tracing_dynamic::EventFactory;
+
+            let log = if buf.starts_with('{') {
+                serde_json::from_str(buf)?
+            } else {
+                TracingLog {
+                    message: buf.to_owned(),
+                    ..Default::default()
+                }
+            };
+
+            let field_keys = log
+                .fields
+                .keys()
+                .map(|key| key.as_str())
+                .collect::<Vec<_>>();
+
+            let event_factory = EventFactory::new(
+                &id,
+                log.target.as_deref().unwrap_or_else(|| module_path!()),
+                level,
+                None,
+                None,
+                None,
+                &field_keys,
+            );
+
+            let mut event = event_factory.create();
+            event.with("plugin", &id);
+            event.with("message", &log.message);
+
+            for (key, value) in &log.fields {
+                event.with(key, value);
             }
-            tracing::Level::DEBUG => {
-                tracing::debug!(plugin = id, "{}", buf)
-            }
-            tracing::Level::WARN => {
-                tracing::warn!(plugin = id, "{}", buf)
-            }
-            tracing::Level::INFO => {
-                tracing::info!(plugin = id, "{}", buf)
-            }
-            tracing::Level::TRACE => {
-                tracing::trace!(plugin = id, "{}", buf)
-            }
-        },
-        Err(_) => tracing::error!(plugin = id, "unable to log message: {:?}", buf),
+
+            event.build();
+        }
+        Err(error) => tracing::error!(plugin = id, "unable to log message: {error:?}"),
     }
 
     data.memory_free(handle)?;

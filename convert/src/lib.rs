@@ -11,10 +11,10 @@ extern crate self as extism_convert;
 pub use anyhow::Error;
 
 mod encoding;
-
 mod from_bytes;
 mod memory_handle;
 mod to_bytes;
+mod tracing_log;
 
 pub use encoding::{Base64, Json};
 
@@ -33,6 +33,7 @@ pub use encoding::Raw;
 pub use from_bytes::{FromBytes, FromBytesOwned};
 pub use memory_handle::MemoryHandle;
 pub use to_bytes::ToBytes;
+pub use tracing_log::TracingLog;
 
 #[cfg(test)]
 mod tests;
