@@ -400,21 +400,20 @@ pub fn log(
                 }
             };
 
+            // Prefix the target so users are aware that it occurred in a WASM plugin
+            let target = match &log.target {
+                Some(inner) => format!("wasm::{inner}"),
+                None => "wasm::extism".to_owned(),
+            };
+
             let field_keys = log
                 .fields
                 .keys()
                 .map(|key| key.as_str())
                 .collect::<Vec<_>>();
 
-            let event_factory = EventFactory::new(
-                &id,
-                log.target.as_deref().unwrap_or_else(|| module_path!()),
-                level,
-                None,
-                None,
-                None,
-                &field_keys,
-            );
+            let event_factory =
+                EventFactory::new(&id, &target, level, None, None, None, &field_keys);
 
             let mut event = event_factory.create();
             event.with("plugin", &id);
