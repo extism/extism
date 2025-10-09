@@ -49,7 +49,7 @@ impl PoolPlugin {
     }
 
     /// Access the underlying plugin
-    pub fn plugin(&self) -> std::cell::RefMut<Plugin> {
+    pub fn plugin(&self) -> std::cell::RefMut<'_, Plugin> {
         self.0.borrow_mut()
     }
 

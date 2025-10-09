@@ -1,6 +1,7 @@
 use std::{
     any::Any,
     collections::{BTreeMap, BTreeSet},
+    path::PathBuf,
     sync::TryLockError,
 };
 
@@ -60,26 +61,16 @@ impl CompiledPlugin {
             .wasm_tail_call(true)
             .wasm_function_references(true)
             .wasm_gc(true);
+        #[cfg(feature = "wasmtime-exceptions")]
+        {
+            config.wasm_exceptions(true);
+        }
 
         if builder.options.fuel.is_some() {
             config.consume_fuel(true);
         }
 
-        match &builder.options.cache_config {
-            Some(None) => (),
-            Some(Some(path)) => {
-                config.cache_config_load(path)?;
-            }
-            None => {
-                if let Ok(env) = std::env::var("EXTISM_CACHE_CONFIG") {
-                    if !env.is_empty() {
-                        config.cache_config_load(&env)?;
-                    }
-                } else {
-                    config.cache_config_load_default()?;
-                }
-            }
-        }
+        config.cache(Self::configure_cache(&builder.options.cache_config)?);
 
         let engine = Engine::new(&config)?;
 
@@ -96,6 +87,43 @@ impl CompiledPlugin {
             options: builder.options,
             engine,
         })
+    }
+
+    /// Return optional cache according to builder options.
+    fn configure_cache(
+        cache_opt: &Option<Option<std::path::PathBuf>>,
+    ) -> Result<Option<wasmtime::Cache>, Error> {
+        match cache_opt {
+            // Explicitly disabled
+            Some(None) => Ok(None),
+
+            // Explicit path
+            Some(Some(p)) => {
+                let cache = wasmtime::Cache::from_file(Some(p.as_path()))?;
+                Ok(Some(cache))
+            }
+
+            // Unspecified, try environment, then system fallback
+            None => {
+                match std::env::var_os("EXTISM_CACHE_CONFIG") {
+                    Some(val) => {
+                        if val.is_empty() {
+                            // Disable cache if env var exists but is empty
+                            Ok(None)
+                        } else {
+                            let p = PathBuf::from(val);
+                            let cache = wasmtime::Cache::from_file(Some(p.as_path()))?;
+                            Ok(Some(cache))
+                        }
+                    }
+                    None => {
+                        // load cache configuration from the system default path
+                        let cache = wasmtime::Cache::from_file(None)?;
+                        Ok(Some(cache))
+                    }
+                }
+            }
+        }
     }
 }
 
@@ -344,6 +372,7 @@ fn relink(
                 let (kind, ty) = match import.ty() {
                     ExternType::Func(t) => ("function", t.to_string()),
                     ExternType::Global(t) => ("global", t.content().to_string()),
+                    ExternType::Tag(t) => ("tag", t.ty().to_string()),
                     ExternType::Table(t) => ("table", t.element().to_string()),
                     ExternType::Memory(_) => ("memory", String::new()),
                 };
