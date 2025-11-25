@@ -192,6 +192,17 @@ ExtismCompiledPlugin *extism_compiled_plugin_new(const uint8_t *wasm,
                                                  char **errmsg);
 
 /**
+ * Pre-compile an Extism plugin and set the number of instructions a plugin is allowed to execute
+ */
+ExtismCompiledPlugin *extism_compiled_plugin_new_with_fuel_limit(const uint8_t *wasm,
+                                                                 ExtismSize wasm_size,
+                                                                 const ExtismFunction **functions,
+                                                                 ExtismSize n_functions,
+                                                                 bool with_wasi,
+                                                                 uint64_t fuel_limit,
+                                                                 char **errmsg);
+
+/**
  * Free `ExtismCompiledPlugin`
  */
 void extism_compiled_plugin_free(ExtismCompiledPlugin *plugin);

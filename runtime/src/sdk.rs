@@ -363,6 +363,70 @@ pub unsafe extern "C" fn extism_compiled_plugin_new(
         })
 }
 
+/// Pre-compile an Extism plugin and set the number of instructions a plugin is allowed to execute
+#[no_mangle]
+pub unsafe extern "C" fn extism_compiled_plugin_new_with_fuel_limit(
+    wasm: *const u8,
+    wasm_size: Size,
+    functions: *mut *const ExtismFunction,
+    n_functions: Size,
+    with_wasi: bool,
+    fuel_limit: u64,
+    errmsg: *mut *mut std::ffi::c_char,
+) -> *mut CompiledPlugin {
+    trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
+    let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
+
+    let mut builder = PluginBuilder::new(data)
+        .with_wasi(with_wasi)
+        .with_fuel_limit(fuel_limit);
+
+    if !functions.is_null() {
+        let funcs = (0..n_functions)
+            .map(|i| unsafe { *functions.add(i as usize) })
+            .map(|ptr| {
+                if ptr.is_null() {
+                    return Err("Cannot pass null pointer");
+                }
+
+                let ExtismFunction(func) = &*ptr;
+                let Some(func) = func.take() else {
+                    return Err("Function cannot be registered with multiple different Plugins");
+                };
+
+                Ok(func)
+            })
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap_or_else(|e| {
+                if !errmsg.is_null() {
+                    let e = std::ffi::CString::new(e.to_string()).unwrap();
+                    *errmsg = e.into_raw();
+                }
+                Vec::new()
+            });
+
+        if funcs.len() != n_functions as usize {
+            return std::ptr::null_mut();
+        }
+
+        builder = builder.with_functions(funcs);
+    }
+
+    CompiledPlugin::new(builder)
+        .map(|v| Box::into_raw(Box::new(v)))
+        .unwrap_or_else(|e| {
+            if !errmsg.is_null() {
+                let e = std::ffi::CString::new(format!(
+                    "Unable to compile Extism plugin: {}",
+                    e.root_cause(),
+                ))
+                .unwrap();
+                *errmsg = e.into_raw();
+            }
+            std::ptr::null_mut()
+        })
+}
+
 /// Free `ExtismCompiledPlugin`
 #[no_mangle]
 pub unsafe extern "C" fn extism_compiled_plugin_free(plugin: *mut CompiledPlugin) {
