@@ -377,7 +377,9 @@ pub unsafe extern "C" fn extism_compiled_plugin_new_with_fuel_limit(
     trace!("Call to extism_plugin_new with wasm pointer {:?}", wasm);
     let data = std::slice::from_raw_parts(wasm, wasm_size as usize);
 
-    let mut builder = PluginBuilder::new(data).with_wasi(with_wasi).with_fuel_limit(fuel_limit);
+    let mut builder = PluginBuilder::new(data)
+        .with_wasi(with_wasi)
+        .with_fuel_limit(fuel_limit);
 
     if !functions.is_null() {
         let funcs = (0..n_functions)
