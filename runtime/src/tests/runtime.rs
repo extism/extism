@@ -273,6 +273,34 @@ fn test_fuel_consumption() {
 }
 
 #[test]
+fn test_memory_allocated() {
+    let manifest = Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]);
+    let mut plugin = Plugin::new(manifest, [], true).unwrap();
+
+    let before = plugin.memory_allocated_total();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
+    assert!(output.is_ok());
+    let after = plugin.memory_allocated_total();
+
+    println!("Linear memory bytes allocated: before={before}, after={after}");
+    assert!(after >= before);
+}
+
+#[test]
+fn test_memory_allocated_limiter() {
+    let manifest =
+        Manifest::new([extism_manifest::Wasm::data(WASM_NO_FUNCTIONS)]).with_memory_max(32);
+    let mut plugin = Plugin::new(manifest, [], true).unwrap();
+
+    let before = plugin.memory_allocated_total();
+    let output: Result<String, Error> = plugin.call("count_vowels", "a".repeat(65536 * 2));
+    assert!(output.is_ok());
+    let after = plugin.memory_allocated_total();
+
+    assert!(after >= before);
+}
+
+#[test]
 #[cfg(feature = "http")]
 fn test_http_timeout() {
     let f = Function::new(
