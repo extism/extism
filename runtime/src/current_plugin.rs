@@ -1,4 +1,4 @@
-use anyhow::Context;
+use wasmtime::error::Context as _;
 
 use crate::*;
 
@@ -43,13 +43,13 @@ impl wasmtime::ResourceLimiter for MemoryLimiter {
     ) -> Result<bool> {
         if let Some(max) = maximum {
             if desired >= max {
-                return Err(Error::msg("oom"));
+                return Err(wasmtime::Error::msg("oom"));
             }
         }
 
         let d = desired - current;
         if d > self.bytes_left {
-            return Err(Error::msg("oom"));
+            return Err(wasmtime::Error::msg("oom"));
         }
 
         self.bytes_left -= d;

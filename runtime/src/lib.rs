@@ -5,7 +5,7 @@ macro_rules! catch_out_of_fuel {
     ($store: expr, $x:expr) => {{
         let y = $x;
         if y.is_err() && $store.get_fuel().is_ok_and(|x| x == 0) {
-            Err(Error::msg("plugin ran out of fuel"))
+            Err(wasmtime::Error::msg("plugin ran out of fuel"))
         } else {
             y
         }
