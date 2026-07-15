@@ -1,8 +1,7 @@
 name: Release Python SDK
 
 on:
-  release:
-    types: [published, edited]
+  workflow_call:
 
 jobs:
   release-sdks:
