@@ -104,7 +104,10 @@ typedef void (*ExtismFunctionType)(ExtismCurrentPlugin *plugin,
  */
 typedef void (*ExtismLogDrainFunctionType)(const char *data, ExtismSize size);
 
-
+/**
+ * A wrapper around `ValType::I64` to specify arguments that are pointers to memory blocks
+ */
+#define PTR ExtismValType_I64
 
 #ifdef __cplusplus
 extern "C" {
