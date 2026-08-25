@@ -1,7 +1,18 @@
 [workspace]
 resolver = "2"
-members = ["extism-maturin", "manifest", "runtime", "libextism", "convert", "convert-macros"]
+members = [
+  "extism-maturin",
+  "manifest",
+  "runtime",
+  "libextism",
+  "convert",
+  "convert-macros",
+  "wasm3-sys",
+]
 exclude = ["kernel"]
+# kernel stays its own workspace so `build.sh` can target wasm32 without
+# pulling wasm-bindgen into this workspace's lockfile. wasm3-sys tests depend
+# on it via path.
 
 [workspace.package]
 edition = "2021"

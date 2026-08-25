@@ -1,0 +1,25 @@
+[package]
+name = "wasm3-sys"
+description = "Extism's Wasm3 bindings: v0.9.0 C sources compiled in-tree (not crates.io wasm3)"
+edition.workspace = true
+authors.workspace = true
+license = "BSD-3-Clause AND MIT"
+homepage.workspace = true
+repository.workspace = true
+version.workspace = true
+links = "wasm3"
+build = "build.rs"
+exclude = []
+
+[features]
+default = []
+# Compile Wasm3's simple WASI snapshot (m3_LinkWASI). Extism's allowed_paths
+# story still needs a custom bind; this is only for experiments.
+wasi = []
+
+[build-dependencies]
+cc = "1.2"
+
+[dev-dependencies]
+extism-runtime-kernel = { path = "../kernel" }
+wat = "1"

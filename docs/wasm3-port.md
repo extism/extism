@@ -182,10 +182,9 @@ layer and restricts linked modules to "no memory / kernel-only."
 #### 3. Bindings story
 
 `wasm3` on crates.io is **0.3.1 from 2021**, marked looking-for-maintainer.
-Do not use it. Vendor Wasm3 C sources and bind `wasm3.h` ourselves (cc +
-bindgen, or a tiny `extern "C"` surface). Wasm3 itself is minimally maintained;
-EH/ref-types land via PRs, but there is no release cadence you can bet the
-runtime on.
+Do not use it. This branch vendors **Wasm3 v0.9.0** (2026-08-24) under
+`wasm3-sys/wasm3/` and compiles it with `cc` (`wasm3-sys`). The C API is
+bound by hand so we do not need libclang at build time.
 
 #### 4. SIMD / modern toolchains
 
@@ -212,10 +211,12 @@ platforms. Be explicit about the audience.
    Wasmtime until the runtime actually switches.
 2. **Engine-agnostic `Val` / host-function callback** (`&mut CurrentPlugin`,
    not `Caller<_>`). Required anyway; unblocks both a Wasm3 backend and tests.
-3. **Thin Wasm3 crate** in-tree: Environment / Runtime / parse / link raw /
-   call / `m3_GetMemory`. Vendor C sources.
+3. **Thin Wasm3 crate** in-tree (done): `wasm3-sys` vendors v0.9.0, compiles
+   with `cc`, and exposes Environment / Runtime / parse / link raw / call /
+   memory. `tests/echo.rs` runs `echo.wasm` through native `Kernel` host stubs.
 4. **Minimal `Plugin`**: load one plugin module, link kernel host functions +
-   PDK, `call` `echo` / `count_vowels` without WASI.
+   PDK, `call` `echo` / `count_vowels` without WASI. The echo test is a sketch
+   of this; `runtime/` is still Wasmtime.
 5. **Host functions** with a signature encoder (`ValType` → `"iI fF"`).
 6. Decide WASI: cut, or a small custom bind of the imported snapshot.
 7. **Timeout/cancel**: pick instrumentation vs Wasm3 patch *before* claiming
@@ -243,7 +244,7 @@ best-effort or return "unsupported."
 
 This is not a working Wasm3 `Plugin`. Wiring `runtime/src/plugin.rs` to Wasm3
 is the bulk of the port (linker, WASI, timer, SDK, tests). The native kernel
-exists so that work has a correct I/O layer to call.
+and `wasm3-sys` exist so that work has an I/O layer and an engine to call.
 
 [lib.rs]: ./src/lib.rs
 [Wasm3]: https://github.com/wasm3/wasm3

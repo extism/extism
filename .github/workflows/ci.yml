@@ -8,6 +8,7 @@ on:
       - runtime/**
       - rust/**
       - libextism/**
+      - wasm3-sys/**
   workflow_dispatch:
 
 name: Rust CI
