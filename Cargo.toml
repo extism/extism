@@ -8,6 +8,7 @@ members = [
   "convert",
   "convert-macros",
   "wasm3-sys",
+  "store",
 ]
 exclude = ["kernel"]
 # kernel stays its own workspace so `build.sh` can target wasm32 without
@@ -27,3 +28,4 @@ extism = { path = "./runtime", version = "0.0.0+replaced-by-ci" }
 extism-convert = { path = "./convert", version = "0.0.0+replaced-by-ci" }
 extism-convert-macros = { path = "./convert-macros", version = "0.0.0+replaced-by-ci" }
 extism-manifest = { path = "./manifest", version = "0.0.0+replaced-by-ci" }
+extism-store = { path = "./store", version = "0.0.0+replaced-by-ci" }

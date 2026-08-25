@@ -48,6 +48,7 @@ pub(crate) struct PluginBuilderOptions {
     pub(crate) cache_config: Option<Option<PathBuf>>,
     pub(crate) fuel: Option<u64>,
     pub(crate) http_response_headers: bool,
+    pub(crate) store: Option<extism_store::DurableStore>,
 }
 
 impl<'a> PluginBuilder<'a> {
@@ -63,6 +64,7 @@ impl<'a> PluginBuilder<'a> {
                 cache_config: None,
                 fuel: None,
                 http_response_headers: false,
+                store: None,
             },
         }
     }
@@ -192,6 +194,22 @@ impl<'a> PluginBuilder<'a> {
     pub fn with_http_response_headers(mut self, allow: bool) -> Self {
         self.options.http_response_headers = allow;
         self
+    }
+
+    /// Attach the Extism 2 store extension (`extism:host/store`).
+    ///
+    /// The store is host-owned SQLite, not kernel memory and not WASI
+    /// `allowed_paths`. Plugins that import the module can instantiate without
+    /// this; calls fail until a store is attached. Default backend is
+    /// [`extism_store::DurableStore::memory`].
+    pub fn with_store(mut self, store: extism_store::DurableStore) -> Self {
+        self.options.store = Some(store);
+        self
+    }
+
+    /// In-memory store extension for `id`.
+    pub fn with_memory_store(self, id: impl Into<String>) -> Result<Self, Error> {
+        Ok(self.with_store(extism_store::DurableStore::memory(id)?))
     }
 
     /// Generate a new plugin with the configured settings

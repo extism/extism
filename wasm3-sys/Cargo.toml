@@ -22,4 +22,5 @@ cc = "1.2"
 
 [dev-dependencies]
 extism-runtime-kernel = { path = "../kernel" }
+extism-store = { workspace = true }
 wat = "1"

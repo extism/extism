@@ -1,0 +1,18 @@
+[package]
+name = "extism-store"
+description = "Extism 2 durable store: SQLite-backed host storage for plugins"
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+homepage.workspace = true
+repository.workspace = true
+version.workspace = true
+
+[dependencies]
+anyhow = "1"
+rusqlite = { version = "0.32", features = ["bundled", "backup", "hooks"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[dev-dependencies]
+tempfile = "3"

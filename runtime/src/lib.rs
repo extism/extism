@@ -31,6 +31,7 @@ mod plugin;
 mod plugin_builder;
 mod pool;
 mod readonly_dir;
+pub(crate) mod store_ext;
 mod timer;
 
 /// Extism C API
@@ -39,9 +40,11 @@ pub mod sdk;
 pub use current_plugin::CurrentPlugin;
 pub use extism_convert::{FromBytes, FromBytesOwned, ToBytes};
 pub use extism_manifest::{Manifest, Wasm, WasmMetadata};
+pub use extism_store::{DurableStore, StoreOptions, STORE_MODULE};
 pub use function::{Function, UserData, Val, ValType, PTR};
 pub use plugin::{
-    CancelHandle, CompiledPlugin, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_USER_MODULE,
+    CancelHandle, CompiledPlugin, Plugin, WasmInput, EXTISM_ENV_MODULE, EXTISM_STORE_MODULE,
+    EXTISM_USER_MODULE,
 };
 pub use plugin_builder::{DebugOptions, PluginBuilder};
 pub use pool::{Pool, PoolBuilder, PoolPlugin};

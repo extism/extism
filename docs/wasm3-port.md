@@ -247,7 +247,11 @@ platforms. Be explicit about the audience.
    PDK, `call` `echo` / `count_vowels` without WASI. The echo test is a sketch
    of this; `runtime/` is still Wasmtime.
 5. **Host functions** with a signature encoder (`ValType` → `"iI fF"`).
-6. Decide WASI: cut, or a small custom bind of the imported snapshot.
+6. WASI FS (later): POSIX skin over the same SQLite object; drop `allowed_paths`.
+   Host↔guest files go through `DurableStore::fs_put` / `fs_get`. The store is
+   an Extism 2 **host extension** (`extism:host/store`), not kernel code — see
+   [`store/`](../store/). `wasm3-sys` tests already link that ABI over the
+   native kernel.
 7. **Timeout/cancel**: pick instrumentation vs Wasm3 patch *before* claiming
    feature parity. Do not ship without one if untrusted plugins matter.
 8. WAT via `wat` crate; drop cache/profiler/coredump/wasmtime config; document

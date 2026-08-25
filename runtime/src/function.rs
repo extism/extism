@@ -27,6 +27,8 @@ pub enum ValType {
 }
 
 /// A wrapper around `ValType::I64` to specify arguments that are pointers to memory blocks
+///
+/// cbindgen:ignore
 pub const PTR: ValType = ValType::I64;
 
 impl From<wasmtime::ValType> for ValType {

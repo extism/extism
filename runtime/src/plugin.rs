@@ -12,6 +12,7 @@ use crate::*;
 
 pub const EXTISM_ENV_MODULE: &str = "extism:host/env";
 pub const EXTISM_USER_MODULE: &str = "extism:host/user";
+pub const EXTISM_STORE_MODULE: &str = extism_store::STORE_MODULE;
 pub(crate) const MAIN_KEY: &str = "main";
 
 #[derive(Default, Clone)]
@@ -357,6 +358,8 @@ fn relink(
         get_log_level() -> I32;
     );
 
+    store_ext::link(engine, &mut linker)?;
+
     for (name, module) in modules.iter() {
         if name == EXTISM_ENV_MODULE {
             continue;
@@ -458,6 +461,7 @@ impl Plugin {
                 available_pages,
                 compiled.options.http_response_headers,
                 id,
+                compiled.options.store.clone(),
             )?,
         );
         store.set_epoch_deadline(1);
@@ -512,16 +516,25 @@ impl Plugin {
     ) -> Result<(), Error> {
         if self.store_needs_reset {
             let engine = self.store.engine().clone();
-            let internal = self.current_plugin_mut();
-            let with_wasi = internal.wasi.is_some();
+            let (with_wasi, manifest, available_pages, allow_headers, durable) = {
+                let internal = self.current_plugin_mut();
+                (
+                    internal.wasi.is_some(),
+                    internal.manifest.clone(),
+                    internal.available_pages,
+                    internal.http_headers.is_some(),
+                    internal.durable.clone(),
+                )
+            };
             self.store = Store::new(
                 &engine,
                 CurrentPlugin::new(
-                    internal.manifest.clone(),
-                    internal.wasi.is_some(),
-                    internal.available_pages,
-                    internal.http_headers.is_some(),
+                    manifest,
+                    with_wasi,
+                    available_pages,
+                    allow_headers,
                     self.id,
+                    durable,
                 )?,
             );
             self.store.set_epoch_deadline(1);
@@ -1201,6 +1214,11 @@ impl Plugin {
     /// Get a `CancelHandle`, which can be used from another thread to cancel a running plugin
     pub fn cancel_handle(&self) -> CancelHandle {
         self.cancel_handle.clone()
+    }
+
+    /// Extism 2 store extension, if [`PluginBuilder::with_store`] was used.
+    pub fn durable_store(&self) -> Option<&extism_store::DurableStore> {
+        self.current_plugin().durable.as_ref()
     }
 
     pub(crate) fn clear_error(&mut self) -> Result<(), Error> {

@@ -9,6 +9,7 @@ on:
       - rust/**
       - libextism/**
       - wasm3-sys/**
+      - store/**
   workflow_dispatch:
 
 name: Rust CI
@@ -41,7 +42,7 @@ jobs:
         uses: actions/cache@v3
         with:
           path: target/release/libextism.*
-          key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('convert/**') }}
+          key: ${{ runner.os }}-libextism-${{ hashFiles('runtime/**') }}-${{ hashFiles('manifest/**') }}-${{ hashFiles('convert/**') }}-${{ hashFiles('store/**') }}
       - name: Cache target
         id: cache-target
         uses: actions/cache@v3

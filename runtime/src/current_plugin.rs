@@ -19,6 +19,7 @@ pub struct CurrentPlugin {
     pub(crate) memory_limiter: Option<MemoryLimiter>,
     pub(crate) id: uuid::Uuid,
     pub(crate) start_time: std::time::Instant,
+    pub(crate) durable: Option<extism_store::DurableStore>,
 }
 
 unsafe impl Send for CurrentPlugin {}
@@ -341,6 +342,7 @@ impl CurrentPlugin {
         available_pages: Option<u32>,
         allow_http_response_headers: bool,
         id: uuid::Uuid,
+        durable: Option<extism_store::DurableStore>,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let auth = wasi_common::sync::ambient_authority();
@@ -407,6 +409,7 @@ impl CurrentPlugin {
             } else {
                 None
             },
+            durable,
         })
     }
 
