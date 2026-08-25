@@ -33,7 +33,15 @@
 //!
 //! These functions are backward compatible with the pre-kernel runtime, but a few new functions are added to
 //! give runtimes more access to the internals necesarry to load data in and out of a plugin.
-#![no_std]
+//!
+//! This crate builds two ways:
+//! - `wasm32-unknown-unknown` (via `build.sh`) produces `extism-runtime.wasm`, which Wasmtime
+//!   instantiates as `extism:host/env`.
+//! - native (this crate's default `cargo test` target) exposes [`Kernel`], a host-side copy of
+//!   the same allocator. Wasm3 cannot host the kernel as a sibling Wasm module (it shares one
+//!   linear memory across all modules in a runtime), so a Wasm3 backend should call [`Kernel`]
+//!   from host functions instead of loading `extism-runtime.wasm`.
+#![cfg_attr(target_arch = "wasm32", no_std)]
 #![allow(clippy::missing_safety_doc)]
 
 use core::sync::atomic::*;
@@ -42,7 +50,7 @@ pub type Pointer = u64;
 pub type Handle = u64;
 
 /// WebAssembly page size
-const PAGE_SIZE: usize = 65536;
+pub const PAGE_SIZE: usize = 65536;
 
 /// Provides information about the usage status of a `MemoryBlock`
 #[repr(u8)]
@@ -118,11 +126,13 @@ pub fn num_pages(nbytes: u64) -> usize {
 }
 
 // Get the `MemoryRoot`, this is always stored at offset 1 in memory
+#[cfg(target_arch = "wasm32")]
 #[inline]
 unsafe fn memory_root() -> &'static mut MemoryRoot {
     &mut *(1 as *mut MemoryRoot)
 }
 
+#[cfg(target_arch = "wasm32")]
 impl MemoryRoot {
     /// Initialize or load the `MemoryRoot` from the correct position in memory
     pub unsafe fn new() -> &'static mut MemoryRoot {
@@ -356,6 +366,7 @@ impl MemoryBlock {
 // Extism functions
 
 /// Allocate a block of memory and return the offset
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn alloc(n: u64) -> Handle {
     if n == 0 {
@@ -370,6 +381,7 @@ pub unsafe fn alloc(n: u64) -> Handle {
 }
 
 /// Free allocated memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn free(p: Handle) {
     if p == 0 {
@@ -392,6 +404,7 @@ pub unsafe fn free(p: Handle) {
 ///
 /// Note: this should only be called on memory handles returned
 /// by a call to `alloc` - it will return garbage on invalid offsets
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn length_unsafe(p: Handle) -> u64 {
     if p == 0 {
@@ -417,6 +430,7 @@ pub unsafe fn length_unsafe(p: Handle) -> u64 {
 ///
 /// Note: this function walks each node in the allocations list, which ensures correctness, but is also
 /// slow
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn length(p: Pointer) -> u64 {
     if p == 0 {
@@ -431,6 +445,7 @@ pub unsafe fn length(p: Pointer) -> u64 {
 }
 
 /// Load a byte from Extism-managed memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn load_u8(p: Pointer) -> u8 {
     #[cfg(feature = "bounds-checking")]
@@ -441,6 +456,7 @@ pub unsafe fn load_u8(p: Pointer) -> u8 {
 }
 
 /// Load a u64 from Extism-managed memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn load_u64(p: Pointer) -> u64 {
     #[cfg(feature = "bounds-checking")]
@@ -451,6 +467,7 @@ pub unsafe fn load_u64(p: Pointer) -> u64 {
 }
 
 /// Load a byte from the input data
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn input_load_u8(offset: u64) -> u8 {
     let root = MemoryRoot::new();
@@ -462,6 +479,7 @@ pub unsafe fn input_load_u8(offset: u64) -> u8 {
 }
 
 /// Load a u64 from the input data
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn input_load_u64(offset: u64) -> u64 {
     let root = MemoryRoot::new();
@@ -473,6 +491,7 @@ pub unsafe fn input_load_u64(offset: u64) -> u64 {
 }
 
 /// Write a byte in Extism-managed memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn store_u8(p: Pointer, x: u8) {
     #[cfg(feature = "bounds-checking")]
@@ -483,6 +502,7 @@ pub unsafe fn store_u8(p: Pointer, x: u8) {
 }
 
 /// Write a u64 in Extism-managed memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn store_u64(p: Pointer, x: u64) {
     #[cfg(feature = "bounds-checking")]
@@ -497,6 +517,7 @@ pub unsafe fn store_u64(p: Pointer, x: u64) {
 /// len must match length(handle)
 /// **Note**: this function takes ownership of the handle passed in
 /// the caller should not `free` this value
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn input_set(h: Handle, len: u64) {
     let root = MemoryRoot::new();
@@ -513,6 +534,7 @@ pub unsafe fn input_set(h: Handle, len: u64) {
 /// Set the range of the output data in memory
 /// **Note**: this function takes ownership of the handle passed in
 /// the caller should not `free` this value
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn output_set(p: Pointer, len: u64) {
     let root = MemoryRoot::new();
@@ -527,30 +549,35 @@ pub unsafe fn output_set(p: Pointer, len: u64) {
 }
 
 /// Get the input length
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub fn input_length() -> u64 {
     unsafe { MemoryRoot::new().input_length }
 }
 
 /// Get the input offset in Exitsm-managed memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub fn input_offset() -> Handle {
     unsafe { MemoryRoot::new().input_offset }
 }
 
 /// Get the output length
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub fn output_length() -> u64 {
     unsafe { MemoryRoot::new().output_length }
 }
 
 /// Get the output offset in Extism-managed memory
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn output_offset() -> Pointer {
     MemoryRoot::new().output_offset
 }
 
 /// Reset the allocator
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn reset() {
     MemoryRoot::new().reset()
@@ -560,6 +587,7 @@ pub unsafe fn reset() {
 /// function should not be freed after this call
 /// **Note**: this function takes ownership of the handle passed in
 /// the caller should not `free` this value
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn error_set(h: Handle) {
     let root = MemoryRoot::new();
@@ -578,18 +606,28 @@ pub unsafe fn error_set(h: Handle) {
 }
 
 /// Get the error message offset, if it's `0` then no error has been set
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn error_get() -> Handle {
     MemoryRoot::new().error.load(Ordering::SeqCst)
 }
 
 /// Get the position of the allocator, this can be used as an indication of how many bytes are currently in-use
+#[cfg(target_arch = "wasm32")]
 #[no_mangle]
 pub unsafe fn memory_bytes() -> u64 {
     MemoryRoot::new().length.load(Ordering::Acquire)
 }
 
-#[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+mod host;
+
+/// Host-side Extism kernel. Use this when the Wasm engine cannot instantiate
+/// `extism-runtime.wasm` as a separate module with its own linear memory (Wasm3).
+#[cfg(not(target_arch = "wasm32"))]
+pub use host::Kernel;
+
+#[cfg(all(test, target_arch = "wasm32"))]
 mod test {
     use crate::*;
     use wasm_bindgen_test::*;

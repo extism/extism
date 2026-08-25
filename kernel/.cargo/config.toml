@@ -1,2 +1,3 @@
-[build]
-target = "wasm32-unknown-unknown"
+# Do not force wasm32 as the default target: native `cargo test` builds the host
+# Kernel used by a Wasm3 (or any non-multi-memory) runtime. `build.sh` still
+# passes `--target wasm32-unknown-unknown` when producing extism-runtime.wasm.

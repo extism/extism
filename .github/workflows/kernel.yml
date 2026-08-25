@@ -37,6 +37,12 @@ jobs:
           git diff --exit-code
           export GIT_EXIT_CODE=$?
 
+      - name: Native kernel tests
+        shell: bash
+        run: |
+          cd kernel
+          cargo test
+
       - uses: peter-evans/create-pull-request@v5
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
