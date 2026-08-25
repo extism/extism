@@ -164,20 +164,49 @@ wedge the host" story. That is a core product feature, not a nicety.
 
 #### 2. Multi-module manifests (`runtime/examples/linking.rs`)
 
-Extism can load several Wasm modules and let `main` import another's exports
-(e.g. `upper.wasm` providing `extism:host/user::host_reflect` for
-`reflect.wasm`). Wasmtime's linker does this natively.
+This is a **Wasm3 engine** limit, not a leftover of putting `kernel.wasm` in
+the same runtime. The native kernel actually makes combining *easier*: plugins
+already pass bytes through `extism:host/env`, never by sharing linear memory.
 
-Wasm3 cannot. You would have to:
+Extism combining is name-based, from the Manifest:
 
-- Load each module (memory-sharing problem if more than one defines memory).
-- For every export used as an import, install a host trampoline that
-  `m3_Call`s the other module.
+- `Manifest.wasm` is a list of modules. `WasmMetadata.name` is the import
+  namespace (`extism:host/user`, `commander`, …).
+- One module is `main` (explicitly named, or the last entry).
+- `runtime/src/manifest.rs` builds `BTreeMap<name, Module>`. `relink` then
+  uses Wasmtime's linker so `(import "commander" "_start")` binds to the
+  module named `commander`.
+- Linked modules may only import **functions** from the kernel (not its
+  memory). I/O stays kernel handles.
 
-`upper.wasm` happens to define **no memory** and only talks to the kernel, so
-a trampoline might work for that demo. General plugin-to-plugin linking with
-two memories will not. **Call this a cut** unless someone builds the trampoline
-layer and restricts linked modules to "no memory / kernel-only."
+Wasm3 v0.9.0 can do that function-import part. Unresolved imports are
+satisfied by another module in the same `M3Runtime` whose
+`m3_SetModuleName` matches the import module (`ResolveImportedFunction` in
+`m3_compile.c`). `wasm3-sys` tests (`tests/link.rs`) cover:
+
+- `upper.wasm` / `linking.rs` shape: helper named `extism:host/user`, main
+  imports `host_reflect`.
+- `test_linking` shape: helper named `commander` holds a mutable global;
+  main calls `_start` / `read_counter`.
+
+What Wasm3 will not do is give each module its own linear memory. There is
+one buffer per runtime, so two PDK plugins that both declare `(memory …)`
+collide (the same test file shows a store in A visible as a load in B).
+Helpers that have **no** memory section — typical for `upper.wat` and the
+in-tree commander fixture — are fine in one runtime. Compile named helpers
+(`m3_CompileModule`) before compiling `main`: Wasm3 has one compilation
+workspace per runtime, so resolving an import by compiling the callee
+in-place clobbers the caller.
+
+Two full plugins (each with a heap) can still be combined the Extism way:
+separate `M3Runtime`s (separate memories) plus host trampolines that
+`m3_Call` the other runtime, sharing one native `Kernel`. That is extra
+work, not a Manifest-level impossibility. Mutual re-entry (A calls B calls
+A) would need care; the usual graph is a DAG of helpers into `main`.
+
+**Not a cut** for Manifest-style "A's exports are B's imports" when the
+imported module is function + globals + kernel. **Cut or trampoline** when
+two modules each need an isolated memory.
 
 #### 3. Bindings story
 
@@ -222,7 +251,8 @@ platforms. Be explicit about the audience.
 7. **Timeout/cancel**: pick instrumentation vs Wasm3 patch *before* claiming
    feature parity. Do not ship without one if untrusted plugins matter.
 8. WAT via `wat` crate; drop cache/profiler/coredump/wasmtime config; document
-   SIMD and multi-module cuts.
+   SIMD. Manifest combining of named function exports works on Wasm3 v0.9.0;
+   two isolated memories need separate runtimes or a trampoline.
 9. Only then consider replacing Wasmtime in `runtime/` instead of
    `cfg`-switching engines.
 

@@ -125,6 +125,8 @@ pub struct Runtime {
     raw: ffi::IM3Runtime,
     // Parsed modules need the original bytes to remain valid.
     kept_bytes: Vec<Vec<u8>>,
+    // m3_SetModuleName stores a borrowed pointer; keep the CStrings alive.
+    kept_names: Vec<CString>,
 }
 
 impl Runtime {
@@ -140,6 +142,7 @@ impl Runtime {
             env: env.clone(),
             raw,
             kept_bytes: Vec::new(),
+            kept_names: Vec::new(),
         })
     }
 
@@ -174,6 +177,7 @@ impl Runtime {
         Ok(LoadedModule {
             runtime: self.raw,
             raw: module,
+            kept_names: &mut self.kept_names,
             _marker: std::marker::PhantomData,
         })
     }
@@ -230,6 +234,7 @@ impl Drop for Runtime {
 pub struct LoadedModule<'rt> {
     runtime: ffi::IM3Runtime,
     raw: ffi::IM3Module,
+    kept_names: &'rt mut Vec<CString>,
     _marker: std::marker::PhantomData<&'rt Runtime>,
 }
 
@@ -286,6 +291,32 @@ impl LoadedModule<'_> {
     #[cfg(feature = "wasi")]
     pub fn link_wasi(&mut self) -> Result<()> {
         check_rt(self.runtime, unsafe { ffi::m3_LinkWASI(self.raw) })
+    }
+
+    /// Register this module under a Manifest-style name (`main`, `extism:host/user`,
+    /// `commander`, …). Wasm3 v0.9.0 resolves function imports against this name
+    /// when no host function was linked (`ResolveImportedFunction`).
+    ///
+    /// The C API keeps a borrowed pointer; the string is stored on the [`Runtime`].
+    /// Compile this module ([`Self::compile`]) after naming and host-linking it,
+    /// and before compiling importers — Wasm3 has one compilation workspace per
+    /// runtime, so compiling a callee from inside an importer clobbers the caller.
+    pub fn set_name(&mut self, name: &str) -> Result<()> {
+        let cname = CString::new(name).map_err(|_| Error("module name contains NUL".into()))?;
+        self.kept_names.push(cname);
+        let ptr = self
+            .kept_names
+            .last()
+            .expect("just pushed module name")
+            .as_ptr();
+        unsafe { ffi::m3_SetModuleName(self.raw, ptr) };
+        Ok(())
+    }
+
+    /// Compile every function in this module. Call this on helpers after
+    /// [`Self::set_name`] / host linking and before loading the importer.
+    pub fn compile(&mut self) -> Result<()> {
+        check_rt(self.runtime, unsafe { ffi::m3_CompileModule(self.raw) })
     }
 
     pub fn as_ptr(&self) -> ffi::IM3Module {
