@@ -55,7 +55,7 @@ fn main() {
         println!("cargo:rustc-link-lib=m");
     }
 
-    let version = std::fs::read_to_string(manifest_dir.join("VERSION"))
-        .unwrap_or_else(|_| "unknown".into());
+    let version =
+        std::fs::read_to_string(manifest_dir.join("VERSION")).unwrap_or_else(|_| "unknown".into());
     println!("cargo:rustc-env=WASM3_VERSION={}", version.trim());
 }
