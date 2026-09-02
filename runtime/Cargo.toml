@@ -62,7 +62,7 @@ cbindgen = { version = "0.29", default-features = false }
 [dev-dependencies]
 criterion = "0.7.0"
 quickcheck = "1"
-rand = "0.9.0"
+rand = "0.10.2"
 wat = "1"
 
 [[bench]]
