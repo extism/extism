@@ -1254,6 +1254,19 @@ impl Plugin {
             )
         })
     }
+
+    /// Returns the current memory limiter status, or `None` if no memory
+    /// limit was configured (i.e., `available_pages` was `None` in the manifest).
+    pub fn memory_status(&self) -> Option<MemoryStatus> {
+        self.store
+            .data()
+            .memory_limiter
+            .as_ref()
+            .map(|limiter| MemoryStatus {
+                bytes_left: limiter.bytes_left,
+                max_bytes: limiter.max_bytes,
+            })
+    }
 }
 
 // Enumerates the PDK languages that need some additional initialization

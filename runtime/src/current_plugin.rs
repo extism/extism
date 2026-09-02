@@ -24,8 +24,17 @@ pub struct CurrentPlugin {
 unsafe impl Send for CurrentPlugin {}
 
 pub(crate) struct MemoryLimiter {
-    bytes_left: usize,
-    max_bytes: usize,
+    pub(crate) bytes_left: usize,
+    pub(crate) max_bytes: usize,
+}
+
+/// Reports the current memory limiter state of a plugin.
+#[derive(Clone, Copy, Debug)]
+pub struct MemoryStatus {
+    /// Remaining allocatable bytes.
+    pub bytes_left: usize,
+    /// Configured maximum bytes.
+    pub max_bytes: usize,
 }
 
 impl MemoryLimiter {
