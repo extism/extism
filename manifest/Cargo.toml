@@ -11,7 +11,7 @@ version.workspace = true
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 base64 = "~0.22"
-schemars = { version = "0.8", optional = true }
+schemars = { version = "1.2", optional = true }
 serde_json = "1"
 
 [features]
