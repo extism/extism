@@ -120,9 +120,17 @@ impl CompiledPlugin {
                         }
                     }
                     None => {
-                        // load cache configuration from the system default path
-                        let cache = wasmtime::Cache::from_file(None)?;
-                        Ok(Some(cache))
+                        // Load cache configuration from the system default path.
+                        // Some platforms (e.g. Android) have no default config
+                        // path, but caching is only an optimization so fall back
+                        // to disabled cache instead of failing plugin creation.
+                        match wasmtime::Cache::from_file(None) {
+                            Ok(cache) => Ok(Some(cache)),
+                            Err(e) => {
+                                warn!("Failed to load default wasmtime cache config, disabling cache: {e:#}");
+                                Ok(None)
+                            }
+                        }
                     }
                 }
             }
