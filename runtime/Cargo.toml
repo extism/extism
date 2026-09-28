@@ -9,7 +9,7 @@ repository.workspace = true
 version.workspace = true
 
 [dependencies]
-wasmtime = { version = "48", default-features = false, features = [
+wasmtime = { version = "49", default-features = false, features = [
   'anyhow',
   'cache',
   'gc',
@@ -21,7 +21,7 @@ wasmtime = { version = "48", default-features = false, features = [
   'pooling-allocator',
   'demangle',
 ] }
-wasmtime-wasi = { version = "48", default-features = false, features = ["p1"] }
+wasmtime-wasi = { version = "49", default-features = false, features = ["p1"] }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
