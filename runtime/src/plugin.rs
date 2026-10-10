@@ -504,11 +504,9 @@ impl Plugin {
 
         plugin.current_plugin_mut().store = &mut plugin.store;
         plugin.current_plugin_mut().linker = &mut plugin.linker;
-        if available_pages.is_some() {
-            plugin
-                .store
-                .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
-        }
+        plugin
+            .store
+            .limiter(|internal| &mut internal.memory_limiter);
         debug!("{} created", plugin.id);
         Ok(plugin)
     }
@@ -553,10 +551,8 @@ impl Plugin {
             let current_plugin = self.current_plugin_mut();
             current_plugin.store = store;
             current_plugin.linker = linker;
-            if current_plugin.available_pages.is_some() {
-                self.store
-                    .limiter(|internal| internal.memory_limiter.as_mut().unwrap());
-            }
+            self.store
+                .limiter(|internal| &mut internal.memory_limiter);
 
             self.instantiations = 0;
             **instance_lock = None;
@@ -582,9 +578,7 @@ impl Plugin {
         );
         **instance_lock = Some(instance);
         self.instantiations += 1;
-        if let Some(limiter) = &mut self.current_plugin_mut().memory_limiter {
-            limiter.reset();
-        }
+        self.current_plugin_mut().memory_limiter.reset();
         self.detect_guest_runtime(instance_lock);
         self.initialize_guest_runtime()?;
         Ok(())
@@ -1253,6 +1247,14 @@ impl Plugin {
                     .expect("fuel support should be enabled to use fuel"),
             )
         })
+    }
+
+    /// Returns total currently allocated linear memory bytes across the store.
+    ///
+    /// This value is tracked by the store resource limiter and covers linear-memory
+    /// growth for all memories in the store.
+    pub fn memory_allocated_total(&mut self) -> u64 {
+        self.current_plugin().memory_limiter.bytes_used()
     }
 }
 

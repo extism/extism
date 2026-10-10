@@ -16,7 +16,7 @@ pub struct CurrentPlugin {
     pub(crate) http_status: u16,
     pub(crate) http_headers: Option<std::collections::BTreeMap<String, String>>,
     pub(crate) available_pages: Option<u32>,
-    pub(crate) memory_limiter: Option<MemoryLimiter>,
+    pub(crate) memory_limiter: MemoryLimiter,
     pub(crate) id: uuid::Uuid,
     pub(crate) start_time: std::time::Instant,
 }
@@ -31,6 +31,10 @@ pub(crate) struct MemoryLimiter {
 impl MemoryLimiter {
     pub(crate) fn reset(&mut self) {
         self.bytes_left = self.max_bytes;
+    }
+
+    pub(crate) fn bytes_used(&self) -> u64 {
+        self.max_bytes.saturating_sub(self.bytes_left) as u64
     }
 }
 
@@ -379,14 +383,14 @@ impl CurrentPlugin {
             None
         };
 
-        let memory_limiter = if let Some(pgs) = available_pages {
-            let n = pgs as usize * 65536;
-            Some(MemoryLimiter {
-                max_bytes: n,
-                bytes_left: n,
-            })
+        let max_bytes = if let Some(pgs) = available_pages {
+            (pgs as usize).saturating_mul(65536)
         } else {
-            None
+            usize::MAX
+        };
+        let memory_limiter = MemoryLimiter {
+            max_bytes,
+            bytes_left: max_bytes,
         };
 
         Ok(CurrentPlugin {
