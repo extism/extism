@@ -46,6 +46,9 @@ pub struct CompiledPlugin {
     pub(crate) modules: BTreeMap<String, Module>,
     pub(crate) options: PluginBuilderOptions,
     pub(crate) engine: wasmtime::Engine,
+    /// Variables shared across every `Plugin` instance created from this
+    /// compiled plugin
+    pub(crate) vars: crate::current_plugin::Vars,
 }
 
 impl CompiledPlugin {
@@ -89,6 +92,7 @@ impl CompiledPlugin {
             modules,
             options: builder.options,
             engine,
+            vars: Default::default(),
         })
     }
 
@@ -464,6 +468,7 @@ impl Plugin {
                 available_pages,
                 compiled.options.http_response_headers,
                 id,
+                compiled.vars.clone(),
             )?,
         );
         store.set_epoch_deadline(1);
@@ -522,6 +527,7 @@ impl Plugin {
             let engine = self.store.engine().clone();
             let internal = self.current_plugin_mut();
             let with_wasi = internal.wasi.is_some();
+            let vars = internal.vars.clone();
             self.store = Store::new(
                 &engine,
                 CurrentPlugin::new(
@@ -530,6 +536,7 @@ impl Plugin {
                     internal.available_pages,
                     internal.http_headers.is_some(),
                     self.id,
+                    vars,
                 )?,
             );
             self.store.set_epoch_deadline(1);

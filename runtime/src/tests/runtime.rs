@@ -807,6 +807,30 @@ fn test_no_vars() {
 }
 
 #[test]
+fn test_vars_shared_across_instances() {
+    // Every `Plugin` created from the same `CompiledPlugin` should share a
+    // single set of vars.
+    let compiled = CompiledPlugin::new(PluginBuilder::new(WASM_NO_FUNCTIONS)).unwrap();
+    let mut p1 = Plugin::new_from_compiled(&compiled).unwrap();
+    let mut p2 = Plugin::new_from_compiled(&compiled).unwrap();
+
+    // A var set on one instance...
+    p1.current_plugin_mut()
+        .vars_mut()
+        .insert("key".to_string(), b"value".to_vec());
+
+    // ...is visible from every other instance.
+    assert_eq!(
+        p2.current_plugin().vars().get("key").map(|v| v.as_slice()),
+        Some(b"value".as_slice())
+    );
+
+    // Removing it from one instance removes it everywhere.
+    p2.current_plugin_mut().vars_mut().remove("key");
+    assert!(p1.current_plugin().vars().get("key").is_none());
+}
+
+#[test]
 fn test_linking() {
     let manifest = Manifest::new([
         Wasm::Data {

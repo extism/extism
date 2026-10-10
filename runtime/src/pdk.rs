@@ -77,15 +77,11 @@ pub(crate) fn var_get(
     let key = unsafe {
         std::str::from_utf8_unchecked(std::slice::from_raw_parts(key.as_ptr(), key.len()))
     };
-    let val = data.vars.get(key);
-    let ptr = val.map(|x| (x.len(), x.as_ptr()));
+    let value = data.vars.lock().unwrap().get(key).cloned();
     data.memory_free(handle)?;
 
-    let mem = match ptr {
-        Some((len, ptr)) => {
-            let bytes = unsafe { std::slice::from_raw_parts(ptr, len) };
-            data.memory_new(bytes)?
-        }
+    let mem = match value {
+        Some(bytes) => data.memory_new(&bytes)?,
         None => {
             output[0] = Val::I64(0);
             return Ok(());
@@ -127,7 +123,7 @@ pub(crate) fn var_set(
 
     // Remove if the value offset is 0
     if voffset == 0 {
-        data.vars.remove(key);
+        data.vars.lock().unwrap().remove(key);
         data.memory_free(key_handle)?;
         return Ok(());
     }
@@ -142,7 +138,7 @@ pub(crate) fn var_set(
         + key.len()
         + handle.length as usize;
 
-    for (k, v) in data.vars.iter() {
+    for (k, v) in data.vars.lock().unwrap().iter() {
         size += k.len();
         size += v.len();
         size += std::mem::size_of::<String>() + std::mem::size_of::<Vec<u8>>();
@@ -158,8 +154,8 @@ pub(crate) fn var_set(
     data.memory_free(handle)?;
     data.memory_free(key_handle)?;
 
-    // Insert the value from memory into the `vars` map
-    data.vars.insert(key.to_string(), value);
+    // Insert the value from memory into the shared `vars` map
+    data.vars.lock().unwrap().insert(key.to_string(), value);
 
     Ok(())
 }

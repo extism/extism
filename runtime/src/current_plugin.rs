@@ -2,11 +2,17 @@ use wasmtime::error::Context as _;
 
 use crate::*;
 
+/// Plugin variables, shared across every instance created from the same
+/// [`CompiledPlugin`]. Wrapped in an `Arc<Mutex<..>>` so that updates made by
+/// one instance are visible to all others and survive a store reset.
+pub(crate) type Vars =
+    std::sync::Arc<std::sync::Mutex<std::collections::BTreeMap<String, Vec<u8>>>>;
+
 /// CurrentPlugin stores data that is available to the caller in PDK functions, this should
 /// only be accessed from inside a host function
 pub struct CurrentPlugin {
-    /// Plugin variables
-    pub(crate) vars: std::collections::BTreeMap<String, Vec<u8>>,
+    /// Plugin variables, shared across every instance
+    pub(crate) vars: Vars,
 
     /// Extism manifest
     pub(crate) manifest: extism_manifest::Manifest,
@@ -325,14 +331,19 @@ impl CurrentPlugin {
         Ok(len)
     }
 
-    /// Access a plugin's variables
-    pub fn vars(&self) -> &std::collections::BTreeMap<String, Vec<u8>> {
-        &self.vars
+    /// Access a plugin's variables. The variables are shared across every
+    /// instance created from the same [`CompiledPlugin`], so the returned guard
+    /// briefly locks the shared store.
+    pub fn vars(&self) -> std::sync::MutexGuard<'_, std::collections::BTreeMap<String, Vec<u8>>> {
+        self.vars.lock().unwrap()
     }
 
-    /// Mutable access to a plugin's variables
-    pub fn vars_mut(&mut self) -> &mut std::collections::BTreeMap<String, Vec<u8>> {
-        &mut self.vars
+    /// Mutable access to a plugin's variables. The variables are shared across
+    /// every instance created from the same [`CompiledPlugin`].
+    pub fn vars_mut(
+        &mut self,
+    ) -> std::sync::MutexGuard<'_, std::collections::BTreeMap<String, Vec<u8>>> {
+        self.vars.lock().unwrap()
     }
 
     /// Plugin manifest
@@ -346,6 +357,7 @@ impl CurrentPlugin {
         available_pages: Option<u32>,
         allow_http_response_headers: bool,
         id: uuid::Uuid,
+        vars: Vars,
     ) -> Result<Self, Error> {
         let wasi = if wasi {
             let mut ctx = wasmtime_wasi::WasiCtxBuilder::new();
@@ -393,7 +405,7 @@ impl CurrentPlugin {
             wasi,
             manifest,
             http_status: 0,
-            vars: BTreeMap::new(),
+            vars,
             linker: std::ptr::null_mut(),
             store: std::ptr::null_mut(),
             available_pages,
