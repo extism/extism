@@ -164,6 +164,28 @@ pub(crate) fn var_set(
     Ok(())
 }
 
+/// Maximum number of redirects followed by `http_request` (same as ureq's default)
+#[cfg(feature = "http")]
+const MAX_HTTP_REDIRECTS: u32 = 10;
+
+/// Check whether the host of `url` matches one of the manifest's `allowed_hosts`
+#[cfg(feature = "http")]
+fn host_allowed(allowed_hosts: &Option<Vec<String>>, url: &url::Url) -> bool {
+    let host_str = url.host_str().unwrap_or_default();
+    if let Some(allowed_hosts) = allowed_hosts {
+        allowed_hosts.iter().any(|url| {
+            let pat = match glob::Pattern::new(url) {
+                Ok(x) => x,
+                Err(_) => return url == host_str,
+            };
+
+            pat.matches(host_str)
+        })
+    } else {
+        false
+    }
+}
+
 /// Make an HTTP request
 /// Params: i64 (offset to JSON encoded HttpRequest), i64 (offset to body or 0)
 /// Returns: i64 (offset)
@@ -211,65 +233,110 @@ pub(crate) fn http_request(
             Ok(u) => u,
             Err(e) => return Err(Error::msg(format!("Invalid URL: {e:?}"))),
         };
-        let allowed_hosts = &data.manifest.allowed_hosts;
-        let host_str = url.host_str().unwrap_or_default();
-        let host_matches = if let Some(allowed_hosts) = allowed_hosts {
-            allowed_hosts.iter().any(|url| {
-                let pat = match glob::Pattern::new(url) {
-                    Ok(x) => x,
-                    Err(_) => return url == host_str,
-                };
-
-                pat.matches(host_str)
-            })
-        } else {
-            false
-        };
-
-        if !host_matches {
+        if !host_allowed(&data.manifest.allowed_hosts, &url) {
             return Err(Error::msg(format!(
                 "HTTP request to {} is not allowed",
                 req.url
             )));
         }
 
-        let mut r = ureq::http::request::Builder::new()
-            .method(
-                req.method
-                    .as_deref()
-                    .unwrap_or("GET")
-                    .to_uppercase()
-                    .as_str(),
-            )
-            .uri(&req.url);
-
-        for (k, v) in req.headers.iter() {
-            r = r.header(k, v);
-        }
-
-        // Set HTTP timeout to respect the manifest timeout
-        let timeout = data.time_remaining();
-        let res = if body_offset > 0 {
+        let body = if body_offset > 0 {
             let handle = match data.memory_handle(body_offset) {
                 Some(h) => h,
                 None => {
                     anyhow::bail!("invalid handle offset for http request body: {http_req_offset}")
                 }
             };
-            let buf: &[u8] = data.memory_bytes(handle)?;
-            let agent = ureq::agent();
-            let config = agent
-                .configure_request(r.body(buf)?)
-                .http_status_as_error(false);
-            let req = config.timeout_global(timeout).build();
-            ureq::run(req)
+            Some(data.memory_bytes(handle)?.to_vec())
         } else {
+            None
+        };
+
+        // Redirects are followed here instead of by ureq so that every
+        // redirect target is checked against `allowed_hosts`. The rules
+        // below mirror ureq's defaults.
+        let mut method = req.method.as_deref().unwrap_or("GET").to_uppercase();
+        let mut uri = req.url.clone();
+        let mut headers = req.headers.clone();
+        let mut body = body;
+        let mut redirects = 0;
+        let res = loop {
+            let mut r = ureq::http::request::Builder::new()
+                .method(method.as_str())
+                .uri(&uri);
+
+            for (k, v) in headers.iter() {
+                r = r.header(k, v);
+            }
+
+            // Set HTTP timeout to respect the manifest timeout
+            let timeout = data.time_remaining();
             let agent = ureq::agent();
-            let config = agent
-                .configure_request(r.body(())?)
-                .http_status_as_error(false);
-            let req = config.timeout_global(timeout).build();
-            ureq::run(req)
+            let res = if let Some(buf) = &body {
+                let config = agent
+                    .configure_request(r.body(buf.as_slice())?)
+                    .http_status_as_error(false)
+                    .max_redirects(0);
+                let req = config.timeout_global(timeout).build();
+                ureq::run(req)
+            } else {
+                let config = agent
+                    .configure_request(r.body(())?)
+                    .http_status_as_error(false)
+                    .max_redirects(0);
+                let req = config.timeout_global(timeout).build();
+                ureq::run(req)
+            };
+
+            let (status, location) = match &res {
+                Ok(res) => (res.status().as_u16(), res.headers().get("location")),
+                Err(_) => break res,
+            };
+            // Like ureq: any 3xx except 304 with a Location header is a redirect
+            let Some(location) = location.filter(|_| (300..400).contains(&status) && status != 304)
+            else {
+                break res;
+            };
+            let location = match location.to_str() {
+                Ok(x) => x.to_string(),
+                Err(_) => anyhow::bail!("HTTP redirect has an invalid Location header"),
+            };
+
+            if redirects >= MAX_HTTP_REDIRECTS {
+                anyhow::bail!(
+                    "HTTP request to {} exceeded the maximum number of redirects",
+                    req.url
+                );
+            }
+            redirects += 1;
+
+            if status == 307 || status == 308 {
+                // Keep the method, but do not resend a request body (same as ureq)
+                if matches!(method.as_str(), "POST" | "PUT" | "PATCH" | "DELETE") {
+                    anyhow::bail!("HTTP request to {} failed to follow redirect", req.url);
+                }
+            } else if method != "GET" && method != "HEAD" {
+                method = "GET".to_string();
+            }
+            body = None;
+
+            let next = match url::Url::parse(&uri).and_then(|u| u.join(&location)) {
+                Ok(u) => u,
+                Err(e) => return Err(Error::msg(format!("Invalid redirect URL: {e:?}"))),
+            };
+            if !host_allowed(&data.manifest.allowed_hosts, &next) {
+                return Err(Error::msg(format!(
+                    "HTTP request to {} is not allowed (redirected from {})",
+                    next, req.url
+                )));
+            }
+
+            headers.retain(|k, _| {
+                !k.eq_ignore_ascii_case("authorization")
+                    && !k.eq_ignore_ascii_case("cookie")
+                    && !k.eq_ignore_ascii_case("content-length")
+            });
+            uri = next.to_string();
         };
 
         if let Some(handle) = data.memory_handle(body_offset) {
