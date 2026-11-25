@@ -436,3 +436,45 @@ quickcheck! {
         true
     }
 }
+
+fn extism_output_set<T>(store: &mut wasmtime::Store<T>, instance: &mut Instance, p: u64, l: u64) {
+    instance
+        .get_func(&mut *store, "output_set")
+        .unwrap()
+        .call(store, &[Val::I64(p as i64), Val::I64(l as i64)], &mut [])
+        .unwrap();
+}
+
+fn extism_get_u64<T>(store: &mut wasmtime::Store<T>, instance: &mut Instance, name: &str) -> u64 {
+    let out = &mut [Val::I64(0)];
+    instance
+        .get_func(&mut *store, name)
+        .unwrap()
+        .call(store, &[], out)
+        .unwrap();
+    out[0].unwrap_i64() as u64
+}
+
+#[test]
+fn test_kernel_input_output_set_overflow() {
+    let (mut store, mut instance) = init_kernel_test();
+    let store = &mut store;
+    let instance = &mut instance;
+
+    let p = extism_alloc(store, instance, 16);
+
+    // valid ranges are accepted
+    extism_output_set(store, instance, p, 16);
+    assert_eq!(extism_get_u64(store, instance, "output_length"), 16);
+    extism_input_set(store, instance, p, 16);
+    assert_eq!(extism_get_u64(store, instance, "input_length"), 16);
+
+    extism_reset(store, instance);
+    let p = extism_alloc(store, instance, 16);
+
+    // `p + len` overflows, the range must be rejected
+    extism_output_set(store, instance, p, u64::MAX);
+    assert_eq!(extism_get_u64(store, instance, "output_length"), 0);
+    extism_input_set(store, instance, p, u64::MAX);
+    assert_eq!(extism_get_u64(store, instance, "input_length"), 0);
+}
