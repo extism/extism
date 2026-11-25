@@ -171,6 +171,17 @@ impl CurrentPlugin {
         let (linker, store) = self.linker_and_store();
         if let Ok(mem) = linker.get(&mut *store, EXTISM_ENV_MODULE, "memory") {
             let mem = mem.into_memory().unwrap();
+            let in_bounds = handle
+                .offset()
+                .checked_add(handle.length)
+                .is_some_and(|end| end <= mem.data_size(&*store) as u64);
+            if !in_bounds {
+                anyhow::bail!(
+                    "memory range out of bounds: offset={}, length={}",
+                    handle.offset(),
+                    handle.length
+                );
+            }
             let ptr = unsafe { mem.data_ptr(&*store).add(handle.offset() as usize) };
             if ptr.is_null() {
                 return Ok(&mut []);
@@ -185,6 +196,17 @@ impl CurrentPlugin {
         let (linker, store) = self.linker_and_store();
         if let Ok(mem) = linker.get(&mut *store, EXTISM_ENV_MODULE, "memory") {
             let mem = mem.into_memory().unwrap();
+            let in_bounds = handle
+                .offset()
+                .checked_add(handle.length)
+                .is_some_and(|end| end <= mem.data_size(&*store) as u64);
+            if !in_bounds {
+                anyhow::bail!(
+                    "memory range out of bounds: offset={}, length={}",
+                    handle.offset(),
+                    handle.length
+                );
+            }
             let ptr = unsafe { mem.data_ptr(&*store).add(handle.offset() as usize) };
             if ptr.is_null() {
                 return Ok(&[]);

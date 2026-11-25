@@ -55,3 +55,31 @@ fn test_issue_775() {
     .unwrap();
     println!("{p}");
 }
+
+// A plugin that reports an output range larger than its memory should get an error,
+// it must not be able to crash the host.
+#[test]
+fn test_output_set_invalid_length() {
+    let wat = |len: i64| {
+        format!(
+            r#"(module
+                (import "extism:host/env" "alloc" (func $alloc (param i64) (result i64)))
+                (import "extism:host/env" "output_set" (func $output_set (param i64 i64)))
+                (func (export "run") (result i32)
+                    (local $o i64)
+                    (local.set $o (call $alloc (i64.const 16)))
+                    (call $output_set (local.get $o) (i64.const {len}))
+                    (i32.const 0)))"#
+        )
+    };
+
+    // A valid output range still works
+    let mut plugin = Plugin::new(Manifest::new([Wasm::data(wat(16))]), [], true).unwrap();
+    let out: Vec<u8> = plugin.call("run", "").unwrap();
+    assert_eq!(out.len(), 16);
+
+    // An output length of u64::MAX is rejected
+    let mut plugin = Plugin::new(Manifest::new([Wasm::data(wat(-1))]), [], true).unwrap();
+    let res: Result<Vec<u8>, Error> = plugin.call("run", "");
+    assert!(res.map(|x| x.is_empty()).unwrap_or(true));
+}

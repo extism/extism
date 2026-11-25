@@ -502,7 +502,10 @@ pub unsafe fn input_set(h: Handle, len: u64) {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
-        if !root.pointer_in_bounds(h) || !root.pointer_in_bounds(h + len - 1) {
+        let Some(end) = h.checked_add(len) else {
+            return;
+        };
+        if !root.pointer_in_bounds(h) || !root.pointer_in_bounds(end - 1) {
             return;
         }
     }
@@ -518,7 +521,10 @@ pub unsafe fn output_set(p: Pointer, len: u64) {
     let root = MemoryRoot::new();
     #[cfg(feature = "bounds-checking")]
     {
-        if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(p + len - 1) {
+        let Some(end) = p.checked_add(len) else {
+            return;
+        };
+        if !root.pointer_in_bounds(p) || !root.pointer_in_bounds(end - 1) {
             return;
         }
     }
