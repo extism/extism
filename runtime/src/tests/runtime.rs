@@ -926,3 +926,264 @@ fn test_http_response_headers_disabled() {
     println!("{res:?}");
     assert!(res.is_empty());
 }
+
+/// A request received by `local_http_server`
+#[cfg(feature = "http")]
+#[derive(Debug, Clone)]
+struct LocalRequest {
+    method: String,
+    path: String,
+    headers: Vec<(String, String)>,
+    body: Vec<u8>,
+}
+
+#[cfg(feature = "http")]
+impl LocalRequest {
+    fn header(&self, name: &str) -> Option<&str> {
+        self.headers
+            .iter()
+            .find(|(k, _)| k.eq_ignore_ascii_case(name))
+            .map(|(_, v)| v.as_str())
+    }
+}
+
+/// Start a tiny HTTP server on `host` that replies to every request with
+/// `response(path)` and records the requests it receives.
+#[cfg(feature = "http")]
+fn local_http_server(
+    host: &str,
+    response: impl Fn(&str) -> String + Send + 'static,
+) -> (u16, std::sync::Arc<std::sync::Mutex<Vec<LocalRequest>>>) {
+    use std::io::{BufRead, BufReader, Read};
+    let listener = std::net::TcpListener::bind((host, 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    let requests = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
+    let requests1 = requests.clone();
+    std::thread::spawn(move || {
+        for stream in listener.incoming() {
+            let Ok(mut stream) = stream else { continue };
+            let mut reader = BufReader::new(stream.try_clone().unwrap());
+            let mut line = String::new();
+            if reader.read_line(&mut line).is_err() {
+                continue;
+            }
+            let mut parts = line.split_whitespace();
+            let method = parts.next().unwrap_or_default().to_string();
+            let path = parts.next().unwrap_or("/").to_string();
+            let mut headers = vec![];
+            loop {
+                let mut h = String::new();
+                if reader.read_line(&mut h).is_err() || h == "\r\n" || h.is_empty() {
+                    break;
+                }
+                if let Some((k, v)) = h.trim_end().split_once(':') {
+                    headers.push((k.trim().to_string(), v.trim().to_string()));
+                }
+            }
+            let len = headers
+                .iter()
+                .find(|(k, _)| k.eq_ignore_ascii_case("content-length"))
+                .and_then(|(_, v)| v.parse::<usize>().ok())
+                .unwrap_or(0);
+            let mut body = vec![0; len];
+            let _ = reader.read_exact(&mut body);
+            requests1.lock().unwrap().push(LocalRequest {
+                method,
+                path: path.clone(),
+                headers,
+                body,
+            });
+            let _ = stream.write_all(response(&path).as_bytes());
+        }
+    });
+    (port, requests)
+}
+
+#[cfg(feature = "http")]
+fn http_ok(body: &str) -> String {
+    format!(
+        "HTTP/1.1 200 OK\r\nContent-Length: {}\r\nConnection: close\r\n\r\n{body}",
+        body.len()
+    )
+}
+
+#[cfg(feature = "http")]
+fn http_redirect_status(status: u16, location: &str) -> String {
+    format!("HTTP/1.1 {status} Redirect\r\nLocation: {location}\r\nContent-Length: 0\r\nConnection: close\r\n\r\n")
+}
+
+#[cfg(feature = "http")]
+fn http_redirect(location: &str) -> String {
+    http_redirect_status(302, location)
+}
+
+#[cfg(feature = "http")]
+fn redirect_plugin(allowed_host: &str) -> Plugin {
+    let manifest = Manifest::new([Wasm::data(WASM_HTTP)]).with_allowed_host(allowed_host);
+    PluginBuilder::new(manifest).build().unwrap()
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_to_allowed_host() {
+    let (port, requests) = local_http_server("127.0.0.1", |path| {
+        if path == "/start" {
+            http_redirect("/final")
+        } else {
+            http_ok("final")
+        }
+    });
+    let res: String = redirect_plugin("127.0.0.1")
+        .call(
+            "http_request",
+            format!(r#"{{"url": "http://127.0.0.1:{port}/start"}}"#),
+        )
+        .unwrap();
+    assert_eq!(res, "final");
+    assert_eq!(requests.lock().unwrap().len(), 2);
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_to_disallowed_host() {
+    let (other_port, other_requests) =
+        local_http_server("127.0.0.1", |_| http_ok("disallowed-host-body"));
+    let (port, _) = local_http_server("127.0.0.1", move |_| {
+        http_redirect(&format!("http://localhost:{other_port}/"))
+    });
+    let res: Result<String, Error> = redirect_plugin("127.0.0.1").call(
+        "http_request",
+        format!(r#"{{"url": "http://127.0.0.1:{port}/"}}"#),
+    );
+    let err = res.unwrap_err();
+    assert!(format!("{err:?}").contains("not allowed"), "{err:?}");
+    assert!(other_requests.lock().unwrap().is_empty());
+}
+
+// The tests below check that redirects behave the same as ureq's built-in redirect handling
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_post_becomes_get() {
+    for status in [301, 302, 303] {
+        let (port, requests) = local_http_server("127.0.0.1", move |path| {
+            if path == "/start" {
+                http_redirect_status(status, "/final")
+            } else {
+                http_ok("final")
+            }
+        });
+        let res: String = redirect_plugin("127.0.0.1")
+            .call(
+                "http_request",
+                format!(
+                    r#"{{"url": "http://127.0.0.1:{port}/start", "method": "POST", "data": "abc", "headers": {{"Authorization": "test-token", "Cookie": "c=1", "X-Test": "kept"}}}}"#
+                ),
+            )
+            .unwrap();
+        assert_eq!(res, "final");
+        let requests = requests.lock().unwrap();
+        assert_eq!(requests.len(), 2);
+        assert_eq!(requests[0].method, "POST");
+        assert_eq!(requests[0].body, b"abc");
+        assert_eq!(requests[1].method, "GET", "status {status}");
+        assert_eq!(requests[1].path, "/final");
+        assert!(requests[1].body.is_empty());
+        assert_eq!(requests[1].header("authorization"), None);
+        assert_eq!(requests[1].header("cookie"), None);
+        assert_eq!(requests[1].header("x-test"), Some("kept"));
+    }
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_307_keeps_method() {
+    let (port, requests) = local_http_server("127.0.0.1", |path| {
+        if path == "/start" {
+            http_redirect_status(307, "/final")
+        } else {
+            http_ok("final")
+        }
+    });
+    let res: String = redirect_plugin("127.0.0.1")
+        .call(
+            "http_request",
+            format!(
+                r#"{{"url": "http://127.0.0.1:{port}/start", "method": "HEAD", "headers": {{"Authorization": "test-token"}}}}"#
+            ),
+        )
+        .unwrap();
+    assert_eq!(res, "");
+    let requests = requests.lock().unwrap();
+    assert_eq!(requests.len(), 2);
+    assert_eq!(requests[1].method, "HEAD");
+    assert_eq!(requests[1].header("authorization"), None);
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_307_post_fails() {
+    let (port, requests) = local_http_server("127.0.0.1", |path| {
+        if path == "/start" {
+            http_redirect_status(307, "/final")
+        } else {
+            http_ok("final")
+        }
+    });
+    let res: Result<String, Error> = redirect_plugin("127.0.0.1").call(
+        "http_request",
+        format!(r#"{{"url": "http://127.0.0.1:{port}/start", "method": "POST", "data": "abc"}}"#),
+    );
+    assert!(res.is_err());
+    assert_eq!(requests.lock().unwrap().len(), 1);
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_limit() {
+    let (port, requests) = local_http_server("127.0.0.1", |_| http_redirect("/again"));
+    let res: Result<String, Error> = redirect_plugin("127.0.0.1").call(
+        "http_request",
+        format!(r#"{{"url": "http://127.0.0.1:{port}/start"}}"#),
+    );
+    assert!(res.is_err());
+    // the initial request plus 10 redirects
+    assert_eq!(requests.lock().unwrap().len(), 11);
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_304_not_followed() {
+    let (port, requests) = local_http_server("127.0.0.1", |_| http_redirect_status(304, "/final"));
+    let _: String = redirect_plugin("127.0.0.1")
+        .call(
+            "http_request",
+            format!(r#"{{"url": "http://127.0.0.1:{port}/start"}}"#),
+        )
+        .unwrap();
+    assert_eq!(requests.lock().unwrap().len(), 1);
+}
+
+#[test]
+#[cfg(feature = "http")]
+fn test_http_redirect_timeout() {
+    let (port, _) = local_http_server("127.0.0.1", |path| {
+        if path == "/start" {
+            http_redirect("/slow")
+        } else {
+            std::thread::sleep(std::time::Duration::from_secs(3));
+            http_ok("slow")
+        }
+    });
+    let manifest = Manifest::new([Wasm::data(WASM_HTTP)])
+        .with_allowed_host("127.0.0.1")
+        .with_timeout(std::time::Duration::from_millis(500));
+    let mut plugin = PluginBuilder::new(manifest).build().unwrap();
+    let start = Instant::now();
+    let res: Result<String, Error> = plugin.call(
+        "http_request",
+        format!(r#"{{"url": "http://127.0.0.1:{port}/start"}}"#),
+    );
+    assert!(res.is_err());
+    assert!(start.elapsed() < std::time::Duration::from_secs(2));
+}
